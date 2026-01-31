@@ -1,0 +1,28 @@
+@echo off
+chcp 65001 >nul
+echo ==========================================
+echo    TradeMind 服务器启动
+echo ==========================================
+echo.
+echo 请复制以下命令并在新的终端窗口中运行:
+echo.
+echo    cd /d d:\项目\TradeMind\项目工程\TM_Project\TradeMind-Web
+echo    python server_final.py
+echo.
+echo ==========================================
+echo.
+echo 启动成功后，请访问:
+echo.
+echo    http://localhost:9009/index.html
+echo.
+echo 测试入口:
+echo    - 首页: http://localhost:9009/index.html
+echo    - 图片上传: http://localhost:9009/upload.html
+echo    - 订单管理: http://localhost:9009/order-manage.html
+echo    - 客户管理: http://localhost:9009/customer-manage.html
+echo    - 进度配置: http://localhost:9009/progress-config.html
+echo    - 登录: http://localhost:9009/login.html
+echo    - 注册: http://localhost:9009/register.html
+echo.
+echo ==========================================
+pause

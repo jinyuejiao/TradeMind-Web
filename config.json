@@ -1,0 +1,20 @@
+{
+  "llm": {
+    "base_url": "https://api.scnet.cn/api/llm/v1/chat/completions",
+    "api_key": "sk-NDEwLTExNjM3NDE2Mzg3LTE3NjY3NjAwMTU3NDE=",
+    "model": "gpt-4o",
+    "prompt": "请分析以下商户与客户的微信聊天记录，精准提取订单信息、客户信息、产品信息三部分结构化内容，严格按照指定字段输出JSON格式，要求如下：\n\n1. 订单信息（order_info）\n必填字段：customer_nickname（下单客户微信昵称）、product_name（商品名称）、unit_price（单价，未提及填 \"未明确\"）、quantity（下单数量，数字格式，未提及填 \"未明确\"）、delivery_date（交货日期，未提及填 \"未明确\"）、order_status（订单状态，默认 \"待确认\"，明确提及 \"已付款\" \"已发货\" 则更新）\n\n2. 客户信息（customer_info）\n必填字段：nickname（与订单信息一致）、chat_style（可选：简洁直接型 / 咨询细致型 / 砍价议价型 / 闲聊熟客型 / 其他）、other_info（客户其他信息，如地区、偏好、合作历史等，无则填 \"无\"）\n\n3. 产品信息（product_info）\n必填字段：product_name（与订单信息一致）、quantity（与订单信息一致）、product_code（货号 / 型号，未提及填 \"未明确\"）、stock_impact（固定值：\"需扣减库存\"）、supplier_action（固定值：\"需向对应供应商下单\"）\n\n输出规则：\n字段名称不可修改，quantity为数字，其余为字符串；\n无相关信息按上述要求填默认值；\n多订单 / 商品以数组形式呈现；\n仅输出 JSON，禁止任何额外解释。"
+  },
+  "order": {
+    "default_status": "待确认",
+    "status_mapping": {
+      "已付款": "已确认",
+      "已发货": "已发货"
+    }
+  },
+  "server": {
+    "port": 3000,
+    "upload_dir": "./uploads",
+    "data_dir": "./data"
+  }
+}

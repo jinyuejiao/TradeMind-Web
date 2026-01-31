@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TradeMind - 登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' },
+                        slate: { 50: '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0', 800: '#1E293B', 900: '#0F172A' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-8">
+            <div class="flex items-center justify-center mb-4">
+                <div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="white">
+                        <path d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm35.31 120.3a8 8 0 0 1 0 11.31l-28.28 28.29l-11.3-11.3a8 8 0 0 1 11.32-11.32l5.99 5.99l22.93-22.93a8 8 0 0 1 11.31 0Zm-70.62 0a8 8 0 0 1 11.32 0l22.93 22.93l5.99-5.99a8 8 0 0 1 11.32 11.32l-11.3 11.3l-28.28-28.29a8 8 0 0 1 0-11.31ZM216 128a87.61 87.61 0 0 1-14.45 46.61l-22.76-22.76a8 8 0 0 0-11.31 0l-2.54 2.54a32 32 0 0 1-45.25 0l-37.93-37.93a32 32 0 0 1 0-45.26l2.54-2.54a8 8 0 0 0 0-11.31L54.45 64.46A87.67 87.67 0 0 1 128 40a88 88 0 0 1 88 88Zm-30.06 0a64 64 0 1 1-90.51-90.51l14.14 14.14a8 8 0 0 0 11.31 0l2.54-2.54a48 48 0 0 0 67.88 0l2.54 2.54a8 8 0 0 0 11.31 0l14.14-14.14A63.73 63.73 0 0 1 185.94 128Z"></path>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold text-center mb-2">TradeMind</h1>
+            <p class="text-center text-slate-300 text-sm">商贸智脑 - 外贸管理系统</p>
+        </div>
+        
+        <div class="p-8">
+            <form id="loginForm" class="space-y-4">
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-700">用户名</label>
+                    <div class="relative">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-user">
+                                <path fill="currentColor" d="M128 32a56 56 0 1 0 56 56A56 56 0 0 0 128 32Zm0 96a32 32 0 1 1 32-32a32 32 0 0 1-32 32Zm72 88H56a24 24 0 0 0-24 24v24a128 128 0 0 0 248 0v-24a24 24 0 0 0-24-24Z"></path>
+                            </svg>
+                        </div>
+                        <input type="text" id="username" name="username" class="w-full pl-10 pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请输入用户名">
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-700">密码</label>
+                    <div class="relative">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-lock-keyhole">
+                                <path fill="currentColor" d="M208 80h-24V56a48 48 0 0 0-96 0v24H48a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16Zm-80 0v24a8 8 0 0 1-16 0V80a8 8 0 0 1 16 0Zm80 128H48V96h160v112Zm-48-64a32 32 0 1 1-32 32a32 32 0 0 1 32-32Z"></path>
+                            </svg>
+                        </div>
+                        <input type="password" id="password" name="password" class="w-full pl-10 pr-10 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请输入密码">
+                        <button type="button" id="togglePassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-eye">
+                                <path fill="currentColor" d="M239.69 129.83a123.38 123.38 0 0 0-43.74-30.93l18-34.51a8 8 0 0 0-2.37-11.33l-25.4-18.84a8 8 0 0 0-11.34 2.37l-19.29 37a8 8 0 0 0 2.83 10.24l51.42 38.09a123.2 123.2 0 0 0 13.11 58.67l14.48 21.67a8 8 0 0 0 11.23 3.12l25.55-14.66a8 8 0 0 0 3.12-11.23l-13.77-20.65a123.59 123.59 0 0 0-6.32-65.39Zm-95.74 60.7a8 8 0 0 0-3.61-3.61L68.42 154.54a8 8 0 0 0-3.61 3.61L48.63 224.3a8 8 0 0 0 3.61 3.61l71.92-32.38a8 8 0 0 0 3.61-3.61ZM128 80a48 48 0 1 0 48 48a48 48 0 0 0-48-48Zm0 136a88 88 0 1 1 88-88a88 88 0 0 1-88 88Z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center text-sm text-slate-600">
+                        <input type="checkbox" class="mr-2 rounded border-slate-300 text-brand-500 focus:ring-brand-500">
+                        <span>记住我</span>
+                    </label>
+                    <a href="#" class="text-sm text-brand-600 hover:text-brand-700 font-bold">忘记密码？</a>
+                </div>
+                
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition-all duration-200">
+                    登录
+                </button>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-slate-200">
+                <p class="text-center text-sm text-slate-600">
+                    还没有账号？ <a href="register.html" class="text-brand-600 hover:text-brand-700 font-bold">立即注册</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="./assets/js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TradeMind - 订单管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' },
+                        slate: { 50: '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0', 800: '#1E293B', 900: '#0F172A' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .progress-step.completed .step-circle { background-color: #14B8A6; border-color: #14B8A6; }
+        .progress-step.completed .step-line { background-color: #14B8A6; }
+        .progress-step.active .step-circle { border-color: #14B8A6; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); } 50% { box-shadow: 0 0 0 8px rgba(20, 184, 166, 0); } }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <nav class="bg-slate-900 text-white px-6 py-4">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-brand-500 rounded-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="white">
+                        <path d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm35.31 120.3a8 8 0 0 1 0 11.31l-28.28 28.29l-11.3-11.3a8 8 0 0 1 11.32-11.32l5.99 5.99l22.93-22.93a8 8 0 0 1 11.31 0Zm-70.62 0a8 8 0 0 1 11.32 0l22.93 22.93l5.99-5.99a8 8 0 0 1 11.32 11.32l-11.3 11.3l-28.28-28.29a8 8 0 0 1 0-11.31ZM216 128a87.61 87.61 0 0 1-14.45 46.61l-22.76-22.76a8 8 0 0 0-11.31 0l-2.54 2.54a32 32 0 0 1-45.25 0l-37.93-37.93a32 32 0 0 1 0-45.26l2.54-2.54a8 8 0 0 0 0-11.31L54.45 64.46A87.67 87.67 0 0 1 128 40a88 88 0 0 1 88 88Zm-30.06 0a64 64 0 1 1-90.51-90.51l14.14 14.14a8 8 0 0 0 11.31 0l2.54-2.54a48 48 0 0 0 67.88 0l2.54 2.54a8 8 0 0 0 11.31 0l14.14-14.14A63.73 63.73 0 0 1 185.94 128Z"></path>
+                    </svg>
+                </div>
+                <span class="text-xl font-bold">TradeMind</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="upload.html" class="text-slate-400 hover:text-white">图片上传</a>
+                <a href="order-manage.html" class="text-brand-400 font-medium">订单管理</a>
+                <a href="customer-manage.html" class="text-slate-400 hover:text-white">客户管理</a>
+                <a href="progress-config.html" class="text-slate-400 hover:text-white">进度配置</a>
+                <a href="index.html" class="text-slate-400 hover:text-white">返回主界面</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-6 py-8">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-bold text-slate-800">订单管理</h1>
+            <div class="flex space-x-4">
+                <input type="text" id="searchInput" placeholder="搜索订单号或客户..." class="px-4 py-2 border border-slate-200 rounded-lg w-64 focus:outline-none focus:border-brand-500">
+                <select id="statusFilter" class="px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500">
+                    <option value="">全部状态</option>
+                    <option value="待确认">待确认</option>
+                    <option value="已确认">已确认</option>
+                    <option value="已付款">已付款</option>
+                    <option value="已发货">已发货</option>
+                    <option value="已完成">已完成</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="ordersList" class="space-y-4"></div>
+
+        <div id="emptyState" class="hidden text-center py-16">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 256 256" class="mx-auto text-slate-300 mb-4">
+                <path fill="currentColor" d="M208 80h-72V32H80v48H32a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h192a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16Zm-96-48v48h48V32ZM32 224V96h192v128H32Zm96-64h64v32h-64v-32Zm48 0h16v32h-16v-32Zm-48 0h16v32h-16v-32Z"></path>
+            </svg>
+            <p class="text-slate-500 text-lg">暂无订单数据</p>
+            <p class="text-slate-400 text-sm mt-2">上传图片识别后将自动创建订单</p>
+        </div>
+    </div>
+
+    <div id="orderDetailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-slate-200 flex items-center justify-between">
+                <h2 class="text-xl font-bold text-slate-800">订单详情</h2>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256">
+                        <path fill="currentColor" d="M208.49 191.51a12 12 0 0 1-17 0L128 129l-63.51 62.49a12 12 0 0 1-17-17l80-80a12 12 0 0 1 17 0l80 80a12 12 0 0 1 0 17Z"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="orderDetailContent" class="p-6"></div>
+            <div id="progressSection" class="px-6 pb-6">
+                <h3 class="font-bold text-slate-800 mb-4">订单进度</h3>
+                <div id="progressTimeline" class="flex items-center justify-between"></div>
+                <div id="progressActions" class="mt-4 flex space-x-2"></div>
+            </div>
+            <div class="p-6 border-t border-slate-200 flex justify-end space-x-4">
+                <button id="closeModalBtn2" class="px-6 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/order-manage.js"></script>
+</body>
+</html>

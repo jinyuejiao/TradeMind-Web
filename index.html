@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TradeMind 外贸智脑 - Jin工作台 (定制版)</title>
+    
+    <!-- 基础样式 -->
+    <style>
+        body { 
+            background-color: #F1F5F9; 
+            color: #334155; 
+            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+        
+        /* 隐藏滚动条但保留滚动功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 动画类 */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .tech-pulse { animation: pulse-teal 3s infinite; }
+        @keyframes pulse-teal {
+            0% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4); }
+            70% { box-shadow: 0 0 0 4px rgba(20, 184, 166, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(20, 184, 166, 0); }
+        }
+
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' },
+                        slate: { 50: '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0', 800: '#1E293B', 900: '#0F172A' },
+                        risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' }
+                    },
+                    screens: { 'xs': '375px' }
+                }
+            }
+        }
+    </script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+
+    <!-- 1. PC端 左侧导航栏 -->
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="animate-spin-slow">
+                    <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm35.31 120.3a8 8 0 0 1 0 11.31l-28.28 28.29l-11.3-11.3a8 8 0 0 1 11.32-11.32l5.99 5.99l22.93-22.93a8 8 0 0 1 11.31 0Zm-70.62 0a8 8 0 0 1 11.32 0l22.93 22.93l5.99-5.99a8 8 0 0 1 11.32 11.32l-11.3 11.3l-28.28-28.29a8 8 0 0 1 0-11.31ZM216 128a87.61 87.61 0 0 1-14.45 46.61l-22.76-22.76a8 8 0 0 0-11.31 0l-2.54 2.54a32 32 0 0 1-45.25 0l-37.93-37.93a32 32 0 0 1 0-45.26l2.54-2.54a8 8 0 0 0 0-11.31L54.45 64.46A87.67 87.67 0 0 1 128 40a88 88 0 0 1 88 88Zm-30.06 0a64 64 0 1 1-90.51-90.51l14.14 14.14a8 8 0 0 0 11.31 0l2.54-2.54a48 48 0 0 0 67.88 0l2.54 2.54a8 8 0 0 0 11.31 0l14.14-14.14A63.73 63.73 0 0 1 185.94 128Z"></path>
+                </svg>
+            </div>
+            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
+        </div>
+
+        <nav class="flex-1 py-6 px-3 space-y-1">
+            <button onclick="switchTab('dashboard', event)" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all group active-nav bg-slate-800 text-brand-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-squares-four mr-3">
+                    <path fill="currentColor" d="M76 80a12 12 0 0 1 12-12h80a12 12 0 0 1 12 12v80a12 12 0 0 1-12 12H88a12 12 0 0 1-12-12Zm8 0v80h80V80Zm88-32h-72a12 12 0 0 0-12 12v72a12 12 0 0 0 12 12h72a12 12 0 0 0 12-12V60a12 12 0 0 0-12-12Zm4 84a4 4 0 0 1-4 4h-72a4 4 0 0 1-4-4V60a4 4 0 0 1 4-4h72a4 4 0 0 1 4 4ZM76 48H36a12 12 0 0 0-12 12v72a12 12 0 0 0 12 12h40a12 12 0 0 0 12-12V60a12 12 0 0 0-12-12Zm8 84a4 4 0 0 1-4 4H36a4 4 0 0 1-4-4V60a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4ZM36 208h72a12 12 0 0 0 12-12v-72a12 12 0 0 0-12-12H36a12 12 0 0 0-12 12v72a12 12 0 0 0 12 12Zm4-84a4 4 0 0 1-4 4H36a4 4 0 0 1-4-4v-72a4 4 0 0 1 4-4h72a4 4 0 0 1 4 4v72a4 4 0 0 1-4 4Z"></path>
+                </svg> <span class="text-sm font-medium">工作台</span>
+            </button>
+            <button onclick="switchTab('crm', event)" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-users mr-3">
+                    <path fill="currentColor" d="M231.89 212.37A15.89 15.89 0 0 1 216 224h-80a16 16 0 0 1-15.89-13.63A44 44 0 0 1 75.89 158a15.89 15.89 0 0 1 13.58-19.61a16.08 16.08 0 0 1 18.67 4.82a43.86 43.86 0 0 1 29.68 0a16 16 0 0 1 18.67-4.82a15.89 15.89 0 0 1 13.58 19.61a44 44 0 0 1-44.23 52.37a15.89 15.89 0 0 1 15.89-17.63h80a16 16 0 0 1 15.89 17.63ZM88 136a48 48 0 0 0 0-96a15.89 15.89 0 0 1-8.47 14.17A47.84 47.84 0 0 0 88 64a15.89 15.89 0 0 1 16 16a47.84 47.84 0 0 0 0 32a15.89 15.89 0 0 1-16 16Zm96 0a47.84 47.84 0 0 0 0-32a15.89 15.89 0 0 1 16-16a48 48 0 0 0 0 96a15.89 15.89 0 0 1-8.47-14.17A47.84 47.84 0 0 0 184 152a15.89 15.89 0 0 1-16-16Zm-96-64a16 16 0 1 1-16 16a16 16 0 0 1 16-16Zm96 0a16 16 0 1 1-16 16a16 16 0 0 1 16-16Z"></path>
+                </svg> <span class="text-sm font-medium">客户 CRM</span>
+            </button>
+            <button onclick="switchTab('supply', event)" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-circuitry mr-3">
+                    <path fill="currentColor" d="M144 160a8 8 0 0 1-8 8h-16a8 8 0 0 1 0-16h16a8 8 0 0 1 8 8Zm-8-48h16a8 8 0 0 0 0-16h-16a8 8 0 0 0 0 16Zm72 40h-16v16h-8V160h-8a8 8 0 0 0-8 8v8h-16v-8a8 8 0 0 0-8-8h-8v-16h8a8 8 0 0 0 8-8v-8h16v8a8 8 0 0 0 8-8v-16h8v16a8 8 0 0 0 8 8h8v16h-8a8 8 0 0 0-8 8v8h16v-8a8 8 0 0 0 8-8v-16Zm-60 16h16a8 8 0 0 0 0-16h-16a8 8 0 0 0 0 16Zm-40 0v16a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0Zm0-40v16a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Zm-32 40v16a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0Zm0-40v16a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Zm0-40v16a8 8 0 0 1-16 0V56a8 8 0 0 1 16 0Zm40 0v16a8 8 0 0 1-16 0V56a8 8 0 0 1 16 0Zm40 0v16a8 8 0 0 1-16 0V56a8 8 0 0 1 16 0Zm40 40v16a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Zm0 40v16a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0Zm-40-80h-16a8 8 0 0 0 0 16h16a8 8 0 0 0 0-16Zm-40 0h-16a8 8 0 0 0 0 16h16a8 8 0 0 0 0-16Zm0 80h-16a8 8 0 0 0 0 16h16a8 8 0 0 0 0-16Z"></path>
+                </svg> <span class="text-sm font-medium">产研供应链</span>
+            </button>
+            <button onclick="switchTab('marketing', event)" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-rocket-launch mr-3">
+                    <path fill="currentColor" d="m229.66 53.66-42.83-42.83a16 16 0 0 0-22.63 0L68.7 76.24c-24 24-28.47 60.74-13.06 89.94a16.06 16.06 0 0 0 2.45 3.56a205.92 205.92 0 0 0 52.06 45.87a16.15 16.15 0 0 0 11.31 0a206.44 206.44 0 0 0 52.06-45.87a16.05 16.05 0 0 0 2.45-3.56c15.41-29.2 10.94-65.94-13.06-89.94ZM132 230.63c-22.81-14.83-48.61-32.07-67.68-51.14c-10.79-10.79-14.49-26.81-11.08-41.87l41.61-41.61l87.46 87.46l-41.61 41.61c-15.07 3.41-31.08-0.29-41.87-11.08ZM181.94 181.94L104 104l-36.94-36.94a3.91 3.91 0 0 1 1.42-5.63l42.83-22.83a8 8 0 0 1 9.54 2.9l47.72 78.76l12.83 12.83l78.76 47.72a8 8 0 0 1 2.9 9.54l-22.83 42.83a3.91 3.91 0 0 1-5.63 1.42Zm-86.83-86.83l-12.83-12.83l16-16l12.83 12.83Zm116.83 86.83l-16-16l12.83-12.83l16 16Z"></path>
+                </svg> <span class="text-sm font-medium">营销中心</span>
+            </button>
+            <button onclick="switchTab('intelligent', event)" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-brain-circuit mr-3">
+                    <path fill="currentColor" d="M216 128a88 88 0 1 0-88 88a88.1 88.1 0 0 0 88-88Zm-16 0a72 72 0 1 1-72-72a72.08 72.08 0 0 1 72 72Zm-37.66 50.34a8 8 0 0 1-11.32 11.32l-24-24a8 8 0 0 1 0-11.32l24-24a8 8 0 0 1 11.32 11.32L156.69 168ZM128 176a8 8 0 0 1-8-8v-48a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Zm-42.34-17.66a8 8 0 0 1 0-11.32l-24 24a8 8 0 0 1-11.32-11.32l24-24a8 8 0 0 1 11.32 11.32L91.31 168ZM224 64a8 8 0 0 1-8 8h-40a8 8 0 0 1 0-16h40a8 8 0 0 1 8 8Zm-88 0a8 8 0 0 1-8-8V8a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Zm-48 0a8 8 0 0 1-8-8V8a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Zm-48 0a8 8 0 0 1-8-8V8a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Z"></path>
+                </svg> <span class="text-sm font-medium">智能经营</span>
+            </button>
+            <button onclick="switchTab('supplier', event)" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-all group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-warehouse mr-3">
+                    <path fill="currentColor" d="M248 128v80a16 16 0 0 1-16 16H24a16 16 0 0 1-16-16v-80a16 16 0 0 1 16-16h104v-48h-16a16 16 0 0 1-14.29-9.14l-40-80A16 16 0 0 1 69.71 0h116.58a16 16 0 0 1 14.29 9.14l40 80A16 16 0 0 1 224 80h-16v48h104a16 16 0 0 1 16 16Zm-160-48h96l-40-73.14L128 80Zm0 128h24a8 8 0 0 0 0-16h-24a8 8 0 0 0 0 16Zm48 0h24a8 8 0 0 0 0-16h-24a8 8 0 0 0 0 16Zm48 0h24a8 8 0 0 0 0-16h-24a8 8 0 0 0 0 16Zm80-32h-80v-48h80Z"></path>
+                </svg> <span class="text-sm font-medium">供应商管理</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 bg-slate-900">
+            <div class="flex items-center">
+                <div class="w-9 h-9 rounded bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono">Jin</div>
+                <div class="ml-3">
+                    <p class="text-xs font-bold text-slate-300">Jin (Admin)</p>
+                    <div class="flex items-center text-[10px] text-brand-500 mt-0.5">
+                        <span class="w-1.5 h-1.5 bg-brand-500 rounded-full mr-1 tech-pulse"></span> AI 在线
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 2. 主工作区 -->
+    <main class="flex-1 flex flex-col min-w-0 relative h-full">
+        
+        <!-- Header -->
+        <header class="h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
+            <div class="md:hidden flex items-center">
+                <div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256">
+                        <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm35.31 120.3a8 8 0 0 1 0 11.31l-28.28 28.29l-11.3-11.3a8 8 0 0 1 11.32-11.32l5.99 5.99l22.93-22.93a8 8 0 0 1 11.31 0Zm-70.62 0a8 8 0 0 1 11.32 0l22.93 22.93l5.99-5.99a8 8 0 0 1 11.32 11.32l-11.3 11.3l-28.28-28.29a8 8 0 0 1 0-11.31ZM216 128a87.61 87.61 0 0 1-14.45 46.61l-22.76-22.76a8 8 0 0 0-11.31 0l-2.54 2.54a32 32 0 0 1-45.25 0l-37.93-37.93a32 32 0 0 1 0-45.26l2.54-2.54a8 8 0 0 0 0-11.31L54.45 64.46A87.67 87.67 0 0 1 128 40a88 88 0 0 1 88 88Zm-30.06 0a64 64 0 1 1-90.51-90.51l14.14 14.14a8 8 0 0 0 11.31 0l2.54-2.54a48 48 0 0 0 67.88 0l2.54 2.54a8 8 0 0 0 11.31 0l14.14-14.14A63.73 63.73 0 0 1 185.94 128Z"></path>
+                    </svg>
+                </div>
+                <span class="font-bold text-slate-800">TradeMind</span>
+            </div>
+            <div class="hidden md:flex items-center w-1/3 text-slate-400 group">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="group-focus-within:text-brand-600 transition">
+                    <path fill="currentColor" d="M229.66 218.34a104.8 104.8 0 0 1-150.06-19.93l-60-60a16 16 0 0 1 22.63-22.63l59.94 59.94A88.13 88.13 0 0 0 128 184a88.1 88.1 0 0 0 61.66-22.62l59.94 59.94a16 16 0 0 1-22.62 22.62ZM128 160a64 64 0 1 1 64-64a64.07 64.07 0 0 1-64 64Z"></path>
+                </svg>
+                <input type="text" placeholder="全局搜索..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium">
+            </div>
+            <div class="flex items-center space-x-3 md:space-x-5">
+                <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
+                    <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
+                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">工作台</span>
+                </div>
+                <div class="flex items-center">
+                <div class="w-6 h-6 bg-brand-500 rounded flex items-center justify-center mr-2 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" class="ph-brain">
+                        <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm35.31 120.3a8 8 0 0 1 0 11.31l-28.28 28.29l-11.3-11.3a8 8 0 0 1 11.32-11.32l5.99 5.99l22.93-22.93a8 8 0 0 1 11.31 0Zm-70.62 0a8 8 0 0 1 11.32 0l22.93 22.93l5.99-5.99a8 8 0 0 1 11.32 11.32l-11.3 11.3l-28.28-28.29a8 8 0 0 1 0-11.31ZM216 128a87.61 87.61 0 0 1-14.45 46.61l-22.76-22.76a8 8 0 0 0-11.31 0l-2.54 2.54a32 32 0 0 1-45.25 0l-37.93-37.93a32 32 0 0 1 0-45.26l2.54-2.54a8 8 0 0 0 0-11.31L54.45 64.46A87.67 87.67 0 0 1 128 40a88 88 0 0 1 88 88Zm-30.06 0a64 64 0 1 1-90.51-90.51l14.14 14.14a8 8 0 0 0 11.31 0l2.54-2.54a48 48 0 0 0 67.88 0l2.54 2.54a8 8 0 0 0 11.31 0l14.14-14.14A63.73 63.73 0 0 1 185.94 128Z"></path>
+                    </svg>
+                </div>
+                <span class="text-sm font-bold text-slate-800">商贸智脑</span>
+            </div>
+                <button class="relative text-slate-400 hover:text-brand-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256">
+                        <path fill="currentColor" d="M188.53 194.28A28 28 0 0 1 168 208H88a28 28 0 0 1-20.53-13.72A32 32 0 0 1 48 168a30 30 0 0 1 2.46-11.61A8 8 0 0 1 60 148h136a8 8 0 0 1 9.54 6.39A30 30 0 0 1 208 168a32 32 0 0 1-19.47 26.28ZM88 200h80a12 12 0 0 0 12-12v-4a12 12 0 0 0-12-12H88a12 12 0 0 0-12 12v4a12 12 0 0 0 12 12Zm104-52a14 14 0 0 0-14.09-14h-103.82A14 14 0 0 0 56 168a16 16 0 0 0 15.7 16a28 28 0 0 0 22.23-12.58A40 40 0 0 1 128 188a40 40 0 0 1 34.07-16.58A28 28 0 0 0 184.3 184A16 16 0 0 0 200 168a14 14 0 0 0-8-12Zm-38.49 64a8 8 0 0 1-11 0l-18-18l-18 18a8 8 0 0 1-11-11.32l24-24a8 8 0 0 1 11.32 0l24 24a8 8 0 0 1 0 11.32Z"></path>
+                    </svg>
+                    <span class="absolute top-0 right-0 w-2 h-2 bg-risk-high rounded-full border border-white"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 内容区域 -->
+        <div id="content-area" class="flex-1 overflow-y-auto bg-slate-100 no-scrollbar pb-24 md:pb-0">
+
+            <!-- ================= [1] 工作台 DASHBOARD ================= -->
+            <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-4 md:space-y-6 fade-in">
+                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800">Hi, Jin.</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold">3个风险</span>，<span class="text-brand-600 font-bold">5个新询盘</span>。</p>
+                    </div>
+                </div>
+
+                <!-- KPI Cards (Top) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">本月营收</p>
+                            <span class="text-xs text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded font-bold">+12%</span>
+                        </div>
+                        <div class="mt-2"><span id="monthly-revenue" class="text-2xl md:text-3xl font-mono font-bold text-slate-800">$184k</span></div>
+                        <div class="mt-3 w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                            <div class="w-[85%] bg-brand-500 h-full rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">新识别询盘</p>
+                        <div class="flex justify-between items-end mt-2">
+                            <span id="new-inquiries" class="text-2xl md:text-3xl font-mono font-bold text-slate-800">5</span>
+                            <span class="text-xs text-slate-500">WhatsApp/微信</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-risk-high">
+                        <div class="flex justify-between items-start">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">风险预警</p>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="text-risk-high animate-pulse">
+                                <path fill="currentColor" d="M136 200a8 8 0 1 1-8-8a8 8 0 0 1 8 8Zm-8-128a12 12 0 1 0 12 12a12 12 0 0 0-12-12Zm110.49 119.51a16 16 0 0 1-22.62 0L128 77.25L34.13 191.49a16 16 0 0 1-22.62-22.62l104-114.31a16 16 0 0 1 22.62 0l104 114.31a16 16 0 0 1 0 22.62ZM128 100.66ZM116 180v-36a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v36a4 4 0 0 1-4 4h-8a4 4 0 0 1-4-4Z"></path>
+                            </svg>
+                        </div>
+                        <div class="mt-2"><span id="risk-alerts" class="text-2xl md:text-3xl font-mono font-bold text-slate-800">3</span></div>
+                        <p id="risk-description" class="text-[10px] text-slate-500 mt-3 bg-red-50 p-1 rounded inline-block">原料延期</p>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">沉睡客户</p>
+                        <div class="flex justify-between items-end mt-2">
+                            <span id="inactive-customers" class="text-2xl md:text-3xl font-mono font-bold text-slate-800">42</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="text-slate-300"><path fill="currentColor" d="M144.49 184.49a8 8 0 0 1-11.32 11.32l-40-40a8 8 0 0 1 0-11.32l40-40a8 8 0 0 1 11.32 11.32L107.31 128Z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extraction Module (Bottom) -->
+                <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="px-4 py-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h2 class="text-sm font-bold text-slate-800 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="text-brand-600 mr-2">
+                                <path fill="currentColor" d="M224 56h-16V40a16 16 0 0 0-16-16H64a16 16 0 0 0-16 16v16H32a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h192a16 16 0 0 0 16-16V72a16 16 0 0 0-16-16ZM64 40h128v16H64Zm152 168H40V88h176Z"></path>
+                            </svg> 订单提取中心
+                        </h2>
+                        <span class="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-500">AI 识别</span>
+                    </div>
+                    <div class="flex flex-col md:flex-row md:divide-x divide-slate-100">
+                        <div class="p-4 md:w-1/3 flex flex-row md:flex-col gap-3 overflow-x-auto no-scrollbar">
+                            <div class="flex-1 min-w-[140px] flex items-center justify-between p-3 bg-green-50 rounded border border-green-100">
+                                <div class="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" class="text-green-600 mr-2">
+                                    <path fill="currentColor" d="M183.82 18.79A144.4 144.4 0 0 0 128 16C66.61 16 16 66.6 16 127.94c0 31.53 12.29 60.86 33.52 82.12L16 240l40.09-33.52c21.27 21.22 50.59 33.52 82 33.52c61.33 0 112-50.64 112-112a143.34 143.34 0 0 0-6.27-35.72L192.51 55.27a80 80 0 0 1-8.69 13.52Z"></path>
+                                </svg><div><p class="text-xs font-bold text-slate-700">WhatsApp</p><p class="text-[10px] text-green-600">● 监听中</p></div></div>
+                            </div>
+                            <div class="flex-1 min-w-[140px] flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200 opacity-80">
+                                <div class="flex items-center"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" class="text-green-600 mr-2">
+                                    <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm36.73 140.27a8 8 0 0 1-11.32 11.32L100 127.31v37.71a8 8 0 0 1-16 0v-56a8 8 0 0 1 13.66-5.66l32.49 32.48L160 94.34a8 8 0 0 1 11.32 11.32l-40 40Z"></path>
+                                </svg><div><p class="text-xs font-bold text-slate-700">WeChat</p><p class="text-[10px] text-slate-400">已连接</p></div></div>
+                            </div>
+                        </div>
+                        <div class="p-4 md:w-2/3 bg-slate-50/30">
+                            <div class="relative">
+                                <!-- 已上传图片预览 -->
+                                <div id="image-preview" class="mt-3 grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 bg-white rounded-lg border border-slate-200 hidden"></div>
+                                
+                                <!-- 聊天记录文本输入 -->
+                                <textarea id="chat-input" class="w-full h-32 bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-600 focus:outline-none focus:border-brand-500 transition font-mono resize-none" placeholder="在此处粘贴聊天记录..."></textarea>
+                                
+                                <!-- 底部按钮 -->
+                                <div class="absolute bottom-3 left-3 flex gap-2">
+                                    <button id="upload-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-1.5 rounded text-xs border border-slate-200"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="text-slate-600"><path fill="currentColor" d="M224 56h-16V40a16 16 0 0 0-16-16H64a16 16 0 0 0-16 16v16H32a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h192a16 16 0 0 0 16-16V72a16 16 0 0 0-16-16ZM32 192V64h192v128Zm56-56a12 12 0 1 1 12-12a12 12 0 0 1-12 12Zm88-88h-13.65l-25.11 30.13a16 16 0 0 0-2.51 19.87l45.26 54.31A16 16 0 0 1 224 168V64a16 16 0 0 0-48-16Zm-48 80a36 36 0 1 0 36 36a36 36 0 0 0-36-36Z"></path></svg></button>
+                                </div>
+                                <button id="extract-btn" class="absolute bottom-3 right-3 bg-brand-600 text-white px-4 py-1.5 rounded text-xs font-bold shadow-lg shadow-brand-500/20 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1.5 ph-magic-wand"><path fill="currentColor" d="M212.24 224a4 4 0 0 1-4.24-.76l-36.72-36.71a24 24 0 0 0-33.94 0l-32.73 32.72a4 4 0 0 1-5.66 0l-37.63-37.63a4 4 0 0 1 0-5.65l32.72-32.72a24 24 0 0 0 0-33.94L36.76 68a4 4 0 0 1 .76-5.9l80-40a4 4 0 0 1 3.48 0l80 40a4 4 0 0 1 .76 5.9l-36.72 36.71a24 24 0 0 0 0 33.94l32.72 32.72a4 4 0 0 1 0 5.66Zm-48.85-72.83a16 16 0 0 1 0 22.63l-32.73 32.72l22.63-22.62a16 16 0 0 0 0-22.64l-36.72-36.72a16 16 0 0 1 0-22.63l22.62-22.62l36.72 36.72a16 16 0 0 1 0 22.63ZM41.86 164l24.14 24.14l-22.63 22.63Zm113.12-72.23l-36.72-36.72l22.63-22.62z"></path></svg> AI 提取
+                                </button>
+                                
+                                <!-- 隐藏的文件输入 -->
+                                <input type="file" id="file-input" accept="image/*" multiple class="hidden" />
+                            </div>
+                            
+                            <!-- 操作按钮 -->
+                                <div class="flex justify-between items-center mt-3">
+                                    <button id="clear-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded text-xs border border-slate-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1"><path fill="currentColor" d="M213.58 82.36A8 8 0 0 0 208 80H184V56a8 8 0 0 0-8-8h-24V40a8 8 0 0 0-8-8h-40a8 8 0 0 0-8 8v8H72a8 8 0 0 0-8 8v24H48a8 8 0 0 0-6.72 4.07a8.18 8.18 0 0 0 1.94 8.79l40 56a8 8 0 0 0 12.56 0l40-56a8 8 0 0 0 1.94-8.79A8 8 0 0 0 160 80h-2.24l-1.62-2.18a40.06 40.06 0 0 0-62.32 0L82.24 80H80v32h96V80h-2.34l-5.14-6.86a8 8 0 0 0-12.92 9.72L124.8 136H71.2l-9.56-13.38a24 24 0 0 1 37.4-3.23L128 125.8l18.96-26.52a24 24 0 0 1 37.4 3.23l-18.96 26.52h3.7a8 8 0 0 0 7.72-5.87l48-56a8 8 0 0 0-4.14-10.27Z"></path></svg> 清空
+                                    </button>
+                                    <!-- 调试按钮 -->
+                                    <button id="debug-btn" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1.5 rounded text-xs border border-yellow-300">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1"><path fill="currentColor" d="M240 128a8 8 0 0 1-8 8h-29.66l-35.1 35.09a8 8 0 0 1-11.31 0l-22.63-22.62l-10.35 10.35a8 8 0 0 1-11.32 0L66.24 128l-10.35 10.35a8 8 0 0 1-11.32 0l-22.63-22.63a8 8 0 0 1 0-11.32l10.35-10.35L54.93 80.34a8 8 0 0 1 11.32 0l22.63 22.63l10.35-10.35a8 8 0 0 1 11.32 0l35.09 35.1V88a8 8 0 0 1 8-8h24a8 8 0 0 1 8 8Zm-8 0h-16v.34L131.66 96l10.35 10.35l22.63 22.63L200 136.34V128Zm-96 0l22.63-22.63L104 104.34l-10.35-10.35l-22.63 22.63L72 120.34Zm40-40l22.63 22.63L144 111.66l-10.35 10.35l-22.63-22.63L104 92.34Z"></path></svg> 调试
+                                    </button>
+                                </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ================= [2] 客户 CRM (含时间轴) ================= -->
+            <div id="view-crm" class="view-section hidden w-full h-full flex flex-col md:flex-row fade-in">
+                <!-- List -->
+                <div class="w-full md:w-1/3 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col h-1/3 md:h-full">
+                    <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase">客户列表 (124)</h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="text-slate-400"><path fill="currentColor" d="M208 80h-40V40a16 16 0 0 0-16-16H104a16 16 0 0 0-16 16v40H48a16 16 0 0 0-16 16v48a16 16 0 0 0 16 16h40v40a16 16 0 0 0 16 16h32a16 16 0 0 0 16-16v-40h40a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16ZM112 40h32v40h-32Zm-16 104H48v-32h48Zm16 16h32v40h-32Zm64-32h-48v-32h48Z"></path></svg>
+                    </div>
+                    <div class="flex-1 overflow-y-auto">
+                        <div class="p-4 border-b border-slate-100 bg-brand-50 border-l-4 border-l-brand-500 cursor-pointer">
+                            <div class="flex justify-between"><span class="font-bold text-sm text-slate-800">Ahmed Al-Fayed</span><span class="text-[10px] text-slate-400">#8821</span></div>
+                            <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1"><span class="bg-white border px-1 rounded">UAE</span><span class="text-brand-600">Online</span></div>
+                        </div>
+                        <div class="p-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer">
+                            <div class="flex justify-between"><span class="font-bold text-sm text-slate-800">John Smith</span><span class="text-[10px] text-slate-400">#8822</span></div>
+                            <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1"><span class="bg-slate-50 border px-1 rounded">USA</span><span>3d ago</span></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Details -->
+                <div class="flex-1 bg-slate-50 p-4 md:p-8 overflow-y-auto">
+                    <!-- Profile Card -->
+                    <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6 mb-4">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 md:w-12 md:h-12 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold">AH</div>
+                            <div class="ml-3 md:ml-4">
+                                <h2 class="text-lg md:text-xl font-bold text-slate-800">Ahmed Al-Fayed</h2>
+                                <p class="text-xs text-slate-500">迪拜, 阿联酋 | Al-Noor Trading LLC</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-brand-50 text-brand-700 text-xs font-bold border border-brand-100 rounded">高潜力</span>
+                            <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs border border-slate-200 rounded">灯饰类</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Timeline (恢复的关键模块) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">交互时间轴 (Timeline)</h3>
+                            <div class="space-y-0 relative">
+                                <!-- Vertical Line -->
+                                <div class="absolute left-2.5 top-2 bottom-2 w-px bg-slate-200"></div>
+                                
+                                <!-- Timeline Item 1 -->
+                                <div class="flex relative mb-6">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full border-4 border-white shadow-sm z-10 flex items-center justify-center flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 256 256" class="text-white"><path fill="currentColor" d="M160 100a8 8 0 0 1-8-8V56a8 8 0 0 1 16 0v36a8 8 0 0 1-8 8Zm88 8a88 88 0 0 1-176 0a8 8 0 0 1 16 0a72 72 0 1 0 144 0a8 8 0 0 1 16 0Zm-32.66 6.37l-12 12a8 8 0 0 1-11.32 0l-32-32a8 8 0 0 1 11.32-11.32l26.34 26.34l5.34-5.34a8 8 0 0 1 11.32 11.32Z"></path></svg>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="text-[10px] text-slate-400 font-mono mb-1">今日, 10:42 AM</div>
+                                        <div class="bg-slate-50 border border-slate-100 p-2 rounded text-xs text-slate-700">
+                                            咨询太阳能户外灯 (500pcs)
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Timeline Item 2 -->
+                                <div class="flex relative mb-6">
+                                    <div class="w-5 h-5 bg-blue-500 rounded-full border-4 border-white shadow-sm z-10 flex items-center justify-center flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 256 256" class="text-white"><path fill="currentColor" d="M216 40H40a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16Zm-16 160H40V84.15l88 58.67l88-58.67V200ZM216 56v15.07L140.1 128L216 184.93V56Z"></path></svg>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="text-[10px] text-slate-400 font-mono mb-1">10月15日</div>
+                                        <div class="bg-slate-50 border border-slate-100 p-2 rounded text-xs text-slate-700">
+                                            发送报价单 PDF (v2.0)
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Timeline Item 3 -->
+                                <div class="flex relative">
+                                    <div class="w-5 h-5 bg-slate-300 rounded-full border-4 border-white shadow-sm z-10 flex items-center justify-center flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 256 256" class="text-white">
+                                            <path fill="currentColor" d="M224 56h-16V40a16 16 0 0 0-16-16H64a16 16 0 0 0-16 16v16H32a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h192a16 16 0 0 0 16-16V72a16 16 0 0 0-16-16ZM64 40h128v16H64Zm152 168H40V88h176Zm-136-48h88a4 4 0 0 1 0 8h-88a4 4 0 0 1 0-8Zm0-32h88a4 4 0 0 1 0 8h-88a4 4 0 0 1 0-8Zm0-32h88a4 4 0 0 1 0 8h-88a4 4 0 0 1 0-8Z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <div class="text-[10px] text-slate-400 font-mono mb-1">9月20日</div>
+                                        <div class="bg-slate-50 border border-slate-100 p-2 rounded text-xs text-slate-700">
+                                            订单完成 (#8210) - $12,500
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action -->
+                        <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6 h-fit">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-4">AI 营销建议</h3>
+                            <div class="p-3 bg-brand-50/50 rounded border border-dashed border-brand-200 text-center">
+                                <p class="text-sm font-bold text-slate-700">斋月备货提醒</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= [3] 供应链 SUPPLY ================= -->
+            <div id="view-supply" class="view-section hidden w-full p-4 md:p-8 space-y-4 md:space-y-6 fade-in">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800 uppercase">产研规划</h2>
+                    <button class="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold">+ SKU</button>
+                </div>
+                
+                <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase flex items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1 text-brand-500">
+                            <path fill="currentColor" d="M240.74 14.62a8 8 0 0 0-9.45-1.61L198.65 38.5L177.5 17.34l16.53-22.62a8 8 0 0 0-1.61-9.45a8 8 0 0 0-9.45 1.61L160 13.81L48.14 125.67l-15.72 31.44a8 8 0 0 0 1.58 9.35a8.09 8.09 0 0 0 9.35-1.58l31.44-15.72L242.19 96l16.53-22.62a8 8 0 0 0-1.61-9.45a8 8 0 0 0-9.37-.14Zm-36.4 60.93L91.67 204.86l-19.18 9.59l9.59-19.18L183.57 96ZM208 80L74.75 213.25l-28.49 14.25l14.25-28.49L176 56l32 44Z"></path>
+                        </svg> AI 选品推荐</h3>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div class="border border-slate-200 rounded p-2">
+                            <div class="h-24 bg-slate-100 rounded mb-2 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="text-2xl text-slate-300"><path fill="currentColor" d="M224 48H32a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h192a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16ZM32 192V64h192v128Zm56-56a12 12 0 1 1 12-12a12 12 0 0 1-12 12Zm88-88h-13.65l-25.11 30.13a16 16 0 0 0-2.51 19.87l45.26 54.31A16 16 0 0 1 224 168V64a16 16 0 0 0-48-16Zm-48 80a36 36 0 1 0 36 36a36 36 0 0 0-36-36Z"></path></svg></div>
+                            <span class="text-xs font-bold text-slate-700 block">金色镂空灯</span>
+                            <span class="text-[10px] bg-brand-50 text-brand-600 px-1 rounded">中东热销</span>
+                        </div>
+                        <div class="border border-slate-200 rounded p-2">
+                            <div class="h-24 bg-slate-100 rounded mb-2 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="text-2xl text-slate-300"><path fill="currentColor" d="M224 48H32a16 16 0 0 0-16 16v128a16 16 0 0 0 16 16h192a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16ZM32 192V64h192v128Zm56-56a12 12 0 1 1 12-12a12 12 0 0 1-12 12Zm88-88h-13.65l-25.11 30.13a16 16 0 0 0-2.51 19.87l45.26 54.31A16 16 0 0 1 224 168V64a16 16 0 0 0-48-16Zm-48 80a36 36 0 1 0 36 36a36 36 0 0 0-36-36Z"></path></svg></div>
+                            <span class="text-xs font-bold text-slate-700 block">极简香薰</span>
+                            <span class="text-[10px] bg-blue-50 text-blue-600 px-1 rounded">欧洲热销</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-4">生产进度</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1"><span class="font-bold">#8821 太阳能灯</span><span class="text-brand-600">正常</span></div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full flex"><div class="w-3/4 bg-brand-500 rounded-full"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1"><span class="font-bold">#8825 包装盒</span><span class="text-risk-high flex items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1"><path fill="currentColor" d="M228.8 214.4a8 8 0 0 1-11.2 0L128 123.2L38.4 214.4a8 8 0 0 1-11.2-11.2L116.8 112L27.2 21.6a8 8 0 0 1 11.2-11.2L128 100.8l89.6-89.6a8 8 0 0 1 11.2 11.2L139.2 112l89.6 89.6a8 8 0 0 1 0 11.2ZM128 144a16 16 0 1 0 16 16a16 16 0 0 0-16-16Zm0-64a12 12 0 1 0 12 12a12 12 0 0 0-12-12Z"></path></svg> 延期</span></div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full flex"><div class="w-1/3 bg-risk-high rounded-full"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= [4] 营销 MARKETING ================= -->
+            <div id="view-marketing" class="view-section hidden w-full h-full flex flex-col md:flex-row p-4 md:p-8 gap-4 md:gap-6 fade-in">
+                <!-- Input -->
+                <div class="w-full md:w-2/3 bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6 flex flex-col">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-4">AI 文案生成</h3>
+                    <div class="flex space-x-2 mb-4 overflow-x-auto no-scrollbar">
+                        <button class="px-3 py-1.5 bg-brand-50 text-brand-700 border border-brand-200 rounded text-xs font-bold whitespace-nowrap">新品发布</button>
+                        <button class="px-3 py-1.5 bg-white border border-slate-200 rounded text-xs whitespace-nowrap">节日促销</button>
+                    </div>
+                    <textarea class="w-full flex-1 bg-slate-50 border border-slate-200 rounded p-3 text-sm focus:border-brand-500 focus:outline-none resize-none" placeholder="输入提示词... 如：给中东客户写一条斋月问候，推荐金色灯具。"></textarea>
+                    <div class="mt-3 flex justify-end">
+                        <button class="bg-brand-600 text-white px-4 py-2 rounded text-xs font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-2"><path fill="currentColor" d="M248 136a8 8 0 0 1-8 8h-32.29l-24.38 24.38l40.29 56.41a8 8 0 1 1-13.18 9.22l-48-67.28L123.28 216a8 8 0 1 1-13.18-9.22L147.6 136H96a8 8 0 0 1 0-16h51.61L109.83 72.84a8 8 0 1 1 13.18-9.22l32.76 45.88L168 48.38l-40.29-56.41a8 8 0 0 1 13.18-9.22l48 67.28l24.38-24.38a8 8 0 1 1 11.36 11.36L188.39 120H240a8 8 0 0 1 8 8Zm-112 0h32.07l-16 22.42Z"></path></svg> 生成</button>
+                    </div>
+                </div>
+                <!-- Preview -->
+                <div class="w-full md:w-1/3 bg-slate-200 rounded border border-slate-300 p-4 flex justify-center items-center">
+                    <div class="w-full max-w-[260px] bg-white rounded-xl shadow-xl overflow-hidden border border-slate-300 h-[400px] flex flex-col">
+                        <div class="bg-green-600 h-10 flex items-center px-3"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="text-white"><path fill="currentColor" d="M224 128a8 8 0 0 1-8 8H59.31l58.35 58.34a8 8 0 0 1-11.32 11.32l-72-72a8 8 0 0 1 0-11.32l72-72a8 8 0 0 1 11.32 11.32L59.31 120H216a8 8 0 0 1 8 8Z"></path></svg></div>
+                        <div class="flex-1 bg-[#E5DDD5] p-3 overflow-hidden">
+                            <div class="bg-white p-2 rounded-lg rounded-tl-none shadow-sm text-[11px] text-slate-800">
+                                <p class="font-bold">Ramadan Mubarak! 🌙</p>
+                                <p>Dear Ahmed, 推荐我们的金色系列...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= [5] 智能经营 INTELLIGENT ================= -->
+            <div id="view-intelligent" class="view-section hidden w-full p-4 md:p-8 space-y-4 md:space-y-6 fade-in">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-slate-800 uppercase">智能经营分析</h2>
+                    <button class="bg-brand-600 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1.5"><path fill="currentColor" d="M216 88h-40V40a8 8 0 0 0-16-8H48a8 8 0 0 0-8 8v48H8a8 8 0 0 0 0 16h40v88H8a8 8 0 0 0 0 16h40v48a8 8 0 0 0 16 0v-48h80v48a8 8 0 0 0 16 0v-48h40a8 8 0 0 0 0-16h-40v-88h40a8 8 0 0 0 0-16ZM48 48h80v40H48Zm80 160v-40H48v40Zm80-80H48v-40h160Zm0 80h-40v-40h40Z"></path></svg> 导出报告
+                    </button>
+                </div>
+                
+                <!-- 经营概览卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">总营收</p>
+                            <span class="text-xs text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded font-bold">+18%</span>
+                        </div>
+                        <div class="mt-2"><span class="text-2xl md:text-3xl font-mono font-bold text-slate-800">$2.4M</span></div>
+                        <div class="mt-3 w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                            <div class="w-[75%] bg-brand-500 h-full rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-blue-500">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">客户数量</p>
+                        <div class="flex justify-between items-end mt-2">
+                            <span class="text-2xl md:text-3xl font-mono font-bold text-slate-800">1,284</span>
+                            <span class="text-xs text-blue-600">+24</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-purple-500">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">利润率</p>
+                        <div class="flex justify-between items-end mt-2">
+                            <span class="text-2xl md:text-3xl font-mono font-bold text-slate-800">32%</span>
+                            <span class="text-xs text-purple-600">+4%</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-green-500">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">复购率</p>
+                        <div class="flex justify-between items-end mt-2">
+                            <span class="text-2xl md:text-3xl font-mono font-bold text-slate-800">45%</span>
+                            <span class="text-xs text-green-600">+8%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 销售趋势图表 -->
+                <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 256 256" class="mr-1 text-brand-500">
+                                <path fill="currentColor" d="M216 32H40a8 8 0 0 0-8 8v168a8 8 0 0 0 8 8h176a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8Zm-24 128H56v-8h136Zm0-24H56v-8h136Zm0-24H56v-8h136Zm-40-40H56v-8h72Z"></path>
+                            </svg> 销售趋势分析
+                        </h3>
+                        <div class="flex space-x-2">
+                            <button class="px-2 py-1 bg-brand-50 text-brand-700 text-xs rounded font-bold">月度</button>
+                            <button class="px-2 py-1 bg-white text-slate-500 text-xs rounded">季度</button>
+                            <button class="px-2 py-1 bg-white text-slate-500 text-xs rounded">年度</button>
+                        </div>
+                    </div>
+                    <div class="h-[200px] bg-slate-50 rounded flex items-center justify-center">
+                        <div class="text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 256 256" class="text-slate-300 mx-auto mb-2">
+                                <path fill="currentColor" d="M216 32H40a8 8 0 0 0-8 8v168a8 8 0 0 0 8 8h176a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8Zm-24 128H56v-8h136Zm0-24H56v-8h136Zm0-24H56v-8h136Zm-40-40H56v-8h72Z"></path>
+                            </svg>
+                            <p class="text-sm text-slate-500">销售趋势图表</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI 经营建议 -->
+                <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-4">AI 经营建议</h3>
+                    <div class="space-y-3">
+                        <div class="p-3 bg-brand-50/50 rounded border border-dashed border-brand-200">
+                            <div class="flex items-start">
+                                <div class="w-6 h-6 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" class="text-brand-600">
+                                        <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88a88.1 88.1 0 0 1-88 88Zm16-88a16 16 0 1 1-16-16a16 16 0 0 1 16 16Zm-48 0a16 16 0 1 1-16-16a16 16 0 0 1 16 16Zm112 0a16 16 0 1 1-16-16a16 16 0 0 1 16 16Z"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-bold text-slate-700">客户分层优化</p>
+                                    <p class="text-xs text-slate-500 mt-1">建议对高价值客户提供专属折扣，提高复购率</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-blue-50/50 rounded border border-dashed border-blue-200">
+                            <div class="flex items-start">
+                                <div class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" class="text-blue-600">
+                                        <path fill="currentColor" d="M216 32H40a8 8 0 0 0-8 8v168a8 8 0 0 0 8 8h176a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8Zm-24 128H56v-8h136Zm0-24H56v-8h136Zm0-24H56v-8h136Zm-40-40H56v-8h72Z"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-bold text-slate-700">库存管理优化</p>
+                                    <p class="text-xs text-slate-500 mt-1">建议减少低销量产品库存，提高资金周转率</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-purple-50/50 rounded border border-dashed border-purple-200">
+                            <div class="flex items-start">
+                                <div class="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 256 256" class="text-purple-600">
+                                        <path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm0 192a88 88 0 1 1 88-88a88.1 88.1 0 0 1-88 88Zm16-88a16 16 0 1 1-16-16a16 16 0 0 1 16 16Zm-48 0a16 16 0 1 1-16-16a16 16 0 0 1 16 16Zm112 0a16 16 0 1 1-16-16a16 16 0 0 1 16 16Z"></path>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-bold text-slate-700">市场拓展建议</p>
+                                    <p class="text-xs text-slate-500 mt-1">建议重点开发欧洲市场，目前增长潜力较大</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= [6] 供应商 SUPPLIER (左右分栏恢复) ================= -->
+            <div id="view-supplier" class="view-section hidden w-full p-4 md:p-8 space-y-4 md:space-y-0 fade-in">
+                <!-- 恢复 lg:grid-cols-3 布局：左侧地图，右侧评分卡 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+                    
+                    <!-- Left: Map (Span 2) -->
+                    <div class="lg:col-span-2 bg-white rounded border border-slate-200 shadow-sm flex flex-col h-[500px] lg:h-auto">
+                        <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">供应商风险地图</h3>
+                            <div class="flex items-center space-x-2 text-[10px]">
+                                <span class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span> 低风险</span>
+                                <span class="flex items-center"><span class="w-2 h-2 bg-red-500 rounded-full mr-1"></span> 高风险</span>
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-slate-50 relative flex items-center justify-center overflow-hidden">
+                            <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#94a3b8 1px, transparent 1px); background-size: 20px 20px;"></div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 256 256" class="text-8xl text-slate-300 ph-globe-hemisphere-east"><path fill="currentColor" d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm76.25 130.86c-10.26 18.73-30.1 32.84-54.25 37.14c-10.5.5-21.45.5-32 0c-24.15-4.3-44-18.41-54.25-37.14C28.42 135.69 24 111.93 24 88a88 88 0 0 1 16-51.38c10.26 18.73 30.1 32.84 54.25 37.14c10.5.5 21.45.5 32 0c24.15-4.3 44-18.41 54.25-37.14A88.16 88.16 0 0 1 232 88c0 23.93-4.42 47.69-11.75 66.86ZM88 152a16 16 0 1 1-16-16a16 16 0 0 1 16 16Zm104-48a8 8 0 0 1-8 8h-8a8 8 0 0 1 0-16h8a8 8 0 0 1 8 8Zm-40 40a16 16 0 1 1-16-16a16 16 0 0 1 16 16Zm16-64a8 8 0 0 1-8 8h-8a8 8 0 0 1 0-16h8a8 8 0 0 1 8 8Zm40 8a8 8 0 0 1-8 8h-8a8 8 0 0 1 0-16h8a8 8 0 0 1 8 8Z"></path></svg>
+                            
+                            <!-- Pins -->
+                            <div class="absolute top-1/3 left-1/4 group cursor-pointer">
+                                <div class="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                                <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white px-2 py-1 rounded shadow text-[10px] whitespace-nowrap hidden group-hover:block z-10">深圳电子 (评分: 95)</div>
+                            </div>
+                             <div class="absolute bottom-1/3 right-1/3 group cursor-pointer">
+                                <div class="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-bounce"></div>
+                                <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white px-2 py-1 rounded shadow text-[10px] whitespace-nowrap hidden group-hover:block z-10 border border-red-200 text-red-600 font-bold">东莞包装 (延期)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Scorecard (Span 1) -->
+                    <div class="lg:col-span-1 bg-white rounded border border-slate-200 shadow-sm p-6 overflow-y-auto h-auto lg:h-auto">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">绩效评分卡</h3>
+                        <div class="space-y-4">
+                            <!-- Supplier 1 -->
+                            <div class="border border-slate-100 rounded p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-sm font-bold text-slate-700">深圳照明科技</span>
+                                    <span class="text-xs font-mono font-bold text-green-600">A+</span>
+                                </div>
+                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
+                                    <div class="w-[95%] bg-green-500 h-full"></div>
+                                </div>
+                                <p class="text-[10px] text-slate-400">准时交付率: 98%</p>
+                            </div>
+                            <!-- Supplier 2 -->
+                            <div class="border border-red-100 bg-red-50/10 rounded p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-sm font-bold text-slate-700">东莞包装制品</span>
+                                    <span class="text-xs font-mono font-bold text-red-600">C-</span>
+                                </div>
+                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
+                                    <div class="w-[60%] bg-red-500 h-full"></div>
+                                </div>
+                                <p class="text-[10px] text-red-400 font-bold">警告: 原料短缺风险</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 移动端底部导航 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center h-16 md:hidden z-30 pb-safe">
+        <button onclick="switchTab('dashboard', event)" class="flex flex-col items-center justify-center text-sm p-2 text-brand-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-squares-four text-xl">
+                <path fill="currentColor" d="M76 80a12 12 0 0 1 12-12h80a12 12 0 0 1 12 12v80a12 12 0 0 1-12 12H88a12 12 0 0 1-12-12Zm8 0v80h80V80Zm88-32h-72a12 12 0 0 0-12 12v72a12 12 0 0 0 12 12h72a12 12 0 0 0 12-12V60a12 12 0 0 0-12-12Zm4 84a4 4 0 0 1-4 4h-72a4 4 0 0 1-4-4V60a4 4 0 0 1 4-4h72a4 4 0 0 1 4 4ZM76 48H36a12 12 0 0 0-12 12v72a12 12 0 0 0 12 12h40a12 12 0 0 0 12-12V60a12 12 0 0 0-12-12Zm8 84a4 4 0 0 1-4 4H36a4 4 0 0 1-4-4V60a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4ZM36 208h72a12 12 0 0 0 12-12v-72a12 12 0 0 0-12-12H36a12 12 0 0 0-12 12v72a12 12 0 0 0 12 12Zm4-84a4 4 0 0 1-4 4H36a4 4 0 0 1-4-4v-72a4 4 0 0 1 4-4h72a4 4 0 0 1 4 4v72a4 4 0 0 1-4 4Z"></path>
+            </svg>
+            <span class="text-[10px] mt-0.5">工作台</span>
+        </button>
+        <button onclick="switchTab('crm', event)" class="flex flex-col items-center justify-center text-sm p-2 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-users text-xl">
+                <path fill="currentColor" d="M231.89 212.37A15.89 15.89 0 0 1 216 224h-80a16 16 0 0 1-15.89-13.63A44 44 0 0 1 75.89 158a15.89 15.89 0 0 1 13.58-19.61a16.08 16.08 0 0 1 18.67 4.82a43.86 43.86 0 0 1 29.68 0a16 16 0 0 1 18.67-4.82a15.89 15.89 0 0 1 13.58 19.61a44 44 0 0 1-44.23 52.37a15.89 15.89 0 0 1 15.89-17.63h80a16 16 0 0 1 15.89 17.63ZM88 136a48 48 0 0 0 0-96a15.89 15.89 0 0 1-8.47 14.17A47.84 47.84 0 0 0 88 64a15.89 15.89 0 0 1 16 16a47.84 47.84 0 0 0 0 32a15.89 15.89 0 0 1-16 16Zm96 0a47.84 47.84 0 0 0 0-32a15.89 15.89 0 0 1 16-16a48 48 0 0 0 0 96a15.89 15.89 0 0 1-8.47-14.17A47.84 47.84 0 0 0 184 152a15.89 15.89 0 0 1-16-16Zm-96-64a16 16 0 1 1-16 16a16 16 0 0 1 16-16Zm96 0a16 16 0 1 1-16 16a16 16 0 0 1 16-16Z"></path>
+            </svg>
+            <span class="text-[10px] mt-0.5">客户</span>
+        </button>
+        <button onclick="switchTab('supply', event)" class="flex flex-col items-center justify-center text-sm p-2 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-circuitry text-xl">
+                <path fill="currentColor" d="M144 160a8 8 0 0 1-8 8h-16a8 8 0 0 1 0-16h16a8 8 0 0 1 8 8Zm-8-48h16a8 8 0 0 0 0-16h-16a8 8 0 0 0 0 16Zm72 40h-16v16h-8V160h-8a8 8 0 0 0-8 8v8h-16v-8a8 8 0 0 0-8-8h-8v-16h8a8 8 0 0 0 8-8v-8h16v8a8 8 0 0 0 8-8v-16h8v16a8 8 0 0 0 8 8h8v16h-8a8 8 0 0 0-8 8v8h16v-8a8 8 0 0 0 8-8v-16Zm-60 16h16a8 8 0 0 0 0-16h-16a8 8 0 0 0 0 16Zm-40 0v16a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0Zm0-40v16a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Zm-32 40v16a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0Zm0-40v16a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Zm0-40v16a8 8 0 0 1-16 0V56a8 8 0 0 1 16 0Zm40 0v16a8 8 0 0 1-16 0V56a8 8 0 0 1 16 0Zm40 0v16a8 8 0 0 1-16 0V56a8 8 0 0 1 16 0Zm40 40v16a8 8 0 0 1-16 0V96a8 8 0 0 1 16 0Zm0 40v16a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0Zm-40-80h-16a8 8 0 0 0 0 16h16a8 8 0 0 0 0-16Zm-40 0h-16a8 8 0 0 0 0 16h16a8 8 0 0 0 0-16Zm0 80h-16a8 8 0 0 0 0 16h16a8 8 0 0 0 0-16Z"></path>
+            </svg>
+            <span class="text-[10px] mt-0.5">供应链</span>
+        </button>
+        <button onclick="switchTab('marketing', event)" class="flex flex-col items-center justify-center text-sm p-2 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-rocket-launch text-xl">
+                <path fill="currentColor" d="m229.66 53.66-42.83-42.83a16 16 0 0 0-22.63 0L68.7 76.24c-24 24-28.47 60.74-13.06 89.94a16.06 16.06 0 0 0 2.45 3.56a205.92 205.92 0 0 0 52.06 45.87a16.15 16.15 0 0 0 11.31 0a206.44 206.44 0 0 0 52.06-45.87a16.05 16.05 0 0 0 2.45-3.56c15.41-29.2 10.94-65.94-13.06-89.94ZM132 230.63c-22.81-14.83-48.61-32.07-67.68-51.14c-10.79-10.79-14.49-26.81-11.08-41.87l41.61-41.61l87.46 87.46l-41.61 41.61c-15.07 3.41-31.08-0.29-41.87-11.08ZM181.94 181.94L104 104l-36.94-36.94a3.91 3.91 0 0 1 1.42-5.63l42.83-22.83a8 8 0 0 1 9.54 2.9l47.72 78.76l12.83 12.83l78.76 47.72a8 8 0 0 1 2.9 9.54l-22.83 42.83a3.91 3.91 0 0 1-5.63 1.42Zm-86.83-86.83l-12.83-12.83l16-16l12.83 12.83Zm116.83 86.83l-16-16l12.83-12.83l16 16Z"></path>
+            </svg>
+            <span class="text-[10px] mt-0.5">营销</span>
+        </button>
+        <button onclick="switchTab('intelligent', event)" class="flex flex-col items-center justify-center text-sm p-2 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-brain-circuit text-xl">
+                <path fill="currentColor" d="M216 128a88 88 0 1 0-88 88a88.1 88.1 0 0 0 88-88Zm-16 0a72 72 0 1 1-72-72a72.08 72.08 0 0 1 72 72Zm-37.66 50.34a8 8 0 0 1-11.32 11.32l-24-24a8 8 0 0 1 0-11.32l24-24a8 8 0 0 1 11.32 11.32L156.69 168ZM128 176a8 8 0 0 1-8-8v-48a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Zm-42.34-17.66a8 8 0 0 1 0-11.32l-24 24a8 8 0 0 1-11.32-11.32l24-24a8 8 0 0 1 11.32 11.32L91.31 168ZM224 64a8 8 0 0 1-8 8h-40a8 8 0 0 1 0-16h40a8 8 0 0 1 8 8Zm-88 0a8 8 0 0 1-8-8V8a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Zm-48 0a8 8 0 0 1-8-8V8a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Zm-48 0a8 8 0 0 1-8-8V8a8 8 0 0 1 16 0v48a8 8 0 0 1-8 8Z"></path>
+            </svg>
+            <span class="text-[10px] mt-0.5">智能经营</span>
+        </button>
+        <button onclick="switchTab('supplier', event)" class="flex flex-col items-center justify-center text-sm p-2 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" class="ph ph-warehouse text-xl">
+                <path fill="currentColor" d="M248 128v80a16 16 0 0 1-16 16H24a16 16 0 0 1-16-16v-80a16 16 0 0 1 16-16h104v-48h-16a16 16 0 0 1-14.29-9.14l-40-80A16 16 0 0 1 69.71 0h116.58a16 16 0 0 1 14.29 9.14l40 80A16 16 0 0 1 224 80h-16v48h104a16 16 0 0 1 16 16Zm-160-48h96l-40-73.14L128 80Zm0 128h24a8 8 0 0 0 0-16h-24a8 8 0 0 0 0 16Zm48 0h24a8 8 0 0 0 0-16h-24a8 8 0 0 0 0 16Zm48 0h24a8 8 0 0 0 0-16h-24a8 8 0 0 0 0 16Zm80-32h-80v-48h80Z"></path>
+            </svg>
+            <span class="text-[10px] mt-0.5">供应商</span>
+        </button>
+    </nav>
+
+    <!-- 订单确认模态框 -->
+    <div id="order-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="bg-brand-600 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-bold">订单确认</h3>
+                <button onclick="closeOrderModal()" class="text-white hover:text-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128L50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 max-h-96 overflow-y-auto">
+                <h4 class="text-sm font-bold text-slate-800 mb-4">提取的订单信息（可编辑）</h4>
+                <form id="order-form" class="space-y-4">
+                    <div class="border-b border-slate-100 pb-3">
+                        <h5 class="text-xs text-slate-500">客户信息</h5>
+                        <div id="modal-customer-info" class="mt-2 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">客户名称</label>
+                                    <input type="text" id="customer-name" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">国家/地区</label>
+                                    <input type="text" id="customer-country" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">邮箱</label>
+                                    <input type="email" id="customer-email" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">电话</label>
+                                    <input type="tel" id="customer-phone" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-b border-slate-100 pb-3">
+                        <h5 class="text-xs text-slate-500">产品信息</h5>
+                        <div id="modal-product-info" class="mt-2 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">产品名称</label>
+                                    <input type="text" id="product-name" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">产品型号</label>
+                                    <input type="text" id="product-model" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">数量</label>
+                                    <input type="number" id="product-quantity" min="1" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">单价</label>
+                                    <input type="number" id="product-unit-price" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-600 mb-1">总价</label>
+                                <input type="number" id="product-total-price" min="0" step="0.01" readonly class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-slate-50 focus:outline-none focus:border-brand-500">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-b border-slate-100 pb-3">
+                        <h5 class="text-xs text-slate-500">订单详情</h5>
+                        <div id="modal-order-info" class="mt-2 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">订单编号</label>
+                                    <input type="text" id="order-id" readonly class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-slate-50 focus:outline-none focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">订单日期</label>
+                                    <input type="date" id="order-date" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">交货日期</label>
+                                    <input type="date" id="order-delivery-date" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-600 mb-1">订单状态</label>
+                                    <select id="order-status" class="w-full px-3 py-2 border border-slate-200 rounded-md text-sm focus:outline-none focus:border-brand-500">
+                                        <option value="待确认">待确认</option>
+                                        <option value="已付款">已付款</option>
+                                        <option value="已发货">已发货</option>
+                                        <option value="已完成">已完成</option>
+                                        <option value="已取消">已取消</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="flex justify-end gap-3 p-4 bg-slate-50 border-t">
+                <button onclick="closeOrderModal()" class="px-4 py-2 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-100">取消</button>
+                <button onclick="confirmOrder()" class="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">确认订单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 客户信息模态框 -->
+    <div id="customer-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="bg-brand-600 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-bold">客户信息确认</h3>
+                <button onclick="closeCustomerModal()" class="text-white hover:text-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128L50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <h4 class="text-sm font-bold text-slate-800 mb-4">新客户信息</h4>
+                <div id="customer-form" class="space-y-4"></div>
+            </div>
+            <div class="flex justify-end gap-3 p-4 bg-slate-50 border-t">
+                <button onclick="closeCustomerModal()" class="px-4 py-2 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-100">取消</button>
+                <button onclick="confirmCustomer()" class="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">创建客户</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 生产排产模态框 -->
+    <div id="production-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="bg-brand-600 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-bold">生产排产</h3>
+                <button onclick="closeProductionModal()" class="text-white hover:text-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128L50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <h4 class="text-sm font-bold text-slate-800 mb-4">产品生产安排</h4>
+                <div id="production-form" class="space-y-4"></div>
+            </div>
+            <div class="flex justify-end gap-3 p-4 bg-slate-50 border-t">
+                <button onclick="closeProductionModal()" class="px-4 py-2 border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-100">取消</button>
+                <button onclick="confirmProduction()" class="px-4 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700">确认排产</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 错误提示模态框 -->
+    <div id="error-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="bg-brand-600 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="text-lg font-bold">操作提示</h3>
+                <button onclick="closeErrorModal()" class="text-white hover:text-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128L50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <div class="flex items-start mb-4">
+                    <div class="bg-yellow-100 text-yellow-700 rounded-full p-2 mr-3 mt-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256"><path fill="currentColor" d="M136 80a8 8 0 0 1-8-8V56a8 8 0 0 1 16 0v16a8 8 0 0 1-8 8Zm0 80a8 8 0 0 1-8-8v-16a8 8 0 0 1 16 0v16a8 8 0 0 1-8 8Zm8-136a120 120 0 1 0 120 120A120.13 120.13 0 0 0 144 24Zm0 224a104 104 0 1 1 104-104a104.11 104.11 0 0 1-104 104ZM136 176a8 8 0 0 1-16 0v-16a8 8 0 0 1 16 0v16Z"></path></svg>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-bold text-slate-800 mb-2" id="error-title">操作提示</h4>
+                        <div class="text-sm text-slate-600" id="error-message">请检查输入内容</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 p-4 bg-slate-50 border-t">
+                <button onclick="closeErrorModal()" class="px-6 py-2 bg-brand-600 text-white rounded text-sm hover:bg-brand-700 font-bold">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 恢复正常的JavaScript文件引用 -->
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
