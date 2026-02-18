@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
+
+    <style>
+        body {
+            background-color: #F1F5F9;
+            color: #334155;
+            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tech-pulse {
+            animation: pulse-teal 3s infinite;
+        }
+
+        @keyframes pulse-teal {
+            0% {
+                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+            }
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .report-active {
+            background-color: #14B8A6 !important;
+            color: white !important;
+            border-color: #14B8A6 !important;
+            box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
+        }
+
+        /* 报表美化 CSS */
+        .bar-item-slim {
+            width: 14px;
+            border-radius: 20px 20px 2px 2px;
+            transition: height 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            background: linear-gradient(180deg, #14B8A6 0%, #0D9488 100%);
+        }
+
+        .donut-ring {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(#14B8A6 0deg 240deg, #F59E0B 240deg 315deg, #F43F5E 315deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        .donut-hole {
+            width: 100px;
+            height: 100px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+
+        /* --- 手机端 CRM 专用适配样式 --- */
+        @media (max-width: 768px) {
+            /* 详情页显示时隐藏列表页 */
+            .crm-detail-active #crm-list-pane {
+                display: none;
+            }
+
+            .crm-detail-active #crm-detail-pane {
+                display: block;
+            }
+
+            /* 弹窗高度优化 */
+            .modal-content-box {
+                height: 92vh !important;
+                border-radius: 1.5rem 1.5rem 0 0 !important;
+            }
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
+        }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
+    <script type="module" src="../../assets/js/auth.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+
+    <!-- 1. 侧边导航栏 -->
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
+                <i class="ph ph-brain text-xl"></i>
+            </div>
+            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
+        </div>
+        <nav class="flex-1 py-6 px-3 space-y-1">
+            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
+                <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
+            </button>
+            <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
+            </button>
+            <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
+            </button>
+            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
+            </button>
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono">Jin</div>
+                    <div class="ml-3"><p class="text-xs font-bold text-slate-200">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
+                </div>
+                <button id="logoutBtn" class="text-xs text-slate-400 hover:text-white transition">
+                    <i class="ph ph-sign-out text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 2. 主工作区 -->
+    <main class="flex-1 flex flex-col min-w-0 relative h-full">
+        <!-- Header -->
+        <header class="h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
+            <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
+            <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
+            <div class="flex items-center space-x-3 md:space-x-5">
+                <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
+                    <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
+                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">工作台</span>
+                </div>
+                <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
+            </div>
+        </header>
+
+        <!-- 内容区域 -->
+        <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
+
+            <!-- ================= [1] 工作台 DASHBOARD ================= -->
+            <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
+                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, Jin.</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold">3个风险点</span>，<span class="text-brand-600 font-bold">5个待识别单据</span>。</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">今日营收</p><div class="mt-2 font-mono font-bold text-slate-800">$12,400</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">单据提取</p><div class="mt-2 font-mono font-bold text-slate-800">5</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-risk-high"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">库存预警</p><div class="mt-2 font-mono font-bold text-slate-800">3</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div class="mt-2 font-mono font-bold text-slate-800">4.2</div></div>
+                </div>
+
+                <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-magic-wand text-brand-600 mr-2"></i> 订单智能识别提取</div>
+                    <div class="flex flex-col md:flex-row md:divide-x divide-slate-100">
+                        <div class="p-8 md:w-1/3 flex items-center justify-around md:justify-center md:gap-12 bg-slate-50/30">
+                            <button id="voiceInputBtn" class="flex flex-col items-center group active:scale-95 transition-transform"><div class="w-14 h-14 bg-brand-500 rounded-full flex items-center justify-center text-white shadow-lg tech-pulse"><i class="ph ph-microphone text-2xl"></i></div><span class="text-xs mt-3 font-bold text-slate-700">语音输入</span></button>
+                            <button id="cameraInputBtn" class="flex flex-col items-center group active:scale-95 transition-transform"><div class="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-white shadow-xl"><i class="ph ph-camera text-2xl"></i></div><span class="text-xs mt-3 font-bold text-slate-700">拍照识别</span></button>
+                        </div>
+                        <div class="p-6 md:w-2/3">
+                            <div class="relative"><textarea id="textInput" class="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:outline-none focus:border-brand-500 transition resize-none" placeholder="粘贴聊天记录或单据原文..."></textarea><button id="analyzeBtn" class="absolute bottom-4 right-4 bg-brand-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-lg">开始解析</button></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 摄像头模态框 -->
+                    <div id="cameraModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
+                            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+                                <h3 class="text-lg font-bold text-slate-800">拍照识别</h3>
+                                <button id="closeCameraModal" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+                            </div>
+                            <div class="p-4">
+                                <div id="cameraContainer" class="relative w-full aspect-video bg-slate-100 rounded-lg overflow-hidden">
+                                    <video id="cameraPreview" class="w-full h-full object-cover hidden"></video>
+                                    <canvas id="cameraCanvas" class="w-full h-full hidden"></canvas>
+                                    <div id="cameraPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <i class="ph ph-camera text-6xl text-slate-400 mb-4"></i>
+                                        <p class="text-slate-500">点击下方按钮开始拍照</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex gap-4">
+                                    <button id="startCamera" class="flex-1 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">启动摄像头</button>
+                                    <button id="takePhoto" class="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition hidden">拍照</button>
+                                    <button id="selectImage" class="flex-1 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-100 transition">选择图片</button>
+                                </div>
+                                <input type="file" id="imageInput" accept="image/*" class="hidden">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 语音输入模态框 -->
+                    <div id="voiceModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+                                <h3 class="text-lg font-bold text-slate-800">语音输入</h3>
+                                <button id="closeVoiceModal" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+                            </div>
+                            <div class="p-6">
+                                <div class="flex flex-col items-center justify-center py-8">
+                                    <div id="voiceVisualizer" class="w-24 h-24 rounded-full bg-brand-50 flex items-center justify-center mb-4">
+                                        <i id="voiceIcon" class="ph ph-microphone text-4xl text-brand-500"></i>
+                                    </div>
+                                    <p id="voiceStatus" class="text-slate-600 mb-4">点击开始按钮进行语音输入</p>
+                                    <div class="flex gap-4 w-full">
+                                        <button id="startVoice" class="flex-1 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">开始录音</button>
+                                        <button id="stopVoice" class="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition hidden">停止录音</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 导航切换
+        function switchTab(tabName) {
+            let url = '';
+            switch(tabName) {
+                case 'dashboard':
+                    url = 'dashboard.html';
+                    break;
+                case 'biz':
+                    url = '../intelligent-operation/intelligent-operation.html';
+                    break;
+                case 'crm':
+                    url = '../crm/crm.html';
+                    break;
+                case 'supply':
+                    url = '../supply-chain/supply-chain.html';
+                    break;
+                case 'supplier':
+                    url = '../supplier/supplier.html';
+                    break;
+                case 'rd':
+                    url = '../rnd-center/rnd-center.html';
+                    break;
+            }
+            if (url) {
+                window.location.href = url;
+            }
+        }
+
+        // 从环境变量读取配置的工具函数
+        function getApiUrl(serviceName) {
+            switch(serviceName) {
+                case 'tenant':
+                    return window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1' ? 'http://localhost:8082' : (import.meta?.env?.VITE_TENANT_API_BASE || 'http://localhost:8082');
+                case 'init':
+                    return 'http://localhost:8084';
+                case 'ai':
+                    return 'http://localhost:8083';
+                default:
+                    return '';
+            }
+        }
+
+        // 调用后端用户信息接口进行认证校验
+        async function validateAuth() {
+            try {
+                console.log('开始调用后端认证校验接口');
+                
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log('Token不存在，跳转到登录页面');
+                    localStorage.clear();
+                    window.location.href = '../../login.html';
+                    return false;
+                }
+                
+                const tenantApiBase = getApiUrl('tenant');
+                const url = `${tenantApiBase}/api/v1/tenant/user/info`;
+                console.log('认证校验请求地址:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('认证校验响应状态:', response.status);
+                
+                if (response.status === 401 || response.status === 403) {
+                    console.log('认证失败，401/403未授权');
+                    // 清除本地存储
+                    localStorage.clear();
+                    // 跳转到登录页面
+                    window.location.href = '../../login.html';
+                    return false;
+                } else if (!response.ok) {
+                    console.log('认证校验接口响应异常:', response.status);
+                    // 非401/403错误，继续执行
+                    return true;
+                }
+                
+                const data = await response.json();
+                console.log('认证校验成功:', data);
+                return true;
+            } catch (error) {
+                console.error('认证校验失败:', error);
+                // 捕获所有异常，包括跨域错误，立即清理并跳转
+                localStorage.clear();
+                window.location.href = '../../login.html';
+                return false;
+            }
+        }
+
+        // 调用AIService进行订单提取
+        async function callAIServiceForOrderExtract(mediaUrls) {
+            try {
+                console.log('开始调用AIService，URL: http://127.0.0.1:8088/api/v1/ai/execute');
+                console.log('请求参数:', JSON.stringify({
+                    taskType: 'ORDER_EXTRACT',
+                    inputType: 'URL',
+                    payload: {
+                        mediaUrls: mediaUrls,
+                        content: null,
+                        context: {
+                            tenantName: '张三贸易',
+                            currency: 'CNY'
+                        }
+                    }
+                }, null, 2));
+                
+                const response = await fetch('http://127.0.0.1:8088/api/v1/ai/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        taskType: 'ORDER_EXTRACT',
+                        inputType: 'URL',
+                        payload: {
+                            mediaUrls: mediaUrls,
+                            content: null,
+                            context: {
+                                tenantName: '张三贸易',
+                                currency: 'CNY'
+                            }
+                        }
+                    })
+                });
+
+                console.log('AIService响应状态:', response.status);
+                console.log('AIService响应状态文本:', response.statusText);
+                
+                try {
+                    const responseText = await response.text();
+                    console.log('AIService响应文本:', responseText);
+                    
+                    if (!response.ok) {
+                        throw new Error('HTTP error ' + response.status + ': ' + response.statusText + ' - ' + responseText);
+                    }
+
+                    const data = JSON.parse(responseText);
+                    console.log('AIService响应:', data);
+
+                    if (data.code === 200) {
+                        return data.data;
+                    } else {
+                        throw new Error('AIService执行失败: ' + data.msg);
+                    }
+                } catch (parseError) {
+                    console.error('解析AIService响应失败:', parseError);
+                    throw new Error('解析AIService响应失败: ' + parseError.message);
+                }
+            } catch (error) {
+                console.error('调用AIService失败:', error);
+                throw error;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 后端认证校验
+            await validateAuth();
+            
+            // 退出登录按钮点击事件
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function() {
+                    console.log('=== 退出登录操作 ===');
+                    // 清空本地存储中的token和用户信息
+                    localStorage.clear();
+                    console.log('已清空本地存储中的认证信息');
+                    // 重定向到登录页面
+                    window.location.href = '../../login.html';
+                });
+            }
+            
+            // 开始解析按钮点击事件
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const textInput = document.getElementById('textInput');
+            if (analyzeBtn) {
+                analyzeBtn.addEventListener('click', function() {
+                    if (textInput && textInput.value.trim()) {
+                        alert('正在解析，请稍候...');
+                    } else {
+                        alert('请输入或粘贴单据内容');
+                    }
+                });
+            }
+
+            // 摄像头功能
+            const cameraInputBtn = document.getElementById('cameraInputBtn');
+            const cameraModal = document.getElementById('cameraModal');
+            const closeCameraModal = document.getElementById('closeCameraModal');
+            const startCamera = document.getElementById('startCamera');
+            const takePhoto = document.getElementById('takePhoto');
+            const selectImage = document.getElementById('selectImage');
+            const imageInput = document.getElementById('imageInput');
+            const cameraPreview = document.getElementById('cameraPreview');
+            const cameraCanvas = document.getElementById('cameraCanvas');
+            const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+            
+            let stream = null;
+            let mediaRecorder = null;
+            let recordedChunks = [];
+
+            // 打开摄像头模态框
+            cameraInputBtn.addEventListener('click', function() {
+                cameraModal.classList.remove('hidden');
+            });
+
+            // 关闭摄像头模态框
+            closeCameraModal.addEventListener('click', function() {
+                stopCamera();
+                cameraModal.classList.add('hidden');
+            });
+
+            // 启动摄像头
+            startCamera.addEventListener('click', function() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function(s) {
+                            stream = s;
+                            cameraPreview.srcObject = stream;
+                            cameraPreview.classList.remove('hidden');
+                            cameraCanvas.classList.add('hidden');
+                            cameraPlaceholder.classList.add('hidden');
+                            startCamera.classList.add('hidden');
+                            takePhoto.classList.remove('hidden');
+                            
+                            // 开始播放摄像头预览
+                            cameraPreview.play().catch(function(error) {
+                                console.error('播放摄像头预览失败:', error);
+                            });
+                        })
+                        .catch(function(error) {
+                            console.error('启动摄像头失败:', error);
+                            alert('无法访问摄像头，请检查权限设置');
+                        });
+                } else {
+                    alert('您的浏览器不支持摄像头功能');
+                }
+            });
+
+            // 拍照
+            takePhoto.addEventListener('click', async function() {
+                const canvas = cameraCanvas;
+                const video = cameraPreview;
+                const context = canvas.getContext('2d');
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                cameraPreview.classList.add('hidden');
+                canvas.classList.remove('hidden');
+                
+                // 转换为Blob对象用于上传
+                canvas.toBlob(async function(blob) {
+                    if (blob) {
+                        console.log('拍照成功，准备上传到OSS');
+                        
+                        const timestamp = new Date().getTime();
+                        const imageName = `photo_${timestamp}.jpg`;
+                        
+                        console.log('开始上传图片到OSS:', imageName);
+                        const ossInternalUrl = await uploadImageToOss(blob, imageName);
+                        
+                        console.log('开始调用AIService处理图片:', ossInternalUrl);
+                        const extractedResult = await processImageWithAIService(ossInternalUrl);
+                        
+                        const imageDataUrl = canvas.toDataURL('image/jpeg');
+                        localStorage.setItem(imageName, imageDataUrl);
+                        console.log('图片已保存到本地存储:', imageName);
+                        
+                        setTimeout(function() {
+                            const orderInfo = extractedResult.order_info || extractedResult.order || {};
+                            const customerInfo = extractedResult.customer_info || extractedResult.customer || {};
+                            const productInfo = extractedResult.product_info || extractedResult.product || {};
+                            
+                            let resultMessage = '订单提取成功！\n\n';
+                            resultMessage += `客户信息：\n`;
+                            resultMessage += `  姓名：${customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知'}\n`;
+                            resultMessage += `  邮箱：${customerInfo.email || '未提供'}\n`;
+                            resultMessage += `  电话：${customerInfo.phone || '未提供'}\n`;
+                            resultMessage += `  国家/地区：${customerInfo.country || customerInfo.other_info || '未知'}\n\n`;
+                            resultMessage += `产品信息：\n`;
+                            resultMessage += `  名称：${productInfo.name || productInfo.product_name || orderInfo.product_name || '未知'}\n`;
+                            resultMessage += `  型号：${productInfo.model || productInfo.product_code || '未明确'}\n`;
+                            resultMessage += `  数量：${productInfo.quantity || orderInfo.quantity || 0}\n`;
+                            resultMessage += `  单价：${parseFloat(productInfo.unitPrice || productInfo.unit_price || orderInfo.unitPrice || orderInfo.unit_price) || 0}\n`;
+                            resultMessage += `  总价：${parseFloat(productInfo.totalPrice || productInfo.total_price || orderInfo.totalPrice || orderInfo.total_price) || 0}\n\n`;
+                            resultMessage += `订单信息：\n`;
+                            resultMessage += `  订单号：${orderInfo.orderId || orderInfo.order_id || '未知'}\n`;
+                            resultMessage += `  日期：${orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0]}\n`;
+                            resultMessage += `  交货日期：${orderInfo.deliveryDate || orderInfo.delivery_date || '未明确'}\n`;
+                            resultMessage += `  状态：${orderInfo.status || orderInfo.order_status || '待确认'}\n`;
+                            
+                            alert(resultMessage);
+                            stopCamera();
+                            cameraModal.classList.add('hidden');
+                        }, 500);
+                    } else {
+                        console.error('无法将canvas转换为blob');
+                        alert('处理图片失败：无法生成图片文件');
+                        stopCamera();
+                        cameraModal.classList.add('hidden');
+                    }
+                }, 'image/jpeg', 0.8);
+            });
+
+            // 选择图片
+            selectImage.addEventListener('click', function() {
+                imageInput.click();
+            });
+
+            // 处理选择的图片
+            imageInput.addEventListener('change', async function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const canvas = cameraCanvas;
+                        const img = new Image();
+                        
+                        img.onload = function() {
+                            const context = canvas.getContext('2d');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            
+                            cameraPreview.classList.add('hidden');
+                            canvas.classList.remove('hidden');
+                            cameraPlaceholder.classList.add('hidden');
+                            startCamera.classList.add('hidden');
+                            takePhoto.classList.remove('hidden');
+                            
+                            // 保存选择的图片到本地存储
+                            const timestamp = new Date().getTime();
+                            const imageName = `selected_photo_${timestamp}.jpg`;
+                            localStorage.setItem(imageName, e.target.result);
+                            console.log('选择的图片已保存到本地存储:', imageName);
+                            
+                            // 自动上传并处理图片
+                            processSelectedImage(file, imageName);
+                        };
+                        
+                        img.src = e.target.result;
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // 处理选择的图片文件
+            async function processSelectedImage(file, imageName) {
+                console.log('开始上传选择的图片到OSS:', imageName);
+                const ossInternalUrl = await uploadImageToOss(file, imageName);
+                
+                console.log('开始调用AIService处理图片:', ossInternalUrl);
+                const extractedResult = await processImageWithAIService(ossInternalUrl);
+                
+                setTimeout(function() {
+                    const orderInfo = extractedResult.order_info || extractedResult.order || {};
+                    const customerInfo = extractedResult.customer_info || extractedResult.customer || {};
+                    const productInfo = extractedResult.product_info || extractedResult.product || {};
+                    
+                    let resultMessage = '订单提取成功！\n\n';
+                    resultMessage += `客户信息：\n`;
+                    resultMessage += `  姓名：${customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知'}\n`;
+                    resultMessage += `  邮箱：${customerInfo.email || '未提供'}\n`;
+                    resultMessage += `  电话：${customerInfo.phone || '未提供'}\n`;
+                    resultMessage += `  国家/地区：${customerInfo.country || customerInfo.other_info || '未知'}\n\n`;
+                    resultMessage += `产品信息：\n`;
+                    resultMessage += `  名称：${productInfo.name || productInfo.product_name || orderInfo.product_name || '未知'}\n`;
+                    resultMessage += `  型号：${productInfo.model || productInfo.product_code || '未明确'}\n`;
+                    resultMessage += `  数量：${productInfo.quantity || orderInfo.quantity || 0}\n`;
+                    resultMessage += `  单价：${parseFloat(productInfo.unitPrice || productInfo.unit_price || orderInfo.unitPrice || orderInfo.unit_price) || 0}\n`;
+                    resultMessage += `  总价：${parseFloat(productInfo.totalPrice || productInfo.total_price || orderInfo.totalPrice || orderInfo.total_price) || 0}\n\n`;
+                    resultMessage += `订单信息：\n`;
+                    resultMessage += `  订单号：${orderInfo.orderId || orderInfo.order_id || '未知'}\n`;
+                    resultMessage += `  日期：${orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0]}\n`;
+                    resultMessage += `  交货日期：${orderInfo.deliveryDate || orderInfo.delivery_date || '未明确'}\n`;
+                    resultMessage += `  状态：${orderInfo.status || orderInfo.order_status || '待确认'}\n`;
+                    
+                    alert(resultMessage);
+                    stopCamera();
+                    cameraModal.classList.add('hidden');
+                }, 500);
+            }
+
+            // 停止摄像头
+            function stopCamera() {
+                if (stream) {
+                    stream.getTracks().forEach(track => {
+                        track.stop();
+                    });
+                    stream = null;
+                }
+                cameraPreview.classList.add('hidden');
+                cameraCanvas.classList.add('hidden');
+                cameraPlaceholder.classList.remove('hidden');
+                startCamera.classList.remove('hidden');
+                takePhoto.classList.add('hidden');
+            }
+
+            // 麦克风功能
+            const voiceInputBtn = document.getElementById('voiceInputBtn');
+            const voiceModal = document.getElementById('voiceModal');
+            const closeVoiceModal = document.getElementById('closeVoiceModal');
+            const startVoice = document.getElementById('startVoice');
+            const stopVoice = document.getElementById('stopVoice');
+            const voiceStatus = document.getElementById('voiceStatus');
+            const voiceIcon = document.getElementById('voiceIcon');
+            const voiceVisualizer = document.getElementById('voiceVisualizer');
+
+            let voiceStream = null;
+            let voiceRecorder = null;
+            let voiceChunks = [];
+            let audioContext = null;
+            let analyser = null;
+            let animationId = null;
+
+            // 打开麦克风模态框
+            voiceInputBtn.addEventListener('click', function() {
+                voiceModal.classList.remove('hidden');
+            });
+
+            // 关闭麦克风模态框
+            closeVoiceModal.addEventListener('click', function() {
+                stopVoiceRecording();
+                voiceModal.classList.add('hidden');
+            });
+
+            // 获取OSS STS凭证
+            async function getStsToken() {
+                const response = await fetch('http://localhost:8084/api/v1/init/api/oss/sts');
+                console.log('STS接口响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error('获取STS凭证失败，状态码: ' + response.status);
+                }
+                const data = await response.json();
+                console.log('STS接口响应数据:', data);
+                return data;
+            }
+
+            // 上传音频到OSS
+            async function uploadAudioToOss(audioBlob, fileName) {
+                const stsData = await getStsToken();
+                console.log('获取到的STS凭证:', stsData);
+                
+                const accessKeyId = stsData.accessKeyId;
+                const accessKeySecret = stsData.accessKeySecret;
+                const securityToken = stsData.securityToken;
+                const bucket = stsData.bucket || stsData.bucketName;
+                const endpoint = stsData.endpoint;
+                
+                let ossRegion = '';
+                if (endpoint && endpoint.includes('.')) {
+                    ossRegion = endpoint.split('.')[0];
+                }
+                
+                const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                const timestamp = Date.now();
+                
+                let fileTypeDir = 'audio';
+                let objectKey = `trade-mind/${dateStr}/${fileTypeDir}/${timestamp}_${fileName}`;
+                objectKey = objectKey.startsWith('/') ? objectKey.substring(1) : objectKey;
+                
+                console.log('初始化参数核对:', {
+                    region: ossRegion,
+                    bucket: bucket,
+                    hasToken: !!securityToken,
+                    endpoint: endpoint,
+                    objectKey: objectKey
+                });
+                
+                const client = new OSS({
+                    region: ossRegion,
+                    accessKeyId: accessKeyId,
+                    accessKeySecret: accessKeySecret,
+                    stsToken: securityToken,
+                    bucket: bucket,
+                    secure: true
+                });
+                
+                console.log('开始上传文件到OSS:', objectKey);
+                await client.put(objectKey, audioBlob);
+                console.log('文件上传成功:', objectKey);
+                
+                const internalUrl = `http://${bucket}.${ossRegion}.internal.aliyuncs.com/${objectKey}`;
+                console.log('音频上传到OSS成功，内网URL:', internalUrl);
+                
+                return internalUrl;
+            }
+
+            // 上传图片到OSS
+            async function uploadImageToOss(imageFile, fileName) {
+                const stsData = await getStsToken();
+                console.log('获取到的STS凭证:', stsData);
+                
+                const accessKeyId = stsData.accessKeyId;
+                const accessKeySecret = stsData.accessKeySecret;
+                const securityToken = stsData.securityToken;
+                const bucket = stsData.bucket || stsData.bucketName;
+                const endpoint = stsData.endpoint;
+                
+                let ossRegion = '';
+                if (endpoint && endpoint.includes('.')) {
+                    ossRegion = endpoint.split('.')[0];
+                }
+                
+                const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                const timestamp = Date.now();
+                
+                const fileTypeDir = 'image';
+                let objectKey = `trade-mind/${dateStr}/${fileTypeDir}/${timestamp}_${fileName}`;
+                objectKey = objectKey.startsWith('/') ? objectKey.substring(1) : objectKey;
+                
+                console.log('初始化参数核对:', {
+                    region: ossRegion,
+                    bucket: bucket,
+                    hasToken: !!securityToken,
+                    endpoint: endpoint,
+                    objectKey: objectKey
+                });
+                
+                const client = new OSS({
+                    region: ossRegion,
+                    accessKeyId: accessKeyId,
+                    accessKeySecret: accessKeySecret,
+                    stsToken: securityToken,
+                    bucket: bucket,
+                    secure: true
+                });
+                
+                console.log('开始上传文件到OSS:', objectKey);
+                await client.put(objectKey, imageFile);
+                console.log('文件上传成功:', objectKey);
+                
+                const internalUrl = `http://${bucket}.${ossRegion}.internal.aliyuncs.com/${objectKey}`;
+                console.log('图片上传到OSS成功，内网URL:', internalUrl);
+                
+                return internalUrl;
+            }
+
+            // 调用AIService处理图片
+            async function processImageWithAIService(imageUrl) {
+                console.log('正在处理图片...');
+                
+                const requestData = {
+                    funcType: 'ORDER_EXTRACT',
+                    pipeline: 'DIRECT',
+                    inputData: {
+                        type: 'image',
+                        url: imageUrl,
+                        text: ''
+                    }
+                };
+                
+                const response = await fetch('http://localhost:8083/ai/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('调用AIService失败');
+                }
+                
+                const result = await response.json();
+                console.log('AIService处理结果:', result);
+                
+                if (result.success && result.data) {
+                    return result.data;
+                } else {
+                    throw new Error('AIService处理失败: ' + (result.message || '未知错误'));
+                }
+            }
+
+            // 调用AIService处理音频
+            async function processAudioWithAIService(audioUrl) {
+                voiceStatus.textContent = '正在处理音频...';
+                
+                const requestData = {
+                    funcType: 'ORDER_EXTRACT',
+                    pipeline: 'AUDIO_CHAIN',
+                    inputData: {
+                        type: 'audio',
+                        url: audioUrl,
+                        text: ''
+                    }
+                };
+                
+                const response = await fetch('http://localhost:8083/ai/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('调用AIService失败');
+                }
+                
+                const result = await response.json();
+                console.log('AIService处理结果:', result);
+                
+                if (result.success && result.data) {
+                    return result.data;
+                } else {
+                    throw new Error('AIService处理失败: ' + (result.message || '未知错误'));
+                }
+            }
+
+            // 开始录音
+            startVoice.addEventListener('click', function() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function(s) {
+                            voiceStream = s;
+                            startVoice.classList.add('hidden');
+                            stopVoice.classList.remove('hidden');
+                            voiceStatus.textContent = '正在录音...';
+                            voiceIcon.classList.remove('ph-microphone');
+                            voiceIcon.classList.add('ph-microphone-slash');
+                            
+                            // 初始化音频分析器
+                            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            analyser = audioContext.createAnalyser();
+                            const source = audioContext.createMediaStreamSource(voiceStream);
+                            source.connect(analyser);
+                            analyser.fftSize = 256;
+                            
+                            // 开始可视化
+                            startVoiceVisualization();
+                            
+                            // 开始录音
+                            voiceRecorder = new MediaRecorder(voiceStream);
+                            voiceChunks = [];
+                            
+                            voiceRecorder.ondataavailable = function(e) {
+                                if (e.data.size > 0) {
+                                    voiceChunks.push(e.data);
+                                }
+                            };
+                            
+                            voiceRecorder.onstop = async function() {
+                                const audioBlob = new Blob(voiceChunks, { type: 'audio/wav' });
+                                const audioUrl = URL.createObjectURL(audioBlob);
+                                console.log('录音成功，音频URL:', audioUrl);
+                                
+                                try {
+                                    voiceStatus.textContent = '正在上传音频...';
+                                    
+                                    // 上传音频到OSS
+                                    const timestamp = new Date().getTime();
+                                    const audioName = `audio_${timestamp}.wav`;
+                                    const ossInternalUrl = await uploadAudioToOss(audioBlob, audioName);
+                                    
+                                    voiceStatus.textContent = '正在分析音频...';
+                                    
+                                    // 调用AIService处理音频
+                                    const extractedResult = await processAudioWithAIService(ossInternalUrl);
+                                    
+                                    // 保存音频到本地存储
+                                    const reader = new FileReader();
+                                    reader.onloadend = function() {
+                                        const base64data = reader.result;
+                                        localStorage.setItem(audioName, base64data);
+                                        console.log('音频已保存到本地存储:', audioName);
+                                    };
+                                    reader.readAsDataURL(audioBlob);
+                                    
+                                    // 显示提取结果
+                                    setTimeout(function() {
+                                        // 确保结果包含所有必要的字段
+                                        const orderInfo = extractedResult.order_info || extractedResult.order || {};
+                                        const customerInfo = extractedResult.customer_info || extractedResult.customer || {};
+                                        const productInfo = extractedResult.product_info || extractedResult.product || {};
+                                        
+                                        // 构建结果消息
+                                        let resultMessage = '订单提取成功！\n\n';
+                                        resultMessage += `客户信息：\n`;
+                                        resultMessage += `  姓名：${customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知'}\n`;
+                                        resultMessage += `  邮箱：${customerInfo.email || '未提供'}\n`;
+                                        resultMessage += `  电话：${customerInfo.phone || '未提供'}\n`;
+                                        resultMessage += `  国家/地区：${customerInfo.country || customerInfo.other_info || '未知'}\n\n`;
+                                        resultMessage += `产品信息：\n`;
+                                        resultMessage += `  名称：${productInfo.name || productInfo.product_name || orderInfo.product_name || '未知'}\n`;
+                                        resultMessage += `  型号：${productInfo.model || productInfo.product_code || '未明确'}\n`;
+                                        resultMessage += `  数量：${productInfo.quantity || orderInfo.quantity || 0}\n`;
+                                        resultMessage += `  单价：${parseFloat(productInfo.unitPrice || productInfo.unit_price || orderInfo.unitPrice || orderInfo.unit_price) || 0}\n`;
+                                        resultMessage += `  总价：${parseFloat(productInfo.totalPrice || productInfo.total_price || orderInfo.totalPrice || orderInfo.total_price) || 0}\n\n`;
+                                        resultMessage += `订单信息：\n`;
+                                        resultMessage += `  订单号：${orderInfo.orderId || orderInfo.order_id || '未知'}\n`;
+                                        resultMessage += `  日期：${orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0]}\n`;
+                                        resultMessage += `  交货日期：${orderInfo.deliveryDate || orderInfo.delivery_date || '未明确'}\n`;
+                                        resultMessage += `  状态：${orderInfo.status || orderInfo.order_status || '待确认'}\n`;
+                                        
+                                        alert(resultMessage);
+                                        
+                                        // 清空语音模态框
+                                        stopVoiceRecording();
+                                        voiceModal.classList.add('hidden');
+                                    }, 500);
+                                } catch (error) {
+                                    console.error('处理音频失败:', error);
+                                    
+                                    // 显示错误信息
+                                    setTimeout(function() {
+                                        alert('处理音频失败：' + error.message);
+                                        stopVoiceRecording();
+                                        voiceModal.classList.add('hidden');
+                                    }, 500);
+                                }
+                            };
+                            
+                            voiceRecorder.start();
+                        })
+                        .catch(function(error) {
+                            console.error('启动麦克风失败:', error);
+                            alert('无法访问麦克风，请检查权限设置');
+                        });
+                } else {
+                    alert('您的浏览器不支持麦克风功能');
+                }
+            });
+
+            // 停止录音
+            stopVoice.addEventListener('click', function() {
+                stopVoiceRecording();
+            });
+
+            // 停止录音函数
+            function stopVoiceRecording() {
+                if (voiceRecorder && voiceRecorder.state === 'recording') {
+                    voiceRecorder.stop();
+                }
+                if (voiceStream) {
+                    voiceStream.getTracks().forEach(track => {
+                        track.stop();
+                    });
+                    voiceStream = null;
+                }
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                startVoice.classList.remove('hidden');
+                stopVoice.classList.add('hidden');
+                voiceStatus.textContent = '点击开始按钮进行语音输入';
+                voiceIcon.classList.remove('ph-microphone-slash');
+                voiceIcon.classList.add('ph-microphone');
+                voiceVisualizer.style.backgroundColor = '#F0FDFA';
+            }
+
+            // 语音可视化
+            function startVoiceVisualization() {
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                function draw() {
+                    animationId = requestAnimationFrame(draw);
+                    
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    // 计算平均音量
+                    let sum = 0;
+                    for (let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    const average = sum / bufferLength;
+                    
+                    // 根据音量改变可视化效果
+                    const intensity = Math.min(average / 128, 1);
+                    const r = Math.floor(20 + intensity * 25);
+                    const g = Math.floor(184 - intensity * 50);
+                    const b = Math.floor(166 - intensity * 50);
+                    voiceVisualizer.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+                }
+                
+                draw();
+            }
+        });
+    </script>
+</body>
+</html>

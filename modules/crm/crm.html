@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
+
+    <style>
+        body {
+            background-color: #F1F5F9;
+            color: #334155;
+            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tech-pulse {
+            animation: pulse-teal 3s infinite;
+        }
+
+        @keyframes pulse-teal {
+            0% {
+                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+            }
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .report-active {
+            background-color: #14B8A6 !important;
+            color: white !important;
+            border-color: #14B8A6 !important;
+            box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
+        }
+
+        /* 报表美化 CSS */
+        .bar-item-slim {
+            width: 14px;
+            border-radius: 20px 20px 2px 2px;
+            transition: height 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            background: linear-gradient(180deg, #14B8A6 0%, #0D9488 100%);
+        }
+
+        .donut-ring {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(#14B8A6 0deg 240deg, #F59E0B 240deg 315deg, #F43F5E 315deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        .donut-hole {
+            width: 100px;
+            height: 100px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+
+        /* --- 手机端 CRM 专用适配样式 --- */
+        @media (max-width: 768px) {
+            /* 详情页显示时隐藏列表页 */
+            .crm-detail-active #crm-list-pane {
+                display: none;
+            }
+
+            .crm-detail-active #crm-detail-pane {
+                display: block;
+            }
+
+            /* 弹窗高度优化 */
+            .modal-content-box {
+                height: 92vh !important;
+                border-radius: 1.5rem 1.5rem 0 0 !important;
+            }
+        }
+    </style>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
+        }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+
+    <!-- 1. 侧边导航栏 -->
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
+                <i class="ph ph-brain text-xl"></i>
+            </div>
+            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
+        </div>
+        <nav class="flex-1 py-6 px-3 space-y-1">
+            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
+            </button>
+            <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
+            </button>
+            <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
+                <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
+            </button>
+            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
+            </button>
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center">
+            <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono">Jin</div>
+            <div class="ml-3"><p class="text-xs font-bold text-slate-200">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
+        </div>
+    </aside>
+
+    <!-- 2. 主工作区 -->
+    <main class="flex-1 flex flex-col min-w-0 relative h-full">
+        <!-- Header -->
+        <header class="h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
+            <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
+            <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
+            <div class="flex items-center space-x-3 md:space-x-5">
+                <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
+                    <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
+                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">客户 CRM</span>
+                </div>
+                <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
+            </div>
+        </header>
+
+        <!-- 内容区域 -->
+        <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
+
+            <!-- ================= [3] 客户 CRM ================= --> 
+            <div id="view-crm" class="view-section w-full h-full flex flex-col md:flex-row fade-in overflow-hidden relative"> 
+
+                <!-- 1. 客户列表侧 (在手机端作为一级页面) --> 
+                <div id="crm-list-pane" class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col h-full shrink-0"> 
+                    <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center"> 
+                        <span class="text-xs font-bold uppercase tracking-tight">客户列表 (124)</span> 
+                        <i class="ph ph-plus-circle text-lg text-brand-600 cursor-pointer"></i> 
+                    </div> 
+                    <div class="flex-1 overflow-y-auto no-scrollbar"> 
+                        <!-- 客户项点击触发：手机端切换视图，网页端仅更新数据 --> 
+                        <div onclick="showCrmDetail('Ahmed Al-Fayed')" class="p-4 border-b border-slate-100 bg-brand-50 border-l-4 border-l-brand-500 cursor-pointer hover:bg-brand-50 transition-all"> 
+                            <div class="flex justify-between font-bold text-sm text-slate-800">Ahmed Al-Fayed <span class="text-[10px] text-slate-400 font-normal">#8821</span></div> 
+                            <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1 uppercase tracking-tighter"><span>Dubai, UAE</span></div> 
+                        </div> 
+
+                        <div onclick="showCrmDetail('John Smith')" class="p-4 border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer"> 
+                            <div class="flex justify-between font-bold text-sm text-slate-800">John Smith <span class="text-[10px] text-slate-400 font-normal">#8822</span></div> 
+                            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-tighter">New York, USA</p> 
+                        </div>
+                    </div> 
+                </div> 
+
+                <!-- 2. 客户详情侧 (在手机端作为二级页面，默认隐藏) --> 
+                <div id="crm-detail-pane" class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 no-scrollbar"> 
+
+                    <!-- 仅在手机端显示的返回按钮 --> 
+                    <button onclick="hideCrmDetail()" class="md:hidden flex items-center text-brand-600 text-xs font-bold mb-4 bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-200 active:scale-95"> 
+                        <i class="ph ph-arrow-left mr-1.5"></i> 返回客户列表 
+                    </button> 
+
+                    <!-- 详情核心内容 --> 
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6"> 
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4"> 
+                            <div class="flex items-center text-left"> 
+                                <div class="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center text-white font-bold text-xl uppercase shrink-0 shadow-lg">AH</div> 
+                                <div class="ml-4"> 
+                                    <h2 id="crm-detail-name" class="text-xl font-bold text-slate-900 tracking-tight">Ahmed Al-Fayed</h2> 
+                                    <!-- 客户名称下方的标签 --> 
+                                    <div class="flex flex-wrap gap-2 mt-1 mb-1.5"> 
+                                        <span class="px-2 py-0.5 bg-brand-50 text-brand-700 text-[10px] font-bold border border-brand-100 rounded">高潜力</span> 
+                                        <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] border border-slate-200 rounded">灯饰类</span> 
+                                    </div> 
+                                    <p class="text-xs text-slate-500">迪拜, 阿联酋 | Al-Noor Trading LLC</p> 
+                                </div> 
+                            </div> 
+                            <div class="flex space-x-2 w-full md:w-auto"> 
+                                <button class="flex-1 md:flex-none p-3 border border-slate-200 rounded-xl text-slate-400 hover:text-brand-600 transition"><i class="ph ph-whatsapp-logo text-xl mx-auto"></i></button> 
+                                <button class="flex-[2] md:flex-none bg-brand-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg">发起报价单</button> 
+                            </div> 
+                        </div> 
+                    </div> 
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20"> 
+                        <!-- 时间轴 (信息增强) --> 
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-left"> 
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">交互时间轴</h3> 
+                            <div class="relative pl-6 space-y-8"> 
+                                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div> 
+                                <div class="relative"> 
+                                    <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm"></span> 
+                                    <div class="flex justify-between items-start mb-1"> 
+                                        <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">Today 10:42 AM</p> 
+                                        <span class="text-[9px] bg-brand-50 text-brand-600 px-1.5 rounded uppercase font-bold tracking-widest">询价</span> 
+                                    </div> 
+                                    <p class="text-xs font-bold text-slate-800 tracking-tight italic">"WhatsApp 咨询 500 套金色灯具"</p> 
+                                </div> 
+                                <div class="relative"> 
+                                    <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-sm"></span> 
+                                    <div class="flex justify-between items-start mb-1"> 
+                                        <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">Dec 28, 2025</p> 
+                                        <span class="text-[9px] bg-blue-50 text-blue-600 px-1.5 rounded uppercase font-bold tracking-widest">寄样</span> 
+                                    </div> 
+                                    <p class="text-xs font-bold text-slate-800 tracking-tight">发送金色新款样品 (#EXP-4402)</p> 
+                                </div> 
+                                <div class="relative opacity-60"> 
+                                    <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-slate-300 border-4 border-white shadow-sm"></span> 
+                                    <div class="flex justify-between items-start mb-1"> 
+                                        <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">Nov 15, 2025</p> 
+                                        <span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 rounded uppercase font-bold tracking-widest">结清</span> 
+                                    </div> 
+                                    <p class="text-xs font-bold text-slate-800 tracking-tight">订单结清 (#INV-8210) - $12,500</p> 
+                                </div> 
+                            </div> 
+                        </div> 
+                        <!-- AI 建议卡片 --> 
+                        <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6 h-fit text-left"> 
+                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">AI 营销建议</h3> 
+                            <div class="p-6 bg-brand-50/50 rounded border border-dashed border-brand-200 text-center w-full"> 
+                                <p class="text-sm font-bold text-slate-700 underline decoration-brand-200 underline-offset-4">斋月备货提前触达</p> 
+                                <p class="text-xs text-slate-500 mt-2 mb-4 leading-relaxed italic">客户去年同期采购量翻倍。建议立即通过 WhatsApp 推送"金色复古"系列 2026 新款目录并提供 5% 专属早鸟优惠。</p> 
+                                <button class="bg-brand-600 text-white text-xs px-6 py-2 rounded-lg font-bold shadow-md hover:bg-brand-700 transition">生成营销话术</button> 
+                            </div> 
+                        </div> 
+                    </div> 
+                </div> 
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 显示不同的视图
+        function showView(viewName) {
+            // 隐藏所有视图
+            document.querySelectorAll('.view-section').forEach(view => {
+                view.style.display = 'none';
+            });
+            
+            // 显示选中的视图
+            const viewElement = document.getElementById(`view-${viewName}`);
+            if (viewElement) {
+                viewElement.style.display = 'block';
+            }
+        }
+
+        // 导航切换
+        function switchTab(tabName) {
+            let url = '';
+            switch(tabName) {
+                case 'dashboard':
+                    url = '../dashboard/dashboard.html';
+                    break;
+                case 'biz':
+                    url = '../intelligent-operation/intelligent-operation.html';
+                    break;
+                case 'crm':
+                    // 显示当前页面的CRM视图
+                    showView('crm');
+                    // 显示第一个客户的详情
+                    showCrmDetail('Ahmed Al-Fayed');
+                    break;
+                case 'supply':
+                    url = '../supply-chain/supply-chain.html';
+                    break;
+                case 'supplier':
+                    url = '../supplier/supplier.html';
+                    break;
+                case 'rd':
+                    url = '../rnd-center/rnd-center.html';
+                    break;
+            }
+            if (url) {
+                window.location.href = url;
+            }
+        }
+
+        // --- CRM 模块交互逻辑 ---
+        // 1. 显示客户详情 (处理数据填充 + 视图切换)
+        function showCrmDetail(customerName) {
+            // A. 数据更新
+            const nameEl = document.getElementById('crm-detail-name');
+            if (nameEl) {
+                nameEl.innerText = customerName;
+                // 这里后续可以对接后端 API 获取真实详情
+            }
+
+            // B. 视图切换逻辑 (针对移动端和PC端的不同处理)
+            const listPane = document.getElementById('crm-list-pane');
+            const detailPane = document.getElementById('crm-detail-pane');
+            const viewCrm = document.getElementById('view-crm');
+
+            if (window.innerWidth < 768) { 
+                // 手机端：隐藏列表，显示详情 (全屏切换效果)
+                listPane.classList.add('hidden');
+                detailPane.classList.remove('hidden');
+                // 添加crm-detail-active类到父容器，以触发媒体查询中的样式规则
+                viewCrm.classList.add('crm-detail-active');
+            } else {
+                // PC端：列表常驻，仅刷新详情数据
+                // 确保详情页是可见的 (防止初始状态 hidden 导致的空白)
+                detailPane.classList.remove('hidden');
+                // 确保详情页的display属性为block
+                detailPane.style.display = 'block';
+                // 确保父容器的flex布局正确
+                viewCrm.style.display = 'flex';
+            }
+        }
+
+        // 2. 隐藏客户详情 (仅手机端有效，返回列表)
+        function hideCrmDetail() {
+            const listPane = document.getElementById('crm-list-pane');
+            const detailPane = document.getElementById('crm-detail-pane');
+            const viewCrm = document.getElementById('view-crm');
+
+            // 手机端：隐藏详情，恢复列表
+            detailPane.classList.add('hidden');
+            listPane.classList.remove('hidden');
+            // 移除crm-detail-active类，恢复到初始状态
+            viewCrm.classList.remove('crm-detail-active');
+        }
+
+        // 3. 初始化检查 (防止PC端刷新后详情页空白)
+        window.addEventListener('resize', () => {
+            const listPane = document.getElementById('crm-list-pane');
+            const detailPane = document.getElementById('crm-detail-pane');
+            const viewCrm = document.getElementById('view-crm');
+            
+            // 如果拉伸到 PC 宽屏，强制显示双栏
+            if (window.innerWidth >= 768) {
+                listPane.classList.remove('hidden');
+                detailPane.classList.remove('hidden'); 
+                // 移除crm-detail-active类，恢复到PC端的双栏布局
+                viewCrm.classList.remove('crm-detail-active');
+                // 确保详情页的display属性为block
+                detailPane.style.display = 'block';
+                // 确保父容器的flex布局正确
+                viewCrm.style.display = 'flex';
+            } else {
+                // 缩回到手机屏，默认只显示列表
+                // (除非当前正在看详情，这里简单处理为回列表)
+                if (!detailPane.classList.contains('hidden')) {
+                     listPane.classList.add('hidden');
+                     // 添加crm-detail-active类，触发手机端的全屏详情布局
+                     viewCrm.classList.add('crm-detail-active');
+                } else {
+                     detailPane.classList.add('hidden');
+                     // 移除crm-detail-active类，恢复到手机端的列表布局
+                     viewCrm.classList.remove('crm-detail-active');
+                }
+            }
+        });
+
+        // 确保在页面加载时，根据屏幕尺寸正确显示或隐藏客户详情面板
+        window.addEventListener('load', function() {
+            if (window.innerWidth < 768) {
+                // 在手机端，默认隐藏客户详情面板
+                document.getElementById('crm-detail-pane').classList.add('hidden');
+            } else {
+                // 在桌面端，默认显示客户详情面板
+                document.getElementById('crm-detail-pane').classList.remove('hidden');
+                // 确保CRM视图是可见的
+                document.getElementById('view-crm').style.display = 'block';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 默认显示CRM视图
+            showView('crm');
+            
+            // 默认显示第一个客户的详情
+            showCrmDetail('Ahmed Al-Fayed');
+        });
+    </script>
+</body>
+</html>

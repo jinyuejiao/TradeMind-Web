@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
+
+    <style>
+        body {
+            background-color: #F1F5F9;
+            color: #334155;
+            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tech-pulse {
+            animation: pulse-teal 3s infinite;
+        }
+
+        @keyframes pulse-teal {
+            0% {
+                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+            }
+        }
+
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .report-active {
+            background-color: #14B8A6 !important;
+            color: white !important;
+            border-color: #14B8A6 !important;
+            box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
+        }
+
+        /* 报表美化 CSS */
+        .bar-item-slim {
+            width: 14px;
+            border-radius: 20px 20px 2px 2px;
+            transition: height 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+            background: linear-gradient(180deg, #14B8A6 0%, #0D9488 100%);
+        }
+
+        .axis-text {
+            font-size: 10px;
+            font-weight: bold;
+            color: #64748B;
+            font-family: monospace;
+        }
+
+        .donut-ring {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(#14B8A6 0deg 240deg, #F59E0B 240deg 315deg, #F43F5E 315deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        .donut-hole {
+            width: 100px;
+            height: 100px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+        }
+
+        /* --- 手机端 CRM 专用适配样式 --- */
+        @media (max-width: 768px) {
+            /* 详情页显示时隐藏列表页 */
+            .crm-detail-active #crm-list-pane {
+                display: none;
+            }
+
+            .crm-detail-active #crm-detail-pane {
+                display: block;
+            }
+
+            /* 弹窗高度优化 */
+            .modal-content-box {
+                height: 92vh !important;
+                border-radius: 1.5rem 1.5rem 0 0 !important;
+            }
+        }
+    </style>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
+        }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+
+    <!-- 1. 侧边导航栏 -->
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
+                <i class="ph ph-brain text-xl"></i>
+            </div>
+            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
+        </div>
+        <nav class="flex-1 py-6 px-3 space-y-1">
+            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
+            </button>
+            <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
+                <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
+            </button>
+            <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
+            </button>
+            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
+            </button>
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center">
+            <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono">Jin</div>
+            <div class="ml-3"><p class="text-xs font-bold text-slate-200">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
+        </div>
+    </aside>
+
+    <!-- 2. 主工作区 -->
+    <main class="flex-1 flex flex-col min-w-0 relative h-full">
+        <!-- Header -->
+        <header class="h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
+            <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
+            <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
+            <div class="flex items-center space-x-3 md:space-x-5">
+                <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
+                    <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
+                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">智能经营</span>
+                </div>
+                <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
+            </div>
+        </header>
+
+        <!-- 内容区域 -->
+        <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
+
+            <!-- ================= [2] 智能经营 BIZ ================= --> 
+            <div id="view-biz" class="view-section w-full p-4 md:p-8 space-y-6 fade-in"> 
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4"> 
+                    <h2 class="text-xl font-bold text-slate-800">智能经营中心</h2> 
+                    <button onclick="openAIAnalysis()" class="bg-brand-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-brand-500/20 flex items-center justify-center transition hover:bg-brand-700 active:scale-95"><i class="ph ph-brain mr-2 text-lg"></i> AI 预测与经营分析</button> 
+                </div> 
+
+                <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-1"> 
+                    <button onclick="switchReport('rev')" id="tab-rev" class="report-tab report-active px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">营收报表</button> 
+                    <button onclick="switchReport('stock')" id="tab-stock" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">库存健康</button> 
+                    <button onclick="switchReport('profit')" id="tab-profit" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">销售盈利</button> 
+                    <button onclick="switchReport('finance')" id="tab-finance" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">往来账务</button> 
+                </div> 
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> 
+                    <!-- 左侧报表：50% 宽度 --> 
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col h-full min-h-[400px]"> 
+                        <div class="flex justify-between items-center mb-10"> 
+                            <h3 id="report-display-title" class="text-sm font-bold text-slate-800">营收走势 (近6个月)</h3> 
+                            <div id="report-legend" class="flex gap-4 text-[10px] font-bold text-slate-400"> 
+                                <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> 营收额</span> 
+                            </div> 
+                        </div> 
+                        <div id="report-visual-container" class="flex-1 flex items-end justify-around px-4 md:px-12 gap-1 overflow-hidden"> 
+                            <div class="bar-item-slim h-[40%] bg-slate-100"></div> 
+                            <div class="bar-item-slim h-[55%] bg-slate-100"></div> 
+                            <div class="bar-item-slim h-[45%] bg-slate-100"></div> 
+                            <div class="bar-item-slim h-[70%] bg-brand-100"></div> 
+                            <div class="bar-item-slim h-[85%]"></div> 
+                            <div class="bar-item-slim h-[92%]"></div> 
+                        </div> 
+                        <div id="report-label-container" class="grid grid-cols-6 mt-6 text-[10px] text-slate-400 text-center font-mono font-bold pt-4 border-t border-slate-50"> 
+                            <span>AUG</span><span>SEP</span><span>OCT</span><span>NOV</span><span>DEC</span><span class="text-brand-600">JAN</span> 
+                        </div> 
+                    </div> 
+
+                    <!-- 右侧监控：50% 宽度 --> 
+                    <div class="flex flex-col gap-6"> 
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6"> 
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-chart-line text-brand-500"></i> 核心效率监控</h3> 
+                            <div class="space-y-8"> 
+                                <div> 
+                                    <div class="flex justify-between text-xs mb-1.5 font-bold"><span>库存周转率</span><span class="text-brand-600">4.2</span></div> 
+                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="w-[82%] bg-brand-500 h-full"></div></div> 
+                                </div> 
+                                <div> 
+                                    <div class="flex justify-between text-xs mb-1.5 font-bold"><span>回款周期</span><span class="text-risk-high">45天</span></div> 
+                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="w-[60%] bg-risk-high h-full animate-pulse"></div></div> 
+                                </div> 
+                            </div> 
+                        </div> 
+                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:p-6 h-fit flex-1 flex flex-col justify-center"> 
+                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 text-left w-full">AI 积压处理方案</h3> 
+                            <div class="p-6 bg-brand-50/50 rounded border border-dashed border-brand-200 text-center w-full"> 
+                                <p class="text-sm font-bold text-slate-700">金色镂空灯库存清理</p> 
+                                <p class="text-xs text-slate-500 mt-1 mb-3 leading-relaxed">SKU 在库超 150 天。AI建议：执行东南亚区域清仓计划。</p> 
+                                <button class="bg-brand-600 text-white text-xs px-6 py-2 rounded shadow-md font-bold">生成销售方案</button> 
+                            </div> 
+                        </div> 
+                    </div> 
+                </div> 
+            </div> 
+            <!-- ================= [2] 所有弹窗模块 (核心修复点：确保在页面底部) ================= --> 
+            <!-- AI 预测报告弹窗 --> 
+            <div id="ai-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8"> 
+                <!-- 遮罩 --> 
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm modal-overlay" onclick="closeAIAnalysis()"></div> 
+
+                <!-- 文档主体 --> 
+                <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-content"> 
+                    <!-- 弹窗页眉 --> 
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50"> 
+                        <div class="flex items-center gap-2"> 
+                            <i class="ph ph-file-text text-brand-600 text-xl font-bold"></i> 
+                            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">AI 经营决策分析报告 v2.4</h2> 
+                        </div> 
+                        <button onclick="closeAIAnalysis()" class="p-2 hover:bg-slate-200 rounded-full transition-colors"> 
+                            <i class="ph ph-x text-xl text-slate-400"></i> 
+                        </button> 
+                    </div> 
+
+                    <!-- 文档内容区 (模拟专业报告排版) --> 
+                    <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-10"> 
+                        <!-- 报告标题与时间 --> 
+                        <div class="text-center border-b border-slate-100 pb-8"> 
+                            <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">商户经营全项诊断与增长预测</h1> 
+                            <p class="text-xs text-slate-400 font-mono tracking-widest uppercase">报告生成时间: 2026.01.10 | 核心商户代码: TM-4820</p> 
+                        </div> 
+
+                        <!-- 第一部分：历史经营总结 --> 
+                        <section> 
+                            <div class="flex items-center gap-2 mb-4"> 
+                                <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> 
+                                <h3 class="text-lg font-bold text-slate-800">一、 历史产品及销售复盘</h3> 
+                            </div> 
+                            <p class="text-sm text-slate-600 leading-relaxed indent-8"> 
+                                通过对过去 12 个月的销售数据回溯显示，贵司主打的<span class="font-bold text-slate-900">"户外灯饰系列"</span>在 Q3、Q4 表现强劲，尤其是"金色镂空"系列单品，其利润贡献率高达 34.2%。以往销售高峰集中于 11-12 月，且主要客户群体分布在中东及南美地区，复购周期平均为 72 天。 
+                            </p> 
+                            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"> 
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"> 
+                                    <p class="text-[10px] text-slate-400">年营收增速</p> 
+                                    <p class="text-lg font-mono font-bold text-brand-600">+22.4%</p> 
+                                </div> 
+                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"> 
+                                    <p class="text-[10px] text-slate-400">高频SKU数</p> 
+                                    <p class="text-lg font-mono font-bold text-slate-800">14</p> 
+                                </div> 
+                            </div> 
+                        </section> 
+
+                        <!-- 第二部分：当前方案评估 --> 
+                        <section> 
+                            <div class="flex items-center gap-2 mb-4"> 
+                                <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> 
+                                <h3 class="text-lg font-bold text-slate-800">二、 当前销售方案分析</h3> 
+                            </div> 
+                            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200"> 
+                                <div class="flex items-start gap-3"> 
+                                    <i class="ph ph-magnifying-glass-plus text-2xl text-brand-600 mt-1"></i> 
+                                    <div> 
+                                        <p class="text-sm font-bold text-slate-800 mb-1">正在执行：东南亚尾货清理方案</p> 
+                                        <p class="text-xs text-slate-500 leading-relaxed"> 
+                                            AI 评估：该方案针对库存库龄超过 120 天的产品执行 85 折清理。目前该方案对<span class="text-brand-600 font-bold">现金流回笼</span>效果显著，但对整体毛利率产生了约 1.8% 的拉低效应。方案匹配度：<span class="font-bold">高</span>。 
+                                        </p> 
+                                    </div> 
+                                </div> 
+                            </div> 
+                        </section> 
+
+                        <!-- 第三部分：未来预测与规划 --> 
+                        <section> 
+                            <div class="flex items-center gap-2 mb-4"> 
+                                <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> 
+                                <h3 class="text-lg font-bold text-slate-800">三、 未来销售预测与产品规划</h3> 
+                            </div> 
+                            <div class="space-y-4"> 
+                                <div class="p-4 bg-white border border-slate-100 rounded-lg shadow-sm"> 
+                                    <div class="flex justify-between items-center mb-2"> 
+                                        <span class="text-xs font-bold text-slate-700">2026 Q1 市场需求热度预测</span> 
+                                        <span class="text-[10px] text-brand-600 bg-brand-50 px-2 rounded-full font-bold">上涨趋势 40%</span> 
+                                    </div> 
+                                    <p class="text-xs text-slate-500"> 
+                                        结合外部行业趋势，预计<span class="text-slate-900 font-bold">智能感应系列</span>需求将提前爆发。建议产品规划重点从"传统镂空"转向"轻量化、USB直充"型便携灯具。 
+                                    </p> 
+                                </div> 
+                                <div class="p-4 bg-brand-900 text-white rounded-lg shadow-lg relative overflow-hidden"> 
+                                    <div class="absolute -right-4 -top-4 opacity-10"><i class="ph ph-rocket-launch text-6xl"></i></div> 
+                                    <p class="text-xs font-bold text-brand-400 mb-2 uppercase tracking-tighter">AI 规划建议</p> 
+                                    <p class="text-sm font-medium leading-relaxed"> 
+                                        建议在 1 月 20 日前完成针对"北非市场"的复古系列选品，并利用当前供应链空档期提前锁定 2000 套包材料，可节省成本约 $1,200。 
+                                    </p> 
+                                </div> 
+                            </div> 
+                        </section> 
+
+                        <div class="text-center pt-6 opacity-30"> 
+                            <p class="text-[10px] text-slate-400 font-mono">--- 报告全文结束 ---</p> 
+                        </div> 
+                    </div> 
+
+                    <!-- 弹窗页脚 --> 
+                    <div class="p-4 border-t border-slate-100 bg-white flex gap-3"> 
+                        <button onclick="closeAIAnalysis()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">返回工作台</button> 
+                        <button class="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"> 
+                            <i class="ph ph-download"></i> 导出完整文档 
+                        </button> 
+                    </div> 
+                </div> 
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 导航切换
+        function switchTab(tabName) {
+            let url = '';
+            switch(tabName) {
+                case 'dashboard':
+                    url = '../dashboard/dashboard.html';
+                    break;
+                case 'biz':
+                    // 显示当前页面的智能经营界面
+                    showView('biz');
+                    break;
+                case 'crm':
+                    url = '../crm/crm.html';
+                    break;
+                case 'supply':
+                    url = '../supply-chain/supply-chain.html';
+                    break;
+                case 'supplier':
+                    url = '../supplier/supplier.html';
+                    break;
+                case 'rd':
+                    url = '../rnd-center/rnd-center.html';
+                    break;
+            }
+            if (url) {
+                window.location.href = url;
+            }
+        }
+
+        // 报表切换
+        function switchReport(type) {
+            // 修复：确保 active 状态切换到正确的按钮上
+            document.querySelectorAll('.report-tab').forEach(btn => btn.classList.remove('report-active'));
+            // 直接通过ID获取当前按钮并添加active状态
+            const targetBtn = document.getElementById(`tab-${type}`);
+            if (targetBtn) targetBtn.classList.add('report-active');
+
+            const container = document.getElementById('report-visual-container');
+            const labelContainer = document.getElementById('report-label-container');
+            const title = document.getElementById('report-display-title');
+            const legend = document.getElementById('report-legend');
+
+            container.style.opacity = '0';
+
+            setTimeout(() => {
+                container.style.opacity = '1';
+                if (type === 'rev') {
+                    title.innerText = '营收趋势分析 (近6个月)';
+                    if (legend) {
+                        legend.style.display = 'flex';
+                        legend.innerHTML = `
+                                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-brand-500 rounded-full"></span> 实绩</span>
+                                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-slate-200 rounded-full"></span> 历史</span>
+                                        <span class="flex items-center gap-1"><span class="w-2 h-0.5 border-t border-brand-500 border-dashed"></span> 预测</span>
+                                    `;
+                    }
+
+                    // 重新定义容器布局：[Y轴区域] + [主绘图区]
+                    container.className = 'flex-1 flex flex-row items-stretch overflow-hidden pt-4';
+
+                    container.innerHTML = `
+                                        <!-- 1. Y轴刻度区域 -->
+                                        <div class="flex flex-col justify-between mb-8 pb-1 axis-text shrink-0 text-right w-10 pr-3 border-r border-slate-100">
+                                            <span>20k</span>
+                                            <span>15k</span>
+                                            <span>10k</span>
+                                            <span>5k</span>
+                                            <span class="text-slate-300">0</span>
+                                        </div>
+
+                                        <!-- 2. 主绘图区 -->
+                                        <div class="relative flex-1 flex items-end justify-between px-2 md:px-6">
+                                            <!-- 背景水平辅助网格线 -->
+                                            <div class="absolute inset-0 flex flex-col justify-between mb-8 pb-1 pointer-events-none">
+                                                <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                                <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                                <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                                <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                                <div class="w-full"></div> <!-- 底部基准线 -->
+                                            </div>
+
+                                        <!-- 数据列：[柱体 + 标签] 强绑定 -->
+
+                                        <!-- 8月：历史 -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="bar-item-slim bg-slate-100 h-[40%] hover:bg-slate-200 transition-colors"></div>
+                                            <span class="axis-text mt-3">08月</span>
+                                        </div>
+
+                                        <!-- 9月：历史 -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="bar-item-slim bg-slate-100 h-[52%] hover:bg-slate-200 transition-colors"></div>
+                                            <span class="axis-text mt-3">09月</span>
+                                        </div>
+
+                                        <!-- 10月：历史 -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="bar-item-slim bg-slate-100 h-[45%] hover:bg-slate-200 transition-colors"></div>
+                                            <span class="axis-text mt-3">10月</span>
+                                        </div>
+
+                                        <!-- 11月：实绩上涨 -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="bar-item-slim bg-brand-100 h-[68%] border-t-2 border-brand-500"></div>
+                                            <span class="axis-text mt-3">11月</span>
+                                        </div>
+
+                                        <!-- 12月：实绩高峰 -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="bar-item-slim h-[82%] shadow-lg shadow-brand-500/10"></div>
+                                            <span class="axis-text mt-3">12月</span>
+                                        </div>
+
+                                        <!-- 1月：当前/预测 -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="bar-item-slim h-[92%] bg-brand-50 border-2 border-dashed border-brand-400 opacity-80"></div>
+                                            <span class="axis-text mt-3 text-brand-600 font-bold">预测01</span>
+                                        </div>
+                                    </div>
+                                `;
+                    // 隐藏旧的外部 Label 容器，防止布局位移
+                    if (labelContainer) {
+                        labelContainer.innerHTML = '';
+                        labelContainer.className = "hidden";
+                    }
+                }
+                else if (type === 'stock') {
+                    title.innerText = '实时库存健康状况分布';
+                    if (legend) legend.style.display = 'none';
+                    container.className = 'flex-1 flex flex-col items-center justify-center';
+
+                    /**
+                     * 精确数学计算 (半径 r=70, 周长 C ≈ 439.82)
+                     * 1. 正常 (绿色): 82%  => 长度 360.65
+                     * 2. 积压 (黄色): 10%  => 长度 43.98
+                     * 3. 缺货 (红色): 8%   => 长度 35.19
+                     * 
+                     * 移除 stroke-linecap，使用默认的 butt (平头)，确保衔接严丝合缝
+                     */
+                    container.innerHTML = `
+                                        <div class="chart-container-svg fade-in">
+                                        <svg width="180" height="180" viewBox="0 0 160 160">
+                                            <!-- 底部背景圆环 -->
+                                            <circle cx="80" cy="80" r="70" stroke="#F1F5F9" stroke-width="15" fill="none" />
+
+                                            <!-- 正常 (82%) - 起点: 12点钟 -->
+                                            <circle cx="80" cy="80" r="70" stroke="#14B8A6" stroke-width="15" fill="none"
+                                                stroke-dasharray="360.65 439.82"
+                                                stroke-dashoffset="0"
+                                                transform="rotate(-90 80 80)" />
+
+                                            <!-- 积压 (10%) - 起点: 紧随绿色终点 -->
+                                            <circle cx="80" cy="80" r="70" stroke="#F59E0B" stroke-width="15" fill="none"
+                                                stroke-dasharray="43.98 439.82"
+                                                stroke-dashoffset="-360.65"
+                                                transform="rotate(-90 80 80)" />
+
+                                            <!-- 缺货 (8%) - 起点: 紧随黄色终点 -->
+                                            <circle cx="80" cy="80" r="70" stroke="#F43F5E" stroke-width="15" fill="none"
+                                                stroke-dasharray="35.19 439.82"
+                                                stroke-dashoffset="-404.63"
+                                                transform="rotate(-90 80 80)" />
+                                        </svg>
+                                        <div class="donut-text-box">
+                                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">健康度</p>
+                                            <p class="text-3xl font-mono font-bold text-brand-600">82%</p>
+                                        </div>
+                                    </div>
+                                    <!-- 图例展示 -->
+                                    <div class="flex gap-6 mt-8 text-[11px] font-bold">
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-brand-500 rounded-sm"></span> 正常 82%</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-500 rounded-sm"></span> 积压 10%</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-red-500 rounded-sm"></span> 缺货 8%</span>
+                                    </div>`;
+                    labelContainer.innerHTML = '';
+                }
+                else if (type === 'profit') {
+                    title.innerText = '销售盈利报表 (Top 3 利润贡献)';
+                    if (legend) {
+                        legend.style.display = 'flex';
+                        legend.innerHTML = `
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #FBBF24, #D97706);"></span> 第一名</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #34D399, #059669);"></span> 第二名</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #22D3EE, #0891B2);"></span> 第三名</span>
+                                    `;
+                    }
+
+                    container.className = 'flex-1 flex flex-col w-full px-4 md:px-10 justify-center gap-8';
+
+                    container.innerHTML = `
+                                            <!-- Top 1 -->
+                                            <div class="w-full fade-in group">
+                                                <div class="flex justify-between items-end mb-2.5">
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-yellow-300 to-yellow-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-yellow-100">1</span>
+                                                        <div>
+                                                            <p class="text-sm font-bold text-slate-900 tracking-tight">金色镂空户外灯具 (V3)</p>
+                                                            <p class="text-[10px] text-slate-400 font-medium">中东/欧美市场畅销款</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <p class="text-[10px] text-yellow-600 font-bold uppercase tracking-widest">Gross Profit</p>
+                                                        <p class="text-lg font-mono font-black text-slate-900">$42,000</p>
+                                                    </div>
+                                                </div>
+                                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-[1px]">
+                                                    <div class="h-full rounded-full transition-all duration-1000 shadow-sm group-hover:brightness-110"
+                                                        style="width: 92%; background: linear-gradient(90deg, #FDE68A 0%, #F59E0B 100%); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Top 2 -->
+                                            <div class="w-full fade-in group" style="animation-delay: 0.1s">
+                                                <div class="flex justify-between items-end mb-2.5">
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-emerald-300 to-emerald-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-emerald-100">2</span>
+                                                        <div>
+                                                            <p class="text-sm font-bold text-slate-800 tracking-tight">智能感应极简香薰机</p>
+                                                            <p class="text-[10px] text-slate-400 font-medium">东南亚区域利润之星</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Gross Profit</p>
+                                                        <p class="text-lg font-mono font-black text-slate-800">$28,500</p>
+                                                    </div>
+                                                </div>
+                                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-[1px]">
+                                                    <div class="h-full rounded-full transition-all duration-1000 group-hover:brightness-110"
+                                                        style="width: 65%; background: linear-gradient(90deg, #6EE7B7 0%, #059669 100%); box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Top 3 -->
+                                            <div class="w-full fade-in group" style="animation-delay: 0.2s">
+                                                <div class="flex justify-between items-end mb-2.5">
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-cyan-300 to-cyan-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-cyan-100">3</span>
+                                                        <div>
+                                                            <p class="text-sm font-bold text-slate-800 tracking-tight">多功能户外折叠桌板</p>
+                                                            <p class="text-[10px] text-slate-400 font-medium">高频爆款薄利多销</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <p class="text-[10px] text-cyan-600 font-bold uppercase tracking-widest">Gross Profit</p>
+                                                        <p class="text-lg font-mono font-black text-slate-800">$14,200</p>
+                                                    </div>
+                                                </div>
+                                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-[1px]">
+                                                    <div class="h-full rounded-full transition-all duration-1000 group-hover:brightness-110"
+                                                        style="width: 35%; background: linear-gradient(90deg, #67E8F9 0%, #0891B2 100%); box-shadow: 0 2px 8px rgba(8, 145, 178, 0.2);"></div>
+                                                </div>
+                                            </div>
+                                        `;
+
+                    // 同步隐藏底部 Label
+                    if (labelContainer) {
+                        labelContainer.innerHTML = '';
+                        labelContainer.style.display = "none";
+                    }
+                }
+                else if (type === 'finance') {
+                    title.innerText = '往来账务分析 (应收账款账龄)';
+                    if (legend) {
+                        legend.style.display = 'flex';
+                        legend.innerHTML = `
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #10B981;"></span> 健康</span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #F59E0B;"></span> 关注</span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #EA580C;"></span> 风险</span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #F43F5E;"></span> 高危</span>
+                                `;
+                    }
+
+                    // 容器布局：[Y轴区域] + [绘图主区]
+                    container.className = 'flex-1 flex flex-row items-stretch overflow-hidden pt-6';
+
+                    container.innerHTML = `
+                                    <!-- 1. Y轴刻度区域 -->
+                                    <div class="flex flex-col justify-between mb-9 pb-1 axis-text shrink-0 text-right w-12 pr-3 border-r border-slate-100">
+                                        <span>$40k</span>
+                                        <span>$30k</span>
+                                        <span>$20k</span>
+                                        <span>$10k</span>
+                                        <span class="text-slate-300">0</span>
+                                    </div>
+
+                                    <!-- 2. 绘图主区 -->
+                                    <div class="relative flex-1 flex items-end justify-around px-2 md:px-12">
+                                        <!-- 背景辅助水平网格线 -->
+                                        <div class="absolute inset-0 flex flex-col justify-between mb-9 pb-1 pointer-events-none">
+                                            <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                            <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                            <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                            <div class="w-full border-t border-slate-50 border-dashed"></div>
+                                            <div class="w-full"></div>
+                                        </div>
+
+                                        <!-- 0-30天 (健康) -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="w-10 md:w-12 h-[70%] bg-green-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
+                                            <span class="axis-text mt-3 text-center">0-30天</span>
+                                        </div>
+
+                                        <!-- 31-60天 (关注) -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="w-10 md:w-12 h-[45%] bg-yellow-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
+                                            <span class="axis-text mt-3 text-center">31-60天</span>
+                                        </div>
+
+                                        <!-- 61-90天 (风险) -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="w-10 md:w-12 h-[25%] bg-orange-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
+                                            <span class="axis-text mt-3 text-center">61-90天</span>
+                                        </div>
+
+                                        <!-- 90+天 (高危) -->
+                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
+                                            <div class="w-10 md:w-12 h-[15%] bg-red-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all animate-pulse"></div>
+                                            <span class="axis-text mt-3 text-center">90+天</span>
+                                        </div>
+                                    </div>
+                                `;
+
+                    // 同步隐藏底部 Label
+                    if (labelContainer) {
+                        labelContainer.innerHTML = '';
+                        labelContainer.style.display = "none";
+                    }
+                }
+            }, 200);
+        }
+
+        // 打开AI分析弹窗
+        function openAIAnalysis() {
+            document.getElementById('ai-modal').classList.remove('hidden');
+        }
+
+        // 关闭AI分析弹窗
+        function closeAIAnalysis() {
+            document.getElementById('ai-modal').classList.add('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // 显示不同的视图
+            function showView(viewName) {
+                // 隐藏所有视图
+                document.querySelectorAll('.view-section').forEach(view => {
+                    view.style.display = 'none';
+                });
+                
+                // 显示选中的视图
+                const viewElement = document.getElementById(`view-${viewName}`);
+                if (viewElement) {
+                    viewElement.style.display = 'block';
+                }
+            }
+
+            // 默认显示智能经营界面
+            showView('biz');
+        });
+    </script>
+</body>
+</html>
