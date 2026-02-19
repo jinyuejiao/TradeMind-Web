@@ -161,8 +161,8 @@
         <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono">Jin</div>
-                    <div class="ml-3"><p class="text-xs font-bold text-slate-200">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
+                    <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="userInitial">Jin</div>
+                    <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="userInfo">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
                 </div>
                 <button id="logoutBtn" class="text-xs text-slate-400 hover:text-white transition">
                     <i class="ph ph-sign-out text-lg"></i>
@@ -298,19 +298,7 @@
             }
         }
 
-        // 从环境变量读取配置的工具函数
-        function getApiUrl(serviceName) {
-            switch(serviceName) {
-                case 'tenant':
-                    return window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1' ? 'http://localhost:8082' : 'http://localhost:8082';
-                case 'init':
-                    return 'http://localhost:8084';
-                case 'ai':
-                    return 'http://localhost:8083';
-                default:
-                    return '';
-            }
-        }
+
 
         // 调用后端用户信息接口进行认证校验
         async function validateAuth() {
@@ -337,42 +325,6 @@
                 // 暂时跳过后端认证校验，因为TenantService可能没有提供这个接口
                 console.log('跳过后端认证校验，直接继续执行');
                 return true;
-                
-                /*
-                const tenantApiBase = getApiUrl('tenant');
-                const url = `${tenantApiBase}/api/v1/tenant/user/info`;
-                console.log('认证校验请求地址:', url);
-                
-                // 使用wrappedFetch函数
-                const response = await (window.wrappedFetch || fetch)(url, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                console.log('认证校验响应状态:', response.status);
-                
-                if (response.status === 401 || response.status === 403) {
-                    console.log('认证失败，401/403未授权');
-                    // 清除本地存储
-                    if (window.logout) {
-                        window.logout();
-                    } else {
-                        localStorage.clear();
-                        window.location.href = '../../login.html';
-                    }
-                    return false;
-                } else if (!response.ok) {
-                    console.log('认证校验接口响应异常:', response.status);
-                    // 非401/403错误，继续执行
-                    return true;
-                }
-                
-                const data = await response.json();
-                console.log('认证校验成功:', data);
-                return true;
-                */
             } catch (error) {
                 console.error('认证校验失败:', error);
                 // 捕获所有异常，包括跨域错误，立即清理并跳转
@@ -383,6 +335,81 @@
                     window.location.href = '../../login.html';
                 }
                 return false;
+            }
+        }
+        
+        // 更新用户信息显示
+        function updateUserInfo() {
+            console.log('开始更新用户信息显示');
+            
+            try {
+                // 从localStorage获取用户信息
+                const userInfoStr = localStorage.getItem('user_info');
+                const username = localStorage.getItem('username');
+                const currentUserStr = localStorage.getItem('currentUser');
+                
+                console.log('从localStorage获取的用户信息:', userInfoStr);
+                console.log('从localStorage获取的用户名:', username);
+                console.log('从localStorage获取的currentUser:', currentUserStr);
+                
+                let userInfo = {};
+                if (userInfoStr) {
+                    try {
+                        userInfo = JSON.parse(userInfoStr);
+                    } catch (parseError) {
+                        console.error('解析用户信息失败:', parseError);
+                    }
+                }
+                
+                // 尝试从currentUser获取用户信息
+                let currentUser = {};
+                if (currentUserStr) {
+                    try {
+                        currentUser = JSON.parse(currentUserStr);
+                        console.log('解析后的currentUser:', currentUser);
+                    } catch (parseError) {
+                        console.error('解析currentUser失败:', parseError);
+                    }
+                }
+                
+                // 获取DOM元素
+                const userInitialElement = document.getElementById('userInitial');
+                const userInfoElement = document.getElementById('userInfo');
+                
+                if (userInitialElement && userInfoElement) {
+                    // 更新用户姓名首字母
+                    // 尝试从多个来源获取用户名
+                    const displayName = userInfo.userName || currentUser.userName || username || userInfo.realName || userInfo.name || currentUser.realName || currentUser.name || '用户';
+                    console.log('最终使用的显示名称:', displayName);
+                    
+                    const initial = displayName.charAt(0).toUpperCase();
+                    userInitialElement.textContent = initial;
+                    
+                    // 角色名称映射
+                    const roleMap = {
+                        'ADMIN': '管理员',
+                        'BOSS': '老板',
+                        'Sales': '销售',
+                        'Warehouse': '仓库',
+                        'Finance': '财务'
+                    };
+                    
+                    // 更新用户信息（姓名 + 角色）
+                    // 尝试从多个来源获取角色
+                    const roleType = userInfo.roleType || userInfo.role || userInfo.role_name || currentUser.roleType || currentUser.role || currentUser.role_name || '用户';
+                    const role = roleMap[roleType] || roleType;
+                    console.log('最终使用的角色名称:', role);
+                    
+                    userInfoElement.textContent = `${displayName} (${role})`;
+                    
+                    console.log('用户信息更新成功:', { displayName, role });
+                } else {
+                    console.error('找不到用户信息显示元素');
+                    console.log('userInitialElement:', userInitialElement);
+                    console.log('userInfoElement:', userInfoElement);
+                }
+            } catch (error) {
+                console.error('更新用户信息失败:', error);
             }
         }
 
@@ -454,6 +481,9 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // 后端认证校验
             await validateAuth();
+            
+            // 更新用户信息显示
+            updateUserInfo();
             
             // 退出登录按钮点击事件
             const logoutBtn = document.getElementById('logoutBtn');

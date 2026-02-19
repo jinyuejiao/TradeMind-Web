@@ -31,14 +31,15 @@
                     </svg>
                 </div>
             </div>
-            <h1 class="text-2xl font-bold text-center mb-2">TradeMind</h1>
-            <p class="text-center text-slate-300 text-sm">商贸智脑 - 外贸管理系统</p>
+            <h1 class="text-2xl font-bold text-center mb-1">TradeMind</h1>
+            <p class="text-center text-white text-sm mb-1">商贸智脑</p>
+            <p class="text-center text-slate-400 text-xs">杭州巨猿科技有限公司</p>
         </div>
         
         <div class="p-8">
             <form id="registerForm" class="space-y-4">
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">用户名</label>
+                    <label class="block text-sm font-bold text-slate-700">用户名 <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-user">
@@ -50,7 +51,7 @@
                 </div>
                 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">邮箱</label>
+                    <label class="block text-sm font-bold text-slate-700">邮箱 <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-envelope">
@@ -62,7 +63,48 @@
                 </div>
                 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">密码</label>
+                    <label class="block text-sm font-bold text-slate-700">手机号 <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-phone">
+                                <path fill="currentColor" d="M229.17 183.18a15.9 15.9 0 0 1-12.13 12.13c-35.73 10.58-82.45-11.8-154.48-83.83S8.33 31.8 18.91 5.08a15.9 15.9 0 0 1 12.12-12.13a176.14 176.14 0 0 1 63.16-1.08c19.32 1.91 53.62 14.3 74.26 34.95C223.84 82.24 240.69 142.2 229.17 183.18Zm-54.65-43.34a4 4 0 0 0-6.25.15l-14.17 19.14a4 4 0 0 1-6.13.14l-17.41-17.41a4 4 0 0 0-5.66 0l-18.34 18.34a144.42 144.42 0 0 1-49.59-36.12c-19.34-20.3-30.58-49.91-31.93-68.86a160.14 160.14 0 0 0-1 57.75c9.9 31.29 36.74 73.76 83.87 120.89s89.6 73.97 120.89 83.87a160.14 160.14 0 0 0 57.75-1c-18.95-1.35-48.56-12.59-68.86-31.93a144.42 144.42 0 0 1-36.12-49.59l18.34-18.34a4 4 0 0 0 0-5.66Z"></path>
+                            </svg>
+                        </div>
+                        <div class="flex">
+                            <input type="tel" id="regPhone" name="phone" class="flex-1 pl-10 pr-3 py-3 border border-slate-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请输入手机号">
+                            <button type="button" id="sendCodeBtn" class="ml-2 px-4 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-r-lg transition-all duration-200 whitespace-nowrap">
+                                发送验证码
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-700">公司名称 <span class="text-slate-400 text-xs font-normal">(选填)</span></label>
+                    <div class="relative">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-building">
+                                <path fill="currentColor" d="M208 24H48a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V40a16 16 0 0 0-16-16Zm-64 144h-32v-16h32Zm32 0h-16v-16h16Zm0-32h-48v-16h48Zm0-32h-48v-16h48Zm0-32h-48v-16h48Zm-16-16H80v-16h80Z"></path>
+                            </svg>
+                        </div>
+                        <input type="text" id="regCompany" name="company" class="w-full pl-10 pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请输入公司名称">
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-700">社会信用代码 <span class="text-slate-400 text-xs font-normal">(选填)</span></label>
+                    <div class="relative">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-id-card">
+                                <path fill="currentColor" d="M216 40H40a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16Zm-16 144H40V56h160v128Zm-32-80a32 32 0 1 1-32-32a32 32 0 0 1 32 32Zm-96 48h96a8 8 0 0 1 0 16h-96a8 8 0 0 1 0-16Zm0-32h96a8 8 0 0 1 0 16h-96a8 8 0 0 1 0-16Zm0-32h96a8 8 0 0 1 0 16h-96a8 8 0 0 1 0-16Z"></path>
+                            </svg>
+                        </div>
+                        <input type="text" id="regCreditCode" name="creditCode" class="w-full pl-10 pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请输入社会信用代码">
+                    </div>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-700">密码 <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-lock-keyhole">
@@ -74,14 +116,17 @@
                 </div>
                 
                 <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">确认密码</label>
+                    <label class="block text-sm font-bold text-slate-700">确认密码 <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-lock-keyhole">
                                 <path fill="currentColor" d="M208 80h-24V56a48 48 0 0 0-96 0v24H48a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16Zm-80 0v24a8 8 0 0 1-16 0V80a8 8 0 0 1 16 0Zm80 128H48V96h160v112Zm-48-64a32 32 0 1 1-32 32a32 32 0 0 1 32-32Z"></path>
                             </svg>
                         </div>
-                        <input type="password" id="regConfirmPassword" name="confirm_password" class="w-full pl-10 pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请再次输入密码">
+                        <div class="flex items-center">
+                            <input type="password" id="regConfirmPassword" name="confirm_password" class="flex-1 pl-10 pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请再次输入密码">
+                            <div id="passwordMatchIndicator" class="ml-3 text-lg"></div>
+                        </div>
                     </div>
                 </div>
                 
