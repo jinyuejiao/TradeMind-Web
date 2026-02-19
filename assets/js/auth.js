@@ -1,3 +1,135 @@
+// 配置常量
+const TOKEN_EXPIRE_TIME = 24 * 60 * 60 * 1000; // 24小时
+
+// 从环境变量读取配置的工具函数
+function getApiUrl(serviceName) {
+    switch(serviceName) {
+        case 'tenant':
+            return window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1' ? 'http://localhost:8082' : (import.meta?.env?.VITE_TENANT_API_BASE || 'http://localhost:8082');
+        case 'init':
+            return 'http://localhost:8084';
+        case 'ai':
+            return 'http://localhost:8083';
+        default:
+            return '';
+    }
+}
+
+// 获取登录页面路径
+function getLoginPath() {
+    return import.meta?.env?.VITE_LOGIN_PATH || 'login.html';
+}
+
+// 获取工作台页面路径
+function getDashboardPath() {
+    return import.meta?.env?.VITE_DASHBOARD_PATH || 'modules/dashboard/dashboard.html';
+}
+
+// 检查localStorage是否可用
+function checkLocalStorage() {
+    try {
+        const test = 'test';
+        localStorage.setItem(test, test);
+        localStorage.removeItem(test);
+        return true;
+    } catch (e) {
+        console.warn('localStorage不可用，请关闭"无痕模式"或"严苛的跟踪保护"');
+        return false;
+    }
+}
+
+// 全局logout函数
+function logout() {
+    console.log('执行全局logout操作');
+    // 清除localStorage中的认证信息
+    localStorage.removeItem('token');
+    localStorage.removeItem('login_timestamp');
+    localStorage.removeItem('user_info');
+    localStorage.removeItem('username');
+    localStorage.removeItem('currentUser');
+    console.log('已清空本地存储中的认证信息');
+    // 重定向到登录页面
+    window.location.href = getLoginPath();
+}
+
+// 检查认证状态
+function checkAuth() {
+    console.log('开始检查认证状态');
+    
+    const token = localStorage.getItem('token');
+    
+    // 如果token不存在，跳转到登录页面
+    if (!token) {
+        console.log('Token不存在，跳转到登录页面');
+        logout();
+        return false;
+    }
+    
+    // 检查token是否为mock-token且非开发模式
+    const isDevMode = import.meta?.env?.VITE_USER_NODE_ENV === 'development' || window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1';
+    if (token === 'mock-token' && !isDevMode) {
+        console.log('Mock token在非开发模式下无效，执行logout');
+        logout();
+        return false;
+    }
+    
+    // 检查token是否过期
+    const loginTimestamp = localStorage.getItem('login_timestamp');
+    if (loginTimestamp) {
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - parseInt(loginTimestamp);
+        
+        if (elapsedTime > TOKEN_EXPIRE_TIME) {
+            console.log('Token已过期，执行logout');
+            logout();
+            return false;
+        }
+    } else {
+        // 没有登录时间戳，视为无效
+        console.log('缺少登录时间戳，执行logout');
+        logout();
+        return false;
+    }
+    
+    console.log('认证状态检查通过');
+    return true;
+}
+
+// 包装fetch函数，自动添加Authorization头并处理401响应
+function wrappedFetch(url, options = {}) {
+    const token = localStorage.getItem('token');
+    
+    // 自动添加Authorization头
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // 发送请求
+    return fetch(url, {
+        ...options,
+        headers
+    }).then(response => {
+        // 处理401响应
+        if (response.status === 401) {
+            console.log('收到401响应，执行logout');
+            logout();
+            throw new Error('未授权');
+        }
+        return response;
+    });
+}
+
+// 将函数暴露到全局作用域，以便其他页面使用
+window.checkAuth = checkAuth;
+window.logout = logout;
+window.wrappedFetch = wrappedFetch;
+window.getApiUrl = getApiUrl;
+
 document.addEventListener('DOMContentLoaded', function() {
     const togglePassword = document.getElementById('togglePassword');
     const password = document.getElementById('password');
@@ -20,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
-        loginForm.addEventListener('submit', function(e) {
+        loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('username').value;
@@ -31,16 +163,72 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            const users = JSON.parse(localStorage.getItem('trademind_users') || '[]');
-            const user = users.find(u => u.username === username && u.password === password);
-            
-            if (user) {
-                localStorage.setItem('token', 'mock-token-' + Date.now());
-                localStorage.setItem('username', username);
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                window.location.href = 'index.html';
-            } else {
-                alert('用户名或密码错误');
+            try {
+                const tenantApiBase = getApiUrl('tenant');
+                const url = `${tenantApiBase}/api/v1/tenant/login`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userName: username,
+                        password: password
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('登录失败');
+                }
+                
+                const data = await response.json();
+                
+                console.log('登录接口响应:', data);
+                
+                // 处理不同格式的响应
+                if (data.code === 200 && data.data) {
+                    // 版本1响应格式：{code: 200, msg: "登录成功", data: {token: "...", user: {...}}}
+                    if (data.data.token) {
+                        // 检查localStorage是否可用
+                        if (checkLocalStorage()) {
+                            localStorage.setItem('token', data.data.token);
+                            localStorage.setItem('login_timestamp', Date.now().toString());
+                            localStorage.setItem('user_info', JSON.stringify(data.data.user || {}));
+                            localStorage.setItem('username', username);
+                            localStorage.setItem('currentUser', JSON.stringify(data.data.user || {}));
+                        }
+                        
+                        // 跳转到工作台界面
+                        window.location.href = getDashboardPath();
+                    } else {
+                        alert('登录失败：缺少token');
+                    }
+                } else if (data.success === true) {
+                    // 版本2响应格式：{success: true, message: "登录成功", user: {...}}
+                    // 这里需要注意，版本2的响应可能没有token，需要根据实际情况处理
+                    console.log('登录成功，但响应格式可能不包含token');
+                    
+                    // 检查localStorage是否可用
+                    if (checkLocalStorage()) {
+                        // 暂时使用一个mock token，实际应该由后端返回
+                        localStorage.setItem('token', 'mock-token');
+                        localStorage.setItem('login_timestamp', Date.now().toString());
+                        localStorage.setItem('user_info', JSON.stringify(data.user || {}));
+                        localStorage.setItem('username', username);
+                        localStorage.setItem('currentUser', JSON.stringify(data.user || {}));
+                    }
+                    
+                    // 跳转到工作台界面
+                    window.location.href = getDashboardPath();
+                } else {
+                    // 登录失败
+                    const errorMessage = data.msg || data.message || '未知错误';
+                    alert('登录失败：' + errorMessage);
+                }
+            } catch (error) {
+                console.error('登录请求失败:', error);
+                alert('登录失败：网络错误，请稍后重试');
             }
         });
     }
@@ -129,10 +317,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // 检查当前页面是否需要认证
     if (window.location.pathname.includes('login.html') || window.location.pathname.endsWith('/')) {
         const token = localStorage.getItem('token');
-        if (token && window.location.pathname.includes('login.html')) {
-            window.location.href = 'index.html';
+        if (token && (window.location.pathname.includes('login.html') || window.location.pathname.endsWith('/'))) {
+            // 检查认证状态
+            if (checkAuth()) {
+                window.location.href = getDashboardPath();
+            }
         }
+    } else if (!window.location.pathname.includes('login.html')) {
+        // 非登录页面，检查认证状态
+        checkAuth();
     }
 });
