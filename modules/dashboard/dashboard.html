@@ -124,7 +124,25 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = { theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#F0FDFA',
+                            100: '#CCFBF1',
+                            500: '#14B8A6',
+                            600: '#0D9488',
+                            900: '#134E4A'
+                        },
+                        risk: {
+                            high: '#F43F5E',
+                            medium: '#F59E0B',
+                            safe: '#10B981'
+                        }
+                    }
+                }
+            }
         }
     </script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -264,6 +282,115 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 订单提取结果模态框 -->
+                    <div id="orderResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+                                <h3 class="text-lg font-bold text-slate-800">订单提取结果</h3>
+                                <button id="closeOrderResultModal" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+                            </div>
+                            <div class="p-6">
+                                <!-- 标签页导航 -->
+                                <div class="border-b border-slate-200 mb-6">
+                                    <div class="flex space-x-8">
+                                        <button class="order-tab-btn active py-2 px-1 border-b-2 border-brand-500 text-brand-600 font-medium" data-tab="order">订单信息</button>
+                                        <button class="order-tab-btn py-2 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium" data-tab="customer">客户信息</button>
+                                        <button class="order-tab-btn py-2 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium" data-tab="product">产品信息</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 订单信息标签页 -->
+                                <div id="order-tab" class="order-tab-content">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">订单号</label>
+                                                <input type="text" id="order-id" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">订单日期</label>
+                                                <input type="date" id="order-date" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">交货日期</label>
+                                                <input type="date" id="order-delivery-date" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">订单状态</label>
+                                                <select id="order-status" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                                    <option value="待确认">待确认</option>
+                                                    <option value="已确认">已确认</option>
+                                                    <option value="已发货">已发货</option>
+                                                    <option value="已完成">已完成</option>
+                                                    <option value="已取消">已取消</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 客户信息标签页 -->
+                                <div id="customer-tab" class="order-tab-content hidden">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">客户姓名</label>
+                                                <input type="text" id="customer-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">电子邮箱</label>
+                                                <input type="email" id="customer-email" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">电话号码</label>
+                                                <input type="tel" id="customer-phone" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">国家/地区</label>
+                                                <input type="text" id="customer-country" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 产品信息标签页 -->
+                                <div id="product-tab" class="order-tab-content hidden">
+                                    <div class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">产品名称</label>
+                                                <input type="text" id="product-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">产品型号</label>
+                                                <input type="text" id="product-model" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">数量</label>
+                                                <input type="number" id="product-quantity" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" min="0">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">单价</label>
+                                                <input type="number" id="product-unit-price" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" min="0" step="0.01">
+                                            </div>
+                                            <div class="md:col-span-2">
+                                                <label class="block text-sm font-medium text-slate-700 mb-1">总价</label>
+                                                <input type="number" id="product-total-price" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" min="0" step="0.01">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 保存按钮 -->
+                                <div class="mt-8 flex justify-end space-x-4">
+                                    <button id="saveOrderBtn" class="bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存订单</button>
+                                    <button id="saveCustomerBtn" class="bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存客户</button>
+                                    <button id="saveProductBtn" class="bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存产品</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>
@@ -303,14 +430,10 @@
         // 调用后端用户信息接口进行认证校验
         async function validateAuth() {
             try {
-                console.log('开始调用后端认证校验接口');
-                
                 // 首先检查认证状态
                 if (!window.checkAuth) {
-                    console.log('checkAuth函数不可用，使用本地认证检查');
                     const token = localStorage.getItem('token');
                     if (!token) {
-                        console.log('Token不存在，跳转到登录页面');
                         localStorage.clear();
                         window.location.href = '../../login.html';
                         return false;
@@ -323,7 +446,6 @@
                 }
                 
                 // 暂时跳过后端认证校验，因为TenantService可能没有提供这个接口
-                console.log('跳过后端认证校验，直接继续执行');
                 return true;
             } catch (error) {
                 console.error('认证校验失败:', error);
@@ -340,17 +462,11 @@
         
         // 更新用户信息显示
         function updateUserInfo() {
-            console.log('开始更新用户信息显示');
-            
             try {
                 // 从localStorage获取用户信息
                 const userInfoStr = localStorage.getItem('user_info');
                 const username = localStorage.getItem('username');
                 const currentUserStr = localStorage.getItem('currentUser');
-                
-                console.log('从localStorage获取的用户信息:', userInfoStr);
-                console.log('从localStorage获取的用户名:', username);
-                console.log('从localStorage获取的currentUser:', currentUserStr);
                 
                 let userInfo = {};
                 if (userInfoStr) {
@@ -366,7 +482,6 @@
                 if (currentUserStr) {
                     try {
                         currentUser = JSON.parse(currentUserStr);
-                        console.log('解析后的currentUser:', currentUser);
                     } catch (parseError) {
                         console.error('解析currentUser失败:', parseError);
                     }
@@ -380,7 +495,6 @@
                     // 更新用户姓名首字母
                     // 尝试从多个来源获取用户名
                     const displayName = userInfo.userName || currentUser.userName || username || userInfo.realName || userInfo.name || currentUser.realName || currentUser.name || '用户';
-                    console.log('最终使用的显示名称:', displayName);
                     
                     const initial = displayName.charAt(0).toUpperCase();
                     userInitialElement.textContent = initial;
@@ -398,15 +512,10 @@
                     // 尝试从多个来源获取角色
                     const roleType = userInfo.roleType || userInfo.role || userInfo.role_name || currentUser.roleType || currentUser.role || currentUser.role_name || '用户';
                     const role = roleMap[roleType] || roleType;
-                    console.log('最终使用的角色名称:', role);
                     
                     userInfoElement.textContent = `${displayName} (${role})`;
-                    
-                    console.log('用户信息更新成功:', { displayName, role });
                 } else {
                     console.error('找不到用户信息显示元素');
-                    console.log('userInitialElement:', userInitialElement);
-                    console.log('userInfoElement:', userInfoElement);
                 }
             } catch (error) {
                 console.error('更新用户信息失败:', error);
@@ -416,21 +525,10 @@
         // 调用AIService进行订单提取
         async function callAIServiceForOrderExtract(mediaUrls) {
             try {
-                console.log('开始调用AIService，URL: http://127.0.0.1:8088/api/v1/ai/execute');
-                console.log('请求参数:', JSON.stringify({
-                    taskType: 'ORDER_EXTRACT',
-                    inputType: 'URL',
-                    payload: {
-                        mediaUrls: mediaUrls,
-                        content: null,
-                        context: {
-                            tenantName: '张三贸易',
-                            currency: 'CNY'
-                        }
-                    }
-                }, null, 2));
-                
-                const response = await fetch('http://127.0.0.1:8088/api/v1/ai/execute', {
+                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
+                const aiApiBase = getApiUrl('ai');
+                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                const response = await fetch(fullUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -449,19 +547,14 @@
                     })
                 });
 
-                console.log('AIService响应状态:', response.status);
-                console.log('AIService响应状态文本:', response.statusText);
-                
                 try {
                     const responseText = await response.text();
-                    console.log('AIService响应文本:', responseText);
                     
                     if (!response.ok) {
                         throw new Error('HTTP error ' + response.status + ': ' + response.statusText + ' - ' + responseText);
                     }
 
                     const data = JSON.parse(responseText);
-                    console.log('AIService响应:', data);
 
                     if (data.code === 200) {
                         return data.data;
@@ -478,12 +571,45 @@
             }
         }
 
+        // 获取API URL
+        function getApiUrl(service) {
+            // 根据服务类型返回不同的API URL
+            switch(service) {
+                case 'ai':
+                    return 'http://localhost:8083';
+                case 'init':
+                    return 'http://localhost:8084';
+                default:
+                    return 'http://localhost:8083';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
-            // 后端认证校验
-            await validateAuth();
-            
             // 更新用户信息显示
             updateUserInfo();
+            
+            // 修复文本输入框无法输入的问题
+            setTimeout(function() {
+                const textInput = document.getElementById('textInput');
+                if (textInput) {
+                    // 确保文本输入框是可编辑的
+                    textInput.disabled = false;
+                    textInput.readOnly = false;
+                    textInput.style.pointerEvents = 'auto';
+                    textInput.style.userSelect = 'text';
+                    
+                    // 添加焦点事件监听器
+                    textInput.addEventListener('focus', function() {
+                        console.log('文本输入框获得焦点');
+                    });
+                    
+                    console.log('文本输入框修复完成，当前状态:');
+                    console.log('disabled:', textInput.disabled);
+                    console.log('readOnly:', textInput.readOnly);
+                    console.log('pointerEvents:', getComputedStyle(textInput).pointerEvents);
+                    console.log('userSelect:', getComputedStyle(textInput).userSelect);
+                }
+            }, 100);
             
             // 退出登录按钮点击事件
             const logoutBtn = document.getElementById('logoutBtn');
@@ -503,15 +629,86 @@
                 });
             }
             
+            // 调用AIService处理文本
+            async function processTextWithAIService(text) {
+                const requestData = {
+                    funcType: 'ORDER_EXTRACT',
+                    pipeline: 'DIRECT',
+                    inputData: {
+                        type: 'text',
+                        url: '',
+                        text: text
+                    }
+                };
+                
+                console.log('准备调用AIService，请求数据:', requestData);
+                
+                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
+                const aiApiBase = getApiUrl('ai');
+                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                console.log('AIService API URL:', fullUrl);
+                
+                try {
+                    const response = await fetch(fullUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    console.log('AIService响应状态:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        throw new Error(`调用AIService失败: ${response.status} ${response.statusText} - ${errorText}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('AIService响应数据:', result);
+                    
+                    if (result.success && result.data) {
+                        return result.data;
+                    } else if (result.code === 200 && result.data) {
+                        return result.data;
+                    } else {
+                        throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
+                    }
+                } catch (error) {
+                    console.error('调用AIService时发生错误:', error);
+                    throw error;
+                }
+            }
+            
             // 开始解析按钮点击事件
             const analyzeBtn = document.getElementById('analyzeBtn');
             const textInput = document.getElementById('textInput');
             if (analyzeBtn) {
-                analyzeBtn.addEventListener('click', function() {
+                analyzeBtn.addEventListener('click', async function() {
                     if (textInput && textInput.value.trim()) {
-                        alert('正在解析，请稍候...');
+                        try {
+                            console.log('点击开始解析按钮，文本内容:', textInput.value.trim());
+                            // 移除alert，避免阻塞代码执行
+                            console.log('正在解析，请稍候...');
+                            
+                            console.log('准备调用processTextWithAIService函数');
+                            // 调用AIService处理文本
+                            const result = await processTextWithAIService(textInput.value.trim());
+                            
+                            console.log('AIService返回结果:', result);
+                            
+                            // 使用新的模态框显示结果
+                            setTimeout(function() {
+                                populateOrderResultModal(result);
+                            }, 500);
+                        } catch (error) {
+                            console.error('解析文本失败:', error);
+                            // 移除alert，使用console.log代替
+                            console.error('解析失败: ' + error.message);
+                        }
                     } else {
-                        alert('请输入或粘贴单据内容');
+                        // 移除alert，使用console.log代替
+                        console.log('请输入或粘贴单据内容');
                     }
                 });
             }
@@ -533,15 +730,29 @@
             let recordedChunks = [];
 
             // 打开摄像头模态框
-            cameraInputBtn.addEventListener('click', function() {
-                cameraModal.classList.remove('hidden');
-            });
+            if (cameraInputBtn) {
+                cameraInputBtn.addEventListener('click', function() {
+                    if (cameraModal) {
+                        cameraModal.classList.remove('hidden');
+                    } else {
+                        console.error('摄像头模态框元素未找到');
+                    }
+                });
+            } else {
+                console.error('摄像头输入按钮元素未找到');
+            }
 
             // 关闭摄像头模态框
-            closeCameraModal.addEventListener('click', function() {
-                stopCamera();
-                cameraModal.classList.add('hidden');
-            });
+            if (closeCameraModal) {
+                closeCameraModal.addEventListener('click', function() {
+                    stopCamera();
+                    if (cameraModal) {
+                        cameraModal.classList.add('hidden');
+                    }
+                });
+            } else {
+                console.error('关闭摄像头模态框按钮元素未找到');
+            }
 
             // 启动摄像头
             startCamera.addEventListener('click', function() {
@@ -586,45 +797,18 @@
                 // 转换为Blob对象用于上传
                 canvas.toBlob(async function(blob) {
                     if (blob) {
-                        console.log('拍照成功，准备上传到OSS');
-                        
                         const timestamp = new Date().getTime();
                         const imageName = `photo_${timestamp}.jpg`;
                         
-                        console.log('开始上传图片到OSS:', imageName);
                         const ossInternalUrl = await uploadImageToOss(blob, imageName);
-                        
-                        console.log('开始调用AIService处理图片:', ossInternalUrl);
                         const extractedResult = await processImageWithAIService(ossInternalUrl);
                         
                         const imageDataUrl = canvas.toDataURL('image/jpeg');
                         localStorage.setItem(imageName, imageDataUrl);
-                        console.log('图片已保存到本地存储:', imageName);
                         
                         setTimeout(function() {
-                            const orderInfo = extractedResult.order_info || extractedResult.order || {};
-                            const customerInfo = extractedResult.customer_info || extractedResult.customer || {};
-                            const productInfo = extractedResult.product_info || extractedResult.product || {};
-                            
-                            let resultMessage = '订单提取成功！\n\n';
-                            resultMessage += `客户信息：\n`;
-                            resultMessage += `  姓名：${customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知'}\n`;
-                            resultMessage += `  邮箱：${customerInfo.email || '未提供'}\n`;
-                            resultMessage += `  电话：${customerInfo.phone || '未提供'}\n`;
-                            resultMessage += `  国家/地区：${customerInfo.country || customerInfo.other_info || '未知'}\n\n`;
-                            resultMessage += `产品信息：\n`;
-                            resultMessage += `  名称：${productInfo.name || productInfo.product_name || orderInfo.product_name || '未知'}\n`;
-                            resultMessage += `  型号：${productInfo.model || productInfo.product_code || '未明确'}\n`;
-                            resultMessage += `  数量：${productInfo.quantity || orderInfo.quantity || 0}\n`;
-                            resultMessage += `  单价：${parseFloat(productInfo.unitPrice || productInfo.unit_price || orderInfo.unitPrice || orderInfo.unit_price) || 0}\n`;
-                            resultMessage += `  总价：${parseFloat(productInfo.totalPrice || productInfo.total_price || orderInfo.totalPrice || orderInfo.total_price) || 0}\n\n`;
-                            resultMessage += `订单信息：\n`;
-                            resultMessage += `  订单号：${orderInfo.orderId || orderInfo.order_id || '未知'}\n`;
-                            resultMessage += `  日期：${orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0]}\n`;
-                            resultMessage += `  交货日期：${orderInfo.deliveryDate || orderInfo.delivery_date || '未明确'}\n`;
-                            resultMessage += `  状态：${orderInfo.status || orderInfo.order_status || '待确认'}\n`;
-                            
-                            alert(resultMessage);
+                            // 使用新的模态框显示结果
+                            populateOrderResultModal(extractedResult);
                             stopCamera();
                             cameraModal.classList.add('hidden');
                         }, 500);
@@ -668,7 +852,6 @@
                             const timestamp = new Date().getTime();
                             const imageName = `selected_photo_${timestamp}.jpg`;
                             localStorage.setItem(imageName, e.target.result);
-                            console.log('选择的图片已保存到本地存储:', imageName);
                             
                             // 自动上传并处理图片
                             processSelectedImage(file, imageName);
@@ -683,36 +866,12 @@
 
             // 处理选择的图片文件
             async function processSelectedImage(file, imageName) {
-                console.log('开始上传选择的图片到OSS:', imageName);
                 const ossInternalUrl = await uploadImageToOss(file, imageName);
-                
-                console.log('开始调用AIService处理图片:', ossInternalUrl);
                 const extractedResult = await processImageWithAIService(ossInternalUrl);
                 
                 setTimeout(function() {
-                    const orderInfo = extractedResult.order_info || extractedResult.order || {};
-                    const customerInfo = extractedResult.customer_info || extractedResult.customer || {};
-                    const productInfo = extractedResult.product_info || extractedResult.product || {};
-                    
-                    let resultMessage = '订单提取成功！\n\n';
-                    resultMessage += `客户信息：\n`;
-                    resultMessage += `  姓名：${customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知'}\n`;
-                    resultMessage += `  邮箱：${customerInfo.email || '未提供'}\n`;
-                    resultMessage += `  电话：${customerInfo.phone || '未提供'}\n`;
-                    resultMessage += `  国家/地区：${customerInfo.country || customerInfo.other_info || '未知'}\n\n`;
-                    resultMessage += `产品信息：\n`;
-                    resultMessage += `  名称：${productInfo.name || productInfo.product_name || orderInfo.product_name || '未知'}\n`;
-                    resultMessage += `  型号：${productInfo.model || productInfo.product_code || '未明确'}\n`;
-                    resultMessage += `  数量：${productInfo.quantity || orderInfo.quantity || 0}\n`;
-                    resultMessage += `  单价：${parseFloat(productInfo.unitPrice || productInfo.unit_price || orderInfo.unitPrice || orderInfo.unit_price) || 0}\n`;
-                    resultMessage += `  总价：${parseFloat(productInfo.totalPrice || productInfo.total_price || orderInfo.totalPrice || orderInfo.total_price) || 0}\n\n`;
-                    resultMessage += `订单信息：\n`;
-                    resultMessage += `  订单号：${orderInfo.orderId || orderInfo.order_id || '未知'}\n`;
-                    resultMessage += `  日期：${orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0]}\n`;
-                    resultMessage += `  交货日期：${orderInfo.deliveryDate || orderInfo.delivery_date || '未明确'}\n`;
-                    resultMessage += `  状态：${orderInfo.status || orderInfo.order_status || '待确认'}\n`;
-                    
-                    alert(resultMessage);
+                    // 使用新的模态框显示结果
+                    populateOrderResultModal(extractedResult);
                     stopCamera();
                     cameraModal.classList.add('hidden');
                 }, 500);
@@ -742,7 +901,7 @@
             const voiceStatus = document.getElementById('voiceStatus');
             const voiceIcon = document.getElementById('voiceIcon');
             const voiceVisualizer = document.getElementById('voiceVisualizer');
-
+            
             let voiceStream = null;
             let voiceRecorder = null;
             let voiceChunks = [];
@@ -751,32 +910,58 @@
             let animationId = null;
 
             // 打开麦克风模态框
-            voiceInputBtn.addEventListener('click', function() {
-                voiceModal.classList.remove('hidden');
-            });
+            if (voiceInputBtn) {
+                voiceInputBtn.addEventListener('click', function() {
+                    if (voiceModal) {
+                        voiceModal.classList.remove('hidden');
+                        // 确保内部元素可见
+                        setTimeout(function() {
+                            if (document.getElementById('voiceIcon')) {
+                                document.getElementById('voiceIcon').style.display = 'block';
+                            }
+                            if (document.getElementById('voiceStatus')) {
+                                document.getElementById('voiceStatus').style.display = 'block';
+                            }
+                            if (document.getElementById('startVoice')) {
+                                document.getElementById('startVoice').style.display = 'block';
+                            }
+                            if (document.getElementById('stopVoice')) {
+                                document.getElementById('stopVoice').style.display = 'none';
+                            }
+                        }, 100);
+                    } else {
+                        console.error('语音输入模态框元素未找到');
+                    }
+                });
+            } else {
+                console.error('语音输入按钮元素未找到');
+            }
 
             // 关闭麦克风模态框
-            closeVoiceModal.addEventListener('click', function() {
-                stopVoiceRecording();
-                voiceModal.classList.add('hidden');
-            });
+            if (closeVoiceModal) {
+                closeVoiceModal.addEventListener('click', function() {
+                    stopVoiceRecording();
+                    if (voiceModal) {
+                        voiceModal.classList.add('hidden');
+                    }
+                });
+            } else {
+                console.error('关闭语音输入模态框按钮元素未找到');
+            }
 
             // 获取OSS STS凭证
             async function getStsToken() {
                 const response = await fetch('http://localhost:8084/api/v1/init/api/oss/sts');
-                console.log('STS接口响应状态:', response.status);
                 if (!response.ok) {
                     throw new Error('获取STS凭证失败，状态码: ' + response.status);
                 }
                 const data = await response.json();
-                console.log('STS接口响应数据:', data);
                 return data;
             }
 
             // 上传音频到OSS
             async function uploadAudioToOss(audioBlob, fileName) {
                 const stsData = await getStsToken();
-                console.log('获取到的STS凭证:', stsData);
                 
                 const accessKeyId = stsData.accessKeyId;
                 const accessKeySecret = stsData.accessKeySecret;
@@ -796,14 +981,6 @@
                 let objectKey = `trade-mind/${dateStr}/${fileTypeDir}/${timestamp}_${fileName}`;
                 objectKey = objectKey.startsWith('/') ? objectKey.substring(1) : objectKey;
                 
-                console.log('初始化参数核对:', {
-                    region: ossRegion,
-                    bucket: bucket,
-                    hasToken: !!securityToken,
-                    endpoint: endpoint,
-                    objectKey: objectKey
-                });
-                
                 const client = new OSS({
                     region: ossRegion,
                     accessKeyId: accessKeyId,
@@ -813,22 +990,15 @@
                     secure: true
                 });
                 
-                console.log('开始上传文件到OSS:', objectKey);
                 await client.put(objectKey, audioBlob);
-                console.log('文件上传成功:', objectKey);
                 
-                const internalUrl = `http://${bucket}.${ossRegion}.internal.aliyuncs.com/${objectKey}`;
                 const externalUrl = `https://${bucket}.${ossRegion}.aliyuncs.com/${objectKey}`;
-                console.log('音频上传到OSS成功，内网URL:', internalUrl);
-                console.log('音频上传到OSS成功，外网URL:', externalUrl);
-                
                 return externalUrl;
             }
 
             // 上传图片到OSS
             async function uploadImageToOss(imageFile, fileName) {
                 const stsData = await getStsToken();
-                console.log('获取到的STS凭证:', stsData);
                 
                 const accessKeyId = stsData.accessKeyId;
                 const accessKeySecret = stsData.accessKeySecret;
@@ -848,14 +1018,6 @@
                 let objectKey = `trade-mind/${dateStr}/${fileTypeDir}/${timestamp}_${fileName}`;
                 objectKey = objectKey.startsWith('/') ? objectKey.substring(1) : objectKey;
                 
-                console.log('初始化参数核对:', {
-                    region: ossRegion,
-                    bucket: bucket,
-                    hasToken: !!securityToken,
-                    endpoint: endpoint,
-                    objectKey: objectKey
-                });
-                
                 const client = new OSS({
                     region: ossRegion,
                     accessKeyId: accessKeyId,
@@ -865,22 +1027,14 @@
                     secure: true
                 });
                 
-                console.log('开始上传文件到OSS:', objectKey);
                 await client.put(objectKey, imageFile);
-                console.log('文件上传成功:', objectKey);
                 
-                const internalUrl = `http://${bucket}.${ossRegion}.internal.aliyuncs.com/${objectKey}`;
                 const externalUrl = `https://${bucket}.${ossRegion}.aliyuncs.com/${objectKey}`;
-                console.log('图片上传到OSS成功，内网URL:', internalUrl);
-                console.log('图片上传到OSS成功，外网URL:', externalUrl);
-                
                 return externalUrl;
             }
 
             // 调用AIService处理图片
             async function processImageWithAIService(imageUrl) {
-                console.log('正在处理图片...');
-                
                 const requestData = {
                     funcType: 'ORDER_EXTRACT',
                     pipeline: 'DIRECT',
@@ -891,7 +1045,10 @@
                     }
                 };
                 
-                const response = await fetch('http://localhost:8083/ai/execute', {
+                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
+                const aiApiBase = getApiUrl('ai');
+                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                const response = await fetch(fullUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -904,7 +1061,6 @@
                 }
                 
                 const result = await response.json();
-                console.log('AIService处理结果:', result);
                 
                 if (result.success && result.data) {
                     return result.data;
@@ -927,7 +1083,12 @@
                     }
                 };
                 
-                const response = await fetch('http://localhost:8083/ai/execute', {
+                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
+                const aiApiBase = getApiUrl('ai');
+                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                console.log("发送请求至:", fullUrl);
+                console.log("请求参数:", requestData);
+                const response = await fetch(fullUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -936,27 +1097,32 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error('调用AIService失败');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error('调用AIService失败: ' + (errorData.message || errorData.msg || '未知错误'));
                 }
                 
                 const result = await response.json();
-                console.log('AIService处理结果:', result);
+                console.log('AIService响应:', result);
                 
                 if (result.success && result.data) {
                     return result.data;
+                } else if (result.code === 200 && result.data) {
+                    return result.data;
                 } else {
-                    throw new Error('AIService处理失败: ' + (result.message || '未知错误'));
+                    throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
                 }
             }
 
             // 开始录音
-            startVoice.addEventListener('click', function() {
+            startVoice.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     navigator.mediaDevices.getUserMedia({ audio: true })
                         .then(function(s) {
                             voiceStream = s;
-                            startVoice.classList.add('hidden');
-                            stopVoice.classList.remove('hidden');
+                            startVoice.style.display = 'none';
+                            stopVoice.style.display = 'block';
                             voiceStatus.textContent = '正在录音...';
                             voiceIcon.classList.remove('ph-microphone');
                             voiceIcon.classList.add('ph-microphone-slash');
@@ -983,8 +1149,6 @@
                             
                             voiceRecorder.onstop = async function() {
                                 const audioBlob = new Blob(voiceChunks, { type: 'audio/wav' });
-                                const audioUrl = URL.createObjectURL(audioBlob);
-                                console.log('录音成功，音频URL:', audioUrl);
                                 
                                 try {
                                     voiceStatus.textContent = '正在上传音频...';
@@ -1004,37 +1168,13 @@
                                     reader.onloadend = function() {
                                         const base64data = reader.result;
                                         localStorage.setItem(audioName, base64data);
-                                        console.log('音频已保存到本地存储:', audioName);
                                     };
                                     reader.readAsDataURL(audioBlob);
                                     
                                     // 显示提取结果
                                     setTimeout(function() {
-                                        // 确保结果包含所有必要的字段
-                                        const orderInfo = extractedResult.order_info || extractedResult.order || {};
-                                        const customerInfo = extractedResult.customer_info || extractedResult.customer || {};
-                                        const productInfo = extractedResult.product_info || extractedResult.product || {};
-                                        
-                                        // 构建结果消息
-                                        let resultMessage = '订单提取成功！\n\n';
-                                        resultMessage += `客户信息：\n`;
-                                        resultMessage += `  姓名：${customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知'}\n`;
-                                        resultMessage += `  邮箱：${customerInfo.email || '未提供'}\n`;
-                                        resultMessage += `  电话：${customerInfo.phone || '未提供'}\n`;
-                                        resultMessage += `  国家/地区：${customerInfo.country || customerInfo.other_info || '未知'}\n\n`;
-                                        resultMessage += `产品信息：\n`;
-                                        resultMessage += `  名称：${productInfo.name || productInfo.product_name || orderInfo.product_name || '未知'}\n`;
-                                        resultMessage += `  型号：${productInfo.model || productInfo.product_code || '未明确'}\n`;
-                                        resultMessage += `  数量：${productInfo.quantity || orderInfo.quantity || 0}\n`;
-                                        resultMessage += `  单价：${parseFloat(productInfo.unitPrice || productInfo.unit_price || orderInfo.unitPrice || orderInfo.unit_price) || 0}\n`;
-                                        resultMessage += `  总价：${parseFloat(productInfo.totalPrice || productInfo.total_price || orderInfo.totalPrice || orderInfo.total_price) || 0}\n\n`;
-                                        resultMessage += `订单信息：\n`;
-                                        resultMessage += `  订单号：${orderInfo.orderId || orderInfo.order_id || '未知'}\n`;
-                                        resultMessage += `  日期：${orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0]}\n`;
-                                        resultMessage += `  交货日期：${orderInfo.deliveryDate || orderInfo.delivery_date || '未明确'}\n`;
-                                        resultMessage += `  状态：${orderInfo.status || orderInfo.order_status || '待确认'}\n`;
-                                        
-                                        alert(resultMessage);
+                                        // 使用新的模态框显示结果
+                                        populateOrderResultModal(extractedResult);
                                         
                                         // 清空语音模态框
                                         stopVoiceRecording();
@@ -1064,7 +1204,9 @@
             });
 
             // 停止录音
-            stopVoice.addEventListener('click', function() {
+            stopVoice.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
                 stopVoiceRecording();
             });
 
@@ -1083,8 +1225,8 @@
                     cancelAnimationFrame(animationId);
                     animationId = null;
                 }
-                startVoice.classList.remove('hidden');
-                stopVoice.classList.add('hidden');
+                startVoice.style.display = 'block';
+                stopVoice.style.display = 'none';
                 voiceStatus.textContent = '点击开始按钮进行语音输入';
                 voiceIcon.classList.remove('ph-microphone-slash');
                 voiceIcon.classList.add('ph-microphone');
@@ -1118,6 +1260,183 @@
                 
                 draw();
             }
+            
+            // 订单结果模态框逻辑
+            function initOrderResultModal() {
+                // 标签页切换
+                const tabBtns = document.querySelectorAll('.order-tab-btn');
+                const tabContents = document.querySelectorAll('.order-tab-content');
+                
+                tabBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const tabName = this.dataset.tab;
+                        
+                        // 更新标签按钮状态
+                        tabBtns.forEach(b => {
+                            b.classList.remove('active', 'border-brand-500', 'text-brand-600');
+                            b.classList.add('border-transparent', 'text-slate-500');
+                        });
+                        this.classList.add('active', 'border-brand-500', 'text-brand-600');
+                        this.classList.remove('border-transparent', 'text-slate-500');
+                        
+                        // 更新标签内容显示
+                        tabContents.forEach(content => {
+                            content.classList.add('hidden');
+                        });
+                        document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+                    });
+                });
+                
+                // 关闭模态框
+                const closeBtn = document.getElementById('closeOrderResultModal');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        document.getElementById('orderResultModal').classList.add('hidden');
+                    });
+                }
+                
+                // 保存按钮事件
+                const saveOrderBtn = document.getElementById('saveOrderBtn');
+                const saveCustomerBtn = document.getElementById('saveCustomerBtn');
+                const saveProductBtn = document.getElementById('saveProductBtn');
+                
+                if (saveOrderBtn) {
+                    saveOrderBtn.addEventListener('click', function() {
+                        const orderId = document.getElementById('order-id').value;
+                        const orderDate = document.getElementById('order-date').value;
+                        const deliveryDate = document.getElementById('order-delivery-date').value;
+                        const status = document.getElementById('order-status').value;
+                        
+                        console.log('保存订单信息:', { orderId, orderDate, deliveryDate, status });
+                        alert('订单信息保存成功！');
+                    });
+                }
+                
+                if (saveCustomerBtn) {
+                    saveCustomerBtn.addEventListener('click', function() {
+                        const name = document.getElementById('customer-name').value;
+                        const email = document.getElementById('customer-email').value;
+                        const phone = document.getElementById('customer-phone').value;
+                        const country = document.getElementById('customer-country').value;
+                        
+                        console.log('保存客户信息:', { name, email, phone, country });
+                        alert('客户信息保存成功！');
+                    });
+                }
+                
+                if (saveProductBtn) {
+                    saveProductBtn.addEventListener('click', function() {
+                        const name = document.getElementById('product-name').value;
+                        const model = document.getElementById('product-model').value;
+                        const quantity = parseInt(document.getElementById('product-quantity').value) || 0;
+                        const unitPrice = parseFloat(document.getElementById('product-unit-price').value) || 0;
+                        const totalPrice = parseFloat(document.getElementById('product-total-price').value) || 0;
+                        
+                        console.log('保存产品信息:', { name, model, quantity, unitPrice, totalPrice });
+                        alert('产品信息保存成功！');
+                    });
+                }
+            }
+            
+            // 填充订单结果到模态框
+            function populateOrderResultModal(result) {
+                console.log('填充订单结果:', result);
+                
+                // 解析订单信息
+                let orderInfo = {};
+                let customerInfo = {};
+                let productInfo = {};
+                
+                try {
+                    // 尝试直接解析对象
+                    orderInfo = result.orderInfo ? JSON.parse(result.orderInfo) : {};
+                    customerInfo = result.customerInfo ? JSON.parse(result.customerInfo) : {};
+                    productInfo = result.productInfo ? JSON.parse(result.productInfo) : {};
+                } catch (e) {
+                    console.error('解析结果失败:', e);
+                    // 尝试从其他字段获取
+                    orderInfo = result.order_info || result.order || {};
+                    customerInfo = result.customer_info || result.customer || {};
+                    productInfo = result.product_info || result.product || {};
+                }
+                
+                // 填充订单信息
+                document.getElementById('order-id').value = orderInfo.order_id || orderInfo.orderId || '未知';
+                document.getElementById('order-date').value = orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0];
+                document.getElementById('order-delivery-date').value = orderInfo.delivery_date || orderInfo.deliveryDate || '';
+                document.getElementById('order-status').value = orderInfo.status || orderInfo.order_status || '待确认';
+                
+                // 填充客户信息
+                document.getElementById('customer-name').value = customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知';
+                document.getElementById('customer-email').value = customerInfo.email || '未提供';
+                document.getElementById('customer-phone').value = customerInfo.phone || '未提供';
+                document.getElementById('customer-country').value = customerInfo.country || customerInfo.other_info || '未知';
+                
+                // 填充产品信息
+                document.getElementById('product-name').value = productInfo.name || productInfo.product_name || orderInfo.product_name || '未知';
+                document.getElementById('product-model').value = productInfo.model || productInfo.product_code || '未明确';
+                document.getElementById('product-quantity').value = productInfo.quantity || orderInfo.quantity || 0;
+                document.getElementById('product-unit-price').value = productInfo.unit_price || productInfo.unitPrice || orderInfo.unit_price || orderInfo.unitPrice || 0;
+                document.getElementById('product-total-price').value = productInfo.total_price || productInfo.totalPrice || orderInfo.total_price || orderInfo.totalPrice || 0;
+                
+                // 显示模态框
+                document.getElementById('orderResultModal').classList.remove('hidden');
+            }
+            
+            // 初始化订单结果模态框
+            initOrderResultModal();
+            
+            // 修改processTextWithAIService函数，使用新的模态框显示结果
+            const originalProcessTextWithAIService = processTextWithAIService;
+            window.processTextWithAIService = async function(text) {
+                try {
+                    const result = await originalProcessTextWithAIService(text);
+                    console.log('AIService返回结果:', result);
+                    
+                    // 使用新的模态框显示结果
+                    populateOrderResultModal(result);
+                    
+                    return result;
+                } catch (error) {
+                    console.error('调用AIService时发生错误:', error);
+                    throw error;
+                }
+            };
+            
+            // 修改processImageWithAIService函数，使用新的模态框显示结果
+            const originalProcessImageWithAIService = processImageWithAIService;
+            window.processImageWithAIService = async function(imageUrl) {
+                try {
+                    const result = await originalProcessImageWithAIService(imageUrl);
+                    console.log('AIService返回结果:', result);
+                    
+                    // 使用新的模态框显示结果
+                    populateOrderResultModal(result);
+                    
+                    return result;
+                } catch (error) {
+                    console.error('调用AIService时发生错误:', error);
+                    throw error;
+                }
+            };
+            
+            // 修改processAudioWithAIService函数，使用新的模态框显示结果
+            const originalProcessAudioWithAIService = processAudioWithAIService;
+            window.processAudioWithAIService = async function(audioUrl) {
+                try {
+                    voiceStatus.textContent = '正在处理音频...';
+                    const result = await originalProcessAudioWithAIService(audioUrl);
+                    console.log('AIService返回结果:', result);
+                    
+                    // 使用新的模态框显示结果
+                    populateOrderResultModal(result);
+                    
+                    return result;
+                } catch (error) {
+                    console.error('调用AIService时发生错误:', error);
+                    throw error;
+                }
+            };
         });
     </script>
 </body>
