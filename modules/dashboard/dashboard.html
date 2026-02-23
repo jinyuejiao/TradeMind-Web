@@ -523,7 +523,7 @@
         }
 
         // 调用AIService进行订单提取
-        async function callAIServiceForOrderExtract(mediaUrls) {
+        async function callAIServiceForOrderExtract(imageUrls) {
             try {
                 // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
                 const aiApiBase = getApiUrl('ai');
@@ -537,7 +537,7 @@
                         taskType: 'ORDER_EXTRACT',
                         inputType: 'URL',
                         payload: {
-                            mediaUrls: mediaUrls,
+                            imageUrls: imageUrls,
                             content: null,
                             context: {
                                 tenantName: '张三贸易',
@@ -632,12 +632,12 @@
             // 调用AIService处理文本
             async function processTextWithAIService(text) {
                 const requestData = {
-                    funcType: 'ORDER_EXTRACT',
-                    pipeline: 'DIRECT',
-                    inputData: {
-                        type: 'text',
-                        url: '',
-                        text: text
+                    taskType: 'ORDER_EXTRACT',
+                    inputType: 'DATA',
+                    payload: {
+                        text: text,
+                        mediaUrls: null,
+                        context: null
                     }
                 };
                 
@@ -801,10 +801,8 @@
                         const imageName = `photo_${timestamp}.jpg`;
                         
                         const ossInternalUrl = await uploadImageToOss(blob, imageName);
+                        console.log('上传图片到OSS成功，URL:', ossInternalUrl);
                         const extractedResult = await processImageWithAIService(ossInternalUrl);
-                        
-                        const imageDataUrl = canvas.toDataURL('image/jpeg');
-                        localStorage.setItem(imageName, imageDataUrl);
                         
                         setTimeout(function() {
                             // 使用新的模态框显示结果
@@ -830,52 +828,29 @@
             imageInput.addEventListener('change', async function(e) {
                 if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
-                    const reader = new FileReader();
                     
-                    reader.onload = function(e) {
-                        const canvas = cameraCanvas;
-                        const img = new Image();
-                        
-                        img.onload = function() {
-                            const context = canvas.getContext('2d');
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            context.drawImage(img, 0, 0, canvas.width, canvas.height);
-                            
-                            cameraPreview.classList.add('hidden');
-                            canvas.classList.remove('hidden');
-                            cameraPlaceholder.classList.add('hidden');
-                            startCamera.classList.add('hidden');
-                            takePhoto.classList.remove('hidden');
-                            
-                            // 保存选择的图片到本地存储
-                            const timestamp = new Date().getTime();
-                            const imageName = `selected_photo_${timestamp}.jpg`;
-                            localStorage.setItem(imageName, e.target.result);
-                            
-                            // 自动上传并处理图片
-                            processSelectedImage(file, imageName);
-                        };
-                        
-                        img.src = e.target.result;
-                    };
+                    // 直接上传并处理图片，跳过本地预览和localStorage存储
+                    const timestamp = new Date().getTime();
+                    const imageName = `selected_photo_${timestamp}.jpg`;
                     
-                    reader.readAsDataURL(file);
+                    try {
+                        const ossInternalUrl = await uploadImageToOss(file, imageName);
+                        const extractedResult = await processImageWithAIService(ossInternalUrl);
+                        
+                        setTimeout(function() {
+                            // 使用新的模态框显示结果
+                            populateOrderResultModal(extractedResult);
+                            stopCamera();
+                            cameraModal.classList.add('hidden');
+                        }, 500);
+                    } catch (error) {
+                        console.error('处理图片失败:', error);
+                        alert('处理图片失败: ' + error.message);
+                        stopCamera();
+                        cameraModal.classList.add('hidden');
+                    }
                 }
             });
-
-            // 处理选择的图片文件
-            async function processSelectedImage(file, imageName) {
-                const ossInternalUrl = await uploadImageToOss(file, imageName);
-                const extractedResult = await processImageWithAIService(ossInternalUrl);
-                
-                setTimeout(function() {
-                    // 使用新的模态框显示结果
-                    populateOrderResultModal(extractedResult);
-                    stopCamera();
-                    cameraModal.classList.add('hidden');
-                }, 500);
-            }
 
             // 停止摄像头
             function stopCamera() {
@@ -1036,18 +1011,22 @@
             // 调用AIService处理图片
             async function processImageWithAIService(imageUrl) {
                 const requestData = {
-                    funcType: 'ORDER_EXTRACT',
-                    pipeline: 'DIRECT',
-                    inputData: {
-                        type: 'image',
-                        url: imageUrl,
-                        text: ''
+                    taskType: 'ORDER_EXTRACT',
+                    inputType: 'URL',
+                    payload: {
+                        text: null,
+                        imageUrls: [imageUrl],
+                        context: null
                     }
                 };
+                
+                console.log('准备调用AIService，请求数据:', requestData);
                 
                 // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
                 const aiApiBase = getApiUrl('ai');
                 const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                console.log('AIService API URL:', fullUrl);
+                
                 const response = await fetch(fullUrl, {
                     method: 'POST',
                     headers: {
@@ -1057,15 +1036,19 @@
                 });
                 
                 if (!response.ok) {
-                    throw new Error('调用AIService失败');
+                    const errorText = await response.text().catch(() => '');
+                    throw new Error(`调用AIService失败: ${response.status} ${response.statusText} - ${errorText}`);
                 }
                 
                 const result = await response.json();
+                console.log('AIService响应数据:', result);
                 
                 if (result.success && result.data) {
                     return result.data;
+                } else if (result.code === 200 && result.data) {
+                    return result.data;
                 } else {
-                    throw new Error('AIService处理失败: ' + (result.message || '未知错误'));
+                    throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
                 }
             }
 
@@ -1074,14 +1057,16 @@
                 voiceStatus.textContent = '正在处理音频...';
                 
                 const requestData = {
-                    funcType: 'ORDER_EXTRACT',
-                    pipeline: 'AUDIO_CHAIN',
-                    inputData: {
-                        type: 'audio',
-                        url: audioUrl,
-                        text: ''
+                    taskType: 'ORDER_EXTRACT',
+                    inputType: 'URL',
+                    payload: {
+                        text: null,
+                        mediaUrls: [audioUrl],
+                        context: null
                     }
                 };
+                
+                console.log('准备调用AIService，请求数据:', requestData);
                 
                 // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
                 const aiApiBase = getApiUrl('ai');
