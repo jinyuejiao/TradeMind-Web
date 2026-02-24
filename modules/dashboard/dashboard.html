@@ -459,6 +459,21 @@
                 return false;
             }
         }
+
+        // 获取带认证头的请求配置
+        function getAuthHeaders() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.error('本地存储中没有token');
+                // 如果没有token，跳转到登录页面
+                localStorage.clear();
+                window.location.href = '../../login.html';
+            }
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        }
         
         // 更新用户信息显示
         function updateUserInfo() {
@@ -525,14 +540,11 @@
         // 调用AIService进行订单提取
         async function callAIServiceForOrderExtract(imageUrls) {
             try {
-                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
-                const aiApiBase = getApiUrl('ai');
-                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                // 通过 API Gateway 调用 AIService
+                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
                 const response = await fetch(fullUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         taskType: 'ORDER_EXTRACT',
                         inputType: 'URL',
@@ -573,18 +585,28 @@
 
         // 获取API URL
         function getApiUrl(service) {
-            // 根据服务类型返回不同的API URL
-            switch(service) {
-                case 'ai':
-                    return 'http://localhost:8083';
-                case 'init':
-                    return 'http://localhost:8084';
-                default:
-                    return 'http://localhost:8083';
-            }
+            // 所有服务都通过 API Gateway 访问
+            return 'http://localhost:8080';
         }
 
         document.addEventListener('DOMContentLoaded', async function() {
+            // 检查认证状态
+            if (window.checkAuth) {
+                console.log('调用全局checkAuth函数检查认证状态');
+                if (!window.checkAuth()) {
+                    return;
+                }
+            } else {
+                console.log('全局checkAuth函数不存在，检查本地存储中的token');
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.log('Token不存在，跳转到登录页面');
+                    localStorage.clear();
+                    window.location.href = '../../login.html';
+                    return;
+                }
+            }
+            
             // 更新用户信息显示
             updateUserInfo();
             
@@ -643,17 +665,14 @@
                 
                 console.log('准备调用AIService，请求数据:', requestData);
                 
-                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
-                const aiApiBase = getApiUrl('ai');
-                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                // 通过 API Gateway 调用 AIService
+                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
                 console.log('AIService API URL:', fullUrl);
                 
                 try {
                     const response = await fetch(fullUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: getAuthHeaders(),
                         body: JSON.stringify(requestData)
                     });
                     
@@ -1022,33 +1041,41 @@
                 
                 console.log('准备调用AIService，请求数据:', requestData);
                 
-                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
-                const aiApiBase = getApiUrl('ai');
-                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                // 通过 API Gateway 调用 AIService
+                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
                 console.log('AIService API URL:', fullUrl);
                 
-                const response = await fetch(fullUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestData)
-                });
+                // 使用getAuthHeaders函数获取请求头，确保token正确
+                const headers = getAuthHeaders();
                 
-                if (!response.ok) {
-                    const errorText = await response.text().catch(() => '');
-                    throw new Error(`调用AIService失败: ${response.status} ${response.statusText} - ${errorText}`);
-                }
-                
-                const result = await response.json();
-                console.log('AIService响应数据:', result);
-                
-                if (result.success && result.data) {
-                    return result.data;
-                } else if (result.code === 200 && result.data) {
-                    return result.data;
-                } else {
-                    throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
+                try {
+                    const response = await fetch(fullUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    console.log('AIService响应状态:', response.status, response.statusText);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        console.error('AIService响应错误:', errorText);
+                        throw new Error(`调用AIService失败: ${response.status} ${response.statusText} - ${errorText}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('AIService响应数据:', result);
+                    
+                    if (result.success && result.data) {
+                        return result.data;
+                    } else if (result.code === 200 && result.data) {
+                        return result.data;
+                    } else {
+                        throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
+                    }
+                } catch (error) {
+                    console.error('调用AIService时发生错误:', error);
+                    throw error;
                 }
             }
 
@@ -1068,16 +1095,13 @@
                 
                 console.log('准备调用AIService，请求数据:', requestData);
                 
-                // 使用全局 getApiUrl 函数，传递 'ai' 作为参数
-                const aiApiBase = getApiUrl('ai');
-                const fullUrl = `${aiApiBase}/api/v1/ai/execute`;
+                // 通过 API Gateway 调用 AIService
+                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
                 console.log("发送请求至:", fullUrl);
                 console.log("请求参数:", requestData);
                 const response = await fetch(fullUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(requestData)
                 });
                 

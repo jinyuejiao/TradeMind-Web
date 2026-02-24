@@ -414,16 +414,8 @@ function showModal(message, isError = false) {
 
 // 从环境变量读取配置的工具函数
 function getApiUrl(serviceName) {
-    switch(serviceName) {
-        case 'tenant':
-            return window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1' ? 'http://localhost:8082' : ('http://localhost:8082');
-        case 'init':
-            return 'http://localhost:8084';
-        case 'ai':
-            return 'http://localhost:8083';
-        default:
-            return '';
-    }
+    // 所有服务都通过网关访问
+    return 'http://localhost:8080';
 }
 
 // 获取登录页面路径
@@ -579,8 +571,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 对密码进行MD5加密
                 const encryptedPassword = await md5Hash(password);
                 
-                const tenantApiBase = getApiUrl('tenant');
-                const url = `${tenantApiBase}/api/v1/tenant/login`;
+                const gatewayUrl = getApiUrl('gateway');
+                const url = `${gatewayUrl}/api/v1/tenant/login`;
                 
                 // 发送MD5加密后的密码
                 const loginData = {
@@ -780,8 +772,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 对密码进行MD5加密
                 const encryptedPassword = await md5Hash(password);
                 
-                const tenantApiBase = getApiUrl('tenant');
-                const url = `${tenantApiBase}/api/v1/tenant/register`;
+                const gatewayUrl = getApiUrl('gateway');
+                const url = `${gatewayUrl}/api/v1/tenant/register`;
                 
                 // 构建注册数据
                 const registerData = {
