@@ -120,6 +120,51 @@
                 border-radius: 1.5rem 1.5rem 0 0 !important;
             }
         }
+
+        /* 输入框与表单控件 */
+        .form-input {
+            width: 100%;
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+            .form-input:focus {
+                border-color: var(--brand-primary);
+                background-color: #fff;
+                box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+            }
+
+        /* 高级配置抽屉 */
+        .advanced-drawer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0, 1, 0, 1);
+        }
+
+            .advanced-drawer.open {
+                max-height: 1000px;
+                transition: max-height 0.4s ease-in;
+            }
+
+        /* 子 Tab 按钮 */
+        .sub-tab-btn {
+            padding: 12px 24px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #94A3B8;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+            .sub-tab-btn.active {
+                color: var(--brand-primary);
+                border-bottom-color: var(--brand-primary);
+            }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -147,7 +192,7 @@
     </script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
-    <script type="module" src="../../assets/js/auth.js"></script>
+    <script src="../../assets/js/auth.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
@@ -169,7 +214,7 @@
             <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
-            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="switchTab('rd')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
@@ -392,20 +437,384 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- 待确认单据和进行中业务单据 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 待核对单据 (Pending) -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[450px]">
+                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-orange-500"></i> 待确认单据 (AI 草稿)</h3>
+                            <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+                            <div onclick="openAuditModal('Ahmed Al-Fayed')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">Ahmed Al-Fayed</p></div>
+                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">10:42 AM</span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 italic truncate">“已提取订单：金色镂空灯等 2 项商品...”</div>
+                            </div>
+                            <div onclick="openAuditModal('John Smith')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">John Smith</p></div>
+                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">09:15 AM</span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 italic truncate">“已提取订单：便携无叶挂脖扇 1 项商品...”</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 进行中业务单据 (扩展部分) -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[480px]">
+                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-truck text-blue-500 font-bold"></i> 进行中业务单据</h3>
+                            <div class="flex items-center gap-2">
+                                <!-- 核心新增：添加订单按钮 -->
+                                <button onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95">
+                                    <i class="ph ph-plus-circle text-lg"></i> 添加订单
+                                </button>
+                                <!-- 状态筛选下拉框 -->
+                                <select class="text-[10px] bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none font-bold text-slate-600">
+                                    <option>全部状态</option>
+                                    <option>待支付</option>
+                                    <option>已发货</option>
+                                    <option>已完成</option>
+                                    <option>已退货</option>
+                                    <option>已退款</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar" id="inprogress-list">
+                            <!-- 进行中单据项 1 -->
+                            <div onclick="openOrderDetail('INV-2026-0082')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">INV-2026-0082</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-tighter">John Smith</span>
+                                        <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
+                                        <span class="text-[9px] text-brand-600 font-bold">待仓库捡货</span>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">85%</div>
+                            </div>
+
+                            <!-- 进行中单据项 2 -->
+                            <div onclick="openOrderDetail('INV-2026-0079')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">INV-2026-0079</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-tighter">Satoshi Nakamoto</span>
+                                        <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
+                                        <span class="text-[9px] text-orange-500 font-bold">待支付尾款</span>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 font-black text-[10px]">60%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
+    <!-- AI 单据核对中心 (订单/产品/客户) -->
+    <div id="audit-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuditModal()"></div>
+        <div class="relative bg-white w-full max-w-5xl h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+
+            <!-- 页眉 -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white"><i class="ph ph-clipboard-text"></i></div>
+                    <h2 class="text-sm font-bold text-slate-800">AI 订单提取核对 <span class="text-[10px] text-slate-300 font-normal ml-2">ID: DRAFT_2026_8801</span></h2>
+                </div>
+                <button onclick="closeAuditModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+
+            <!-- 子 Tab 导航 -->
+            <div class="flex px-6 border-b border-slate-100 bg-slate-50/30 shrink-0 overflow-x-auto no-scrollbar">
+                <button onclick="switchAuditTab('order')" id="tab-order" class="sub-tab-btn active">订单详情</button>
+                <button onclick="switchAuditTab('product')" id="tab-product" class="sub-tab-btn relative">产品信息 <span class="absolute top-2 right-1 w-2 h-2 bg-risk-high rounded-full border-2 border-white"></span></button>
+                <button onclick="switchAuditTab('customer')" id="tab-customer" class="sub-tab-btn">客户资料</button>
+            </div>
+
+            <!-- 主体内容 -->
+            <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
+
+                <!-- 1. 订单详情 Pane -->
+                <div id="pane-order" class="sub-pane space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">订单编号 (系统自动生成)</label><input type="text" value="ORD-2026-0008821" class="form-input font-mono font-bold text-slate-800"></div>
+                        <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">预计交货日期</label><input type="date" value="2026-02-28" class="form-input"></div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
+                                <tr><th class="px-5 py-4">产品选择 (点击重选)</th><th class="px-5 py-4 text-center">数量</th><th class="px-5 py-4 text-right">小计</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="px-5 py-4">
+                                        <select class="bg-transparent font-bold text-brand-600 outline-none w-full cursor-pointer hover:underline">
+                                            <option>金色镂空户外灯 (G-8821)</option>
+                                            <option>便携无叶挂脖扇 (V2)</option>
+                                            <option>-- 重新匹配现有产品 --</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-5 py-4 text-center"><input type="number" value="500" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold"></td>
+                                    <td class="px-5 py-4 text-right font-mono font-bold">$6,250.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. 产品信息 Pane (包含多单位换算) -->
+                <div id="pane-product" class="sub-pane hidden space-y-6">
+                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3 mb-6">
+                        <i class="ph ph-info text-blue-600 text-lg"></i>
+                        <p class="text-[11px] text-blue-700 leading-relaxed">检测到该订单包含一个**新产品**名称，建议补全基础信息后自动录入产品库。</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品名称</label><input type="text" value="智能感应氛围灯" class="form-input"></div>
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">SKU 编码</label><input type="text" value="SKU-2026-LGT" class="form-input"></div>
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">单价 (USD)</label><input type="number" value="12.50" class="form-input font-mono"></div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">计量单位组</label>
+                            <div class="flex gap-2">
+                                <input type="text" value="根" class="form-input flex-1" placeholder="基本单位">
+                                <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100">配置多级单位</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 产品高级信息 -->
+                    <div class="pt-4 border-t border-slate-50 mt-6">
+                        <button onclick="toggleAdvanced('prod')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">高级配置信息 <i id="icon-prod" class="ph ph-caret-down"></i></button>
+                        <div id="drawer-prod" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品分类</label><select class="form-input"><option>户外照明</option><option>家居装饰</option></select></div>
+                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">预警库存</label><input type="number" value="100" class="form-input"></div>
+                            <div class="col-span-full"><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品描述</label><textarea class="form-input h-24 no-scrollbar">AI 自动提取生成的描述：具备光感自适应调节功能...</textarea></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 客户信息 Pane -->
+                <div id="pane-customer" class="sub-pane hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">客户姓名</label><input type="text" value="Ahmed Al-Fayed" class="form-input"></div>
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">联系电话</label><input type="text" value="+971 501234567" class="form-input font-mono"></div>
+                    </div>
+                    <!-- 客户高级信息 -->
+                    <div class="pt-4 border-t border-slate-50 mt-6">
+                        <button onclick="toggleAdvanced('cust')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">更多档案信息 <i id="icon-cust" class="ph ph-caret-down"></i></button>
+                        <div id="drawer-cust" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">客户来源</label><select class="form-input"><option>WECHAT</option><option>PHONE</option><option>OTHER</option></select></div>
+                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">所属地区</label><input type="text" value="Dubai, UAE" class="form-input"></div>
+                            <div class="col-span-full"><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">收货详细地址</label><input type="text" value="Al-Noor Trading LLC, Office 402, Business Bay" class="form-input"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 弹窗底部操作 -->
+            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <button onclick="closeAuditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">存为草稿</button>
+                    <button onclick="alert('订单已确认，库存已实时扣减。')" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单位换算 -->
+    <div id="unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
+        <div class="relative bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl fade-in">
+            <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 多级单位换算配置</h3>
+            <div class="space-y-6">
+                <div class="flex items-center gap-4">
+                    <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">包装单位</label><input type="text" value="箱" class="form-input text-center font-bold"></div>
+                    <div class="pt-4 text-slate-300">=</div>
+                    <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">折合基本数量</label><input type="number" value="200" class="form-input text-center text-brand-600 font-black"></div>
+                    <div class="pt-4 text-xs font-bold">根</div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex-1"><input type="text" value="包" class="form-input text-center font-bold"></div>
+                    <div class="pt-1 text-slate-300">=</div>
+                    <div class="flex-1"><input type="number" value="10" class="form-input text-center text-brand-600 font-black"></div>
+                    <div class="pt-1 text-xs font-bold">根</div>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col gap-2">
+                <button onclick="closeUnitModal()" class="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg">保存单位配置</button>
+                <button onclick="closeUnitModal()" class="w-full py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进行中业务弹窗 -->
+    <div id="order-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeOrderDetail()"></div>
+        <div class="relative bg-white w-full max-w-4xl h-full max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg"><i class="ph ph-receipt"></i></div>
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800" id="detail-order-id">INV-2026-0082</h2>
+                        <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5">语音提取: 2026-03-15</p>
+                    </div>
+                </div>
+                <button onclick="closeOrderDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-10">
+                <!-- 详情内容区 -->
+                <section>
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-package text-brand-500"></i> 单据包含产品列表</h3>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100/50 text-slate-400 font-black uppercase tracking-tighter">
+                                <tr>
+                                    <th class="px-5 py-4">产品名称 / 规格</th>
+                                    <th class="px-5 py-4 text-center">数量</th>
+                                    <th class="px-5 py-4 text-right">分项金额 (USD)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <tr>
+                                    <td class="px-5 py-4">
+                                        <p class="font-bold">金色镂空户外灯 (G-8821)</p>
+                                        <p class="text-[9px] text-slate-400 font-mono">SKU: PRO-LIGHT-G1</p>
+                                    </td>
+                                    <td class="px-5 py-4 text-center font-mono font-bold">500</td>
+                                    <td class="px-5 py-4 text-right font-mono font-bold text-slate-900">$6,250.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-5 py-4">
+                                        <p class="font-bold">智能感应氛围底座</p>
+                                        <p class="text-[9px] text-slate-400 font-mono">SKU: SM-BASE-04</p>
+                                    </td>
+                                    <td class="px-5 py-4 text-center font-mono font-bold">120</td>
+                                    <td class="px-5 py-4 text-right font-mono font-bold text-slate-900">$1,440.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <div class="flex justify-between items-center p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计 (Total Amount)</p>
+                    <p class="text-2xl font-mono font-black text-brand-500">$7,690.00</p>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-slate-100 bg-white flex gap-3 shrink-0">
+                <button onclick="closeOrderDetail()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors">返回工作台</button>
+                <button class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg hover:shadow-brand-500/20 flex items-center justify-center gap-2"><i class="ph ph-printer"></i> 打印送货单</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加订单弹窗 -->
+    <div id="manual-order-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeManualOrderModal()"></div>
+        <div class="relative bg-white w-full max-w-4xl h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2"><i class="ph ph-plus-circle text-brand-600"></i> 新建业务订单</h2>
+                <button onclick="closeManualOrderModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
+                <!-- 基础信息 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">选择客户</label>
+                        <select class="form-input font-bold text-slate-700">
+                            <option>--- 请选择现有客户 ---</option>
+                            <option>Ahmed Al-Fayed (Dubai)</option>
+                            <option>John Smith (New York)</option>
+                            <option>+ 新增客户资料</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">当前订单状态</label>
+                        <select class="form-input font-bold text-brand-600">
+                            <option>待支付</option>
+                            <option selected>处理中</option>
+                            <option>已发货</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 商品列表 -->
+                <div class="space-y-4">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
+                        <span>订单商品明细</span>
+                        <button onclick="addOrderRow()" class="text-brand-600 hover:underline">+ 添加商品行</button>
+                    </h3>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs" id="manual-order-table">
+                            <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">产品名 / SKU</th>
+                                    <th class="px-4 py-3 text-center w-24">数量</th>
+                                    <th class="px-4 py-3 text-center w-24">单价($)</th>
+                                    <th class="px-4 py-3 text-right">小计</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <select class="bg-transparent font-bold text-slate-700 outline-none w-full product-select">
+                                            <option value="0">--- 选择产品 ---</option>
+                                            <option value="12.5" data-sku="G-8821">金色镂空灯 (G-8821)</option>
+                                            <option value="48.0" data-sku="CP-T2">露营折叠桌 (CP-T2)</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3"><input type="number" value="1" min="1" oninput="calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono qty-input"></td>
+                                    <td class="px-4 py-3"><input type="number" value="0" step="0.01" oninput="calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono price-input"></td>
+                                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">$0.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 自动更新的总金额展示区 -->
+                <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
+                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">订单预计总计</p>
+                        <p class="text-[9px] text-slate-500 mt-1 italic">提取源：手动添加</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl font-black font-mono text-brand-500" id="manual-grand-total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">
+                <button onclick="closeManualOrderModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
+                <button onclick="saveManualOrder()" class="flex-[2] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl active:scale-95 transition-all">确认并录入系统</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 导航切换
         function switchTab(tabName) {
+            console.log('switchTab called with tabName:', tabName);
             let url = '';
             switch(tabName) {
                 case 'dashboard':
                     url = 'dashboard.html';
                     break;
                 case 'biz':
-                    url = '../intelligent-operation/intelligent-operation.html';
+                    url = '../SmartOps/SmartOps.html';
                     break;
                 case 'crm':
                     url = '../crm/crm.html';
@@ -417,10 +826,12 @@
                     url = '../supplier/supplier.html';
                     break;
                 case 'rd':
-                    url = '../rnd-center/rnd-center.html';
+                    url = '../RDCenter/RDCenter.html';
                     break;
             }
+            console.log('Calculated URL:', url);
             if (url) {
+                console.log('Navigating to:', url);
                 window.location.href = url;
             }
         }
@@ -1446,6 +1857,134 @@
                     throw error;
                 }
             };
+
+            // AI 审核模态框
+            window.openAuditModal = function(customer) {
+                document.getElementById('audit-modal').classList.remove('hidden');
+            };
+
+            window.closeAuditModal = function() {
+                document.getElementById('audit-modal').classList.add('hidden');
+            };
+
+            window.switchAuditTab = function(tab) {
+                const tabs = ['order', 'product', 'customer'];
+                tabs.forEach(t => {
+                    document.getElementById(`pane-${t}`).classList.add('hidden');
+                    document.getElementById(`tab-${t}`).classList.remove('active');
+                });
+                
+                document.getElementById(`pane-${tab}`).classList.remove('hidden');
+                document.getElementById(`tab-${tab}`).classList.add('active');
+            };
+
+            // 单位换算模态框
+            window.openUnitModal = function() {
+                document.getElementById('unit-modal').classList.remove('hidden');
+            };
+
+            window.closeUnitModal = function() {
+                document.getElementById('unit-modal').classList.add('hidden');
+            };
+
+            // 订单详情模态框
+            window.openOrderDetail = function(orderId) {
+                document.getElementById('order-detail-modal').classList.remove('hidden');
+                document.getElementById('detail-order-id').textContent = orderId;
+            };
+
+            window.closeOrderDetail = function() {
+                document.getElementById('order-detail-modal').classList.add('hidden');
+            };
+
+            // 手动订单模态框
+            window.openManualOrderModal = function() {
+                document.getElementById('manual-order-modal').classList.remove('hidden');
+            };
+
+            window.closeManualOrderModal = function() {
+                document.getElementById('manual-order-modal').classList.add('hidden');
+            };
+
+            // 添加订单行
+            window.addOrderRow = function() {
+                const tableBody = document.querySelector('#manual-order-table tbody');
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td class="px-4 py-3">
+                        <select class="bg-transparent font-bold text-slate-700 outline-none w-full product-select">
+                            <option value="0">--- 选择产品 ---</option>
+                            <option value="12.5" data-sku="G-8821">金色镂空灯 (G-8821)</option>
+                            <option value="48.0" data-sku="CP-T2">露营折叠桌 (CP-T2)</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-3"><input type="number" value="1" min="1" oninput="window.calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono qty-input"></td>
+                    <td class="px-4 py-3"><input type="number" value="0" step="0.01" oninput="window.calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono price-input"></td>
+                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">$0.00</td>
+                `;
+                tableBody.appendChild(newRow);
+                
+                // 添加产品选择事件监听器
+                const productSelect = newRow.querySelector('.product-select');
+                productSelect.addEventListener('change', function() {
+                    const priceInput = newRow.querySelector('.price-input');
+                    priceInput.value = this.value;
+                    window.calculateManualTotal();
+                });
+            };
+
+            // 计算手动订单总计
+            window.calculateManualTotal = function() {
+                const rows = document.querySelectorAll('#manual-order-table tbody tr');
+                let grandTotal = 0;
+                
+                rows.forEach(row => {
+                    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+                    const subtotal = qty * price;
+                    
+                    row.querySelector('.row-total').textContent = `$${subtotal.toFixed(2)}`;
+                    grandTotal += subtotal;
+                });
+                
+                document.getElementById('manual-grand-total').textContent = `$${grandTotal.toFixed(2)}`;
+            };
+
+            // 保存手动订单
+            window.saveManualOrder = function() {
+                // 这里可以添加保存订单的逻辑
+                alert('订单已保存！');
+                window.closeManualOrderModal();
+            };
+
+            // 高级配置切换
+            window.toggleAdvanced = function(type) {
+                const drawer = document.getElementById(`drawer-${type}`);
+                const icon = document.getElementById(`icon-${type}`);
+                
+                if (drawer.classList.contains('open')) {
+                    drawer.classList.remove('open');
+                    icon.classList.remove('ph-caret-up');
+                    icon.classList.add('ph-caret-down');
+                } else {
+                    drawer.classList.add('open');
+                    icon.classList.remove('ph-caret-down');
+                    icon.classList.add('ph-caret-up');
+                }
+            };
+
+            // 初始化产品选择事件
+            document.addEventListener('DOMContentLoaded', function() {
+                const productSelects = document.querySelectorAll('.product-select');
+                productSelects.forEach(select => {
+                    select.addEventListener('change', function() {
+                        const row = this.closest('tr');
+                        const priceInput = row.querySelector('.price-input');
+                        priceInput.value = this.value;
+                        window.calculateManualTotal();
+                    });
+                });
+            });
         });
     </script>
 </body>

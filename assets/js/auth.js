@@ -420,13 +420,34 @@ function getApiUrl(serviceName) {
 
 // 获取登录页面路径
 function getLoginPath() {
-    // 返回绝对路径，确保在任何页面调用时都能正确跳转到登录页面
-    return '/login.html';
+    // 返回相对于当前页面的正确路径，确保在任何页面调用时都能正确跳转到登录页面
+    const currentPath = window.location.pathname;
+    // 计算需要向上返回的层级数
+    const pathParts = currentPath.split('/').filter(part => part !== '');
+    const backLevels = pathParts.length > 0 ? pathParts.length - 1 : 0;
+    // 构建返回登录页面的路径
+    let loginPath = '';
+    for (let i = 0; i < backLevels; i++) {
+        loginPath += '../';
+    }
+    loginPath += 'login.html';
+    return loginPath;
 }
 
 // 获取工作台页面路径
 function getDashboardPath() {
-    return 'modules/dashboard/dashboard.html';
+    // 返回相对于当前页面的正确路径
+    const currentPath = window.location.pathname;
+    // 计算需要向上返回的层级数
+    const pathParts = currentPath.split('/').filter(part => part !== '');
+    const backLevels = pathParts.length > 0 ? pathParts.length - 1 : 0;
+    // 构建返回工作台页面的路径
+    let dashboardPath = '';
+    for (let i = 0; i < backLevels; i++) {
+        dashboardPath += '../';
+    }
+    dashboardPath += 'modules/dashboard/dashboard.html';
+    return dashboardPath;
 }
 
 // 检查localStorage是否可用
@@ -446,86 +467,163 @@ function checkLocalStorage() {
 function logout() {
     console.log('执行全局logout操作');
     // 清除localStorage中的认证信息
-    localStorage.removeItem('token');
-    localStorage.removeItem('login_timestamp');
-    localStorage.removeItem('user_info');
-    localStorage.removeItem('username');
-    localStorage.removeItem('currentUser');
-    console.log('已清空本地存储中的认证信息');
+    try {
+        if (checkLocalStorage()) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('login_timestamp');
+            localStorage.removeItem('user_info');
+            localStorage.removeItem('username');
+            localStorage.removeItem('currentUser');
+            console.log('已清空本地存储中的认证信息');
+        }
+    } catch (error) {
+        console.error('清除localStorage时发生错误:', error);
+    }
     // 重定向到登录页面
     window.location.href = getLoginPath();
 }
 
 // 检查认证状态
 function checkAuth() {
-    console.log('开始检查认证状态');
+    console.log('========== 开始检查认证状态 ==========');
     
-    const token = localStorage.getItem('token');
-    
-    // 如果token不存在，跳转到登录页面
-    if (!token) {
-        console.log('Token不存在，跳转到登录页面');
+    // 首先检查localStorage是否可用
+    console.log('步骤1: 检查localStorage是否可用');
+    if (!checkLocalStorage()) {
+        console.log('❌ localStorage不可用，跳转到登录页面');
         logout();
         return false;
     }
+    console.log('✅ localStorage可用');
     
-    // 检查token是否为mock-token且非开发模式
-    const isDevMode = window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1';
-    if (token === 'mock-token' && !isDevMode) {
-        console.log('Mock token在非开发模式下无效，执行logout');
-        logout();
-        return false;
-    }
-    
-    // 检查token是否过期
-    const loginTimestamp = localStorage.getItem('login_timestamp');
-    if (loginTimestamp) {
-        const currentTime = Date.now();
-        const elapsedTime = currentTime - parseInt(loginTimestamp);
+    try {
+        console.log('步骤2: 获取token');
+        const token = localStorage.getItem('token');
+        console.log('获取到的token:', token ? '存在' : '不存在');
         
-        if (elapsedTime > TOKEN_EXPIRE_TIME) {
-            console.log('Token已过期，执行logout');
+        // 如果token不存在，跳转到登录页面
+        if (!token) {
+            console.log('❌ Token不存在，跳转到登录页面');
             logout();
             return false;
         }
-    } else {
-        // 没有登录时间戳，视为无效
-        console.log('缺少登录时间戳，执行logout');
+        console.log('✅ Token存在');
+        
+        // 检查token是否为mock-token且非开发模式
+        console.log('步骤3: 检查token是否为mock-token');
+        const isDevMode = (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+        console.log('当前是否为开发模式:', isDevMode);
+        if (token === 'mock-token' && !isDevMode) {
+            console.log('❌ Mock token在非开发模式下无效，执行logout');
+            logout();
+            return false;
+        }
+        console.log('✅ Token验证通过');
+        
+        // 检查token是否过期
+        console.log('步骤4: 检查token是否过期');
+        const loginTimestamp = localStorage.getItem('login_timestamp');
+        console.log('获取到的login_timestamp:', loginTimestamp);
+        if (loginTimestamp) {
+            const currentTime = Date.now();
+            const elapsedTime = currentTime - parseInt(loginTimestamp);
+            const remainingTime = TOKEN_EXPIRE_TIME - elapsedTime;
+            console.log('当前时间:', new Date(currentTime).toLocaleString());
+            console.log('登录时间:', new Date(parseInt(loginTimestamp)).toLocaleString());
+            console.log('已用时间:', Math.round(elapsedTime / 1000 / 60), '分钟');
+            console.log('剩余时间:', Math.round(remainingTime / 1000 / 60), '分钟');
+            
+            if (elapsedTime > TOKEN_EXPIRE_TIME) {
+                console.log('❌ Token已过期，执行logout');
+                logout();
+                return false;
+            }
+        } else {
+            // 没有登录时间戳，视为无效
+            console.log('❌ 缺少登录时间戳，执行logout');
+            logout();
+            return false;
+        }
+        console.log('✅ Token未过期');
+        
+        console.log('✅ 认证状态检查通过');
+        console.log('========== 认证状态检查完成 ==========');
+        return true;
+    } catch (error) {
+        console.error('❌ 检查认证状态时发生错误:', error);
+        console.error('错误堆栈:', error.stack);
         logout();
         return false;
     }
-    
-    console.log('认证状态检查通过');
-    return true;
 }
 
 // 包装fetch函数，自动添加Authorization头并处理401响应
 function wrappedFetch(url, options = {}) {
-    const token = localStorage.getItem('token');
+    console.log('========== 开始发送请求 ==========');
+    console.log('请求URL:', url);
+    console.log('请求选项:', options);
     
-    // 自动添加Authorization头
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+    // 首先检查localStorage是否可用
+    console.log('步骤1: 检查localStorage是否可用');
+    if (!checkLocalStorage()) {
+        console.log('❌ localStorage不可用，执行logout');
+        logout();
+        return Promise.reject(new Error('localStorage不可用'));
     }
+    console.log('✅ localStorage可用');
     
-    // 发送请求
-    return fetch(url, {
-        ...options,
-        headers
-    }).then(response => {
-        // 处理401响应
-        if (response.status === 401) {
-            console.log('收到401响应，执行logout');
-            logout();
-            throw new Error('未授权');
+    try {
+        console.log('步骤2: 获取token');
+        const token = localStorage.getItem('token');
+        console.log('获取到的token:', token ? '存在' : '不存在');
+        
+        // 自动添加Authorization头
+        console.log('步骤3: 构建请求头');
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            console.log('✅ 添加了Authorization头:', headers['Authorization']);
+        } else {
+            console.log('❌ 未添加Authorization头，因为token不存在');
         }
-        return response;
-    });
+        console.log('最终请求头:', headers);
+        
+        // 发送请求
+        console.log('步骤4: 发送请求');
+        return fetch(url, {
+            ...options,
+            headers
+        }).then(response => {
+            console.log('步骤5: 处理响应');
+            console.log('响应状态:', response.status);
+            console.log('响应状态文本:', response.statusText);
+            
+            // 处理401响应
+            if (response.status === 401) {
+                console.log('❌ 收到401响应，执行logout');
+                // 先获取响应内容，再执行logout
+                return response.json().then(errorData => {
+                    console.log('401响应内容:', errorData);
+                    logout();
+                    throw new Error(errorData.message || '未授权');
+                }).catch(() => {
+                    logout();
+                    throw new Error('未授权');
+                });
+            }
+            console.log('✅ 响应状态正常');
+            return response;
+        });
+    } catch (error) {
+        console.error('❌ 创建请求时发生错误:', error);
+        console.error('错误堆栈:', error.stack);
+        logout();
+        return Promise.reject(error);
+    }
 }
 
 // 将函数暴露到全局作用域，以便其他页面使用

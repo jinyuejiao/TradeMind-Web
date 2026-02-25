@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产研中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/phosphor-icons@1.4.2/src/phosphor.css" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #14b8a6;
+            --brand-secondary: #0d9488;
+            --brand-light: #f0fdfa;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --bg-light: #f8fafc;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* 主容器 */
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 侧边导航栏 */
+        .sidebar {
+            width: 200px;
+            background-color: #0f172a;
+            color: white;
+            padding: 24px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 0 24px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--brand-primary);
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 4px;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 12px 24px;
+            color: #94a3b8;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link.active {
+            color: var(--brand-primary);
+            background-color: rgba(20, 184, 166, 0.1);
+            border-left-color: var(--brand-primary);
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            margin-left: 200px;
+            padding: 24px;
+        }
+
+        /* 顶部栏 */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .search-container {
+            position: relative;
+            width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-white);
+            font-size: 14px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--brand-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* 产研中心标题 */
+        .section-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 24px;
+            color: var(--text-primary);
+        }
+
+        /* 启动新品研讨按钮 */
+        .new-product-btn {
+            background-color: #0f172a;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .new-product-btn:hover {
+            background-color: #1e293b;
+        }
+
+        /* 网格布局 */
+        .grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .grid-cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .col-span-2 {
+            grid-column: span 2;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background-color: var(--bg-white);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* AI 选品预测池 */
+        .prediction-pool {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .prediction-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .prediction-card:hover {
+            border-color: var(--brand-primary);
+            box-shadow: var(--shadow-md);
+        }
+
+        .prediction-image {
+            position: relative;
+            height: 160px;
+            overflow: hidden;
+        }
+
+        .prediction-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .prediction-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: var(--brand-primary);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+
+        .prediction-info {
+            padding: 12px;
+        }
+
+        .prediction-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .prediction-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* 现有产品库 */
+        .product-library {
+            margin-top: 24px;
+        }
+
+        .library-container {
+            background-color: var(--bg-white);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .library-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background-color: rgba(241, 245, 249, 0.3);
+        }
+
+        .library-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .library-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .library-search {
+            position: relative;
+            width: 100%;
+            max-width: 288px;
+        }
+
+        .library-search-input {
+            width: 100%;
+            padding: 8px 16px 8px 36px;
+            background-color: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .library-search-input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .library-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* 产品表格 */
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .product-table thead {
+            background-color: rgba(241, 245, 249, 0.5);
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .product-table th {
+            padding: 16px 24px;
+            text-align: left;
+        }
+
+        .product-table th.text-right {
+            text-align: right;
+        }
+
+        .product-table tbody {
+            font-size: 12px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .product-table tr {
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .product-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .product-table td {
+            padding: 16px 24px;
+        }
+
+        .product-table td.text-right {
+            text-align: right;
+        }
+
+        .product-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .product-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background-color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: all 0.3s;
+        }
+
+        .product-row:hover .product-icon {
+            background-color: rgba(20, 184, 166, 0.1);
+            color: var(--brand-primary);
+        }
+
+        .product-details h4 {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .product-details p {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: monospace;
+            text-transform: uppercase;
+        }
+
+        .region-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background-color: #f1f5f9;
+            color: var(--text-secondary);
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .stock-value {
+            font-weight: bold;
+            color: var(--text-primary);
+            font-family: monospace;
+            letter-spacing: -0.05em;
+        }
+
+        .stock-value.text-risk-high {
+            color: #ef4444;
+        }
+
+        .stock-unit {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stock-bar {
+            width: 64px;
+            height: 4px;
+            background-color: #f1f5f9;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 6px;
+            margin-left: auto;
+        }
+
+        .stock-progress {
+            height: 100%;
+            background-color: var(--brand-primary);
+        }
+
+        .stock-progress.low {
+            background-color: #ef4444;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+
+        .action-icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-icon-btn:hover {
+            background-color: #f1f5f9;
+            color: var(--text-primary);
+        }
+
+        .action-icon-btn.delete:hover {
+            color: #ef4444;
+        }
+
+        /* 响应式设计 */
+        .col-hide-mobile {
+            display: table-cell;
+        }
+
+        @media (max-width: 768px) {
+            .col-hide-mobile {
+                display: none;
+            }
+
+            .library-header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .library-search {
+                max-width: 100%;
+            }
+
+            .product-table th,
+            .product-table td {
+                padding: 12px 16px;
+            }
+        }
+
+        /* 产研关键进度 */
+        .progress-section {
+            margin-bottom: 24px;
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .progress-percentage {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--brand-primary);
+        }
+
+        .progress-percentage.low {
+            color: #ef4444;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: var(--bg-light);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--brand-primary);
+            border-radius: 3px;
+        }
+
+        .progress-fill.low {
+            background-color: #ef4444;
+        }
+
+        .progress-status {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .progress-status.low {
+            color: #ef4444;
+            font-weight: 500;
+        }
+
+        /* 弹窗样式 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--bg-white);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-title-icon {
+            color: var(--brand-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            background-color: var(--bg-white);
+            transition: all 0.3s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--brand-secondary);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-light);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        /* 高级配置抽屉 */
+        .advanced-section {
+            margin-top: 24px;
+        }
+
+        .advanced-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .advanced-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .advanced-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .advanced-content.open {
+            max-height: 500px;
+        }
+
+        /* 单位换算弹窗 */
+        .unit-conversion-modal {
+            max-width: 500px;
+        }
+
+        .conversion-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .conversion-table th {
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .conversion-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .conversion-table input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .conversion-table .equals {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* 动画效果 */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 隐藏类 */
+        .hidden {
+            display: none;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .grid-cols-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .col-span-2 {
+                grid-column: span 1;
+            }
+
+            .prediction-pool {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 1001;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 16px;
+            }
+
+            .search-container {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .product-table {
+                font-size: 12px;
+            }
+
+            .product-table th,
+            .product-table td {
+                padding: 8px 12px;
+            }
+        }
+
+        /* 工具类 */
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        .text-danger {
+            color: #ef4444;
+        }
+
+        .mb-4 {
+            margin-bottom: 16px;
+        }
+
+        .mb-6 {
+            margin-bottom: 24px;
+        }
+
+        .mt-4 {
+            margin-top: 16px;
+        }
+
+        .mt-6 {
+            margin-top: 24px;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .gap-4 {
+            gap: 16px;
+        }
+
+        .gap-8 {
+            gap: 32px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 侧边导航栏 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">TradeMind</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link">工作台</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">智能经营</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">客户 CRM</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link active">产研中心</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">供应商管理</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <div class="top-bar">
+                <div class="search-container">
+                    <i class="ph ph-magnifying-glass search-icon"></i>
+                    <input type="text" placeholder="搜索报表、单据、AI 指令..." class="search-input">
+                </div>
+                <div class="user-info">
+                    <span>产品中心</span>
+                    <div class="user-avatar">林</div>
+                </div>
+            </div>
+
+            <!-- 产研中心内容 -->
+            <div id="view-supply" class="view-section fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="section-title">产研中心</h1>
+                    <button onclick="openProductSelectModal()" class="new-product-btn">
+                        <i class="ph ph-plus"></i> 启动新品研讨
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-3">
+                    <!-- 左侧和中间内容 -->
+                    <div class="col-span-2">
+                        <!-- AI 选品预测池 -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">
+                                    <i class="ph ph-sparkles"></i>
+                                    AI 选品预测池
+                                </h2>
+                            </div>
+                            <div class="prediction-pool">
+                                <!-- 产品 1: 智能光感氛围灯 -->
+                                <div class="prediction-card">
+                                    <div class="prediction-image">
+                                        <img src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&q=80&w=800" alt="智能光感氛围灯">
+                                        <div class="prediction-badge">爆款潜质 92%</div>
+                                    </div>
+                                    <div class="prediction-info">
+                                        <h3 class="prediction-name">智能光感氛围灯 (Pro版)</h3>
+                                        <p class="prediction-desc">基于北美 Q4 露营季搜索趋势预测。</p>
+                                    </div>
+                                </div>
+
+                                <!-- 产品 2: 便携无叶挂脖扇 -->
+                                <div class="prediction-card">
+                                    <div class="prediction-image">
+                                        <img src="https://images.unsplash.com/photo-1534073828943-f801091bb18c?auto=format&fit=crop&q=80&w=800" alt="便携无叶挂脖扇">
+                                        <div class="prediction-badge">蓝海预测 85%</div>
+                                    </div>
+                                    <div class="prediction-info">
+                                        <h3 class="prediction-name">便携无叶挂脖扇 (V2)</h3>
+                                        <p class="prediction-desc">东南亚极端高温预警提前，需求上涨。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 现有产品库 -->
+                        <div class="product-library">
+                            <div class="library-container">
+                                <div class="library-header">
+                                    <div class="library-header-top">
+                                        <h2 class="library-title">现有产品库</h2>
+                                        <div class="library-search">
+                                            <i class="ph ph-magnifying-glass library-search-icon"></i>
+                    <input type="text" id="inventorySearch" onkeyup="filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="library-search-input">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="product-table" id="existingProdTable">
+                                        <thead>
+                                            <tr>
+                                                <th class="col-width-mobile">产品基础信息</th>
+                                                <th class="col-hide-mobile">主销区域</th>
+                                                <th class="col-hide-mobile text-right">销售均价</th>
+                                                <th class="text-right">实时库存</th>
+                                                <th class="text-right">管理</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- 产品行 1 -->
+                                            <tr onclick="openProductDetail('edit')" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
+                                                <td>
+                                                    <div class="product-info">
+                                                        <div class="product-icon">
+                                                    <i class="ph ph-lightbulb"></i>
+                                                </div>
+                                                        <div class="product-details">
+                                                            <h4 class="product-name-cell">金色镂空户外灯具 (V3)</h4>
+                                                            <p class="product-sku-cell">SKU: G-882101</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="col-hide-mobile">
+                                                    <span class="region-tag">中东市场</span>
+                                                </td>
+                                                <td class="col-hide-mobile text-right">
+                                                    <span class="price font-mono font-bold text-slate-500">$12.50</span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <p class="stock-value">1,240 <span class="stock-unit">Pcs</span></p>
+                                                    <div class="stock-bar">
+                                                        <div class="stock-progress" style="width: 85%"></div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-right whitespace-nowrap">
+                                                    <div class="action-buttons">
+                                                        <button onclick="openProductDetail('edit')" title="编辑" class="action-icon-btn">
+                                                            <i class="ph ph-pencil-simple-line"></i>
+                                                        </button>
+                                                        <button onclick="confirmDeleteProduct('金色镂空户外灯具')" title="删除" class="action-icon-btn delete">
+                                                            <i class="ph ph-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- 产品行 2 -->
+                                            <tr onclick="openProductDetail('edit')" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
+                                                <td>
+                                                    <div class="product-info">
+                                                        <div class="product-icon">
+                                                    <i class="ph ph-layout"></i>
+                                                </div>
+                                                        <div class="product-details">
+                                                            <h4 class="product-name-cell">多功能露营折叠桌</h4>
+                                                            <p class="product-sku-cell">SKU: CP-T2-04</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="col-hide-mobile">
+                                                    <span class="region-tag">欧美市场</span>
+                                                </td>
+                                                <td class="col-hide-mobile text-right">
+                                                    <span class="price font-mono font-bold text-slate-500">$48.00</span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <p class="stock-value text-risk-high">42 <span class="stock-unit">Pcs</span></p>
+                                                    <div class="stock-bar">
+                                                        <div class="stock-progress low" style="width: 30%"></div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-right whitespace-nowrap">
+                                                    <div class="action-buttons">
+                                                        <button onclick="openProductDetail('edit')" class="action-icon-btn">
+                                                            <i class="ph ph-pencil-simple-line"></i>
+                                                        </button>
+                                                        <button onclick="confirmDeleteProduct('多功能露营折叠桌')" class="action-icon-btn delete">
+                                                            <i class="ph ph-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：产研关键进度 -->
+                    <div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">
+                                    <i class="ph ph-list-checks"></i>
+                                    产研关键进度
+                                </h2>
+                            </div>
+                            <div class="progress-section">
+                                <div class="progress-item">
+                                    <div class="progress-header">
+                                        <span class="progress-title">#8821 智能灯研讨</span>
+                                        <span class="progress-percentage">85%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: 85%"></div>
+                                    </div>
+                                    <p class="progress-status">状态：设计终审已过，即将开模</p>
+                                </div>
+
+                                <div class="progress-item">
+                                    <div class="progress-header">
+                                        <span class="progress-title">#9905 挂脖扇打样</span>
+                                        <span class="progress-percentage low">30%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill low" style="width: 30%"></div>
+                                    </div>
+                                    <p class="progress-status low">状态：包材短缺，交付滞后</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 产品详情弹窗 -->
+    <div id="product-detail-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="ph ph-edit modal-title-icon"></i>
+                    <span id="detail-title">产品详情编辑</span>
+                </h3>
+                <button onclick="closeProductDetail()" class="modal-close">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-6">
+                    <!-- 基础信息 -->
+                    <div>
+                        <h4 class="text-md font-semibold mb-4">基础信息</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">产品名称</label>
+                                <input type="text" class="form-input" placeholder="请输入产品名称" value="东北大板 (原味经典)">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">SKU</label>
+                                <input type="text" id="detail-sku" class="form-input" placeholder="SKU" readonly value="DB-ICE-001">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">预期售价 (USD)</label>
+                                <input type="number" class="form-input" placeholder="请输入售价" step="0.01" value="1.59">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">基本单位 (核算基础)</label>
+                                <input type="text" class="form-input" placeholder="请输入基本单位" value="根">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">默认销售单位 (包装)</label>
+                                <select class="form-select">
+                                    <option value="包">包 (1包=10根)</option>
+                                    <option value="箱">箱 (1箱=200根)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">默认入库单位</label>
+                                <select class="form-select">
+                                    <option value="包">包 (1包=10根)</option>
+                                    <option value="箱">箱 (1箱=200根)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">关联主供应商</label>
+                                <select class="form-select">
+                                    <option value="supplier1">哈尔滨红运冷链贸易中心 (Rating: A)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">现有库存 (基本单位)</label>
+                                <input type="number" class="form-input" placeholder="请输入库存" value="1289" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 单位换算配置 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-md font-semibold">单位换算</h4>
+                            <button onclick="openUnitModal()" class="btn btn-primary">配置单位换算</button>
+                        </div>
+                        <div id="unit-conversion-preview" class="border border-slate-200 rounded-lg p-4">
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <span>箱 = 200 根</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span>包 = 10 根</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 高级配置 -->
+                    <div class="advanced-section">
+                        <div class="advanced-header">
+                            <h4 class="text-md font-semibold">高级配置与描述信息</h4>
+                            <button onclick="toggleAdvanced()" class="advanced-toggle">
+                                <span>展开</span>
+                                <i id="advanced-icon" class="ph ph-chevron-down"></i>
+                            </button>
+                        </div>
+                        <div id="advanced-drawer" class="advanced-content">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">预警库存</label>
+                                    <input type="number" class="form-input" placeholder="请输入预警库存" value="100">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">描述</label>
+                                    <textarea class="form-input" rows="3" placeholder="请输入产品描述">东北大板原味经典冰淇淋，传统工艺制作，口感细腻，奶香浓郁。</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeProductDetail()" class="btn btn-secondary">取消编辑</button>
+                <button onclick="saveProduct()" class="btn btn-primary">保存修改内容</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 单位换算弹窗 -->
+    <div id="unit-modal" class="modal hidden unit-conversion-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="ph ph-layers modal-title-icon"></i>
+                    多级单位换算配置
+                </h3>
+                <button onclick="closeUnitModal()" class="modal-close">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-md font-semibold mb-4">换算关系</h4>
+                        <table class="conversion-table" id="unit-conversion-table">
+                            <thead>
+                                <tr>
+                                    <th>包装单位</th>
+                                    <th></th>
+                                    <th>折合基础量</th>
+                                    <th></th>
+                                    <th>基础单位</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unit-conversion-body">
+                                <tr>
+                                    <td><input type="text" class="form-input" value="箱"></td>
+                                    <td class="equals">=</td>
+                                    <td><input type="number" class="form-input" value="200"></td>
+                                    <td class="equals">=</td>
+                                    <td><input type="text" class="form-input" value="根" readonly></td>
+                                </tr>
+                                <tr>
+                                    <td><input type="text" class="form-input" value="包"></td>
+                                    <td class="equals">=</td>
+                                    <td><input type="number" class="form-input" value="10"></td>
+                                    <td class="equals">=</td>
+                                    <td><input type="text" class="form-input" value="根" readonly></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button onclick="addUnitRow()" class="btn btn-primary mt-4">添加换算关系</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeUnitModal()" class="btn btn-secondary">Cancel</button>
+                <button onclick="saveUnitConversion()" class="btn btn-primary">保存单位配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品选择弹窗 -->
+    <div id="product-select-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="ph ph-plus modal-title-icon"></i>
+                    启动新品研讨
+                </h3>
+                <button onclick="closeProductSelectModal()" class="modal-close">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-6">
+                    <div class="form-group">
+                        <label class="form-label">产品名称</label>
+                        <input type="text" id="productName" class="form-input" placeholder="请输入产品名称">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">产品描述</label>
+                        <textarea class="form-input" rows="3" placeholder="请输入产品描述"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeProductSelectModal()" class="btn btn-secondary">取消</button>
+                <button onclick="requestNewProductAnalysis(document.getElementById('productName').value)" class="btn btn-primary">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新品分析报告弹窗 -->
+    <div id="new-product-report-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="ph ph-file-text modal-title-icon"></i>
+                    新品分析报告
+                </h3>
+                <button onclick="closeNewProductReport()" class="modal-close">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-6">
+                    <div>
+                        <h4 id="analysisTargetName" class="text-md font-semibold mb-4">研讨目标：智能光感氛围灯</h4>
+                        <p class="text-sm text-slate-600">分析报告内容...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeNewProductReport()" class="btn btn-primary">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 产研中心交互逻辑 ---
+
+        // 打开产品选择弹窗
+        function openProductSelectModal() {
+            const modal = document.getElementById('product-select-modal');
+            modal.classList.remove('hidden');
+        }
+
+        // 关闭产品选择弹窗
+        function closeProductSelectModal() {
+            const modal = document.getElementById('product-select-modal');
+            modal.classList.add('hidden');
+        }
+
+        // 模拟请求新品分析报告
+        function requestNewProductAnalysis(pName) {
+            // 1. 关闭选择弹窗
+            closeProductSelectModal();
+
+            // 2. 更新报告内的标题名称
+            document.getElementById('analysisTargetName').innerText = "研讨目标：" + pName;
+
+            // 3. 打开分析报告大弹窗
+            const reportModal = document.getElementById('new-product-report-modal');
+            reportModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+
+        // 关闭分析报告
+        function closeNewProductReport() {
+            const modal = document.getElementById('new-product-report-modal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // 现有产品库实时搜索 (按名称或 SKU)
+        function filterInventoryTable() {
+            const filter = document.getElementById('inventorySearch').value.toUpperCase();
+            const rows = document.querySelectorAll('#existingProdTable .product-row');
+            rows.forEach(row => {
+                const name = row.querySelector('.product-name-cell').innerText.toUpperCase();
+                const sku = row.querySelector('.product-sku-cell').innerText.toUpperCase();
+                row.style.display = (name.includes(filter) || sku.includes(filter)) ? "" : "none";
+            });
+        }
+
+        // 详情弹窗逻辑
+        function openProductDetail(mode) {
+            const modal = document.getElementById('product-detail-modal');
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (mode === 'edit') {
+                document.getElementById('detail-title').innerText = "产品详情编辑";
+                document.getElementById('detail-sku').value = "DB-ICE-001";
+            } else {
+                document.getElementById('detail-title').innerText = "新增产品入库";
+                document.getElementById('detail-sku').value = "AUTO-GENERATE";
+            }
+        }
+
+        function closeProductDetail() {
+            const modal = document.getElementById('product-detail-modal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // 高级配置折叠切换
+        function toggleAdvanced() {
+            const drawer = document.getElementById('advanced-drawer');
+            const icon = document.getElementById('advanced-icon');
+            drawer.classList.toggle('open');
+            if (drawer.classList.contains('open')) {
+                icon.classList.remove('ph-chevron-down');
+                icon.classList.add('ph-chevron-up');
+            } else {
+                icon.classList.remove('ph-chevron-up');
+                icon.classList.add('ph-chevron-down');
+            }
+        }
+
+        // 单位换算弹窗逻辑
+        function openUnitModal() {
+            const modal = document.getElementById('unit-modal');
+            modal.classList.remove('hidden');
+            renderUnitTable();
+        }
+
+        function closeUnitModal() {
+            const modal = document.getElementById('unit-modal');
+            modal.classList.add('hidden');
+        }
+
+        // 渲染单位换算表格
+        function renderUnitTable() {
+            const tableBody = document.getElementById('unit-conversion-body');
+            // 清空表格
+            tableBody.innerHTML = '';
+            
+            // 模拟数据
+            const unitData = [
+                { unit_name: '箱', ratio: 200, base_unit: '根' },
+                { unit_name: '包', ratio: 10, base_unit: '根' }
+            ];
+            
+            // 动态生成表格行
+            unitData.forEach((unit, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <input type="text" class="form-input" value="${unit.unit_name}" placeholder="请输入单位名称">
+                    </td>
+                    <td class="equals">=</td>
+                    <td>
+                        <input type="number" class="form-input" value="${unit.ratio}" placeholder="请输入换算比例" step="0.01">
+                    </td>
+                    <td class="equals">=</td>
+                    <td>
+                        <input type="text" class="form-input" value="${unit.base_unit}" placeholder="请输入基本单位" readonly>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 添加单位换算行
+        function addUnitRow() {
+            const tableBody = document.getElementById('unit-conversion-body');
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <input type="text" class="form-input" placeholder="请输入单位名称">
+                </td>
+                <td class="equals">=</td>
+                <td>
+                    <input type="number" class="form-input" placeholder="请输入换算比例" step="0.01">
+                </td>
+                <td class="equals">=</td>
+                <td>
+                    <input type="text" class="form-input" value="根" placeholder="请输入基本单位" readonly>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        }
+
+        // 保存单位换算配置
+        function saveUnitConversion() {
+            // 获取表格中的所有行
+            const rows = document.querySelectorAll('#unit-conversion-body tr');
+            const unitData = [];
+            
+            rows.forEach(row => {
+                const unitName = row.querySelector('input[type="text"]').value;
+                const ratio = parseFloat(row.querySelector('input[type="number"]').value);
+                if (unitName && !isNaN(ratio)) {
+                    unitData.push({ unit_name: unitName, ratio: ratio });
+                }
+            });
+            
+            // 更新预览
+            const preview = document.getElementById('unit-conversion-preview');
+            preview.innerHTML = '';
+            
+            if (unitData.length > 0) {
+                const div = document.createElement('div');
+                div.className = 'space-y-2';
+                unitData.forEach(unit => {
+                    const line = document.createElement('div');
+                    line.className = 'flex items-center gap-2';
+                    line.textContent = `${unit.unit_name} = ${unit.ratio} 根`;
+                    div.appendChild(line);
+                });
+                preview.appendChild(div);
+            } else {
+                preview.innerHTML = '<p class="text-sm text-slate-500">点击上方按钮配置单位换算关系</p>';
+            }
+            
+            // 关闭弹窗
+            closeUnitModal();
+        }
+
+        // 保存产品
+        function saveProduct() {
+            alert('产品数据已更新，单位配置已成功同步。');
+            closeProductDetail();
+        }
+
+        // 确认删除产品
+        function confirmDeleteProduct(productName) {
+            if (confirm(`确定要删除产品 "${productName}" 吗？`)) {
+                // 这里可以添加删除产品的逻辑
+                alert(`产品 "${productName}" 已删除。`);
+            }
+        }
+
+        // 侧边栏切换
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
