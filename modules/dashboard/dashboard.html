@@ -446,20 +446,13 @@
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-orange-500"></i> 待确认单据 (AI 草稿)</h3>
                             <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                            <div onclick="openAuditModal('Ahmed Al-Fayed')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
-                                <div class="flex justify-between items-start mb-2">
-                                    <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">Ahmed Al-Fayed</p></div>
-                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">10:42 AM</span>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar" id="pending-orders-list">
+                            <!-- 待确认单据将通过JavaScript动态加载 -->
+                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                                <div class="text-center">
+                                    <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
+                                    <p>加载待确认单据中...</p>
                                 </div>
-                                <div class="text-[11px] text-slate-500 italic truncate">“已提取订单：金色镂空灯等 2 项商品...”</div>
-                            </div>
-                            <div onclick="openAuditModal('John Smith')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
-                                <div class="flex justify-between items-start mb-2">
-                                    <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">John Smith</p></div>
-                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">09:15 AM</span>
-                                </div>
-                                <div class="text-[11px] text-slate-500 italic truncate">“已提取订单：便携无叶挂脖扇 1 项商品...”</div>
                             </div>
                         </div>
                     </div>
@@ -871,20 +864,114 @@
             }
         }
 
-        // 获取带认证头的请求配置
-        function getAuthHeaders() {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                console.error('本地存储中没有token');
-                // 如果没有token，跳转到登录页面
-                localStorage.clear();
-                window.location.href = '../../login.html';
+        // 认证相关功能已在auth.js中实现，使用wrappedFetch函数处理认证请求
+            
+            // 加载待确认单据列表
+            async function loadPendingOrders() {
+                console.log('========== 开始加载待确认单据 ==========');
+                
+                try {
+                    // 检查认证状态
+                    if (!window.checkAuth()) {
+                        console.log('❌ 认证失败，无法加载待确认单据');
+                        return;
+                    }
+                    
+                    // 构建API URL
+                    const apiUrl = 'http://localhost:8080/api/v1/records';
+                    console.log('待确认单据API URL:', apiUrl);
+                    
+                    // 使用wrappedFetch函数发送请求
+                    const response = await window.wrappedFetch(apiUrl, {
+                        method: 'GET'
+                    });
+                    
+                    console.log('待确认单据响应状态:', response.status);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        throw new Error(`获取待确认单据失败: ${response.status} ${response.statusText} - ${errorText}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('待确认单据响应数据:', data);
+                    
+                    // 更新待确认单据列表
+                    updatePendingOrdersList(data);
+                } catch (error) {
+                    console.error('加载待确认单据失败:', error);
+                    // 更新UI显示错误信息
+                    const pendingOrdersList = document.getElementById('pending-orders-list');
+                    if (pendingOrdersList) {
+                        pendingOrdersList.innerHTML = `
+                            <div class="flex items-center justify-center h-full text-red-500 text-sm">
+                                <div class="text-center">
+                                    <i class="ph ph-x-circle text-xl mb-2"></i>
+                                    <p>加载失败：${error.message}</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
             }
-            return {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            };
-        }
+            
+            // 更新待确认单据列表
+            function updatePendingOrdersList(orders) {
+                console.log('更新待确认单据列表:', orders);
+                
+                const pendingOrdersList = document.getElementById('pending-orders-list');
+                if (!pendingOrdersList) {
+                    console.error('找不到待确认单据列表元素');
+                    return;
+                }
+                
+                // 检查响应数据格式
+                const orderList = Array.isArray(orders) ? orders : (orders.data || orders.records || []);
+                
+                if (orderList.length === 0) {
+                    // 没有待确认单据
+                    pendingOrdersList.innerHTML = `
+                        <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                            <div class="text-center">
+                                <i class="ph ph-check-circle text-xl mb-2"></i>
+                                <p>暂无待确认单据</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 生成待确认单据列表HTML
+                let html = '';
+                orderList.forEach((order, index) => {
+                    // 解析订单数据
+                    const customerName = order.customerName || order.customer_name || order.customer || '未知客户';
+                    const orderTime = order.createTime || order.created_at || order.time || new Date().toLocaleTimeString();
+                    const orderDescription = order.description || order.content || order.summary || '待确认订单';
+                    
+                    html += `
+                        <div onclick="openAuditModal('${customerName}')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">${customerName}</p></div>
+                                <span class="text-[9px] text-slate-400 font-mono tracking-tighter">${orderTime}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 italic truncate">"${orderDescription}"</div>
+                        </div>
+                    `;
+                });
+                
+                pendingOrdersList.innerHTML = html;
+            }
+            
+            // 移除getAuthHeaders函数，使用wrappedFetch代替
+            function getAuthHeaders() {
+                console.warn('getAuthHeaders函数已弃用，请使用wrappedFetch函数');
+                const token = localStorage.getItem('token');
+                return {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                };
+            }
         
         // 更新用户信息显示
         function updateUserInfo() {
@@ -1061,6 +1148,10 @@
                     }
                 });
             }
+            
+            // 加载待确认单据列表
+            console.log('调用loadPendingOrders函数加载待确认单据');
+            loadPendingOrders();
             
             // 调用AIService处理文本
             async function processTextWithAIService(text) {
@@ -1583,13 +1674,17 @@
                                     // 调用AIService处理音频
                                     const extractedResult = await processAudioWithAIService(ossInternalUrl);
                                     
-                                    // 保存音频到本地存储
+                                    // 不需要保存音频到本地存储，避免localStorage配额超出
+                                    console.log('音频处理完成，不需要存储到本地');
+                                    // 注释掉以下代码，避免localStorage配额超出
+                                    /*
                                     const reader = new FileReader();
                                     reader.onloadend = function() {
                                         const base64data = reader.result;
                                         localStorage.setItem(audioName, base64data);
                                     };
                                     reader.readAsDataURL(audioBlob);
+                                    */
                                     
                                     // 显示提取结果
                                     setTimeout(function() {
