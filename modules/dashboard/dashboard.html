@@ -291,6 +291,7 @@
                                 <div id="cameraContainer" class="relative w-full aspect-video bg-slate-100 rounded-lg overflow-hidden">
                                     <video id="cameraPreview" class="w-full h-full object-cover hidden"></video>
                                     <canvas id="cameraCanvas" class="w-full h-full hidden"></canvas>
+                                    <img id="preview-img" class="w-full h-full object-cover hidden" src="">
                                     <div id="cameraPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center">
                                         <i class="ph ph-camera text-6xl text-slate-400 mb-4"></i>
                                         <p class="text-slate-500">点击下方按钮开始拍照</p>
@@ -300,6 +301,7 @@
                                     <button id="startCamera" class="flex-1 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">启动摄像头</button>
                                     <button id="takePhoto" class="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition hidden">拍照</button>
                                     <button id="selectImage" class="flex-1 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-100 transition">选择图片</button>
+                                    <button id="submitImage" class="flex-1 border border-slate-200 text-slate-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-100 transition hidden" disabled>提交并开始识别</button>
                                 </div>
                                 <input type="file" id="imageInput" accept="image/*" class="hidden">
                             </div>
@@ -525,7 +527,7 @@
             </div>
 
             <!-- 子 Tab 导航 -->
-            <div class="flex px-6 border-b border-slate-100 bg-slate-50/30 shrink-0 overflow-x-auto no-scrollbar">
+            <div id="audit-tabs-nav" class="flex px-6 border-b border-slate-100 bg-slate-50/30 shrink-0 overflow-x-auto no-scrollbar">
                 <button onclick="switchAuditTab('order')" id="tab-order" class="sub-tab-btn active">订单详情</button>
                 <button onclick="switchAuditTab('product')" id="tab-product" class="sub-tab-btn relative">产品信息 <span class="absolute top-2 right-1 w-2 h-2 bg-risk-high rounded-full border-2 border-white"></span></button>
                 <button onclick="switchAuditTab('customer')" id="tab-customer" class="sub-tab-btn">客户资料</button>
@@ -866,6 +868,9 @@
 
         // 认证相关功能已在auth.js中实现，使用wrappedFetch函数处理认证请求
             
+            // 轮询定时器
+            let pollingInterval = null;
+            
             // 加载待确认单据列表
             async function loadPendingOrders() {
                 console.log('========== 开始加载待确认单据 ==========');
@@ -878,15 +883,15 @@
                     }
                     
                     // 构建API URL
-                    const apiUrl = 'http://localhost:8080/api/v1/records';
+                    const apiUrl = 'http://localhost:8080/api/v1/ai/records';
                     console.log('待确认单据API URL:', apiUrl);
                     
-                    // 使用wrappedFetch函数发送请求
+                    // 使用wrappedFetch发送请求，与音频订单提取接口保持一致
                     const response = await window.wrappedFetch(apiUrl, {
                         method: 'GET'
                     });
                     
-                    console.log('待确认单据响应状态:', response.status);
+                    console.log('待确认单据响应状态:', response.status, response.statusText);
                     
                     if (!response.ok) {
                         const errorText = await response.text().catch(() => '');
@@ -897,7 +902,10 @@
                     console.log('待确认单据响应数据:', data);
                     
                     // 更新待确认单据列表
-                    updatePendingOrdersList(data);
+                    const hasExtractingTasks = updatePendingOrdersList(data);
+                    
+                    // 管理轮询
+                    managePolling(hasExtractingTasks);
                 } catch (error) {
                     console.error('加载待确认单据失败:', error);
                     // 更新UI显示错误信息
@@ -912,6 +920,31 @@
                             </div>
                         `;
                     }
+                    // 出现错误时停止轮询
+                    stopPolling();
+                }
+            }
+            
+            // 管理轮询
+            function managePolling(hasExtractingTasks) {
+                if (hasExtractingTasks) {
+                    // 如果有提取中的任务且轮询未启动，则启动轮询
+                    if (!pollingInterval) {
+                        console.log('启动轮询，每3秒刷新一次待确认单据');
+                        pollingInterval = setInterval(loadPendingOrders, 3000);
+                    }
+                } else {
+                    // 如果没有提取中的任务，则停止轮询
+                    stopPolling();
+                }
+            }
+            
+            // 停止轮询
+            function stopPolling() {
+                if (pollingInterval) {
+                    console.log('停止轮询');
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
                 }
             }
             
@@ -922,7 +955,7 @@
                 const pendingOrdersList = document.getElementById('pending-orders-list');
                 if (!pendingOrdersList) {
                     console.error('找不到待确认单据列表元素');
-                    return;
+                    return false;
                 }
                 
                 // 检查响应数据格式
@@ -938,22 +971,95 @@
                             </div>
                         </div>
                     `;
-                    return;
+                    return false;
                 }
+                
+                // 检查是否有提取中的任务
+                let hasExtractingTasks = false;
                 
                 // 生成待确认单据列表HTML
                 let html = '';
                 orderList.forEach((order, index) => {
                     // 解析订单数据
-                    const customerName = order.customerName || order.customer_name || order.customer || '未知客户';
+                    let customerName = '未知客户';
                     const orderTime = order.createTime || order.created_at || order.time || new Date().toLocaleTimeString();
                     const orderDescription = order.description || order.content || order.summary || '待确认订单';
+                    const status = order.status || 'UNKNOWN';
+                    
+                    // 检查是否有提取中的任务
+                    if (status === 'EXTRACTING') {
+                        hasExtractingTasks = true;
+                    }
+                    
+                    // 解析客户名称和摘要：从 ai_result JSON 中提取数据
+                    let summary = '';
+                    if (order.aiResult) {
+                        try {
+                            const aiResult = JSON.parse(order.aiResult);
+                            if (aiResult.customer_data && aiResult.customer_data.name) {
+                                customerName = aiResult.customer_data.name;
+                            }
+                            // 提取 summary 字段
+                            if (aiResult.summary) {
+                                summary = aiResult.summary;
+                            }
+                        } catch (e) {
+                            console.error('解析 ai_result 失败:', e);
+                        }
+                    }
+                    
+                    // 处理摘要显示
+                    let displayTitle = customerName;
+                    if (status === 'EXTRACTING') {
+                        displayTitle = '识别中...';
+                    } else if (summary) {
+                        // 截取前 20 个字符，超出部分追加 ...
+                        displayTitle = summary.length > 20 ? summary.substring(0, 20) + '...' : summary;
+                    } else if (customerName === '未知客户') {
+                        displayTitle = '未命名草稿';
+                    }
+                    
+                    // 根据状态获取标签颜色
+                    let statusClass = '';
+                    let statusText = '';
+                    let statusIcon = '';
+                    
+                    switch (status) {
+                        case 'EXTRACTING':
+                            statusClass = 'bg-gray-100 text-gray-600';
+                            statusText = '提取中';
+                            statusIcon = '<i class="ph ph-spinner ph-spin text-sm"></i> ';
+                            break;
+                        case 'SUCCESS':
+                            statusClass = 'bg-green-100 text-green-600';
+                            statusText = '提取成功';
+                            statusIcon = '<i class="ph ph-check text-sm"></i> ';
+                            break;
+                        case 'FAILED':
+                            statusClass = 'bg-red-100 text-red-600';
+                            statusText = '提取失败';
+                            statusIcon = '<i class="ph ph-x text-sm"></i> ';
+                            break;
+                        default:
+                            statusClass = 'bg-slate-100 text-slate-600';
+                            statusText = '未知状态';
+                            statusIcon = '<i class="ph ph-question text-sm"></i> ';
+                    }
+                    
+                    // 为提取中的任务添加加载动画
+                    let loadingClass = status === 'EXTRACTING' ? 'animate-pulse' : '';
                     
                     html += `
-                        <div onclick="openAuditModal('${customerName}')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
+                        <div onclick="showRecordDetail(${JSON.stringify(order).replace(/"/g, '&quot;')})" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group ${loadingClass}">
                             <div class="flex justify-between items-start mb-2">
-                                <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">${customerName}</p></div>
-                                <span class="text-[9px] text-slate-400 font-mono tracking-tighter">${orderTime}</span>
+                                <div class="flex items-center gap-2">
+                                    <i class="ph ph-microphone-stage text-brand-500"></i>
+                                    <p class="text-xs font-bold text-slate-800">${displayTitle}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] ${statusClass} px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${statusIcon}${statusText}</span>
+                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">${orderTime}</span>
+                                </div>
                             </div>
                             <div class="text-[11px] text-slate-500 italic truncate">"${orderDescription}"</div>
                         </div>
@@ -961,17 +1067,10 @@
                 });
                 
                 pendingOrdersList.innerHTML = html;
+                return hasExtractingTasks;
             }
             
-            // 移除getAuthHeaders函数，使用wrappedFetch代替
-            function getAuthHeaders() {
-                console.warn('getAuthHeaders函数已弃用，请使用wrappedFetch函数');
-                const token = localStorage.getItem('token');
-                return {
-                    'Content-Type': 'application/json',
-                    'Authorization': token ? `Bearer ${token}` : ''
-                };
-            }
+
         
         // 更新用户信息显示
         function updateUserInfo() {
@@ -1040,9 +1139,8 @@
             try {
                 // 通过 API Gateway 调用 AIService
                 const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
-                const response = await fetch(fullUrl, {
+                const response = await window.wrappedFetch(fullUrl, {
                     method: 'POST',
-                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         taskType: 'ORDER_EXTRACT',
                         inputType: 'URL',
@@ -1087,6 +1185,212 @@
             return 'http://localhost:8080';
         }
 
+        // 显示记录详情
+        function showRecordDetail(record) {
+            console.log('显示记录详情:', record);
+            
+            try {
+                // 清空之前的表单状态，防止数据残留
+                const orderPane = document.getElementById('pane-order');
+                const productPane = document.getElementById('pane-product');
+                const customerPane = document.getElementById('pane-customer');
+                
+                if (orderPane) {
+                    orderPane.innerHTML = '';
+                }
+                if (productPane) {
+                    productPane.innerHTML = '';
+                }
+                if (customerPane) {
+                    customerPane.innerHTML = '';
+                }
+                
+                // 解析 ai_result JSON (双重解析)
+                let aiResultData = null;
+                if (record.aiResult) {
+                    try {
+                        const outer = JSON.parse(record.aiResult);
+                        const inner = JSON.parse(outer.result);
+                        aiResultData = inner;
+                        console.log('解析 ai_result 成功:', aiResultData);
+                    } catch (e) {
+                        console.error('解析 ai_result 失败:', e);
+                        // 显示数据格式异常
+                        if (orderPane) {
+                            orderPane.innerHTML = `
+                                <div class="flex items-center justify-center h-40 text-red-500 text-sm">
+                                    <div class="text-center">
+                                        <i class="ph ph-x-circle text-xl mb-2"></i>
+                                        <p>数据格式异常</p>
+                                        <p class="text-slate-400 text-xs mt-2">可查看 input_content 手动录入</p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                
+                // 打开审核模态框
+                const auditModal = document.getElementById('audit-modal');
+                if (auditModal) {
+                    auditModal.classList.remove('hidden');
+                }
+                
+                // 动态生成 Tab
+                const tabContainer = document.getElementById('audit-tabs-nav');
+                if (tabContainer) {
+                    let tabHtml = '';
+                    
+                    // 订单页签：始终显示
+                    tabHtml += '<button onclick="switchAuditTab(\'order\')" id="tab-order" class="sub-tab-btn active">订单详情</button>';
+                    
+                    // 产品页签：判断是否有新产品
+                    if (aiResultData && aiResultData.new_products_found && aiResultData.new_products_found.length > 0) {
+                        tabHtml += '<button onclick="switchAuditTab(\'product\')" id="tab-product" class="sub-tab-btn">产品信息</button>';
+                    }
+                    
+                    // 客户页签：判断是否有客户数据
+                    if (aiResultData && aiResultData.customer_data) {
+                        tabHtml += '<button onclick="switchAuditTab(\'customer\')" id="tab-customer" class="sub-tab-btn">客户资料</button>';
+                    }
+                    
+                    tabContainer.innerHTML = tabHtml;
+                }
+                
+                // 填充订单详情
+                if (orderPane && aiResultData) {
+                    let orderHtml = '';
+                    
+                    // 订单编号和日期
+                    orderHtml += `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">订单编号</label><input type="text" value="${aiResultData.order_data?.order_code || '系统自动生成'}" class="form-input font-mono font-bold text-slate-800"></div>
+                            <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">预计交货日期</label><input type="date" value="${aiResultData.order_data?.delivery_date || ''}" class="form-input"></div>
+                        </div>
+                    `;
+                    
+                    // 订单明细
+                    orderHtml += `
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
+                                    <tr><th class="px-5 py-4">品名</th><th class="px-5 py-4 text-center">数量</th><th class="px-5 py-4 text-right">单价</th><th class="px-5 py-4 text-right">小计</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                    `;
+                    
+                    if (aiResultData.order_data && aiResultData.order_data.items) {
+                        aiResultData.order_data.items.forEach(item => {
+                            orderHtml += `
+                                <tr>
+                                    <td class="px-5 py-4">
+                                        <p class="font-bold">${item.product_name_raw || '未知产品'}</p>
+                                    </td>
+                                    <td class="px-5 py-4 text-center"><input type="number" value="${item.quantity || 0}" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold"></td>
+                                    <td class="px-5 py-4 text-right font-mono font-bold">$${(item.price_at_time || 0).toFixed(2)}</td>
+                                    <td class="px-5 py-4 text-right font-mono font-bold">$${(item.total_amount || 0).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        orderHtml += `
+                            <tr>
+                                <td colspan="4" class="px-5 py-4 text-center text-slate-400">暂无订单明细</td>
+                            </tr>
+                        `;
+                    }
+                    
+                    orderHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    // 订单总计
+                    if (aiResultData.order_data) {
+                        orderHtml += `
+                            <div class="flex justify-between items-center p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden">
+                                <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
+                                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计 (Total Amount)</p>
+                                <p class="text-2xl font-mono font-black text-brand-500">$${(aiResultData.order_data.total_amount || 0).toFixed(2)}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    orderPane.innerHTML = orderHtml;
+                }
+                
+                // 填充产品信息
+                if (productPane && aiResultData) {
+                    let productHtml = '';
+                    
+                    if (aiResultData.new_products_found && aiResultData.new_products_found.length > 0) {
+                        productHtml += `
+                            <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3 mb-6">
+                                <i class="ph ph-info text-blue-600 text-lg"></i>
+                                <p class="text-[11px] text-blue-700 leading-relaxed">检测到该订单包含 ${aiResultData.new_products_found.length} 个新产品，建议补全基础信息后自动录入产品库。</p>
+                            </div>
+                        `;
+                        
+                        aiResultData.new_products_found.forEach((product, index) => {
+                            productHtml += `
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品名称</label><input type="text" value="${product.name || '未知产品'}" class="form-input"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">SKU 编码</label><input type="text" value="${product.sku || ''}" class="form-input"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">预设售价</label><input type="number" value="${product.price || 0}" class="form-input font-mono"></div>
+                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">描述</label><input type="text" value="${product.description || ''}" class="form-input"></div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        productHtml += `
+                            <div class="flex items-center justify-center h-40 text-slate-400 text-sm">
+                                <div class="text-center">
+                                    <i class="ph ph-check-circle text-xl mb-2"></i>
+                                    <p>暂无新产品信息</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    productPane.innerHTML = productHtml;
+                }
+                
+                // 填充客户信息
+                if (customerPane && aiResultData && aiResultData.customer_data) {
+                    const customer = aiResultData.customer_data;
+                    let customerHtml = '';
+                    
+                    customerHtml += `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">客户名称</label><input type="text" value="${customer.name || ''}" class="form-input" id="form-cust-name"></div>
+                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">联系电话</label><input type="text" value="${customer.phone || ''}" class="form-input font-mono" id="form-cust-phone"></div>
+                        </div>
+                        <div class="pt-4 border-t border-slate-50 mt-6">
+                            <button onclick="toggleAdvanced('cust')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">更多档案信息 <i id="icon-cust" class="ph ph-caret-down"></i></button>
+                            <div id="drawer-cust" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">来源</label><select class="form-input"><option>${customer.source || 'OTHER'}</option><option>WECHAT</option><option>ALIPAY</option><option>OTHER</option></select></div>
+                                <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">摘要/地址</label><input type="text" value="${customer.address || customer.summary || ''}" class="form-input"></div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    customerPane.innerHTML = customerHtml;
+                } else if (customerPane) {
+                    customerPane.innerHTML = `
+                        <div class="flex items-center justify-center h-40 text-slate-400 text-sm">
+                            <div class="text-center">
+                                <i class="ph ph-check-circle text-xl mb-2"></i>
+                                <p>暂无客户信息</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('显示记录详情失败:', error);
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', async function() {
             // 检查认证状态
             if (window.checkAuth) {
@@ -1153,6 +1457,26 @@
             console.log('调用loadPendingOrders函数加载待确认单据');
             loadPendingOrders();
             
+            // 显示通知函数
+            function showNotification(message) {
+                // 创建通知元素
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-y-0 opacity-100 text-xs';
+                notification.textContent = message;
+                
+                // 添加到页面
+                document.body.appendChild(notification);
+                
+                // 2秒后开始淡出
+                setTimeout(() => {
+                    notification.classList.add('opacity-0', 'translate-y-[-20px]');
+                    // 动画结束后移除元素
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 2000);
+            }
+            
             // 调用AIService处理文本
             async function processTextWithAIService(text) {
                 const requestData = {
@@ -1172,9 +1496,8 @@
                 console.log('AIService API URL:', fullUrl);
                 
                 try {
-                    const response = await fetch(fullUrl, {
+                    const response = await window.wrappedFetch(fullUrl, {
                         method: 'POST',
-                        headers: getAuthHeaders(),
                         body: JSON.stringify(requestData)
                     });
                     
@@ -1188,10 +1511,19 @@
                     const result = await response.json();
                     console.log('AIService响应数据:', result);
                     
-                    if (result.success && result.data) {
-                        return result.data;
-                    } else if (result.code === 200 && result.data) {
-                        return result.data;
+                    if (result.success && result.requestId) {
+                        // 显示通知
+                        showNotification('已提交 AI 订单提取，正在识别中...');
+                        // 清空文本输入框
+                        const textInput = document.getElementById('textInput');
+                        if (textInput) {
+                            textInput.value = '';
+                        }
+                        // 刷新待确认单据列表（添加延迟确保数据库写入完成）
+                        setTimeout(() => {
+                            loadPendingOrders();
+                        }, 300);
+                        return result;
                     } else {
                         throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
                     }
@@ -1209,27 +1541,24 @@
                     if (textInput && textInput.value.trim()) {
                         try {
                             console.log('点击开始解析按钮，文本内容:', textInput.value.trim());
-                            // 移除alert，避免阻塞代码执行
-                            console.log('正在解析，请稍候...');
+                            
+                            // 立即清空textarea并显示通知
+                            const textContent = textInput.value.trim();
+                            textInput.value = '';
+                            showNotification('已提交AI订单提取，正在识别中...');
                             
                             console.log('准备调用processTextWithAIService函数');
                             // 调用AIService处理文本
-                            const result = await processTextWithAIService(textInput.value.trim());
+                            await processTextWithAIService(textContent);
                             
-                            console.log('AIService返回结果:', result);
-                            
-                            // 使用新的模态框显示结果
-                            setTimeout(function() {
-                                populateOrderResultModal(result);
-                            }, 500);
                         } catch (error) {
                             console.error('解析文本失败:', error);
-                            // 移除alert，使用console.log代替
-                            console.error('解析失败: ' + error.message);
+                            // 显示错误通知
+                            showNotification('解析失败: ' + error.message);
                         }
                     } else {
-                        // 移除alert，使用console.log代替
-                        console.log('请输入或粘贴单据内容');
+                        // 显示提示通知
+                        showNotification('请输入或粘贴单据内容');
                     }
                 });
             }
@@ -1321,19 +1650,23 @@
                         const timestamp = new Date().getTime();
                         const imageName = `photo_${timestamp}.jpg`;
                         
-                        const ossInternalUrl = await uploadImageToOss(blob, imageName);
-                        console.log('上传图片到OSS成功，URL:', ossInternalUrl);
-                        const extractedResult = await processImageWithAIService(ossInternalUrl);
-                        
-                        setTimeout(function() {
-                            // 使用新的模态框显示结果
-                            populateOrderResultModal(extractedResult);
+                        try {
+                            const ossInternalUrl = await uploadImageToOss(blob, imageName);
+                            console.log('上传图片到OSS成功，URL:', ossInternalUrl);
+                            await processImageWithAIService(ossInternalUrl);
+                            
+                            setTimeout(function() {
+                                stopCamera();
+                            }, 500);
+                        } catch (error) {
+                            console.error('处理图片失败:', error);
+                            showNotification('处理图片失败: ' + error.message);
                             stopCamera();
                             cameraModal.classList.add('hidden');
-                        }, 500);
+                        }
                     } else {
                         console.error('无法将canvas转换为blob');
-                        alert('处理图片失败：无法生成图片文件');
+                        showNotification('处理图片失败：无法生成图片文件');
                         stopCamera();
                         cameraModal.classList.add('hidden');
                     }
@@ -1346,32 +1679,66 @@
             });
 
             // 处理选择的图片
-            imageInput.addEventListener('change', async function(e) {
+            imageInput.addEventListener('change', function(e) {
                 if (e.target.files && e.target.files[0]) {
                     const file = e.target.files[0];
                     
-                    // 直接上传并处理图片，跳过本地预览和localStorage存储
-                    const timestamp = new Date().getTime();
-                    const imageName = `selected_photo_${timestamp}.jpg`;
+                    // 显示本地预览
+                    const previewImg = document.getElementById('preview-img');
+                    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+                    const submitImageBtn = document.getElementById('submitImage');
                     
-                    try {
-                        const ossInternalUrl = await uploadImageToOss(file, imageName);
-                        const extractedResult = await processImageWithAIService(ossInternalUrl);
-                        
-                        setTimeout(function() {
-                            // 使用新的模态框显示结果
-                            populateOrderResultModal(extractedResult);
-                            stopCamera();
-                            cameraModal.classList.add('hidden');
-                        }, 500);
-                    } catch (error) {
-                        console.error('处理图片失败:', error);
-                        alert('处理图片失败: ' + error.message);
-                        stopCamera();
-                        cameraModal.classList.add('hidden');
-                    }
+                    // 隐藏占位符，显示预览图片
+                    cameraPlaceholder.classList.add('hidden');
+                    previewImg.classList.remove('hidden');
+                    previewImg.src = URL.createObjectURL(file);
+                    
+                    // 显示并激活提交按钮
+                    submitImageBtn.classList.remove('hidden');
+                    submitImageBtn.classList.remove('text-slate-400', 'border-slate-200');
+                    submitImageBtn.classList.add('text-white', 'bg-brand-600', 'border-brand-600');
+                    submitImageBtn.disabled = false;
+                    
+                    // 存储选择的文件，供提交按钮使用
+                    imageInput.selectedFile = file;
                 }
             });
+
+            // 提交图片并开始识别
+            const submitImageBtn = document.getElementById('submitImage');
+            if (submitImageBtn) {
+                submitImageBtn.addEventListener('click', async function() {
+                    const file = imageInput.selectedFile;
+                    if (file) {
+                        try {
+                            // 隐藏拍照弹窗并显示通知
+                            const cameraModal = document.getElementById('cameraModal');
+                            if (cameraModal) {
+                                cameraModal.classList.add('hidden');
+                            }
+                            showNotification('已提交AI订单提取，正在识别中...');
+                            
+                            // 上传图片并处理
+                            const timestamp = new Date().getTime();
+                            const imageName = `selected_photo_${timestamp}.jpg`;
+                            const ossInternalUrl = await uploadImageToOss(file, imageName);
+                            await processImageWithAIService(ossInternalUrl);
+                            
+                            setTimeout(function() {
+                                stopCamera();
+                            }, 500);
+                        } catch (error) {
+                            console.error('处理图片失败:', error);
+                            showNotification('处理图片失败: ' + error.message);
+                            stopCamera();
+                            const cameraModal = document.getElementById('cameraModal');
+                            if (cameraModal) {
+                                cameraModal.classList.add('hidden');
+                            }
+                        }
+                    }
+                });
+            }
 
             // 停止摄像头
             function stopCamera() {
@@ -1383,9 +1750,19 @@
                 }
                 cameraPreview.classList.add('hidden');
                 cameraCanvas.classList.add('hidden');
+                document.getElementById('preview-img').classList.add('hidden');
+                document.getElementById('preview-img').src = '';
                 cameraPlaceholder.classList.remove('hidden');
                 startCamera.classList.remove('hidden');
                 takePhoto.classList.add('hidden');
+                const submitImageBtn = document.getElementById('submitImage');
+                if (submitImageBtn) {
+                    submitImageBtn.classList.add('hidden');
+                    submitImageBtn.classList.remove('text-white', 'bg-brand-600', 'border-brand-600');
+                    submitImageBtn.classList.add('text-slate-400', 'border-slate-200');
+                    submitImageBtn.disabled = true;
+                }
+                imageInput.selectedFile = null;
             }
 
             // 麦克风功能
@@ -1547,13 +1924,9 @@
                 const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
                 console.log('AIService API URL:', fullUrl);
                 
-                // 使用getAuthHeaders函数获取请求头，确保token正确
-                const headers = getAuthHeaders();
-                
                 try {
-                    const response = await fetch(fullUrl, {
+                    const response = await window.wrappedFetch(fullUrl, {
                         method: 'POST',
-                        headers: headers,
                         body: JSON.stringify(requestData)
                     });
                     
@@ -1568,10 +1941,19 @@
                     const result = await response.json();
                     console.log('AIService响应数据:', result);
                     
-                    if (result.success && result.data) {
-                        return result.data;
-                    } else if (result.code === 200 && result.data) {
-                        return result.data;
+                    if (result.success && result.requestId) {
+                        // 显示通知
+                        showNotification('已提交 AI 订单提取，正在识别中...');
+                        // 关闭摄像头模态框
+                        const cameraModal = document.getElementById('cameraModal');
+                        if (cameraModal) {
+                            cameraModal.classList.add('hidden');
+                        }
+                        // 刷新待确认单据列表（添加延迟确保数据库写入完成）
+                        setTimeout(() => {
+                            loadPendingOrders();
+                        }, 300);
+                        return result;
                     } else {
                         throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
                     }
@@ -1584,6 +1966,13 @@
             // 调用AIService处理音频
             async function processAudioWithAIService(audioUrl) {
                 voiceStatus.textContent = '正在处理音频...';
+                
+                // 立即隐藏音频弹窗并显示通知
+                const voiceModal = document.getElementById('voiceModal');
+                if (voiceModal) {
+                    voiceModal.classList.add('hidden');
+                }
+                showNotification('已提交AI订单提取，正在识别中...');
                 
                 const requestData = {
                     taskType: 'ORDER_EXTRACT',
@@ -1601,9 +1990,8 @@
                 const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
                 console.log("发送请求至:", fullUrl);
                 console.log("请求参数:", requestData);
-                const response = await fetch(fullUrl, {
+                const response = await window.wrappedFetch(fullUrl, {
                     method: 'POST',
-                    headers: getAuthHeaders(),
                     body: JSON.stringify(requestData)
                 });
                 
@@ -1615,10 +2003,12 @@
                 const result = await response.json();
                 console.log('AIService响应:', result);
                 
-                if (result.success && result.data) {
-                    return result.data;
-                } else if (result.code === 200 && result.data) {
-                    return result.data;
+                if (result.success && result.requestId) {
+                    // 刷新待确认单据列表（添加延迟确保数据库写入完成）
+                    setTimeout(() => {
+                        loadPendingOrders();
+                    }, 300);
+                    return result;
                 } else {
                     throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
                 }
@@ -1672,35 +2062,21 @@
                                     voiceStatus.textContent = '正在分析音频...';
                                     
                                     // 调用AIService处理音频
-                                    const extractedResult = await processAudioWithAIService(ossInternalUrl);
+                                    await processAudioWithAIService(ossInternalUrl);
                                     
                                     // 不需要保存音频到本地存储，避免localStorage配额超出
                                     console.log('音频处理完成，不需要存储到本地');
-                                    // 注释掉以下代码，避免localStorage配额超出
-                                    /*
-                                    const reader = new FileReader();
-                                    reader.onloadend = function() {
-                                        const base64data = reader.result;
-                                        localStorage.setItem(audioName, base64data);
-                                    };
-                                    reader.readAsDataURL(audioBlob);
-                                    */
                                     
-                                    // 显示提取结果
+                                    // 清空语音模态框
                                     setTimeout(function() {
-                                        // 使用新的模态框显示结果
-                                        populateOrderResultModal(extractedResult);
-                                        
-                                        // 清空语音模态框
                                         stopVoiceRecording();
-                                        voiceModal.classList.add('hidden');
                                     }, 500);
                                 } catch (error) {
                                     console.error('处理音频失败:', error);
                                     
                                     // 显示错误信息
                                     setTimeout(function() {
-                                        alert('处理音频失败：' + error.message);
+                                        showNotification('处理音频失败：' + error.message);
                                         stopVoiceRecording();
                                         voiceModal.classList.add('hidden');
                                     }, 500);
@@ -1901,57 +2277,10 @@
             // 初始化订单结果模态框
             initOrderResultModal();
             
-            // 修改processTextWithAIService函数，使用新的模态框显示结果
-            const originalProcessTextWithAIService = processTextWithAIService;
-            window.processTextWithAIService = async function(text) {
-                try {
-                    const result = await originalProcessTextWithAIService(text);
-                    console.log('AIService返回结果:', result);
-                    
-                    // 使用新的模态框显示结果
-                    populateOrderResultModal(result);
-                    
-                    return result;
-                } catch (error) {
-                    console.error('调用AIService时发生错误:', error);
-                    throw error;
-                }
-            };
-            
-            // 修改processImageWithAIService函数，使用新的模态框显示结果
-            const originalProcessImageWithAIService = processImageWithAIService;
-            window.processImageWithAIService = async function(imageUrl) {
-                try {
-                    const result = await originalProcessImageWithAIService(imageUrl);
-                    console.log('AIService返回结果:', result);
-                    
-                    // 使用新的模态框显示结果
-                    populateOrderResultModal(result);
-                    
-                    return result;
-                } catch (error) {
-                    console.error('调用AIService时发生错误:', error);
-                    throw error;
-                }
-            };
-            
-            // 修改processAudioWithAIService函数，使用新的模态框显示结果
-            const originalProcessAudioWithAIService = processAudioWithAIService;
-            window.processAudioWithAIService = async function(audioUrl) {
-                try {
-                    voiceStatus.textContent = '正在处理音频...';
-                    const result = await originalProcessAudioWithAIService(audioUrl);
-                    console.log('AIService返回结果:', result);
-                    
-                    // 使用新的模态框显示结果
-                    populateOrderResultModal(result);
-                    
-                    return result;
-                } catch (error) {
-                    console.error('调用AIService时发生错误:', error);
-                    throw error;
-                }
-            };
+            // 暴露处理函数到全局
+            window.processTextWithAIService = processTextWithAIService;
+            window.processImageWithAIService = processImageWithAIService;
+            window.processAudioWithAIService = processAudioWithAIService;
 
             // AI 审核模态框
             window.openAuditModal = function(customer) {
