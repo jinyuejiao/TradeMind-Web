@@ -118,6 +118,24 @@
                 border-radius: 1.5rem 1.5rem 0 0 !important;
             }
         }
+
+        /* 输入框样式优化 */
+        .form-input {
+            width: 100%;
+            background-color: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: #14B8A6;
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -294,32 +312,13 @@
                         <!-- 时间轴 (信息增强) --> 
                         <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-left"> 
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">交互时间轴</h3> 
-                            <div class="relative pl-6 space-y-8"> 
+                            <div id="timeline-container" class="relative pl-6 space-y-8 max-h-[400px] overflow-y-auto"> 
                                 <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div> 
-                                <div class="relative"> 
-                                    <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm"></span> 
-                                    <div class="flex justify-between items-start mb-1"> 
-                                        <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">Today 10:42 AM</p> 
-                                        <span class="text-[9px] bg-brand-50 text-brand-600 px-1.5 rounded uppercase font-bold tracking-widest">询价</span> 
-                                    </div> 
-                                    <p class="text-xs font-bold text-slate-800 tracking-tight italic">"WhatsApp 咨询 500 套金色灯具"</p> 
-                                </div> 
-                                <div class="relative"> 
-                                    <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-blue-500 border-4 border-white shadow-sm"></span> 
-                                    <div class="flex justify-between items-start mb-1"> 
-                                        <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">Dec 28, 2025</p> 
-                                        <span class="text-[9px] bg-blue-50 text-blue-600 px-1.5 rounded uppercase font-bold tracking-widest">寄样</span> 
-                                    </div> 
-                                    <p class="text-xs font-bold text-slate-800 tracking-tight">发送金色新款样品 (#EXP-4402)</p> 
-                                </div> 
-                                <div class="relative opacity-60"> 
-                                    <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-slate-300 border-4 border-white shadow-sm"></span> 
-                                    <div class="flex justify-between items-start mb-1"> 
-                                        <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">Nov 15, 2025</p> 
-                                        <span class="text-[9px] bg-slate-100 text-slate-500 px-1.5 rounded uppercase font-bold tracking-widest">结清</span> 
-                                    </div> 
-                                    <p class="text-xs font-bold text-slate-800 tracking-tight">订单结清 (#INV-8210) - $12,500</p> 
-                                </div> 
+                                <!-- 时间轴内容将通过JavaScript动态生成 -->
+                                <div class="p-8 text-center text-slate-400">
+                                    <i class="ph ph-clock text-4xl mb-3"></i>
+                                    <p class="text-sm">加载订单记录中...</p>
+                                </div>
                             </div> 
                         </div> 
                         <!-- AI 建议卡片 --> 
@@ -338,151 +337,208 @@
     </main>
 
     <!-- 新增客户弹窗 -->
-    <div id="add-customer-modal" class="fixed inset-0 bg-black/50 flex items-end justify-center z-50 hidden">
-        <div class="modal-content-box bg-white border-t border-slate-200 w-full max-w-md rounded-t-3xl shadow-2xl animate-slide-up h-[85vh] overflow-y-auto">
-            <div class="sticky top-0 bg-white border-b border-slate-200 p-4 flex justify-between items-center z-10">
-                <h3 class="text-lg font-bold text-slate-800">新增客户</h3>
-                <button onclick="closeAddCustomerModal()" class="p-2 text-slate-400 hover:text-slate-600">
-                    <i class="ph ph-x text-xl"></i>
+    <div id="add-customer-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAddCustomerModal()"></div>
+        <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <i class="ph ph-user-plus text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black text-slate-800" id="client-modal-title">新增客户档案</h2>
+                        <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">CUSTOMER REGISTRY</p>
+                    </div>
+                </div>
+                <button onclick="closeAddCustomerModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <i class="ph ph-x text-xl text-slate-400"></i>
                 </button>
             </div>
-            <div class="p-5 space-y-4">
-                <form id="add-customer-form">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">客户名称</label>
-                            <input type="text" id="add-name" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" required>
+
+            <form id="add-customer-form" class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
+                <!-- 1. 核心联系信息 -->
+                <section>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心联系信息
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label>
+                            <input type="text" id="name" class="form-input font-bold" required>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">手机号</label>
-                            <input type="tel" id="add-phone" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" required>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label>
+                            <input type="tel" id="phone" class="form-input font-mono" required>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">邮箱</label>
-                            <input type="email" id="add-email" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">来源</label>
-                            <select id="add-source" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                                <option value="">请选择</option>
-                                <option value="WECHAT">微信</option>
-                                <option value="ALIBABA">阿里巴巴</option>
-                                <option value="GOOGLE">谷歌</option>
-                                <option value="REFERRAL">推荐</option>
-                                <option value="OTHER">其他</option>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
+                            <select id="source" class="form-input font-bold text-slate-700">
+                                <option value="WECHAT">WECHAT (微信)</option>
+                                <option value="ALIPAY">ALIPAY (支付宝)</option>
+                                <option value="PHONE">PHONE (电话)</option>
+                                <option value="OTHER">OTHER (其他)</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">状态</label>
-                            <select id="add-status" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                                <option value="">请选择</option>
-                                <option value="ACTIVE">活跃</option>
-                                <option value="INACTIVE">非活跃</option>
-                                <option value="POTENTIAL">潜在</option>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
+                            <select id="cust_status" class="form-input font-bold text-brand-600">
+                                <option value="ACTIVE">活跃客户</option>
+                                <option value="INACTIVE">沉睡客户</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">地区</label>
-                            <input type="text" id="add-region" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">地址</label>
-                            <textarea id="add-address" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">备注</label>
-                            <textarea id="add-summary" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                    </div>
+                </section>
+
+                <!-- 2. 高级隐藏信息 -->
+                <section class="pt-6 border-t border-slate-50">
+                    <button onclick="toggleAdvanced('add')" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+                        <span>展开详细地址与档案摘要</span>
+                        <i id="advanced-icon-add" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
+                    </button>
+                    <div id="advanced-drawer-add" class="advanced-drawer hidden">
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label>
+                                <input type="email" id="email" class="form-input">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label>
+                                <input type="text" id="region" class="form-input">
+                            </div>
+                            <div class="space-y-2 col-span-full">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label>
+                                <textarea id="address" class="form-input h-20 no-scrollbar"></textarea>
+                            </div>
+                            <div class="space-y-2 col-span-full">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label>
+                                <textarea id="summary" class="form-input h-20 no-scrollbar"></textarea>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-6 space-y-3">
-                        <button type="button" onclick="closeAddCustomerModal()" class="w-full py-3 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition">取消</button>
-                        <button type="submit" class="w-full py-3 bg-brand-600 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-brand-700 transition">保存客户</button>
-                    </div>
-                </form>
+                </section>
+            </form>
+
+            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                <p class="text-[10px] text-slate-400">保存后将同步更新客户画像并自动分析采购周期</p>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <button onclick="closeAddCustomerModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
+                    <button type="submit" form="add-customer-form" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-teal-500 text-white text-xs font-black shadow-xl hover:bg-teal-600 active:scale-95 transition-all">保存客户档案</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 编辑客户弹窗 -->
-    <div id="edit-customer-modal" class="fixed inset-0 bg-black/50 flex items-end justify-center z-50 hidden">
-        <div class="modal-content-box bg-white border-t border-slate-200 w-full max-w-md rounded-t-3xl shadow-2xl animate-slide-up h-[85vh] overflow-y-auto">
-            <div class="sticky top-0 bg-white border-b border-slate-200 p-4 flex justify-between items-center z-10">
-                <h3 class="text-lg font-bold text-slate-800">编辑客户</h3>
-                <button onclick="closeEditCustomerModal()" class="p-2 text-slate-400 hover:text-slate-600">
-                    <i class="ph ph-x text-xl"></i>
+    <div id="edit-customer-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeEditCustomerModal()"></div>
+        <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <i class="ph ph-pencil-line text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black text-slate-800" id="client-modal-title">编辑客户档案</h2>
+                        <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">CUSTOMER REGISTRY</p>
+                    </div>
+                </div>
+                <button onclick="closeEditCustomerModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <i class="ph ph-x text-xl text-slate-400"></i>
                 </button>
             </div>
-            <div class="p-5 space-y-4">
-                <form id="edit-customer-form">
-                    <input type="hidden" id="edit-id">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">客户名称</label>
-                            <input type="text" id="edit-name" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" required>
+
+            <form id="edit-customer-form" class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
+                <!-- 1. 核心联系信息 -->
+                <section>
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心联系信息
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <input type="hidden" id="edit-id">
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label>
+                            <input type="text" id="edit-name" class="form-input font-bold" required>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">手机号</label>
-                            <input type="tel" id="edit-phone" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" required>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label>
+                            <input type="tel" id="edit-phone" class="form-input font-mono" required>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">邮箱</label>
-                            <input type="email" id="edit-email" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">来源</label>
-                            <select id="edit-source" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                                <option value="">请选择</option>
-                                <option value="WECHAT">微信</option>
-                                <option value="ALIBABA">阿里巴巴</option>
-                                <option value="GOOGLE">谷歌</option>
-                                <option value="REFERRAL">推荐</option>
-                                <option value="OTHER">其他</option>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
+                            <select id="edit-source" class="form-input font-bold text-slate-700">
+                                <option value="WECHAT">WECHAT (微信)</option>
+                                <option value="ALIPAY">ALIPAY (支付宝)</option>
+                                <option value="PHONE">PHONE (电话)</option>
+                                <option value="OTHER">OTHER (其他)</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">状态</label>
-                            <select id="edit-status" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                                <option value="">请选择</option>
-                                <option value="ACTIVE">活跃</option>
-                                <option value="INACTIVE">非活跃</option>
-                                <option value="POTENTIAL">潜在</option>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
+                            <select id="edit-cust_status" class="form-input font-bold text-brand-600">
+                                <option value="ACTIVE">活跃客户</option>
+                                <option value="INACTIVE">沉睡客户</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">地区</label>
-                            <input type="text" id="edit-region" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">地址</label>
-                            <textarea id="edit-address" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">备注</label>
-                            <textarea id="edit-summary" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                    </div>
+                </section>
+
+                <!-- 2. 高级隐藏信息 -->
+                <section class="pt-6 border-t border-slate-50">
+                    <button onclick="toggleAdvanced('edit')" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+                        <span>展开详细地址与档案摘要</span>
+                        <i id="advanced-icon-edit" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
+                    </button>
+                    <div id="advanced-drawer-edit" class="advanced-drawer hidden">
+                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label>
+                                <input type="email" id="edit-email" class="form-input">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label>
+                                <input type="text" id="edit-region" class="form-input">
+                            </div>
+                            <div class="space-y-2 col-span-full">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label>
+                                <textarea id="edit-address" class="form-input h-20 no-scrollbar"></textarea>
+                            </div>
+                            <div class="space-y-2 col-span-full">
+                                <label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label>
+                                <textarea id="edit-summary" class="form-input h-20 no-scrollbar"></textarea>
+                            </div>
                         </div>
                     </div>
-                    <div class="mt-6 space-y-3">
-                        <button type="button" onclick="closeEditCustomerModal()" class="w-full py-3 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition">取消</button>
-                        <button type="submit" class="w-full py-3 bg-brand-600 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-brand-700 transition">保存修改</button>
-                    </div>
-                </form>
+                </section>
+            </form>
+
+            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                <p class="text-[10px] text-slate-400">保存后将同步更新客户画像并自动分析采购周期</p>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <button onclick="closeEditCustomerModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
+                    <button type="submit" form="edit-customer-form" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-teal-500 text-white text-xs font-black shadow-xl hover:bg-teal-600 active:scale-95 transition-all">保存客户档案</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 删除确认框 -->
-    <div id="delete-confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in">
-            <div class="text-center mb-5">
-                <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="ph ph-trash text-2xl text-red-500"></i>
-                </div>
-                <h3 class="text-lg font-bold text-slate-800 mb-1">确认删除</h3>
-                <p class="text-sm text-slate-500">您确定要删除此客户吗？此操作不可撤销。</p>
+    <div id="delete-confirm-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeDeleteConfirmModal()"></div>
+        <div class="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden fade-in">
+            <div class="px-6 py-5 border-b border-slate-100 font-bold text-slate-800 flex justify-between items-center bg-slate-50/50">
+                <span>确认删除</span>
+                <i class="ph ph-x cursor-pointer text-slate-400" onclick="closeDeleteConfirmModal()"></i>
             </div>
-            <div class="space-y-3">
-                <button onclick="closeDeleteConfirmModal()" class="w-full py-3 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition">取消</button>
-                <button onclick="deleteCustomer()" class="w-full py-3 bg-red-600 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-red-700 transition">删除客户</button>
+            <div class="p-6 space-y-4">
+                <div class="text-center">
+                    <i class="ph ph-warning-circle text-4xl text-risk-high mb-4"></i>
+                    <p class="text-sm font-bold text-slate-800" id="delete-confirm-message">确定删除此客户吗？</p>
+                    <p class="text-[11px] text-slate-400 mt-2">此操作不可撤销</p>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-50 bg-slate-50/50 flex gap-4">
+                <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition">取消</button>
+                <button onclick="deleteCustomer()" class="flex-1 py-3 rounded-xl bg-risk-high text-white text-xs font-bold shadow-lg active:scale-95 transition">删除客户</button>
             </div>
         </div>
     </div>
@@ -526,11 +582,47 @@
                     url = '../supplier/supplier.html';
                     break;
                 case 'rd':
-                    url = '../RDCenter/RDCenter.html';
+                    url = '../product-center/product-center.html';
                     break;
             }
             if (url) {
                 window.location.href = url;
+            }
+        }
+
+        // --- 工具函数 ---
+        // 包装fetch函数，添加认证头
+        async function wrappedFetch(url, options = {}) {
+            const token = localStorage.getItem('token');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+            
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    headers
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        // 未授权，跳转到登录页
+                        window.location.href = '../../login.html';
+                        throw new Error('未授权');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return response;
+            } catch (error) {
+                // 处理网络错误，包括CORS错误
+                console.error('网络请求错误:', error);
+                throw error;
             }
         }
 
@@ -599,7 +691,7 @@
                     const updatedCustomer = await response.json();
                     closeEditCustomerModal();
                     fetchCustomers();
-                    showCrmDetail(updatedCustomer);
+                    selectCustomer(updatedCustomer.id);
                     return updatedCustomer;
                 } else {
                     const errorData = await response.json();
@@ -655,11 +747,11 @@
             
             customerListEl.innerHTML = customers.map(customer => {
                 return `
-                    <div onclick="showCrmDetail(${JSON.stringify(customer)})" class="p-4 border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer">
+                    <div onclick="selectCustomer(${customer.id})" class="p-4 border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer">
                         <div class="flex justify-between font-bold text-sm text-slate-800">${customer.name} <span class="text-[10px] text-slate-400 font-normal">#${customer.id}</span></div>
                         <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1 uppercase tracking-tighter">
                             <span>${customer.region || '未知地区'}</span>
-                            <span class="px-1.5 py-0.5 bg-${getStatusColor(customer.status)}-50 text-${getStatusColor(customer.status)}-700 text-[9px] rounded">${customer.status || '未知状态'}</span>
+                            <span class="px-1.5 py-0.5 bg-${getStatusColor(customer.cust_status || customer.status)}-50 text-${getStatusColor(customer.cust_status || customer.status)}-700 text-[9px] rounded">${customer.cust_status || customer.status || '未知状态'}</span>
                         </div>
                     </div>
                 `;
@@ -763,8 +855,9 @@
             
             // 更新标签
             const tagsEl = document.getElementById('customer-tags');
+            const customerStatus = customer.cust_status || customer.status;
             tagsEl.innerHTML = `
-                <span class="px-2 py-0.5 bg-${getStatusColor(customer.status)}-50 text-${getStatusColor(customer.status)}-700 text-[10px] font-bold border border-${getStatusColor(customer.status)}-100 rounded">${customer.status || '未知状态'}</span>
+                <span class="px-2 py-0.5 bg-${getStatusColor(customerStatus)}-50 text-${getStatusColor(customerStatus)}-700 text-[10px] font-bold border border-${getStatusColor(customerStatus)}-100 rounded">${customerStatus || '未知状态'}</span>
                 <span class="px-2 py-0.5 bg-${getSourceColor(customer.source)}-50 text-${getSourceColor(customer.source)}-700 text-[10px] font-bold border border-${getSourceColor(customer.source)}-100 rounded">${customer.source || '未知来源'}</span>
             `;
             
@@ -786,7 +879,7 @@
                     </div>
                     <div>
                         <p class="text-xs text-slate-500">状态</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.status || '未知'}</p>
+                        <p class="text-sm font-bold text-slate-700">${customerStatus || '未知'}</p>
                     </div>
                     <div class="col-span-2">
                         <p class="text-xs text-slate-500">地区</p>
@@ -815,12 +908,22 @@
                     <p class="text-sm">请选择一个客户查看详情</p>
                 </div>
             `;
+            document.getElementById('timeline-container').innerHTML = `
+                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
+                <div class="p-8 text-center text-slate-400">
+                    <i class="ph ph-clock text-4xl mb-3"></i>
+                    <p class="text-sm">加载订单记录中...</p>
+                </div>
+            `;
         }
 
         // --- 弹窗操作函数 ---
         // 打开新增客户弹窗
         function openAddCustomerModal() {
-            document.getElementById('add-customer-form').reset();
+            const form = document.getElementById('add-customer-form');
+            if (form) {
+                form.reset();
+            }
             document.getElementById('add-customer-modal').classList.remove('hidden');
         }
 
@@ -842,7 +945,7 @@
             document.getElementById('edit-phone').value = currentCustomer.phone;
             document.getElementById('edit-email').value = currentCustomer.email || '';
             document.getElementById('edit-source').value = currentCustomer.source || '';
-            document.getElementById('edit-status').value = currentCustomer.status || '';
+            document.getElementById('edit-cust_status').value = currentCustomer.cust_status || currentCustomer.status || '';
             document.getElementById('edit-region').value = currentCustomer.region || '';
             document.getElementById('edit-address').value = currentCustomer.address || '';
             document.getElementById('edit-summary').value = currentCustomer.summary || '';
@@ -855,12 +958,26 @@
             document.getElementById('edit-customer-modal').classList.add('hidden');
         }
 
+        // 折叠交互功能
+        function toggleAdvanced(type) {
+            const drawer = document.getElementById(`advanced-drawer-${type}`);
+            const icon = document.getElementById(`advanced-icon-${type}`);
+            if (drawer) {
+                drawer.classList.toggle('hidden');
+                if (icon) {
+                    icon.classList.toggle('ph-caret-down');
+                    icon.classList.toggle('ph-caret-up');
+                }
+            }
+        }
+
         // 打开删除确认框
         function deleteCustomerConfirm() {
             if (!currentCustomer) {
                 alert('请先选择一个客户');
                 return;
             }
+            document.getElementById('delete-confirm-message').textContent = `确定删除客户 ${currentCustomer.name} 吗？`;
             document.getElementById('delete-confirm-modal').classList.remove('hidden');
         }
 
@@ -869,7 +986,73 @@
             document.getElementById('delete-confirm-modal').classList.add('hidden');
         }
 
+        // 表单提交事件处理
+        document.addEventListener('DOMContentLoaded', function() {
+            // 新增客户表单提交
+            const addForm = document.getElementById('add-customer-form');
+            if (addForm) {
+                addForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const customerData = {
+                        name: document.getElementById('name').value,
+                        phone: document.getElementById('phone').value,
+                        email: document.getElementById('email').value,
+                        source: document.getElementById('source').value,
+                        cust_status: document.getElementById('cust_status').value,
+                        region: document.getElementById('region').value,
+                        address: document.getElementById('address').value,
+                        summary: document.getElementById('summary').value
+                    };
+                    await saveCustomer(customerData);
+                });
+            }
+
+            // 编辑客户表单提交
+            const editForm = document.getElementById('edit-customer-form');
+            if (editForm) {
+                editForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const id = document.getElementById('edit-id').value;
+                    const customerData = {
+                        name: document.getElementById('edit-name').value,
+                        phone: document.getElementById('edit-phone').value,
+                        email: document.getElementById('edit-email').value,
+                        source: document.getElementById('edit-source').value,
+                        cust_status: document.getElementById('edit-cust_status').value,
+                        region: document.getElementById('edit-region').value,
+                        address: document.getElementById('edit-address').value,
+                        summary: document.getElementById('edit-summary').value
+                    };
+                    await updateCustomer(id, customerData);
+                });
+            }
+        });
+
         // --- 事件处理函数 ---
+        // 选择客户
+        async function selectCustomer(custId) {
+            const url = `http://localhost:8080/api/v1/crm/customers/${custId}`;
+            
+            try {
+                const response = await wrappedFetch(url, {
+                    method: 'GET'
+                });
+                
+                if (response.ok) {
+                    const customer = await response.json();
+                    showCrmDetail(customer);
+                    // 加载客户订单，渲染时间轴
+                    loadCustomerOrders(custId);
+                } else {
+                    console.error('获取客户详情失败:', response.status);
+                    alert('获取客户详情失败');
+                }
+            } catch (error) {
+                console.error('获取客户详情异常:', error);
+                alert('获取客户详情异常');
+            }
+        }
+
         // 显示客户详情
         function showCrmDetail(customer) {
             renderCustomerDetail(customer);
@@ -896,6 +1079,84 @@
             }
         }
 
+        // 加载客户订单，渲染时间轴
+        async function loadCustomerOrders(custId) {
+            const url = `http://localhost:8080/api/v1/rd/orders/customer/${custId}`;
+            
+            try {
+                const response = await wrappedFetch(url, {
+                    method: 'GET'
+                });
+                
+                if (response.ok) {
+                    const orders = await response.json();
+                    // 检查响应结构，确保数据在正确的位置
+                    const orderData = orders.data || orders || [];
+                    renderTimeline(orderData);
+                } else {
+                    console.error('获取客户订单失败:', response.status);
+                    renderTimeline([]);
+                }
+            } catch (error) {
+                console.error('获取客户订单异常:', error);
+                // 即使出现错误，也渲染空的时间轴，避免界面错误
+                renderTimeline([]);
+            }
+        }
+
+        // 渲染时间轴
+        function renderTimeline(orders) {
+            const timelineEl = document.getElementById('timeline-container');
+            if (!timelineEl) return;
+            
+            if (!orders || orders.length === 0) {
+                timelineEl.innerHTML = `
+                    <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
+                    <div class="text-center text-slate-400 py-8">
+                        <p class="text-sm">暂无订单记录</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            timelineEl.innerHTML = `
+                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
+                ${orders.map(order => {
+                    const date = new Date(order.createTime);
+                    const formattedDate = `${date.getMonth() + 1}-${date.getDate()}`;
+                    return `
+                        <div class="relative">
+                            <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm"></span>
+                            <div class="flex justify-between items-start mb-1">
+                                <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">${formattedDate}</p>
+                                <span class="text-[9px] bg-brand-50 text-brand-600 px-1.5 rounded uppercase font-bold tracking-widest">订单</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 tracking-tight">创建订单</p>
+                            <p class="text-xs text-slate-500 mt-1">单号: ${order.orderCode}</p>
+                            <p class="text-xs font-bold text-brand-600 mt-1">¥${order.totalAmount}</p>
+                        </div>
+                    `;
+                }).join('')}
+            `;
+        }
+
+        // 切换高级信息抽屉
+        function toggleAdvanced(type) {
+            const drawer = document.getElementById(`advanced-drawer-${type}`);
+            const icon = document.getElementById(`advanced-icon-${type}`);
+            if (drawer && icon) {
+                if (drawer.style.display === 'none' || drawer.style.display === '') {
+                    drawer.style.display = 'block';
+                    icon.classList.remove('ph-caret-down');
+                    icon.classList.add('ph-caret-up');
+                } else {
+                    drawer.style.display = 'none';
+                    icon.classList.remove('ph-caret-up');
+                    icon.classList.add('ph-caret-down');
+                }
+            }
+        }
+
         // 隐藏客户详情 (仅手机端有效，返回列表)
         function hideCrmDetail() {
             const listPane = document.getElementById('crm-list-pane');
@@ -916,7 +1177,7 @@
             }
         }
 
-        // --- 表单提交处理 ---        // 新增客户表单提交
+        // --- 表单提交处理 ---
         document.addEventListener('DOMContentLoaded', function() {
             console.log('========== DOMContentLoaded 事件触发，开始页面初始化 ==========');
             
@@ -996,14 +1257,14 @@
                         e.preventDefault();
                         
                         const customerData = {
-                            name: document.getElementById('add-name').value,
-                            phone: document.getElementById('add-phone').value,
-                            email: document.getElementById('add-email').value,
-                            source: document.getElementById('add-source').value,
-                            status: document.getElementById('add-status').value,
-                            region: document.getElementById('add-region').value,
-                            address: document.getElementById('add-address').value,
-                            summary: document.getElementById('add-summary').value
+                            name: document.getElementById('name').value,
+                            phone: document.getElementById('phone').value,
+                            email: document.getElementById('email').value,
+                            source: document.getElementById('source').value,
+                            cust_status: document.getElementById('cust_status').value,
+                            region: document.getElementById('region').value,
+                            address: document.getElementById('address').value,
+                            summary: document.getElementById('summary').value
                         };
                         
                         await saveCustomer(customerData);
@@ -1021,7 +1282,7 @@
                             phone: document.getElementById('edit-phone').value,
                             email: document.getElementById('edit-email').value,
                             source: document.getElementById('edit-source').value,
-                            status: document.getElementById('edit-status').value,
+                            cust_status: document.getElementById('edit-cust_status').value,
                             region: document.getElementById('edit-region').value,
                             address: document.getElementById('edit-address').value,
                             summary: document.getElementById('edit-summary').value

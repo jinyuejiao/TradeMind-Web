@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TradeMind 商贸智脑 - 产研中心</title>
+    <title>TradeMind 商贸智脑 - 产品中心</title>
 
     <style>
         body {
@@ -189,6 +189,7 @@
         }
     </script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="../../assets/js/auth.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
@@ -211,7 +212,7 @@
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
             <button onclick="switchTab('rd')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
-                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
@@ -232,7 +233,7 @@
             <div class="flex items-center space-x-3 md:space-x-5">
                 <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
                     <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
-                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">产研中心</span>
+                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">产品中心</span>
                 </div>
                 <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
             </div>
@@ -250,37 +251,9 @@
                     </button>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 space-y-6">
-                        <!-- AI 选品预测池 -->
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-sparkle text-brand-500"></i> AI 选品预测池</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- 产品 1: 氛围灯 -->
-                                <div class="group border border-slate-100 rounded-2xl overflow-hidden hover:border-brand-200 transition-all bg-white shadow-sm">
-                                    <div class="aspect-video relative overflow-hidden bg-slate-100">
-                                        <img src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&q=80&w=800"
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                             alt="智能光感氛围灯">
-                                        <div class="absolute top-3 right-3 bg-brand-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow-sm z-10">爆款潜质 92%</div>
-                                    </div>
-                                    <div class="p-4"><p class="text-sm font-bold text-slate-800">智能光感氛围灯 (Pro版)</p><p class="text-[10px] text-slate-400 mt-1 italic leading-relaxed">基于北美 Q4 露营季搜索趋势预测。</p></div>
-                                </div>
-                                <!-- 产品 2: 挂脖扇 -->
-                                <div class="group border border-slate-100 rounded-2xl overflow-hidden hover:border-brand-200 transition-all bg-white shadow-sm">
-                                    <div class="aspect-video relative overflow-hidden bg-slate-100">
-                                        <img src="https://images.unsplash.com/photo-1534073828943-f801091bb18c?auto=format&fit=crop&q=80&w=800"
-                                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                             alt="便携无叶挂脖扇">
-                                        <div class="absolute top-3 right-3 bg-blue-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow-sm z-10">蓝海预测 85%</div>
-                                    </div>
-                                    <div class="p-4"><p class="text-sm font-bold text-slate-800">便携无叶挂脖扇 (V2)</p><p class="text-[10px] text-slate-400 mt-1 italic leading-relaxed">东南亚极端高温预警提前，需求上涨。</p></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 左侧：产品库主表 (2/3 宽度) -->
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="grid grid-cols-1 gap-6">
+                    <!-- 产品库主表 (全屏宽度) -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div class="px-6 py-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/30">
                                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品库</h3>
                                 <!-- 搜索框和新增按钮 -->
@@ -359,18 +332,7 @@
                                 </table>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- 右侧：关键进度 -->
-                    <div class="space-y-6">
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 h-full min-h-[400px]">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-10 flex items-center gap-2"><i class="ph ph-list-checks text-brand-500"></i> 产研关键进度</h3>
-                            <div class="space-y-12">
-                                <div><div class="flex justify-between text-xs mb-2.5"><span class="font-bold text-slate-700">#8821 智能灯研讨</span><span class="font-bold text-brand-600 uppercase">85%</span></div><div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="w-[85%] bg-brand-500 h-full rounded-full"></div></div><p class="text-[10px] text-slate-400 mt-3 italic tracking-tight underline decoration-slate-100 underline-offset-4">状态：设计终审已过，即将开模</p></div>
-                                <div><div class="flex justify-between text-xs mb-2.5"><span class="font-bold text-slate-700">#9905 挂脖扇打样</span><span class="font-bold text-risk-high uppercase">30%</span></div><div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="w-[30%] bg-risk-high h-full rounded-full animate-pulse"></div></div><p class="text-[10px] text-risk-high mt-3 font-bold tracking-tight">状态：包材短缺，交付滞后</p></div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -479,15 +441,74 @@
                 </div>
             </div>
 
+
+
+            <!-- 删除确认弹窗 -->
+            <div id="delete-confirm-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeDeleteConfirm()"></div>
+                <div class="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden fade-in">
+                    <div class="px-6 py-5 border-b border-slate-100 font-bold text-slate-800 flex justify-between items-center bg-slate-50/50">
+                        <span>确认删除</span>
+                        <i class="ph ph-x cursor-pointer text-slate-400" onclick="closeDeleteConfirm()"></i>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="text-center">
+                            <i class="ph ph-warning-circle text-4xl text-risk-high mb-4"></i>
+                            <p class="text-sm font-bold text-slate-800" id="delete-confirm-message">确定删除产品 [name] 吗？</p>
+                            <p class="text-[11px] text-slate-400 mt-2">此操作不可撤销</p>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-slate-50 bg-slate-50/50 flex gap-4">
+                        <button onclick="closeDeleteConfirm()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition">取消</button>
+                        <button onclick="confirmDelete()" class="flex-1 py-3 rounded-xl bg-risk-high text-white text-xs font-bold shadow-lg active:scale-95 transition">删除</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- JavaScript 代码 -->
             <script>
                 // 全局变量
                 let allProducts = [];
                 let currentProductId = null;
                 let currentProductUnits = [];
+                let currentDeleteProductId = null;
+
+                // 多单位换算算法
+                function formatStock(stock, baseUnit, conversions) {
+                    if (!conversions || conversions.length === 0) return `${stock}${baseUnit}`;
+                    // 按比例从大到小排序
+                    const sorted = conversions.sort((a, b) => b.ratio - a.ratio);
+                    let remaining = stock;
+                    let result = "";
+                    sorted.forEach(c => {
+                        const count = Math.floor(remaining / c.ratio);
+                        if (count > 0) {
+                            result += `${count}${c.unit_name}`;
+                            remaining %= c.ratio;
+                        }
+                    });
+                    if (remaining > 0 || result === "") result += `${remaining}${baseUnit}`;
+                    return result;
+                }
 
                 // 页面加载时初始化
                 document.addEventListener('DOMContentLoaded', function() {
+                    // 检查认证状态
+                    if (window.checkAuth) {
+                        console.log('调用全局checkAuth函数检查认证状态');
+                        if (!window.checkAuth()) {
+                            return;
+                        }
+                    } else {
+                        console.log('全局checkAuth函数不存在，检查本地存储中的token');
+                        const token = localStorage.getItem('token');
+                        if (!token) {
+                            console.log('Token不存在，跳转到登录页面');
+                            localStorage.clear();
+                            window.location.href = '../../login.html';
+                            return;
+                        }
+                    }
                     loadProducts();
                 });
 
@@ -497,18 +518,15 @@
                     const tenantId = 'tenant-001';
                     
                     // 调用后端接口
-                    fetch('http://localhost:8085/api/v1/rd/products', {
+                    window.wrappedFetch('http://localhost:8080/api/v1/rd/products', {
                         method: 'GET',
                         headers: {
-                            'X-Tenant-Id': tenantId,
-                            'Content-Type': 'application/json'
+                            'X-Tenant-Id': tenantId
                         }
                     })
                     .then(response => {
                         if (!response.ok) {
-                            // 后端服务不可用，使用模拟数据
-                            console.log('后端服务不可用，使用模拟数据');
-                            throw new Error('Backend service unavailable');
+                            throw new Error(`HTTP error! status: ${response.status}`);
                         }
                         return response.json();
                     })
@@ -518,38 +536,12 @@
                             renderProductTable(allProducts);
                         } else {
                             console.error('加载产品列表失败:', data.message);
-                            // 使用模拟数据
-                            useMockData();
                         }
                     })
                     .catch(error => {
-                        console.log('使用模拟数据展示产品列表');
-                        // 使用模拟数据
-                        useMockData();
+                        console.error('加载产品列表异常:', error);
+                        showNotification('加载失败: ' + error.message, 'error');
                     });
-                }
-
-                // 使用模拟数据
-                function useMockData() {
-                    allProducts = [
-                        {
-                            productId: 1,
-                            name: '金色镂空户外灯具 (V3)',
-                            sku: 'G-882101',
-                            region: '中东市场',
-                            price: '12.50',
-                            stock: 1240
-                        },
-                        {
-                            productId: 2,
-                            name: '多功能露营折叠桌',
-                            sku: 'CP-T2-04',
-                            region: '欧美市场',
-                            price: '48.00',
-                            stock: 42
-                        }
-                    ];
-                    renderProductTable(allProducts);
                 }
 
                 // 渲染产品表格
@@ -561,6 +553,18 @@
                         const row = document.createElement('tr');
                         row.className = 'product-row hover:bg-slate-50 transition-all cursor-pointer group';
                         row.onclick = () => openProductDetail('edit', product.productId);
+
+                        // 计算库存预警状态
+                        const isWarning = product.stock <= (product.warning_stock || 0);
+                        const stockColorClass = isWarning ? 'text-risk-high' : 'text-slate-900';
+                        const progressColorClass = isWarning ? 'bg-risk-high' : 'bg-brand-500';
+                        
+                        // 计算库存进度百分比（假设最大库存为 2000）
+                        const maxStock = 2000;
+                        const stockPercentage = Math.min((product.stock / maxStock) * 100, 100);
+
+                        // 格式化多单位库存
+                        const stockDisplay = formatStock(product.stock, product.base_unit || 'Pcs', product.unitConversions);
 
                         row.innerHTML = `
                             <td class="px-6 py-4">
@@ -581,9 +585,9 @@
                                 $${product.price}
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <p class="font-mono font-bold text-slate-900 tracking-tighter">${product.stock} <span class="text-[9px] text-slate-400 uppercase">Pcs</span></p>
+                                <p class="font-mono font-bold ${stockColorClass} tracking-tighter">${stockDisplay}</p>
                                 <div class="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden md:block hidden">
-                                    <div class="w-[85%] bg-brand-500 h-full"></div>
+                                    <div class="w-[${stockPercentage}%] ${progressColorClass} h-full"></div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 text-right whitespace-nowrap">
@@ -630,11 +634,10 @@
                     const tenantId = 'tenant-001';
                     
                     // 调用后端搜索接口
-                    fetch(`http://localhost:8085/api/v1/rd/products?search=${encodeURIComponent(searchTerm)}`, {
+                    window.wrappedFetch(`http://localhost:8080/api/v1/rd/products?search=${encodeURIComponent(searchTerm)}`, {
                         method: 'GET',
                         headers: {
-                            'X-Tenant-Id': tenantId,
-                            'Content-Type': 'application/json'
+                            'X-Tenant-Id': tenantId
                         }
                     })
                     .then(response => {
@@ -716,76 +719,89 @@
                         // 编辑模式
                         document.getElementById('detail-title').textContent = `产品详情编辑`;
                         
-                        // 发起产品详情请求
-                        fetch(`http://localhost:8085/api/v1/rd/products/${productId}`, {
-                            method: 'GET',
-                            headers: {
-                                'X-Tenant-Id': tenantId,
-                                'Content-Type': 'application/json'
-                            }
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.success) {
-                                const product = data.data;
-                                // 填充详情表单
-                                document.getElementById('detail-sku').textContent = `SKU: ${product.sku}`;
-                                // 这里需要根据实际表单字段进行填充
-                            }
-                        })
-                        .catch(error => {
-                            console.error('请求产品详情失败:', error);
-                            // 即使请求失败，模态框也保持显示
-                        });
+                        // 先尝试从本地数据中获取产品信息
+                        const product = allProducts.find(p => p.productId === productId);
+                        
+                        if (product) {
+                            // 填充详情表单
+                            document.getElementById('detail-sku').textContent = `SKU: ${product.sku}`;
+                            document.getElementById('name').value = product.name;
+                            document.getElementById('sku').value = product.sku;
+                            document.getElementById('price').value = product.price;
+                            document.getElementById('base_unit').value = product.base_unit;
+                            document.getElementById('sales_unit').value = product.sales_unit;
+                            document.getElementById('purchase_unit').value = product.purchase_unit;
+                            document.getElementById('warning_stock').value = product.warning_stock;
+                            document.getElementById('description').value = product.description;
+                            
+                            // 保存单位换算信息
+                            currentProductUnits = product.unitConversions || [];
+                        } else {
+                            // 发起产品详情请求
+                            window.wrappedFetch(`http://localhost:8080/api/v1/rd/products/${productId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'X-Tenant-Id': tenantId
+                                }
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    const product = data.data;
+                                    // 填充详情表单
+                                    document.getElementById('detail-sku').textContent = `SKU: ${product.sku}`;
+                                    document.getElementById('name').value = product.name;
+                                    document.getElementById('sku').value = product.sku;
+                                    document.getElementById('price').value = product.price;
+                                    document.getElementById('base_unit').value = product.base_unit;
+                                    document.getElementById('sales_unit').value = product.sales_unit;
+                                    document.getElementById('purchase_unit').value = product.purchase_unit;
+                                    document.getElementById('warning_stock').value = product.warning_stock;
+                                    document.getElementById('description').value = product.description;
+                                    
+                                    // 保存单位换算信息
+                                    currentProductUnits = product.unitConversions || [];
+                                }
+                            })
+                            .catch(error => {
+                                console.error('请求产品详情失败:', error);
+                                // 即使请求失败，模态框也保持显示
+                            });
+                        }
 
-                        // 发起单位换算请求
-                        fetch(`http://localhost:8085/api/v1/rd/products/${productId}/units`, {
-                            method: 'GET',
-                            headers: {
-                                'X-Tenant-Id': tenantId,
-                                'Content-Type': 'application/json'
-                            }
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.success) {
-                                currentProductUnits = data.data;
+                        // 发起单位换算请求（如果本地没有数据）
+                        if (!product) {
+                            window.wrappedFetch(`http://localhost:8080/api/v1/rd/products/${productId}/units`, {
+                                method: 'GET',
+                                headers: {
+                                    'X-Tenant-Id': tenantId
+                                }
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    currentProductUnits = data.data;
+                                }
                                 // 暂存换算记录，点击“配置单位换算”时展示
-                            }
-                        })
-                        .catch(error => {
-                            console.error('请求单位换算失败:', error);
+                            })
+                            .catch(error => {
+                                console.error('请求单位换算失败:', error);
+                            });
                             // 即使请求失败，模态框也保持显示
-                        });
+                        }
                     } else {
                         // 其他情况
                         console.log('没有提供产品ID，显示空的产品详情模态框');
-                    }
-                }
-
-                // 切换高级配置
-                function toggleAdvanced(type) {
-                    const drawer = document.getElementById(`drawer-${type}`);
-                    const icon = document.getElementById(`icon-${type}`);
-                    
-                    if (drawer.classList.contains('open')) {
-                        drawer.classList.remove('open');
-                        icon.classList.remove('ph-caret-up');
-                        icon.classList.add('ph-caret-down');
-                    } else {
-                        drawer.classList.add('open');
-                        icon.classList.remove('ph-caret-down');
-                        icon.classList.add('ph-caret-up');
                     }
                 }
 
@@ -796,32 +812,71 @@
                     currentProductUnits = [];
                 }
 
+                // 显示通知
+                function showNotification(message) {
+                    // 创建通知元素
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-4 right-4 bg-brand-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in';
+                    notification.textContent = message;
+                    
+                    // 添加到页面
+                    document.body.appendChild(notification);
+                    
+                    // 3秒后自动移除
+                    setTimeout(() => {
+                        notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                        setTimeout(() => {
+                            document.body.removeChild(notification);
+                        }, 500);
+                    }, 3000);
+                }
+
                 // 确认删除产品
                 function confirmDeleteProduct(productId, productName) {
-                    if (confirm(`确定要删除产品 "${productName}" 吗？`)) {
+                    currentDeleteProductId = productId;
+                    document.getElementById('delete-confirm-message').textContent = `确定删除产品 ${productName} 吗？`;
+                    document.getElementById('delete-confirm-modal').classList.remove('hidden');
+                }
+
+                // 关闭删除确认弹窗
+                function closeDeleteConfirm() {
+                    document.getElementById('delete-confirm-modal').classList.add('hidden');
+                    currentDeleteProductId = null;
+                }
+
+                // 确认删除
+                function confirmDelete() {
+                    if (currentDeleteProductId) {
                         // 从 Header 读取 X-Tenant-Id
                         const tenantId = 'tenant-001';
                         
                         // 发起删除请求
-                        fetch(`http://localhost:8085/api/v1/rd/products/${productId}`, {
+                        window.wrappedFetch(`http://localhost:8080/api/v1/rd/products/${currentDeleteProductId}`, {
                             method: 'DELETE',
                             headers: {
-                                'X-Tenant-Id': tenantId,
-                                'Content-Type': 'application/json'
+                                'X-Tenant-Id': tenantId
                             }
                         })
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
                         .then(data => {
                             if (data.success) {
-                                alert('删除成功');
+                                showNotification('删除成功');
+                                closeDeleteConfirm();
                                 loadProducts(); // 刷新列表
                             } else {
-                                alert('删除失败: ' + data.message);
+                                showNotification('删除失败: ' + (data.message || '未知错误'));
+                                closeDeleteConfirm();
                             }
                         })
                         .catch(error => {
-                            console.error('删除请求失败:', error);
-                            alert('删除请求失败');
+                            console.error('删除产品失败:', error);
+                            showNotification('删除失败: 网络错误');
+                            closeDeleteConfirm();
                         });
                     }
                 }
@@ -856,11 +911,10 @@
                     const tenantId = 'tenant-001';
                     
                     // 发起保存请求
-                    fetch('http://localhost:8085/api/v1/rd/products/save', {
+                    window.wrappedFetch('http://localhost:8080/api/v1/rd/products/save', {
                         method: 'POST',
                         headers: {
-                            'X-Tenant-Id': tenantId,
-                            'Content-Type': 'application/json'
+                            'X-Tenant-Id': tenantId
                         },
                         body: JSON.stringify(productWithUnitsDTO)
                     })
@@ -886,7 +940,7 @@
                         dashboard: '../dashboard/dashboard.html',
                         biz: '../SmartOps/SmartOps.html',
                         crm: '../crm/crm.html',
-                        rd: 'RDCenter.html',
+                        rd: 'product-center.html',
                         supply: '../supply-chain/supply-chain.html'
                     };
 
