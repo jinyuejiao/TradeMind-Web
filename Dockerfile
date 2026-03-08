@@ -7,6 +7,9 @@ WORKDIR /app
 # 拷贝项目文件
 COPY . .
 
+# 配置淘宝/阿里云 NPM 镜像加速
+RUN npm config set registry https://registry.npmmirror.com
+
 # 安装依赖
 RUN npm install
 
