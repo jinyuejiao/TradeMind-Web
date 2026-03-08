@@ -501,9 +501,9 @@ function checkAuth() {
         const token = localStorage.getItem('token');
         console.log('获取到的token:', token ? '存在' : '不存在');
         
-        // 如果token不存在，跳转到登录页面
-        if (!token) {
-            console.log('❌ Token不存在，跳转到登录页面');
+        // 如果token不存在或为空字符串，跳转到登录页面
+        if (!token || token.trim() === '' || token === 'null' || token === 'undefined') {
+            console.log('❌ Token不存在或无效，跳转到登录页面');
             logout();
             return false;
         }
@@ -584,11 +584,31 @@ function wrappedFetch(url, options = {}) {
             ...options.headers
         };
         
-        if (token) {
+        if (token && token.trim() !== '' && token !== 'null' && token !== 'undefined') {
             headers['Authorization'] = `Bearer ${token}`;
             console.log('✅ 添加了Authorization头:', headers['Authorization']);
+            
+            // 从localStorage中获取用户信息并添加租户ID和用户ID到请求头
+            try {
+                const userInfoStr = localStorage.getItem('user_info');
+                if (userInfoStr) {
+                    const userInfo = JSON.parse(userInfoStr);
+                    if (userInfo.tenantId) {
+                        headers['X-Tenant-Id'] = userInfo.tenantId.toString();
+                        console.log('✅ 添加了X-Tenant-Id头:', headers['X-Tenant-Id']);
+                    }
+                    if (userInfo.userId) {
+                        headers['X-User-Id'] = userInfo.userId.toString();
+                        console.log('✅ 添加了X-User-Id头:', headers['X-User-Id']);
+                    }
+                }
+            } catch (error) {
+                console.error('❌ 解析用户信息时发生错误:', error);
+            }
         } else {
-            console.log('❌ 未添加Authorization头，因为token不存在');
+            console.log('❌ 未添加Authorization头，因为token不存在或为空，跳转到登录页面');
+            logout();
+            return Promise.reject(new Error('token不存在或为空'));
         }
         console.log('最终请求头:', headers);
         

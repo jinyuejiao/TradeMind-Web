@@ -8,6 +8,14 @@
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
 
     <style>
+        :root {
+            --brand-primary: #14B8A6;
+            --brand-dark: #0F172A;
+            --slate-bg: #F1F5F9;
+            --text-main: #334155;
+            --risk-high: #F43F5E;
+        }
+
         body {
             background-color: #F1F5F9;
             color: #334155;
@@ -71,6 +79,58 @@
             box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
         }
 
+        /* 录音呼吸波纹动画 */
+        .recording-pulse {
+            animation: pulse-active 1.5s infinite;
+            background-color: #EF4444 !important; /* 录音时强制变红 */
+        }
+
+        @keyframes pulse-active {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+                transform: scale(1);
+            }
+
+            50% {
+                box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+                transform: scale(1.05);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                transform: scale(1);
+            }
+        }
+
+        /* 统一按钮规范 */
+        .btn-brand {
+            background-color: var(--brand-primary) !important;
+            color: white !important;
+            transition: all 0.2s;
+        }
+
+            .btn-brand:hover {
+                filter: brightness(1.1);
+            }
+
+            .btn-brand:disabled {
+                background-color: #E2E8F0 !important;
+                color: #94A3B8 !important;
+                cursor: not-allowed !important;
+                box-shadow: none !important;
+            }
+
+        .btn-click-effect:active {
+            transform: scale(0.96);
+        }
+
+        /* 磨砂玻璃弹窗 */
+        .modal-blur {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background: rgba(15, 23, 42, 0.5);
+        }
+
         /* 报表美化 CSS */
         .bar-item-slim {
             width: 14px;
@@ -78,6 +138,74 @@
             transition: height 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67);
             background: linear-gradient(180deg, #14B8A6 0%, #0D9488 100%);
         }
+
+        .chart-container-svg {
+            width: 180px;
+            height: 180px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-text-box {
+            position: absolute;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .axis-text {
+            font-size: 10px;
+            color: #94A3B8;
+            font-family: font-mono, sans-serif;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* 视图切换按钮的基础样式 */
+        .view-toggle-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+            /* 激活（选中）时的样式：对应截图中的绿色高亮效果 */
+            .view-toggle-btn.active {
+                background-color: var(--brand-primary) !important;
+                color: #ffffff !important;
+                box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3) !important;
+            }
+
+        /* 弹窗及表单专用 */
+        .sub-tab-btn {
+            padding: 12px 24px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #94A3B8;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+            .sub-tab-btn.active {
+                color: var(--brand-primary);
+                border-bottom-color: var(--brand-primary);
+            }
+
+        /* 输入框与表单控件 */
+        .form-input {
+            width: 100%;
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+            .form-input:focus {
+                border-color: var(--brand-primary);
+                background-color: #fff;
+                box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+            }
 
         .donut-ring {
             width: 160px;
@@ -103,6 +231,13 @@
             z-index: 5;
         }
 
+        /* 导航状态 */
+        .nav-btn.active-nav {
+            background-color: #1e293b;
+            color: var(--brand-primary);
+            border-left: 4px solid var(--brand-primary);
+        }
+
         /* --- 手机端 CRM 专用适配样式 --- */
         @media (max-width: 768px) {
             /* 详情页显示时隐藏列表页 */
@@ -121,50 +256,50 @@
             }
         }
 
-        /* 输入框与表单控件 */
-        .form-input {
-            width: 100%;
-            background-color: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            outline: none;
-            transition: all 0.2s;
+        /* CRM 列表卡片样式 */
+        .crm-action-btn {
+            opacity: 0;
+            transform: translateX(10px);
+            transition: all 0.2s ease;
         }
 
-            .form-input:focus {
-                border-color: var(--brand-primary);
-                background-color: #fff;
-                box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
-            }
-
-        /* 高级配置抽屉 */
-        .advanced-drawer {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0, 1, 0, 1);
+        .customer-card:hover .crm-action-btn {
+            opacity: 1;
+            transform: translateX(0);
         }
 
-            .advanced-drawer.open {
-                max-height: 1000px;
-                transition: max-height 0.4s ease-in;
+        @media (max-width: 768px) {
+            #main-sidebar {
+                position: fixed;
+                inset-y: 0;
+                left: 0;
+                z-index: 50;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
             }
 
-        /* 子 Tab 按钮 */
-        .sub-tab-btn {
-            padding: 12px 24px;
-            font-size: 13px;
-            font-weight: 700;
-            color: #94A3B8;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
+                #main-sidebar.open {
+                    transform: translateX(0);
+                }
+
+            .crm-detail-active #crm-list-pane {
+                display: none;
+            }
+
+            .crm-detail-active #crm-detail-pane {
+                display: block;
+            }
+
+            .modal-content-box {
+                height: 95vh !important;
+                border-radius: 1.5rem 1.5rem 0 0 !important;
+            }
+
+            .crm-action-btn {
+                opacity: 1;
+                transform: none;
+            }
         }
-
-            .sub-tab-btn.active {
-                color: var(--brand-primary);
-                border-bottom-color: var(--brand-primary);
-            }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -190,14 +325,14 @@
             }
         }
     </script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
     <script src="../../assets/js/auth.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
     <!-- 1. 侧边导航栏 -->
-    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
         <div class="h-16 flex items-center px-6 border-b border-slate-800">
             <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
                 <i class="ph ph-brain text-xl"></i>
@@ -214,23 +349,16 @@
             <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
-            <button onclick="switchTab('rd')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
+            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="userInitial">Jin</div>
-                    <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="userInfo">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
-                </div>
-                <button id="logoutBtn" class="text-xs text-slate-400 hover:text-white transition">
-                    <i class="ph ph-sign-out text-lg"></i>
-                </button>
-            </div>
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center">
+            <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="user-avatar">Jin</div>
+            <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="user-name">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
         </div>
     </aside>
 
@@ -268,173 +396,23 @@
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div class="mt-2 font-mono font-bold text-slate-800">4.2</div></div>
                 </div>
 
-                <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-magic-wand text-brand-600 mr-2"></i> 订单智能识别提取</div>
+                <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in">
+                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-magic-wand text-brand-600 mr-2 text-lg"></i> AI 订单快速提取</div>
                     <div class="flex flex-col md:flex-row md:divide-x divide-slate-100">
-                        <div class="p-8 md:w-1/3 flex items-center justify-around md:justify-center md:gap-12 bg-slate-50/30">
-                            <button id="voiceInputBtn" class="flex flex-col items-center group active:scale-95 transition-transform"><div class="w-14 h-14 bg-brand-500 rounded-full flex items-center justify-center text-white shadow-lg tech-pulse"><i class="ph ph-microphone text-2xl"></i></div><span class="text-xs mt-3 font-bold text-slate-700">语音输入</span></button>
-                            <button id="cameraInputBtn" class="flex flex-col items-center group active:scale-95 transition-transform"><div class="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center text-white shadow-xl"><i class="ph ph-camera text-2xl"></i></div><span class="text-xs mt-3 font-bold text-slate-700">拍照识别</span></button>
+                        <div class="p-8 md:w-1/3 flex items-center justify-around md:justify-center md:gap-16 bg-slate-50/30">
+                            <button onclick="openVoiceModal()" class="btn-click-effect flex flex-col items-center group">
+                                <div class="w-16 h-16 bg-brand-500 rounded-full flex items-center justify-center text-white shadow-xl hover:bg-brand-600 transition-all"><i class="ph ph-microphone-stage text-3xl"></i></div>
+                                <span class="text-xs mt-3 font-bold text-slate-600 uppercase">语音录入</span>
+                            </button>
+                            <button onclick="openPhotoModal()" class="btn-click-effect flex flex-col items-center group">
+                                <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center text-white shadow-xl hover:bg-slate-900 transition-all"><i class="ph ph-camera text-3xl"></i></div>
+                                <span class="text-xs mt-3 font-bold text-slate-600 uppercase">拍照提单</span>
+                            </button>
                         </div>
                         <div class="p-6 md:w-2/3">
-                            <div class="relative"><textarea id="textInput" class="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm focus:outline-none focus:border-brand-500 transition resize-none" placeholder="粘贴聊天记录或单据原文..."></textarea><button id="analyzeBtn" class="absolute bottom-4 right-4 bg-brand-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-lg">开始解析</button></div>
-                        </div>
-                    </div>
-                    
-                    <!-- 摄像头模态框 -->
-                    <div id="cameraModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl">
-                            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-slate-800">拍照识别</h3>
-                                <button id="closeCameraModal" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
-                            </div>
-                            <div class="p-4">
-                                <div id="cameraContainer" class="relative w-full aspect-video bg-slate-100 rounded-lg overflow-hidden">
-                                    <video id="cameraPreview" class="w-full h-full object-cover hidden"></video>
-                                    <canvas id="cameraCanvas" class="w-full h-full hidden"></canvas>
-                                    <img id="preview-img" class="w-full h-full object-cover hidden" src="">
-                                    <div id="cameraPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center">
-                                        <i class="ph ph-camera text-6xl text-slate-400 mb-4"></i>
-                                        <p class="text-slate-500">点击下方按钮开始拍照</p>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex gap-4">
-                                    <button id="startCamera" class="flex-1 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">启动摄像头</button>
-                                    <button id="takePhoto" class="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition hidden">拍照</button>
-                                    <button id="selectImage" class="flex-1 border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-100 transition">选择图片</button>
-                                    <button id="submitImage" class="flex-1 border border-slate-200 text-slate-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-100 transition hidden" disabled>提交并开始识别</button>
-                                </div>
-                                <input type="file" id="imageInput" accept="image/*" class="hidden">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 语音输入模态框 -->
-                    <div id="voiceModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
-                            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-slate-800">语音输入</h3>
-                                <button id="closeVoiceModal" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
-                            </div>
-                            <div class="p-6">
-                                <div class="flex flex-col items-center justify-center py-8">
-                                    <div id="voiceVisualizer" class="w-24 h-24 rounded-full bg-brand-50 flex items-center justify-center mb-4">
-                                        <i id="voiceIcon" class="ph ph-microphone text-4xl text-brand-500"></i>
-                                    </div>
-                                    <p id="voiceStatus" class="text-slate-600 mb-4">点击开始按钮进行语音输入</p>
-                                    <div class="flex gap-4 w-full">
-                                        <button id="startVoice" class="flex-1 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">开始录音</button>
-                                        <button id="stopVoice" class="flex-1 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-700 transition hidden">停止录音</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 订单提取结果模态框 -->
-                    <div id="orderResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-                        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
-                                <h3 class="text-lg font-bold text-slate-800">订单提取结果</h3>
-                                <button id="closeOrderResultModal" class="text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
-                            </div>
-                            <div class="p-6">
-                                <!-- 标签页导航 -->
-                                <div class="border-b border-slate-200 mb-6">
-                                    <div class="flex space-x-8">
-                                        <button class="order-tab-btn active py-2 px-1 border-b-2 border-brand-500 text-brand-600 font-medium" data-tab="order">订单信息</button>
-                                        <button class="order-tab-btn py-2 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium" data-tab="customer">客户信息</button>
-                                        <button class="order-tab-btn py-2 px-1 border-b-2 border-transparent text-slate-500 hover:text-slate-700 font-medium" data-tab="product">产品信息</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- 订单信息标签页 -->
-                                <div id="order-tab" class="order-tab-content">
-                                    <div class="space-y-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">订单号</label>
-                                                <input type="text" id="order-id" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">订单日期</label>
-                                                <input type="date" id="order-date" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">交货日期</label>
-                                                <input type="date" id="order-delivery-date" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">订单状态</label>
-                                                <select id="order-status" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                                    <option value="待确认">待确认</option>
-                                                    <option value="已确认">已确认</option>
-                                                    <option value="已发货">已发货</option>
-                                                    <option value="已完成">已完成</option>
-                                                    <option value="已取消">已取消</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- 客户信息标签页 -->
-                                <div id="customer-tab" class="order-tab-content hidden">
-                                    <div class="space-y-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">客户姓名</label>
-                                                <input type="text" id="customer-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">电子邮箱</label>
-                                                <input type="email" id="customer-email" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">电话号码</label>
-                                                <input type="tel" id="customer-phone" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">国家/地区</label>
-                                                <input type="text" id="customer-country" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- 产品信息标签页 -->
-                                <div id="product-tab" class="order-tab-content hidden">
-                                    <div class="space-y-4">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">产品名称</label>
-                                                <input type="text" id="product-name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">产品型号</label>
-                                                <input type="text" id="product-model" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">数量</label>
-                                                <input type="number" id="product-quantity" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" min="0">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">单价</label>
-                                                <input type="number" id="product-unit-price" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" min="0" step="0.01">
-                                            </div>
-                                            <div class="md:col-span-2">
-                                                <label class="block text-sm font-medium text-slate-700 mb-1">总价</label>
-                                                <input type="number" id="product-total-price" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent" min="0" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- 保存按钮 -->
-                                <div class="mt-8 flex justify-end space-x-4">
-                                    <button id="saveOrderBtn" class="bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存订单</button>
-                                    <button id="saveCustomerBtn" class="bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存客户</button>
-                                    <button id="saveProductBtn" class="bg-brand-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存产品</button>
-                                </div>
+                            <div class="relative">
+                                <textarea id="orderTextInput" class="w-full h-32 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm outline-none resize-none focus:border-brand-500 transition-all" placeholder="在此粘贴聊天记录文本..."></textarea>
+                                <button onclick="handleTextSubmit()" class="btn-brand btn-click-effect absolute bottom-4 right-4 px-6 py-2 rounded-xl text-xs font-bold shadow-lg">开始解析</button>
                             </div>
                         </div>
                     </div>
@@ -449,12 +427,12 @@
                             <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar" id="pending-orders-list">
-                            <!-- 待确认单据将通过JavaScript动态加载 -->
-                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                                <div class="text-center">
-                                    <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
-                                    <p>加载待确认单据中...</p>
+                            <div onclick="openAuditModal('Ahmed Al-Fayed')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">Ahmed Al-Fayed</p></div>
+                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">10:42 AM</span>
                                 </div>
+                                <div class="text-[11px] text-slate-500 italic truncate">“已提取订单：金色镂空灯等 2 项商品...”</div>
                             </div>
                         </div>
                     </div>
@@ -509,6 +487,58 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ================= [2] 智能经营 ================= -->
+            <div id="view-biz" class="view-section w-full p-4 md:p-8 space-y-6 fade-in hidden">
+                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">智能经营</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">实时数据分析与经营决策支持</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-slate-500">智能经营模块内容</p>
+                </div>
+            </div>
+
+            <!-- ================= [3] 客户 CRM ================= -->
+            <div id="view-crm" class="view-section w-full p-4 md:p-8 space-y-6 fade-in hidden">
+                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">客户 CRM</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">客户关系管理与销售跟踪</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-slate-500">客户 CRM 模块内容</p>
+                </div>
+            </div>
+
+            <!-- ================= [4] 产品中心 ================= -->
+            <div id="view-supply" class="view-section w-full p-4 md:p-8 space-y-6 fade-in hidden">
+                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">产品中心</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">产品管理与库存监控</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-slate-500">产品中心模块内容</p>
+                </div>
+            </div>
+
+            <!-- ================= [5] 供应商管理 ================= -->
+            <div id="view-supplier" class="view-section w-full p-4 md:p-8 space-y-6 fade-in hidden">
+                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">供应商管理</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">供应商信息与采购管理</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-slate-500">供应商管理模块内容</p>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -536,50 +566,55 @@
             <!-- 主体内容 -->
             <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
 
-                <!-- 1. 订单详情 Pane -->
+                <!-- 1. 订单详情 Tab 页 -->
                 <div id="pane-order" class="sub-pane space-y-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">订单编号 (系统自动生成)</label><input type="text" value="ORD-2026-0008821" class="form-input font-mono font-bold text-slate-800"></div>
-                        <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">预计交货日期</label><input type="date" value="2026-02-28" class="form-input"></div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">客户名称</label>
+                            <select id="order-customer" class="form-input font-bold text-slate-800">
+                                <option value="">-- 请选择客户 --</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">预计交货日期</label>
+                            <input type="date" id="order-delivery-date" class="form-input">
+                        </div>
                     </div>
 
                     <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                        <table class="w-full text-left text-xs">
+                        <table class="w-full text-left text-xs" id="order-items-table">
                             <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
-                                <tr><th class="px-5 py-4">产品选择 (点击重选)</th><th class="px-5 py-4 text-center">数量</th><th class="px-5 py-4 text-right">小计</th></tr>
+                                <tr><th class="px-5 py-4">产品名称</th><th class="px-5 py-4 text-center">数量</th><th class="px-5 py-4 text-right">单价</th><th class="px-5 py-4 text-right">小计</th></tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr>
-                                    <td class="px-5 py-4">
-                                        <select class="bg-transparent font-bold text-brand-600 outline-none w-full cursor-pointer hover:underline">
-                                            <option>金色镂空户外灯 (G-8821)</option>
-                                            <option>便携无叶挂脖扇 (V2)</option>
-                                            <option>-- 重新匹配现有产品 --</option>
-                                        </select>
-                                    </td>
-                                    <td class="px-5 py-4 text-center"><input type="number" value="500" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold"></td>
-                                    <td class="px-5 py-4 text-right font-mono font-bold">$6,250.00</td>
-                                </tr>
+                            <tbody class="divide-y divide-slate-100" id="order-items-body">
+                                <!-- 产品明细将通过JavaScript动态生成 -->
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- 订单总计 -->
+                    <div class="flex justify-between items-center p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计 (Total Amount)</p>
+                        <p class="text-2xl font-mono font-black text-brand-500" id="order-total-amount">$0.00</p>
                     </div>
                 </div>
 
                 <!-- 2. 产品信息 Pane (包含多单位换算) -->
-                <div id="pane-product" class="sub-pane hidden space-y-6">
+                <div id="confirm-product-tab" class="sub-pane hidden space-y-6">
                     <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3 mb-6">
                         <i class="ph ph-info text-blue-600 text-lg"></i>
-                        <p class="text-[11px] text-blue-700 leading-relaxed">检测到该订单包含一个**新产品**名称，建议补全基础信息后自动录入产品库。</p>
+                        <p class="text-[11px] text-blue-700 leading-relaxed">检测到该订单包含新产品名称，建议补全基础信息后自动录入产品库。</p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品名称</label><input type="text" value="智能感应氛围灯" class="form-input"></div>
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">SKU 编码</label><input type="text" value="SKU-2026-LGT" class="form-input"></div>
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">单价 (USD)</label><input type="number" value="12.50" class="form-input font-mono"></div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">计量单位组</label>
+                        <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" id="product-name" class="form-input"></div>
+                        <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" id="product-sku" class="form-input font-mono"></div>
+                        <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" id="product-price" step="0.01" class="form-input font-mono font-bold text-brand-600"></div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">基本单位 (结算底数)</label>
                             <div class="flex gap-2">
-                                <input type="text" value="根" class="form-input flex-1" placeholder="基本单位">
-                                <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100">配置多级单位</button>
+                                <input type="text" id="product-base-unit" value="个" class="form-input flex-1" placeholder="如：根">
+                                <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100 transition-colors whitespace-nowrap">配置单位换算</button>
                             </div>
                         </div>
                     </div>
@@ -587,27 +622,77 @@
                     <div class="pt-4 border-t border-slate-50 mt-6">
                         <button onclick="toggleAdvanced('prod')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">高级配置信息 <i id="icon-prod" class="ph ph-caret-down"></i></button>
                         <div id="drawer-prod" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品分类</label><select class="form-input"><option>户外照明</option><option>家居装饰</option></select></div>
-                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">预警库存</label><input type="number" value="100" class="form-input"></div>
-                            <div class="col-span-full"><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品描述</label><textarea class="form-input h-24 no-scrollbar">AI 自动提取生成的描述：具备光感自适应调节功能...</textarea></div>
+                            <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品分类</label><select id="product-category" class="form-input"><option>户外照明</option><option>家居装饰</option></select></div>
+                            <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存</label><input type="number" id="product-warning-stock" value="100" class="form-input"></div>
+                            <div class="space-y-2 md:col-span-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea id="product-description" class="form-input h-24 no-scrollbar"></textarea></div>
                         </div>
+                    </div>
+                    <!-- 按钮区域 -->
+                    <div class="flex gap-4 mt-6">
+                        <button onclick="saveNewProduct()" class="flex-1 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建产品信息</button>
+                        <button onclick="skipNewProduct()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
                     </div>
                 </div>
 
-                <!-- 3. 客户信息 Pane -->
-                <div id="pane-customer" class="sub-pane hidden space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">客户姓名</label><input type="text" value="Ahmed Al-Fayed" class="form-input"></div>
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">联系电话</label><input type="text" value="+971 501234567" class="form-input font-mono"></div>
+                <!-- 3. 客户资料 Tab 页 -->
+                <div id="confirm-customer-tab" class="sub-pane hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label>
+                            <input type="text" id="customer-name" class="form-input font-bold" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label>
+                            <input type="tel" id="customer-phone" class="form-input font-mono" required>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
+                            <select id="customer-source" class="form-input font-bold text-slate-700">
+                                <option value="WECHAT">WECHAT (微信)</option>
+                                <option value="ALIPAY">ALIPAY (支付宝)</option>
+                                <option value="PHONE">PHONE (电话)</option>
+                                <option value="OTHER">OTHER (其他)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
+                            <select id="customer-status" class="form-input font-bold text-brand-600">
+                                <option value="ACTIVE">活跃客户</option>
+                                <option value="INACTIVE">沉睡客户</option>
+                            </select>
+                        </div>
                     </div>
                     <!-- 客户高级信息 -->
-                    <div class="pt-4 border-t border-slate-50 mt-6">
-                        <button onclick="toggleAdvanced('cust')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">更多档案信息 <i id="icon-cust" class="ph ph-caret-down"></i></button>
-                        <div id="drawer-cust" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">客户来源</label><select class="form-input"><option>WECHAT</option><option>PHONE</option><option>OTHER</option></select></div>
-                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">所属地区</label><input type="text" value="Dubai, UAE" class="form-input"></div>
-                            <div class="col-span-full"><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">收货详细地址</label><input type="text" value="Al-Noor Trading LLC, Office 402, Business Bay" class="form-input"></div>
+                    <div class="pt-6 border-t border-slate-50">
+                        <button type="button" onclick="toggleAdvanced('cust', event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+                            <span>展开详细地址与档案摘要</span>
+                            <i id="advanced-icon-cust" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
+                        </button>
+                        <div id="drawer-cust" class="advanced-drawer hidden">
+                            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-2">
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label>
+                                    <input type="email" id="customer-email" class="form-input">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label>
+                                    <input type="text" id="customer-region" class="form-input">
+                                </div>
+                                <div class="space-y-2 col-span-full">
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label>
+                                    <textarea id="customer-address" class="form-input h-20 no-scrollbar"></textarea>
+                                </div>
+                                <div class="space-y-2 col-span-full">
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label>
+                                    <textarea id="customer-summary" class="form-input h-20 no-scrollbar"></textarea>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                    <!-- 按钮区域 -->
+                    <div class="flex gap-4 mt-6">
+                        <button onclick="saveNewCustomer()" class="flex-1 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建客户信息</button>
+                        <button onclick="skipNewCustomer()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增客户</button>
                     </div>
                 </div>
             </div>
@@ -617,7 +702,7 @@
                 <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
                 <div class="flex gap-3 w-full md:w-auto">
                     <button onclick="closeAuditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">存为草稿</button>
-                    <button onclick="alert('订单已确认，库存已实时扣减。')" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+                    <button onclick="confirmOrder()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
                 </div>
             </div>
         </div>
@@ -646,6 +731,83 @@
                 <button onclick="closeUnitModal()" class="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg">保存单位配置</button>
                 <button onclick="closeUnitModal()" class="w-full py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Cancel</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= [弹窗 1] 语音输入交互 ================= -->
+    <div id="voice-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center fade-in">
+            <div id="voice-ready-ui">
+                <div class="w-24 h-24 bg-slate-100 rounded-full mx-auto flex items-center justify-center text-slate-300 mb-8"><i class="ph ph-microphone-stage text-5xl"></i></div>
+                <h3 class="text-xl font-black text-slate-800 mb-2">语音提单助手</h3>
+                <p class="text-xs text-slate-400 leading-relaxed mb-10 px-4">请点击下方按钮开始描述您的订单内容</p>
+                <button onclick="startVoiceRecording()" class="btn-brand btn-click-effect w-full py-4 rounded-2xl font-bold shadow-xl">开始录音</button>
+            </div>
+
+            <div id="voice-active-ui" class="hidden">
+                <div id="voice-pulse-icon" class="w-24 h-24 bg-brand-500 rounded-full mx-auto flex items-center justify-center text-white mb-8"><i class="ph ph-microphone text-5xl"></i></div>
+                <div class="flex items-center justify-center gap-2 mb-2"><span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span><span class="text-lg font-black text-slate-800">正在录音...</span></div>
+                <p class="text-2xl font-mono font-bold text-brand-600 mb-10" id="voice-timer">00:00</p>
+                <button onclick="stopVoiceRecording()" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl">停止并提交解析</button>
+            </div>
+
+            <!-- 核心修复：AI 处理加载态容器 -->
+            <div id="voice-processing-ui" class="hidden py-10">
+                <div class="w-14 h-14 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-8"></div>
+                <p class="text-sm font-bold text-brand-600 tracking-widest uppercase">AI 智脑解析中...</p>
+            </div>
+
+            <button onclick="closeVoiceModal()" class="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">取消</button>
+        </div>
+    </div>
+
+    <!-- ================= [弹窗 2] 拍照识别弹窗 ================= -->
+    <div id="photo-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden fade-in modal-content-box text-left">
+            <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="font-black text-slate-800 text-lg tracking-tight">选择识别来源</h3>
+                <button onclick="closePhotoModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="startCamera()" class="flex flex-col items-center p-6 rounded-3xl bg-slate-50 cursor-pointer hover:bg-brand-50 border-2 border-transparent hover:border-brand-200 transition-all group">
+                        <i class="ph ph-device-mobile-camera text-3xl mb-2 text-slate-400 group-hover:text-brand-600"></i>
+                        <span class="text-xs font-bold text-slate-800">实时拍照</span>
+                    </button>
+                    <label class="flex flex-col items-center p-6 rounded-3xl bg-slate-50 cursor-pointer hover:bg-brand-50 border-2 border-transparent hover:border-brand-200 transition-all group">
+                        <i class="ph ph-image text-3xl mb-2 text-slate-400 group-hover:text-brand-600"></i>
+                        <span class="text-xs font-bold text-slate-800">本地文件</span>
+                        <input type="file" accept="image/*" class="hidden" onchange="handlePhotoSelected(this)">
+                    </label>
+                </div>
+                <!-- 摄像头预览区域 -->
+                <div id="camera-preview-area" class="hidden bg-slate-50 rounded-2xl p-2 border-2 border-dashed border-brand-100 relative">
+                    <video id="camera-video" class="w-full h-64 object-cover rounded-xl shadow-inner" autoplay muted playsinline></video>
+                    <canvas id="capture-canvas" style="display:none;"></canvas>
+                    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4">
+                        <button onclick="capturePhoto()" class="px-4 py-2 bg-brand-500 text-white rounded-full text-sm font-bold shadow-lg">
+                            拍照
+                        </button>
+                        <button onclick="stopCamera()" class="px-4 py-2 bg-slate-500 text-white rounded-full text-sm font-bold shadow-lg">
+                            关闭
+                        </button>
+                    </div>
+                </div>
+                <div id="photo-preview-area" class="hidden bg-slate-50 rounded-2xl p-2 border-2 border-dashed border-brand-100 relative">
+                    <img id="image-preview" class="w-full h-40 object-cover rounded-xl shadow-inner">
+                    <button onclick="resetPhoto()" class="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><i class="ph ph-x-bold"></i></button>
+                </div>
+                <!-- 核心修复：初始 disabled 状态 -->
+                <button id="photo-submit-btn" disabled onclick="submitPhoto()" class="btn-brand btn-click-effect w-full py-4 rounded-2xl font-bold shadow-xl">提交并开始识别</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= [通用] 全局提示 Toast (核心补全) ================= -->
+    <div id="toast" class="fixed top-10 left-1/2 -translate-x-1/2 z-[200] opacity-0 transition-all duration-500 pointer-events-none">
+        <div class="bg-slate-900 text-white px-8 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-white/10">
+            <i class="ph ph-check-circle-fill text-brand-500 text-xl"></i>
+            <span class="text-sm font-bold tracking-wide" id="toast-text">成功提示</span>
         </div>
     </div>
 
@@ -706,11 +868,6 @@
                     <p class="text-2xl font-mono font-black text-brand-500">$7,690.00</p>
                 </div>
             </div>
-
-            <div class="p-5 border-t border-slate-100 bg-white flex gap-3 shrink-0">
-                <button onclick="closeOrderDetail()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors">返回工作台</button>
-                <button class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg hover:shadow-brand-500/20 flex items-center justify-center gap-2"><i class="ph ph-printer"></i> 打印送货单</button>
-            </div>
         </div>
     </div>
 
@@ -761,208 +918,306 @@
                                     <th class="px-4 py-3 text-right">小计</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr>
+                            <tbody>
+                                <tr class="border-t border-slate-100">
                                     <td class="px-4 py-3">
-                                        <select class="bg-transparent font-bold text-slate-700 outline-none w-full product-select">
-                                            <option value="0">--- 选择产品 ---</option>
-                                            <option value="12.5" data-sku="G-8821">金色镂空灯 (G-8821)</option>
-                                            <option value="48.0" data-sku="CP-T2">露营折叠桌 (CP-T2)</option>
+                                        <select class="bg-transparent font-bold text-brand-600 outline-none w-full cursor-pointer hover:underline">
+                                            <option>金色镂空户外灯 (G-8821)</option>
+                                            <option>便携无叶挂脖扇 (V2)</option>
+                                            <option>-- 重新匹配现有产品 --</option>
                                         </select>
                                     </td>
-                                    <td class="px-4 py-3"><input type="number" value="1" min="1" oninput="calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono qty-input"></td>
-                                    <td class="px-4 py-3"><input type="number" value="0" step="0.01" oninput="calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono price-input"></td>
-                                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">$0.00</td>
+                                    <td class="px-4 py-3 text-center"><input type="number" value="100" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold"></td>
+                                    <td class="px-4 py-3 text-center"><input type="number" value="12.50" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold font-mono"></td>
+                                    <td class="px-4 py-3 text-right font-mono font-bold">$1,250.00</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-
-                <!-- 自动更新的总金额展示区 -->
-                <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
-                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
-                    <div>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">订单预计总计</p>
-                        <p class="text-[9px] text-slate-500 mt-1 italic">提取源：手动添加</p>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-3xl font-black font-mono text-brand-500" id="manual-grand-total">$0.00</span>
-                    </div>
-                </div>
             </div>
 
-            <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">
-                <button onclick="closeManualOrderModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
-                <button onclick="saveManualOrder()" class="flex-[2] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl active:scale-95 transition-all">确认并录入系统</button>
+            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
+                <div class="flex gap-3 w-full md:w-auto">
+                    <button onclick="closeManualOrderModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
+                    <button onclick="alert('订单已确认，库存已实时扣减。')" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 导航切换
-        function switchTab(tabName) {
-            console.log('switchTab called with tabName:', tabName);
-            let url = '';
-            switch(tabName) {
-                case 'dashboard':
-                    url = 'dashboard.html';
-                    break;
-                case 'biz':
-                    url = '../SmartOps/SmartOps.html';
-                    break;
-                case 'crm':
-                    url = '../crm/crm.html';
-                    break;
-                case 'supply':
-                    url = '../supply-chain/supply-chain.html';
-                    break;
-                case 'supplier':
-                    url = '../supplier/supplier.html';
-                    break;
-                case 'rd':
-                    url = '../product-center/product-center.html';
-                    break;
-            }
-            console.log('Calculated URL:', url);
-            if (url) {
-                console.log('Navigating to:', url);
-                window.location.href = url;
+        // 登录失效提示标志
+        let loginExpiredShown = false;
+
+        // OSS 服务初始化
+        let OSSService = null;
+        let recorder = null;
+        let audioChunks = [];
+        let recording = false;
+
+        // 初始化 OSS 服务
+        async function initOSSService() {
+            try {
+                // 调用 InitCfgService 获取 STS (通过网关)
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/init/config/oss/sts', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const stsData = await response.json();
+                    if (stsData.success) {
+                        // 先获取基础 OSS 配置 (通过网关)
+                        const baseConfigResponse = await window.wrappedFetch('http://localhost:8080/api/v1/init/config/oss/base', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (baseConfigResponse.ok) {
+                            const baseConfigData = await baseConfigResponse.json();
+                            if (baseConfigData.success && baseConfigData.data) {
+                                const baseConfig = baseConfigData.data;
+                                const stsCredentials = stsData.data;
+                                OSSService = new OSS({
+                                    region: baseConfig.region || 'oss-cn-hongkong',
+                                    accessKeyId: stsCredentials.accessKeyId,
+                                    accessKeySecret: stsCredentials.accessKeySecret,
+                                    stsToken: stsCredentials.securityToken,
+                                    bucket: baseConfig.bucketName || 'trademind-ai',
+                                    endpoint: baseConfig.endpoint,
+                                    secure: true
+                                });
+                                console.log('OSS 服务初始化成功');
+                            }
+                        }
+                    }
+                } else {
+                    console.error('获取 STS 失败');
+                }
+            } catch (error) {
+                console.error('OSS 服务初始化失败:', error);
             }
         }
 
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化 OSS 服务
+            await initOSSService();
+            // 加载待确认单据
+            loadPendingOrders();
+            // 加载客户列表
+            loadCustomerList();
+            // 加载产品列表
+            loadProductList();
+            // 加载用户信息
+            loadUserInfo();
+        });
 
-
-        // 调用后端用户信息接口进行认证校验
-        async function validateAuth() {
+        // 加载用户信息
+        function loadUserInfo() {
             try {
-                // 首先检查认证状态
-                if (!window.checkAuth) {
-                    const token = localStorage.getItem('token');
-                    if (!token) {
-                        localStorage.clear();
-                        window.location.href = '../../login.html';
-                        return false;
+                const token = localStorage.getItem('token');
+                if (token) {
+                    // 解析 JWT Token
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const userName = payload.userName || '未知用户';
+                    const role = payload.role || 'USER';
+                    
+                    // 映射角色到中文
+                    const roleMap = {
+                        'ADMIN': '管理员',
+                        'USER': '用户'
+                    };
+                    const roleChinese = roleMap[role] || role;
+                    
+                    // 更新 UI
+                    const userAvatar = document.getElementById('user-avatar');
+                    const userNameElement = document.getElementById('user-name');
+                    
+                    if (userAvatar) {
+                        userAvatar.textContent = userName.charAt(0).toUpperCase();
                     }
-                } else {
-                    // 使用全局checkAuth函数
-                    if (!window.checkAuth()) {
-                        return false;
+                    
+                    if (userNameElement) {
+                        userNameElement.textContent = `${userName} (${roleChinese})`;
                     }
                 }
-                
-                // 暂时跳过后端认证校验，因为TenantService可能没有提供这个接口
-                return true;
             } catch (error) {
-                console.error('认证校验失败:', error);
-                // 捕获所有异常，包括跨域错误，立即清理并跳转
-                if (window.logout) {
-                    window.logout();
-                } else {
-                    localStorage.clear();
+                console.error('解析用户信息失败:', error);
+            }
+        }
+
+        // 加载产品列表
+        function loadProductList() {
+            window.wrappedFetch('http://localhost:8080/api/v1/rd/products', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(async response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") === -1) {
+                    const text = await response.text();
+                    throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success && Array.isArray(data.data)) {
+                    window.productList = data.data;
+                }
+            })
+            .catch(error => {
+                console.error('加载产品列表失败:', error);
+                // 检查是否为 401 错误
+                if (error.status === 401 && !loginExpiredShown) {
+                    loginExpiredShown = true;
+                    // 引导至登录页
                     window.location.href = '../../login.html';
                 }
-                return false;
-            }
+            });
         }
 
-        // 认证相关功能已在auth.js中实现，使用wrappedFetch函数处理认证请求
+        // 加载客户列表
+        function loadCustomerList() {
+            const customerSelect = document.getElementById('order-customer');
             
-            // 轮询定时器
-            let pollingInterval = null;
-            
-            // 加载待确认单据列表
-            async function loadPendingOrders() {
-                console.log('========== 开始加载待确认单据 ==========');
+            window.wrappedFetch('http://localhost:8080/api/v1/crm/customers', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(async response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") === -1) {
+                    const text = await response.text();
+                    throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 清空现有选项
+                customerSelect.innerHTML = '<option value="">-- 请选择客户 --</option>';
                 
-                try {
-                    // 检查认证状态
-                    if (!window.checkAuth()) {
-                        console.log('❌ 认证失败，无法加载待确认单据');
-                        return;
-                    }
-                    
-                    // 构建API URL
-                    const apiUrl = 'http://localhost:8080/api/v1/ai/records';
-                    console.log('待确认单据API URL:', apiUrl);
-                    
-                    // 使用wrappedFetch发送请求，与音频订单提取接口保持一致
-                    const response = await window.wrappedFetch(apiUrl, {
-                        method: 'GET'
+                // 添加客户选项
+                if (data && Array.isArray(data)) {
+                    data.forEach(customer => {
+                        const option = document.createElement('option');
+                        option.value = customer.cust_id;
+                        option.textContent = customer.name;
+                        customerSelect.appendChild(option);
                     });
-                    
-                    console.log('待确认单据响应状态:', response.status, response.statusText);
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text().catch(() => '');
-                        throw new Error(`获取待确认单据失败: ${response.status} ${response.statusText} - ${errorText}`);
-                    }
-                    
-                    const data = await response.json();
-                    console.log('待确认单据响应数据:', data);
-                    
-                    // 更新待确认单据列表
-                    const hasExtractingTasks = updatePendingOrdersList(data);
-                    
-                    // 管理轮询
-                    managePolling(hasExtractingTasks);
-                } catch (error) {
-                    console.error('加载待确认单据失败:', error);
-                    // 更新UI显示错误信息
-                    const pendingOrdersList = document.getElementById('pending-orders-list');
-                    if (pendingOrdersList) {
-                        pendingOrdersList.innerHTML = `
-                            <div class="flex items-center justify-center h-full text-red-500 text-sm">
-                                <div class="text-center">
-                                    <i class="ph ph-x-circle text-xl mb-2"></i>
-                                    <p>加载失败：${error.message}</p>
+                }
+            })
+            .catch(error => {
+                console.error('加载客户列表失败:', error);
+                // 检查是否为 401 错误
+                if (error.status === 401 && !loginExpiredShown) {
+                    loginExpiredShown = true;
+                    // 引导至登录页
+                    window.location.href = '../../login.html';
+                }
+            });
+        }
+
+        // 加载待确认单据
+        function loadPendingOrders() {
+            const pendingOrdersList = document.getElementById('pending-orders-list');
+            
+            // 检查 DOM 元素是否存在
+            if (!pendingOrdersList) {
+                console.error('pending-orders-list 元素不存在');
+                return;
+            }
+            
+            // 显示加载状态
+            pendingOrdersList.innerHTML = `
+                <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                    <div class="text-center">
+                        <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
+                        <p>加载待确认单据中...</p>
+                    </div>
+                </div>
+            `;
+
+            // 调用 API 获取最近 20 条状态为 SUCCESS 或 EXTRACTING 的记录
+            window.wrappedFetch('http://localhost:8080/api/v1/ai/records', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(async response => {
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") === -1) {
+                    const text = await response.text();
+                    throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 检查 DOM 元素是否存在
+                if (!pendingOrdersList) {
+                    console.error('pending-orders-list 元素不存在');
+                    return;
+                }
+                
+                // 检查数据是否为数组
+                if (!data || !Array.isArray(data)) {
+                    console.error("预期返回数组但收到:", data);
+                    pendingOrdersList.innerHTML = `
+                        <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                            <div class="text-center">
+                                <i class="ph ph-x-circle text-xl mb-2"></i>
+                                <p>数据加载失败，请刷新页面重试</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 过滤状态为 SUCCESS 或 EXTRACTING 的记录，并按时间倒序排序
+                const filteredRecords = data.filter(record => 
+                    record.status === 'SUCCESS' || record.status === 'EXTRACTING'
+                ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20);
+
+                // 渲染待确认单据列表
+                if (filteredRecords.length > 0) {
+                    pendingOrdersList.innerHTML = filteredRecords.map(record => {
+                        // 从 AI 结果中提取客户姓名
+                        let customerName = '未知客户';
+                        if (record.ai_result && record.ai_result.new_customer_info && record.ai_result.new_customer_info.name) {
+                            customerName = record.ai_result.new_customer_info.name;
+                        }
+
+                        // 格式化识别时间
+                        const recognitionTime = new Date(record.created_at).toLocaleString('zh-CN');
+
+                        return `
+                            <div onclick="openAuditModal('${record.id}')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">客户：${customerName}</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-tighter">${recognitionTime}</span>
+                                        <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
+                                        <span class="text-[9px] ${record.status === 'SUCCESS' ? 'text-brand-600' : 'text-orange-500'} font-bold">${record.status === 'SUCCESS' ? '已提取' : '提取中'}</span>
+                                    </div>
+                                </div>
+                                <div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">
+                                    ${record.ai_result && record.ai_result.new_products_found ? record.ai_result.new_products_found.length : 0}
                                 </div>
                             </div>
                         `;
-                    }
-                    // 出现错误时停止轮询
-                    stopPolling();
-                }
-            }
-            
-            // 管理轮询
-            function managePolling(hasExtractingTasks) {
-                if (hasExtractingTasks) {
-                    // 如果有提取中的任务且轮询未启动，则启动轮询
-                    if (!pollingInterval) {
-                        console.log('启动轮询，每3秒刷新一次待确认单据');
-                        pollingInterval = setInterval(loadPendingOrders, 3000);
-                    }
+                    }).join('');
                 } else {
-                    // 如果没有提取中的任务，则停止轮询
-                    stopPolling();
-                }
-            }
-            
-            // 停止轮询
-            function stopPolling() {
-                if (pollingInterval) {
-                    console.log('停止轮询');
-                    clearInterval(pollingInterval);
-                    pollingInterval = null;
-                }
-            }
-            
-            // 更新待确认单据列表
-            function updatePendingOrdersList(orders) {
-                console.log('更新待确认单据列表:', orders);
-                
-                const pendingOrdersList = document.getElementById('pending-orders-list');
-                if (!pendingOrdersList) {
-                    console.error('找不到待确认单据列表元素');
-                    return false;
-                }
-                
-                // 检查响应数据格式
-                const orderList = Array.isArray(orders) ? orders : (orders.data || orders.records || []);
-                
-                if (orderList.length === 0) {
-                    // 没有待确认单据
                     pendingOrdersList.innerHTML = `
                         <div class="flex items-center justify-center h-full text-slate-400 text-sm">
                             <div class="text-center">
@@ -971,1445 +1226,903 @@
                             </div>
                         </div>
                     `;
-                    return false;
                 }
-                
-                // 检查是否有提取中的任务
-                let hasExtractingTasks = false;
-                
-                // 生成待确认单据列表HTML
-                let html = '';
-                orderList.forEach((order, index) => {
-                    // 解析订单数据
-                    let customerName = '未知客户';
-                    const orderTime = order.createTime || order.created_at || order.time || new Date().toLocaleTimeString();
-                    const orderDescription = order.description || order.content || order.summary || '待确认订单';
-                    const status = order.status || 'UNKNOWN';
-                    
-                    // 检查是否有提取中的任务
-                    if (status === 'EXTRACTING') {
-                        hasExtractingTasks = true;
-                    }
-                    
-                    // 解析客户名称和摘要：从 ai_result JSON 中提取数据
-                    let summary = '';
-                    if (order.aiResult) {
-                        try {
-                            const aiResult = JSON.parse(order.aiResult);
-                            if (aiResult.customer_data && aiResult.customer_data.name) {
-                                customerName = aiResult.customer_data.name;
-                            }
-                            // 提取 summary 字段
-                            if (aiResult.summary) {
-                                summary = aiResult.summary;
-                            }
-                        } catch (e) {
-                            console.error('解析 ai_result 失败:', e);
-                        }
-                    }
-                    
-                    // 处理摘要显示
-                    let displayTitle = customerName;
-                    if (status === 'EXTRACTING') {
-                        displayTitle = '识别中...';
-                    } else if (summary) {
-                        // 截取前 20 个字符，超出部分追加 ...
-                        displayTitle = summary.length > 20 ? summary.substring(0, 20) + '...' : summary;
-                    } else if (customerName === '未知客户') {
-                        displayTitle = '未命名草稿';
-                    }
-                    
-                    // 根据状态获取标签颜色
-                    let statusClass = '';
-                    let statusText = '';
-                    let statusIcon = '';
-                    
-                    switch (status) {
-                        case 'EXTRACTING':
-                            statusClass = 'bg-gray-100 text-gray-600';
-                            statusText = '提取中';
-                            statusIcon = '<i class="ph ph-spinner ph-spin text-sm"></i> ';
-                            break;
-                        case 'SUCCESS':
-                            statusClass = 'bg-green-100 text-green-600';
-                            statusText = '提取成功';
-                            statusIcon = '<i class="ph ph-check text-sm"></i> ';
-                            break;
-                        case 'FAILED':
-                            statusClass = 'bg-red-100 text-red-600';
-                            statusText = '提取失败';
-                            statusIcon = '<i class="ph ph-x text-sm"></i> ';
-                            break;
-                        default:
-                            statusClass = 'bg-slate-100 text-slate-600';
-                            statusText = '未知状态';
-                            statusIcon = '<i class="ph ph-question text-sm"></i> ';
-                    }
-                    
-                    // 为提取中的任务添加加载动画
-                    let loadingClass = status === 'EXTRACTING' ? 'animate-pulse' : '';
-                    
-                    html += `
-                        <div onclick="showRecordDetail(${JSON.stringify(order).replace(/"/g, '&quot;')})" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group ${loadingClass}">
-                            <div class="flex justify-between items-start mb-2">
-                                <div class="flex items-center gap-2">
-                                    <i class="ph ph-microphone-stage text-brand-500"></i>
-                                    <p class="text-xs font-bold text-slate-800">${displayTitle}</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[9px] ${statusClass} px-2 py-0.5 rounded-full font-bold flex items-center gap-1">${statusIcon}${statusText}</span>
-                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">${orderTime}</span>
-                                </div>
-                            </div>
-                            <div class="text-[11px] text-slate-500 italic truncate">"${orderDescription}"</div>
-                        </div>
-                    `;
-                });
-                
-                pendingOrdersList.innerHTML = html;
-                return hasExtractingTasks;
-            }
-            
-
-        
-        // 更新用户信息显示
-        function updateUserInfo() {
-            try {
-                // 从localStorage获取用户信息
-                const userInfoStr = localStorage.getItem('user_info');
-                const username = localStorage.getItem('username');
-                const currentUserStr = localStorage.getItem('currentUser');
-                
-                let userInfo = {};
-                if (userInfoStr) {
-                    try {
-                        userInfo = JSON.parse(userInfoStr);
-                    } catch (parseError) {
-                        console.error('解析用户信息失败:', parseError);
-                    }
-                }
-                
-                // 尝试从currentUser获取用户信息
-                let currentUser = {};
-                if (currentUserStr) {
-                    try {
-                        currentUser = JSON.parse(currentUserStr);
-                    } catch (parseError) {
-                        console.error('解析currentUser失败:', parseError);
-                    }
-                }
-                
-                // 获取DOM元素
-                const userInitialElement = document.getElementById('userInitial');
-                const userInfoElement = document.getElementById('userInfo');
-                
-                if (userInitialElement && userInfoElement) {
-                    // 更新用户姓名首字母
-                    // 尝试从多个来源获取用户名
-                    const displayName = userInfo.userName || currentUser.userName || username || userInfo.realName || userInfo.name || currentUser.realName || currentUser.name || '用户';
-                    
-                    const initial = displayName.charAt(0).toUpperCase();
-                    userInitialElement.textContent = initial;
-                    
-                    // 角色名称映射
-                    const roleMap = {
-                        'ADMIN': '管理员',
-                        'BOSS': '老板',
-                        'Sales': '销售',
-                        'Warehouse': '仓库',
-                        'Finance': '财务'
-                    };
-                    
-                    // 更新用户信息（姓名 + 角色）
-                    // 尝试从多个来源获取角色
-                    const roleType = userInfo.roleType || userInfo.role || userInfo.role_name || currentUser.roleType || currentUser.role || currentUser.role_name || '用户';
-                    const role = roleMap[roleType] || roleType;
-                    
-                    userInfoElement.textContent = `${displayName} (${role})`;
-                } else {
-                    console.error('找不到用户信息显示元素');
-                }
-            } catch (error) {
-                console.error('更新用户信息失败:', error);
-            }
-        }
-
-        // 调用AIService进行订单提取
-        async function callAIServiceForOrderExtract(imageUrls) {
-            try {
-                // 通过 API Gateway 调用 AIService
-                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
-                const response = await window.wrappedFetch(fullUrl, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        taskType: 'ORDER_EXTRACT',
-                        inputType: 'URL',
-                        payload: {
-                            imageUrls: imageUrls,
-                            content: null,
-                            context: {
-                                tenantName: '张三贸易',
-                                currency: 'CNY'
-                            }
-                        }
-                    })
-                });
-
-                try {
-                    const responseText = await response.text();
-                    
-                    if (!response.ok) {
-                        throw new Error('HTTP error ' + response.status + ': ' + response.statusText + ' - ' + responseText);
-                    }
-
-                    const data = JSON.parse(responseText);
-
-                    if (data.code === 200) {
-                        return data.data;
-                    } else {
-                        throw new Error('AIService执行失败: ' + data.msg);
-                    }
-                } catch (parseError) {
-                    console.error('解析AIService响应失败:', parseError);
-                    throw new Error('解析AIService响应失败: ' + parseError.message);
-                }
-            } catch (error) {
-                console.error('调用AIService失败:', error);
-                throw error;
-            }
-        }
-
-        // 获取API URL
-        function getApiUrl(service) {
-            // 所有服务都通过 API Gateway 访问
-            return 'http://localhost:8080';
-        }
-
-        // 显示记录详情
-        function showRecordDetail(record) {
-            console.log('显示记录详情:', record);
-            
-            try {
-                // 清空之前的表单状态，防止数据残留
-                const orderPane = document.getElementById('pane-order');
-                const productPane = document.getElementById('pane-product');
-                const customerPane = document.getElementById('pane-customer');
-                
-                if (orderPane) {
-                    orderPane.innerHTML = '';
-                }
-                if (productPane) {
-                    productPane.innerHTML = '';
-                }
-                if (customerPane) {
-                    customerPane.innerHTML = '';
-                }
-                
-                // 解析 ai_result JSON (双重解析)
-                let aiResultData = null;
-                if (record.aiResult) {
-                    try {
-                        const outer = JSON.parse(record.aiResult);
-                        const inner = JSON.parse(outer.result);
-                        aiResultData = inner;
-                        console.log('解析 ai_result 成功:', aiResultData);
-                    } catch (e) {
-                        console.error('解析 ai_result 失败:', e);
-                        // 显示数据格式异常
-                        if (orderPane) {
-                            orderPane.innerHTML = `
-                                <div class="flex items-center justify-center h-40 text-red-500 text-sm">
-                                    <div class="text-center">
-                                        <i class="ph ph-x-circle text-xl mb-2"></i>
-                                        <p>数据格式异常</p>
-                                        <p class="text-slate-400 text-xs mt-2">可查看 input_content 手动录入</p>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                    }
-                }
-                
-                // 打开审核模态框
-                const auditModal = document.getElementById('audit-modal');
-                if (auditModal) {
-                    auditModal.classList.remove('hidden');
-                }
-                
-                // 动态生成 Tab
-                const tabContainer = document.getElementById('audit-tabs-nav');
-                if (tabContainer) {
-                    let tabHtml = '';
-                    
-                    // 订单页签：始终显示
-                    tabHtml += '<button onclick="switchAuditTab(\'order\')" id="tab-order" class="sub-tab-btn active">订单详情</button>';
-                    
-                    // 产品页签：判断是否有新产品
-                    if (aiResultData && aiResultData.new_products_found && aiResultData.new_products_found.length > 0) {
-                        tabHtml += '<button onclick="switchAuditTab(\'product\')" id="tab-product" class="sub-tab-btn">产品信息</button>';
-                    }
-                    
-                    // 客户页签：判断是否有客户数据
-                    if (aiResultData && aiResultData.customer_data) {
-                        tabHtml += '<button onclick="switchAuditTab(\'customer\')" id="tab-customer" class="sub-tab-btn">客户资料</button>';
-                    }
-                    
-                    tabContainer.innerHTML = tabHtml;
-                }
-                
-                // 填充订单详情
-                if (orderPane && aiResultData) {
-                    let orderHtml = '';
-                    
-                    // 订单编号和日期
-                    orderHtml += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">订单编号</label><input type="text" value="${aiResultData.order_data?.order_code || '系统自动生成'}" class="form-input font-mono font-bold text-slate-800"></div>
-                            <div><label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">预计交货日期</label><input type="date" value="${aiResultData.order_data?.delivery_date || ''}" class="form-input"></div>
-                        </div>
-                    `;
-                    
-                    // 订单明细
-                    orderHtml += `
-                        <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                            <table class="w-full text-left text-xs">
-                                <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
-                                    <tr><th class="px-5 py-4">品名</th><th class="px-5 py-4 text-center">数量</th><th class="px-5 py-4 text-right">单价</th><th class="px-5 py-4 text-right">小计</th></tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                    `;
-                    
-                    if (aiResultData.order_data && aiResultData.order_data.items) {
-                        aiResultData.order_data.items.forEach(item => {
-                            orderHtml += `
-                                <tr>
-                                    <td class="px-5 py-4">
-                                        <p class="font-bold">${item.product_name_raw || '未知产品'}</p>
-                                    </td>
-                                    <td class="px-5 py-4 text-center"><input type="number" value="${item.quantity || 0}" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold"></td>
-                                    <td class="px-5 py-4 text-right font-mono font-bold">$${(item.price_at_time || 0).toFixed(2)}</td>
-                                    <td class="px-5 py-4 text-right font-mono font-bold">$${(item.total_amount || 0).toFixed(2)}</td>
-                                </tr>
-                            `;
-                        });
-                    } else {
-                        orderHtml += `
-                            <tr>
-                                <td colspan="4" class="px-5 py-4 text-center text-slate-400">暂无订单明细</td>
-                            </tr>
-                        `;
-                    }
-                    
-                    orderHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
-                    
-                    // 订单总计
-                    if (aiResultData.order_data) {
-                        orderHtml += `
-                            <div class="flex justify-between items-center p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden">
-                                <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
-                                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计 (Total Amount)</p>
-                                <p class="text-2xl font-mono font-black text-brand-500">$${(aiResultData.order_data.total_amount || 0).toFixed(2)}</p>
-                            </div>
-                        `;
-                    }
-                    
-                    orderPane.innerHTML = orderHtml;
-                }
-                
-                // 填充产品信息
-                if (productPane && aiResultData) {
-                    let productHtml = '';
-                    
-                    if (aiResultData.new_products_found && aiResultData.new_products_found.length > 0) {
-                        productHtml += `
-                            <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3 mb-6">
-                                <i class="ph ph-info text-blue-600 text-lg"></i>
-                                <p class="text-[11px] text-blue-700 leading-relaxed">检测到该订单包含 ${aiResultData.new_products_found.length} 个新产品，建议补全基础信息后自动录入产品库。</p>
-                            </div>
-                        `;
-                        
-                        aiResultData.new_products_found.forEach((product, index) => {
-                            productHtml += `
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">产品名称</label><input type="text" value="${product.name || '未知产品'}" class="form-input"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">SKU 编码</label><input type="text" value="${product.sku || ''}" class="form-input"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">预设售价</label><input type="number" value="${product.price || 0}" class="form-input font-mono"></div>
-                                    <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">描述</label><input type="text" value="${product.description || ''}" class="form-input"></div>
-                                </div>
-                            `;
-                        });
-                    } else {
-                        productHtml += `
-                            <div class="flex items-center justify-center h-40 text-slate-400 text-sm">
-                                <div class="text-center">
-                                    <i class="ph ph-check-circle text-xl mb-2"></i>
-                                    <p>暂无新产品信息</p>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    productPane.innerHTML = productHtml;
-                }
-                
-                // 填充客户信息
-                if (customerPane && aiResultData && aiResultData.customer_data) {
-                    const customer = aiResultData.customer_data;
-                    let customerHtml = '';
-                    
-                    customerHtml += `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">客户名称</label><input type="text" value="${customer.name || ''}" class="form-input" id="form-cust-name"></div>
-                            <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">联系电话</label><input type="text" value="${customer.phone || ''}" class="form-input font-mono" id="form-cust-phone"></div>
-                        </div>
-                        <div class="pt-4 border-t border-slate-50 mt-6">
-                            <button onclick="toggleAdvanced('cust')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">更多档案信息 <i id="icon-cust" class="ph ph-caret-down"></i></button>
-                            <div id="drawer-cust" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">来源</label><select class="form-input"><option>${customer.source || 'OTHER'}</option><option>WECHAT</option><option>ALIPAY</option><option>OTHER</option></select></div>
-                                <div><label class="text-[10px] font-bold text-slate-400 ml-1 mb-2 block">摘要/地址</label><input type="text" value="${customer.address || customer.summary || ''}" class="form-input"></div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    customerPane.innerHTML = customerHtml;
-                } else if (customerPane) {
-                    customerPane.innerHTML = `
-                        <div class="flex items-center justify-center h-40 text-slate-400 text-sm">
-                            <div class="text-center">
-                                <i class="ph ph-check-circle text-xl mb-2"></i>
-                                <p>暂无客户信息</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('显示记录详情失败:', error);
-            }
-        }
-        
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 检查认证状态
-            if (window.checkAuth) {
-                console.log('调用全局checkAuth函数检查认证状态');
-                if (!window.checkAuth()) {
-                    return;
-                }
-            } else {
-                console.log('全局checkAuth函数不存在，检查本地存储中的token');
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    console.log('Token不存在，跳转到登录页面');
-                    localStorage.clear();
+            })
+            .catch(error => {
+                console.error('加载待确认单据失败:', error);
+                // 检查是否为 401 错误
+                if (error.status === 401 && !loginExpiredShown) {
+                    loginExpiredShown = true;
+                    // 引导至登录页
                     window.location.href = '../../login.html';
-                    return;
-                }
-            }
-            
-            // 更新用户信息显示
-            updateUserInfo();
-            
-            // 修复文本输入框无法输入的问题
-            setTimeout(function() {
-                const textInput = document.getElementById('textInput');
-                if (textInput) {
-                    // 确保文本输入框是可编辑的
-                    textInput.disabled = false;
-                    textInput.readOnly = false;
-                    textInput.style.pointerEvents = 'auto';
-                    textInput.style.userSelect = 'text';
-                    
-                    // 添加焦点事件监听器
-                    textInput.addEventListener('focus', function() {
-                        console.log('文本输入框获得焦点');
-                    });
-                    
-                    console.log('文本输入框修复完成，当前状态:');
-                    console.log('disabled:', textInput.disabled);
-                    console.log('readOnly:', textInput.readOnly);
-                    console.log('pointerEvents:', getComputedStyle(textInput).pointerEvents);
-                    console.log('userSelect:', getComputedStyle(textInput).userSelect);
-                }
-            }, 100);
-            
-            // 退出登录按钮点击事件
-            const logoutBtn = document.getElementById('logoutBtn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', function() {
-                    console.log('=== 退出登录操作 ===');
-                    // 使用全局logout函数
-                    if (window.logout) {
-                        window.logout();
-                    } else {
-                        // 清空本地存储中的token和用户信息
-                        localStorage.clear();
-                        console.log('已清空本地存储中的认证信息');
-                        // 重定向到登录页面
-                        window.location.href = '../../login.html';
-                    }
-                });
-            }
-            
-            // 加载待确认单据列表
-            console.log('调用loadPendingOrders函数加载待确认单据');
-            loadPendingOrders();
-            
-            // 显示通知函数
-            function showNotification(message) {
-                // 创建通知元素
-                const notification = document.createElement('div');
-                notification.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-700 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-y-0 opacity-100 text-xs';
-                notification.textContent = message;
-                
-                // 添加到页面
-                document.body.appendChild(notification);
-                
-                // 2秒后开始淡出
-                setTimeout(() => {
-                    notification.classList.add('opacity-0', 'translate-y-[-20px]');
-                    // 动画结束后移除元素
-                    setTimeout(() => {
-                        document.body.removeChild(notification);
-                    }, 300);
-                }, 2000);
-            }
-            
-            // 调用AIService处理文本
-            async function processTextWithAIService(text) {
-                const requestData = {
-                    taskType: 'ORDER_EXTRACT',
-                    inputType: 'DATA',
-                    payload: {
-                        text: text,
-                        mediaUrls: null,
-                        context: null
-                    }
-                };
-                
-                console.log('准备调用AIService，请求数据:', requestData);
-                
-                // 通过 API Gateway 调用 AIService
-                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
-                console.log('AIService API URL:', fullUrl);
-                
-                try {
-                    const response = await window.wrappedFetch(fullUrl, {
-                        method: 'POST',
-                        body: JSON.stringify(requestData)
-                    });
-                    
-                    console.log('AIService响应状态:', response.status, response.statusText);
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text().catch(() => '');
-                        throw new Error(`调用AIService失败: ${response.status} ${response.statusText} - ${errorText}`);
-                    }
-                    
-                    const result = await response.json();
-                    console.log('AIService响应数据:', result);
-                    
-                    if (result.success && result.requestId) {
-                        // 显示通知
-                        showNotification('已提交 AI 订单提取，正在识别中...');
-                        // 清空文本输入框
-                        const textInput = document.getElementById('textInput');
-                        if (textInput) {
-                            textInput.value = '';
-                        }
-                        // 刷新待确认单据列表（添加延迟确保数据库写入完成）
-                        setTimeout(() => {
-                            loadPendingOrders();
-                        }, 300);
-                        return result;
-                    } else {
-                        throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
-                    }
-                } catch (error) {
-                    console.error('调用AIService时发生错误:', error);
-                    throw error;
-                }
-            }
-            
-            // 开始解析按钮点击事件
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            const textInput = document.getElementById('textInput');
-            if (analyzeBtn) {
-                analyzeBtn.addEventListener('click', async function() {
-                    if (textInput && textInput.value.trim()) {
-                        try {
-                            console.log('点击开始解析按钮，文本内容:', textInput.value.trim());
-                            
-                            // 立即清空textarea并显示通知
-                            const textContent = textInput.value.trim();
-                            textInput.value = '';
-                            showNotification('已提交AI订单提取，正在识别中...');
-                            
-                            console.log('准备调用processTextWithAIService函数');
-                            // 调用AIService处理文本
-                            await processTextWithAIService(textContent);
-                            
-                        } catch (error) {
-                            console.error('解析文本失败:', error);
-                            // 显示错误通知
-                            showNotification('解析失败: ' + error.message);
-                        }
-                    } else {
-                        // 显示提示通知
-                        showNotification('请输入或粘贴单据内容');
-                    }
-                });
-            }
-
-            // 摄像头功能
-            const cameraInputBtn = document.getElementById('cameraInputBtn');
-            const cameraModal = document.getElementById('cameraModal');
-            const closeCameraModal = document.getElementById('closeCameraModal');
-            const startCamera = document.getElementById('startCamera');
-            const takePhoto = document.getElementById('takePhoto');
-            const selectImage = document.getElementById('selectImage');
-            const imageInput = document.getElementById('imageInput');
-            const cameraPreview = document.getElementById('cameraPreview');
-            const cameraCanvas = document.getElementById('cameraCanvas');
-            const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-            
-            let stream = null;
-            let mediaRecorder = null;
-            let recordedChunks = [];
-
-            // 打开摄像头模态框
-            if (cameraInputBtn) {
-                cameraInputBtn.addEventListener('click', function() {
-                    if (cameraModal) {
-                        cameraModal.classList.remove('hidden');
-                    } else {
-                        console.error('摄像头模态框元素未找到');
-                    }
-                });
-            } else {
-                console.error('摄像头输入按钮元素未找到');
-            }
-
-            // 关闭摄像头模态框
-            if (closeCameraModal) {
-                closeCameraModal.addEventListener('click', function() {
-                    stopCamera();
-                    if (cameraModal) {
-                        cameraModal.classList.add('hidden');
-                    }
-                });
-            } else {
-                console.error('关闭摄像头模态框按钮元素未找到');
-            }
-
-            // 启动摄像头
-            startCamera.addEventListener('click', function() {
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    navigator.mediaDevices.getUserMedia({ video: true })
-                        .then(function(s) {
-                            stream = s;
-                            cameraPreview.srcObject = stream;
-                            cameraPreview.classList.remove('hidden');
-                            cameraCanvas.classList.add('hidden');
-                            cameraPlaceholder.classList.add('hidden');
-                            startCamera.classList.add('hidden');
-                            takePhoto.classList.remove('hidden');
-                            
-                            // 开始播放摄像头预览
-                            cameraPreview.play().catch(function(error) {
-                                console.error('播放摄像头预览失败:', error);
-                            });
-                        })
-                        .catch(function(error) {
-                            console.error('启动摄像头失败:', error);
-                            alert('无法访问摄像头，请检查权限设置');
-                        });
                 } else {
-                    alert('您的浏览器不支持摄像头功能');
-                }
-            });
-
-            // 拍照
-            takePhoto.addEventListener('click', async function() {
-                const canvas = cameraCanvas;
-                const video = cameraPreview;
-                const context = canvas.getContext('2d');
-                
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                cameraPreview.classList.add('hidden');
-                canvas.classList.remove('hidden');
-                
-                // 转换为Blob对象用于上传
-                canvas.toBlob(async function(blob) {
-                    if (blob) {
-                        const timestamp = new Date().getTime();
-                        const imageName = `photo_${timestamp}.jpg`;
-                        
-                        try {
-                            const ossInternalUrl = await uploadImageToOss(blob, imageName);
-                            console.log('上传图片到OSS成功，URL:', ossInternalUrl);
-                            await processImageWithAIService(ossInternalUrl);
-                            
-                            setTimeout(function() {
-                                stopCamera();
-                            }, 500);
-                        } catch (error) {
-                            console.error('处理图片失败:', error);
-                            showNotification('处理图片失败: ' + error.message);
-                            stopCamera();
-                            cameraModal.classList.add('hidden');
-                        }
-                    } else {
-                        console.error('无法将canvas转换为blob');
-                        showNotification('处理图片失败：无法生成图片文件');
-                        stopCamera();
-                        cameraModal.classList.add('hidden');
+                    // 检查 DOM 元素是否存在
+                    if (pendingOrdersList) {
+                        pendingOrdersList.innerHTML = `
+                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                                <div class="text-center">
+                                    <i class="ph ph-x-circle text-xl mb-2"></i>
+                                    <p>加载失败，请刷新页面重试</p>
+                                </div>
+                            </div>
+                        `;
                     }
-                }, 'image/jpeg', 0.8);
-            });
-
-            // 选择图片
-            selectImage.addEventListener('click', function() {
-                imageInput.click();
-            });
-
-            // 处理选择的图片
-            imageInput.addEventListener('change', function(e) {
-                if (e.target.files && e.target.files[0]) {
-                    const file = e.target.files[0];
-                    
-                    // 显示本地预览
-                    const previewImg = document.getElementById('preview-img');
-                    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
-                    const submitImageBtn = document.getElementById('submitImage');
-                    
-                    // 隐藏占位符，显示预览图片
-                    cameraPlaceholder.classList.add('hidden');
-                    previewImg.classList.remove('hidden');
-                    previewImg.src = URL.createObjectURL(file);
-                    
-                    // 显示并激活提交按钮
-                    submitImageBtn.classList.remove('hidden');
-                    submitImageBtn.classList.remove('text-slate-400', 'border-slate-200');
-                    submitImageBtn.classList.add('text-white', 'bg-brand-600', 'border-brand-600');
-                    submitImageBtn.disabled = false;
-                    
-                    // 存储选择的文件，供提交按钮使用
-                    imageInput.selectedFile = file;
                 }
             });
+        }
 
-            // 提交图片并开始识别
-            const submitImageBtn = document.getElementById('submitImage');
-            if (submitImageBtn) {
-                submitImageBtn.addEventListener('click', async function() {
-                    const file = imageInput.selectedFile;
-                    if (file) {
-                        try {
-                            // 隐藏拍照弹窗并显示通知
-                            const cameraModal = document.getElementById('cameraModal');
-                            if (cameraModal) {
-                                cameraModal.classList.add('hidden');
-                            }
-                            showNotification('已提交AI订单提取，正在识别中...');
-                            
-                            // 上传图片并处理
-                            const timestamp = new Date().getTime();
-                            const imageName = `selected_photo_${timestamp}.jpg`;
-                            const ossInternalUrl = await uploadImageToOss(file, imageName);
-                            await processImageWithAIService(ossInternalUrl);
-                            
-                            setTimeout(function() {
-                                stopCamera();
-                            }, 500);
-                        } catch (error) {
-                            console.error('处理图片失败:', error);
-                            showNotification('处理图片失败: ' + error.message);
-                            stopCamera();
-                            const cameraModal = document.getElementById('cameraModal');
-                            if (cameraModal) {
-                                cameraModal.classList.add('hidden');
-                            }
-                        }
-                    }
-                });
-            }
-
-            // 停止摄像头
-            function stopCamera() {
-                if (stream) {
-                    stream.getTracks().forEach(track => {
-                        track.stop();
-                    });
-                    stream = null;
-                }
-                cameraPreview.classList.add('hidden');
-                cameraCanvas.classList.add('hidden');
-                document.getElementById('preview-img').classList.add('hidden');
-                document.getElementById('preview-img').src = '';
-                cameraPlaceholder.classList.remove('hidden');
-                startCamera.classList.remove('hidden');
-                takePhoto.classList.add('hidden');
-                const submitImageBtn = document.getElementById('submitImage');
-                if (submitImageBtn) {
-                    submitImageBtn.classList.add('hidden');
-                    submitImageBtn.classList.remove('text-white', 'bg-brand-600', 'border-brand-600');
-                    submitImageBtn.classList.add('text-slate-400', 'border-slate-200');
-                    submitImageBtn.disabled = true;
-                }
-                imageInput.selectedFile = null;
-            }
-
-            // 麦克风功能
-            const voiceInputBtn = document.getElementById('voiceInputBtn');
-            const voiceModal = document.getElementById('voiceModal');
-            const closeVoiceModal = document.getElementById('closeVoiceModal');
-            const startVoice = document.getElementById('startVoice');
-            const stopVoice = document.getElementById('stopVoice');
-            const voiceStatus = document.getElementById('voiceStatus');
-            const voiceIcon = document.getElementById('voiceIcon');
-            const voiceVisualizer = document.getElementById('voiceVisualizer');
+        // 打开审核弹窗
+        function openAuditModal(recordId) {
+            // 这里可以添加根据 recordId 获取详细信息的逻辑
+            document.getElementById('audit-modal').classList.remove('hidden');
             
-            let voiceStream = null;
-            let voiceRecorder = null;
-            let voiceChunks = [];
-            let audioContext = null;
-            let analyser = null;
-            let animationId = null;
+            // 生成订单明细中的产品选择下拉框
+            generateProductSelects();
+        }
 
-            // 打开麦克风模态框
-            if (voiceInputBtn) {
-                voiceInputBtn.addEventListener('click', function() {
-                    if (voiceModal) {
-                        voiceModal.classList.remove('hidden');
-                        // 确保内部元素可见
-                        setTimeout(function() {
-                            if (document.getElementById('voiceIcon')) {
-                                document.getElementById('voiceIcon').style.display = 'block';
-                            }
-                            if (document.getElementById('voiceStatus')) {
-                                document.getElementById('voiceStatus').style.display = 'block';
-                            }
-                            if (document.getElementById('startVoice')) {
-                                document.getElementById('startVoice').style.display = 'block';
-                            }
-                            if (document.getElementById('stopVoice')) {
-                                document.getElementById('stopVoice').style.display = 'none';
-                            }
-                        }, 100);
-                    } else {
-                        console.error('语音输入模态框元素未找到');
-                    }
-                });
-            } else {
-                console.error('语音输入按钮元素未找到');
-            }
-
-            // 关闭麦克风模态框
-            if (closeVoiceModal) {
-                closeVoiceModal.addEventListener('click', function() {
-                    stopVoiceRecording();
-                    if (voiceModal) {
-                        voiceModal.classList.add('hidden');
-                    }
-                });
-            } else {
-                console.error('关闭语音输入模态框按钮元素未找到');
-            }
-
-            // 获取OSS STS凭证
-            async function getStsToken() {
-                const response = await fetch('http://localhost:8084/api/v1/init/api/oss/sts');
-                if (!response.ok) {
-                    throw new Error('获取STS凭证失败，状态码: ' + response.status);
-                }
-                const data = await response.json();
-                return data;
-            }
-
-            // 上传音频到OSS
-            async function uploadAudioToOss(audioBlob, fileName) {
-                const stsData = await getStsToken();
-                
-                const accessKeyId = stsData.accessKeyId;
-                const accessKeySecret = stsData.accessKeySecret;
-                const securityToken = stsData.securityToken;
-                const bucket = stsData.bucket || stsData.bucketName;
-                const endpoint = stsData.endpoint;
-                
-                let ossRegion = '';
-                if (endpoint && endpoint.includes('.')) {
-                    ossRegion = endpoint.split('.')[0];
-                }
-                
-                const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-                const timestamp = Date.now();
-                
-                let fileTypeDir = 'audio';
-                let objectKey = `trade-mind/${dateStr}/${fileTypeDir}/${timestamp}_${fileName}`;
-                objectKey = objectKey.startsWith('/') ? objectKey.substring(1) : objectKey;
-                
-                const client = new OSS({
-                    region: ossRegion,
-                    accessKeyId: accessKeyId,
-                    accessKeySecret: accessKeySecret,
-                    stsToken: securityToken,
-                    bucket: bucket,
-                    secure: true
-                });
-                
-                await client.put(objectKey, audioBlob);
-                
-                const externalUrl = `https://${bucket}.${ossRegion}.aliyuncs.com/${objectKey}`;
-                return externalUrl;
-            }
-
-            // 上传图片到OSS
-            async function uploadImageToOss(imageFile, fileName) {
-                const stsData = await getStsToken();
-                
-                const accessKeyId = stsData.accessKeyId;
-                const accessKeySecret = stsData.accessKeySecret;
-                const securityToken = stsData.securityToken;
-                const bucket = stsData.bucket || stsData.bucketName;
-                const endpoint = stsData.endpoint;
-                
-                let ossRegion = '';
-                if (endpoint && endpoint.includes('.')) {
-                    ossRegion = endpoint.split('.')[0];
-                }
-                
-                const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-                const timestamp = Date.now();
-                
-                const fileTypeDir = 'image';
-                let objectKey = `trade-mind/${dateStr}/${fileTypeDir}/${timestamp}_${fileName}`;
-                objectKey = objectKey.startsWith('/') ? objectKey.substring(1) : objectKey;
-                
-                const client = new OSS({
-                    region: ossRegion,
-                    accessKeyId: accessKeyId,
-                    accessKeySecret: accessKeySecret,
-                    stsToken: securityToken,
-                    bucket: bucket,
-                    secure: true
-                });
-                
-                await client.put(objectKey, imageFile);
-                
-                const externalUrl = `https://${bucket}.${ossRegion}.aliyuncs.com/${objectKey}`;
-                return externalUrl;
-            }
-
-            // 调用AIService处理图片
-            async function processImageWithAIService(imageUrl) {
-                const requestData = {
-                    taskType: 'ORDER_EXTRACT',
-                    inputType: 'URL',
-                    payload: {
-                        text: null,
-                        imageUrls: [imageUrl],
-                        context: null
-                    }
-                };
-                
-                console.log('准备调用AIService，请求数据:', requestData);
-                
-                // 通过 API Gateway 调用 AIService
-                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
-                console.log('AIService API URL:', fullUrl);
-                
-                try {
-                    const response = await window.wrappedFetch(fullUrl, {
-                        method: 'POST',
-                        body: JSON.stringify(requestData)
-                    });
-                    
-                    console.log('AIService响应状态:', response.status, response.statusText);
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text().catch(() => '');
-                        console.error('AIService响应错误:', errorText);
-                        throw new Error(`调用AIService失败: ${response.status} ${response.statusText} - ${errorText}`);
-                    }
-                    
-                    const result = await response.json();
-                    console.log('AIService响应数据:', result);
-                    
-                    if (result.success && result.requestId) {
-                        // 显示通知
-                        showNotification('已提交 AI 订单提取，正在识别中...');
-                        // 关闭摄像头模态框
-                        const cameraModal = document.getElementById('cameraModal');
-                        if (cameraModal) {
-                            cameraModal.classList.add('hidden');
-                        }
-                        // 刷新待确认单据列表（添加延迟确保数据库写入完成）
-                        setTimeout(() => {
-                            loadPendingOrders();
-                        }, 300);
-                        return result;
-                    } else {
-                        throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
-                    }
-                } catch (error) {
-                    console.error('调用AIService时发生错误:', error);
-                    throw error;
-                }
-            }
-
-            // 调用AIService处理音频
-            async function processAudioWithAIService(audioUrl) {
-                voiceStatus.textContent = '正在处理音频...';
-                
-                // 立即隐藏音频弹窗并显示通知
-                const voiceModal = document.getElementById('voiceModal');
-                if (voiceModal) {
-                    voiceModal.classList.add('hidden');
-                }
-                showNotification('已提交AI订单提取，正在识别中...');
-                
-                const requestData = {
-                    taskType: 'ORDER_EXTRACT',
-                    inputType: 'URL',
-                    payload: {
-                        text: null,
-                        mediaUrls: [audioUrl],
-                        context: null
-                    }
-                };
-                
-                console.log('准备调用AIService，请求数据:', requestData);
-                
-                // 通过 API Gateway 调用 AIService
-                const fullUrl = 'http://localhost:8080/api/v1/ai/execute';
-                console.log("发送请求至:", fullUrl);
-                console.log("请求参数:", requestData);
-                const response = await window.wrappedFetch(fullUrl, {
-                    method: 'POST',
-                    body: JSON.stringify(requestData)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error('调用AIService失败: ' + (errorData.message || errorData.msg || '未知错误'));
-                }
-                
-                const result = await response.json();
-                console.log('AIService响应:', result);
-                
-                if (result.success && result.requestId) {
-                    // 刷新待确认单据列表（添加延迟确保数据库写入完成）
-                    setTimeout(() => {
-                        loadPendingOrders();
-                    }, 300);
-                    return result;
-                } else {
-                    throw new Error('AIService处理失败: ' + (result.message || result.msg || '未知错误'));
-                }
-            }
-
-            // 开始录音
-            startVoice.addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    navigator.mediaDevices.getUserMedia({ audio: true })
-                        .then(function(s) {
-                            voiceStream = s;
-                            startVoice.style.display = 'none';
-                            stopVoice.style.display = 'block';
-                            voiceStatus.textContent = '正在录音...';
-                            voiceIcon.classList.remove('ph-microphone');
-                            voiceIcon.classList.add('ph-microphone-slash');
-                            
-                            // 初始化音频分析器
-                            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                            analyser = audioContext.createAnalyser();
-                            const source = audioContext.createMediaStreamSource(voiceStream);
-                            source.connect(analyser);
-                            analyser.fftSize = 256;
-                            
-                            // 开始可视化
-                            startVoiceVisualization();
-                            
-                            // 开始录音
-                            voiceRecorder = new MediaRecorder(voiceStream);
-                            voiceChunks = [];
-                            
-                            voiceRecorder.ondataavailable = function(e) {
-                                if (e.data.size > 0) {
-                                    voiceChunks.push(e.data);
-                                }
-                            };
-                            
-                            voiceRecorder.onstop = async function() {
-                                const audioBlob = new Blob(voiceChunks, { type: 'audio/wav' });
-                                
-                                try {
-                                    voiceStatus.textContent = '正在上传音频...';
-                                    
-                                    // 上传音频到OSS
-                                    const timestamp = new Date().getTime();
-                                    const audioName = `audio_${timestamp}.wav`;
-                                    const ossInternalUrl = await uploadAudioToOss(audioBlob, audioName);
-                                    
-                                    voiceStatus.textContent = '正在分析音频...';
-                                    
-                                    // 调用AIService处理音频
-                                    await processAudioWithAIService(ossInternalUrl);
-                                    
-                                    // 不需要保存音频到本地存储，避免localStorage配额超出
-                                    console.log('音频处理完成，不需要存储到本地');
-                                    
-                                    // 清空语音模态框
-                                    setTimeout(function() {
-                                        stopVoiceRecording();
-                                    }, 500);
-                                } catch (error) {
-                                    console.error('处理音频失败:', error);
-                                    
-                                    // 显示错误信息
-                                    setTimeout(function() {
-                                        showNotification('处理音频失败：' + error.message);
-                                        stopVoiceRecording();
-                                        voiceModal.classList.add('hidden');
-                                    }, 500);
-                                }
-                            };
-                            
-                            voiceRecorder.start();
-                        })
-                        .catch(function(error) {
-                            console.error('启动麦克风失败:', error);
-                            alert('无法访问麦克风，请检查权限设置');
-                        });
-                } else {
-                    alert('您的浏览器不支持麦克风功能');
-                }
-            });
-
-            // 停止录音
-            stopVoice.addEventListener('click', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                stopVoiceRecording();
-            });
-
-            // 停止录音函数
-            function stopVoiceRecording() {
-                if (voiceRecorder && voiceRecorder.state === 'recording') {
-                    voiceRecorder.stop();
-                }
-                if (voiceStream) {
-                    voiceStream.getTracks().forEach(track => {
-                        track.stop();
-                    });
-                    voiceStream = null;
-                }
-                if (animationId) {
-                    cancelAnimationFrame(animationId);
-                    animationId = null;
-                }
-                startVoice.style.display = 'block';
-                stopVoice.style.display = 'none';
-                voiceStatus.textContent = '点击开始按钮进行语音输入';
-                voiceIcon.classList.remove('ph-microphone-slash');
-                voiceIcon.classList.add('ph-microphone');
-                voiceVisualizer.style.backgroundColor = '#F0FDFA';
-            }
-
-            // 语音可视化
-            function startVoiceVisualization() {
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-                
-                function draw() {
-                    animationId = requestAnimationFrame(draw);
-                    
-                    analyser.getByteFrequencyData(dataArray);
-                    
-                    // 计算平均音量
-                    let sum = 0;
-                    for (let i = 0; i < bufferLength; i++) {
-                        sum += dataArray[i];
-                    }
-                    const average = sum / bufferLength;
-                    
-                    // 根据音量改变可视化效果
-                    const intensity = Math.min(average / 128, 1);
-                    const r = Math.floor(20 + intensity * 25);
-                    const g = Math.floor(184 - intensity * 50);
-                    const b = Math.floor(166 - intensity * 50);
-                    voiceVisualizer.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-                }
-                
-                draw();
-            }
+        // 生成产品选择下拉框
+        function generateProductSelects() {
+            const orderItemsBody = document.getElementById('order-items-body');
+            // 清空现有内容
+            orderItemsBody.innerHTML = '';
             
-            // 订单结果模态框逻辑
-            function initOrderResultModal() {
-                // 标签页切换
-                const tabBtns = document.querySelectorAll('.order-tab-btn');
-                const tabContents = document.querySelectorAll('.order-tab-content');
-                
-                tabBtns.forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const tabName = this.dataset.tab;
-                        
-                        // 更新标签按钮状态
-                        tabBtns.forEach(b => {
-                            b.classList.remove('active', 'border-brand-500', 'text-brand-600');
-                            b.classList.add('border-transparent', 'text-slate-500');
-                        });
-                        this.classList.add('active', 'border-brand-500', 'text-brand-600');
-                        this.classList.remove('border-transparent', 'text-slate-500');
-                        
-                        // 更新标签内容显示
-                        tabContents.forEach(content => {
-                            content.classList.add('hidden');
-                        });
-                        document.getElementById(`${tabName}-tab`).classList.remove('hidden');
-                    });
-                });
-                
-                // 关闭模态框
-                const closeBtn = document.getElementById('closeOrderResultModal');
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', function() {
-                        document.getElementById('orderResultModal').classList.add('hidden');
-                    });
-                }
-                
-                // 保存按钮事件
-                const saveOrderBtn = document.getElementById('saveOrderBtn');
-                const saveCustomerBtn = document.getElementById('saveCustomerBtn');
-                const saveProductBtn = document.getElementById('saveProductBtn');
-                
-                if (saveOrderBtn) {
-                    saveOrderBtn.addEventListener('click', function() {
-                        const orderId = document.getElementById('order-id').value;
-                        const orderDate = document.getElementById('order-date').value;
-                        const deliveryDate = document.getElementById('order-delivery-date').value;
-                        const status = document.getElementById('order-status').value;
-                        
-                        console.log('保存订单信息:', { orderId, orderDate, deliveryDate, status });
-                        alert('订单信息保存成功！');
-                    });
-                }
-                
-                if (saveCustomerBtn) {
-                    saveCustomerBtn.addEventListener('click', function() {
-                        const name = document.getElementById('customer-name').value;
-                        const email = document.getElementById('customer-email').value;
-                        const phone = document.getElementById('customer-phone').value;
-                        const country = document.getElementById('customer-country').value;
-                        
-                        console.log('保存客户信息:', { name, email, phone, country });
-                        alert('客户信息保存成功！');
-                    });
-                }
-                
-                if (saveProductBtn) {
-                    saveProductBtn.addEventListener('click', function() {
-                        const name = document.getElementById('product-name').value;
-                        const model = document.getElementById('product-model').value;
-                        const quantity = parseInt(document.getElementById('product-quantity').value) || 0;
-                        const unitPrice = parseFloat(document.getElementById('product-unit-price').value) || 0;
-                        const totalPrice = parseFloat(document.getElementById('product-total-price').value) || 0;
-                        
-                        console.log('保存产品信息:', { name, model, quantity, unitPrice, totalPrice });
-                        alert('产品信息保存成功！');
-                    });
-                }
-            }
+            // 示例产品数据
+            const sampleItems = [
+                { name: '金色镂空户外灯', quantity: 500, price: 12.5 },
+                { name: '智能感应氛围底座', quantity: 120, price: 12.0 }
+            ];
             
-            // 填充订单结果到模态框
-            function populateOrderResultModal(result) {
-                console.log('填充订单结果:', result);
-                
-                // 解析订单信息
-                let orderInfo = {};
-                let customerInfo = {};
-                let productInfo = {};
-                
-                try {
-                    // 尝试直接解析对象
-                    orderInfo = result.orderInfo ? JSON.parse(result.orderInfo) : {};
-                    customerInfo = result.customerInfo ? JSON.parse(result.customerInfo) : {};
-                    productInfo = result.productInfo ? JSON.parse(result.productInfo) : {};
-                } catch (e) {
-                    console.error('解析结果失败:', e);
-                    // 尝试从其他字段获取
-                    orderInfo = result.order_info || result.order || {};
-                    customerInfo = result.customer_info || result.customer || {};
-                    productInfo = result.product_info || result.product || {};
-                }
-                
-                // 填充订单信息
-                document.getElementById('order-id').value = orderInfo.order_id || orderInfo.orderId || '未知';
-                document.getElementById('order-date').value = orderInfo.date || orderInfo.order_date || new Date().toISOString().split('T')[0];
-                document.getElementById('order-delivery-date').value = orderInfo.delivery_date || orderInfo.deliveryDate || '';
-                document.getElementById('order-status').value = orderInfo.status || orderInfo.order_status || '待确认';
-                
-                // 填充客户信息
-                document.getElementById('customer-name').value = customerInfo.name || customerInfo.nickname || orderInfo.customer_name || orderInfo.customer_nickname || '未知';
-                document.getElementById('customer-email').value = customerInfo.email || '未提供';
-                document.getElementById('customer-phone').value = customerInfo.phone || '未提供';
-                document.getElementById('customer-country').value = customerInfo.country || customerInfo.other_info || '未知';
-                
-                // 填充产品信息
-                document.getElementById('product-name').value = productInfo.name || productInfo.product_name || orderInfo.product_name || '未知';
-                document.getElementById('product-model').value = productInfo.model || productInfo.product_code || '未明确';
-                document.getElementById('product-quantity').value = productInfo.quantity || orderInfo.quantity || 0;
-                document.getElementById('product-unit-price').value = productInfo.unit_price || productInfo.unitPrice || orderInfo.unit_price || orderInfo.unitPrice || 0;
-                document.getElementById('product-total-price').value = productInfo.total_price || productInfo.totalPrice || orderInfo.total_price || orderInfo.totalPrice || 0;
-                
-                // 显示模态框
-                document.getElementById('orderResultModal').classList.remove('hidden');
-            }
-            
-            // 初始化订单结果模态框
-            initOrderResultModal();
-            
-            // 暴露处理函数到全局
-            window.processTextWithAIService = processTextWithAIService;
-            window.processImageWithAIService = processImageWithAIService;
-            window.processAudioWithAIService = processAudioWithAIService;
-
-            // AI 审核模态框
-            window.openAuditModal = function(customer) {
-                document.getElementById('audit-modal').classList.remove('hidden');
-            };
-
-            window.closeAuditModal = function() {
-                document.getElementById('audit-modal').classList.add('hidden');
-            };
-
-            window.switchAuditTab = function(tab) {
-                const tabs = ['order', 'product', 'customer'];
-                tabs.forEach(t => {
-                    document.getElementById(`pane-${t}`).classList.add('hidden');
-                    document.getElementById(`tab-${t}`).classList.remove('active');
-                });
-                
-                document.getElementById(`pane-${tab}`).classList.remove('hidden');
-                document.getElementById(`tab-${tab}`).classList.add('active');
-            };
-
-            // 单位换算模态框
-            window.openUnitModal = function() {
-                document.getElementById('unit-modal').classList.remove('hidden');
-            };
-
-            window.closeUnitModal = function() {
-                document.getElementById('unit-modal').classList.add('hidden');
-            };
-
-            // 订单详情模态框
-            window.openOrderDetail = function(orderId) {
-                document.getElementById('order-detail-modal').classList.remove('hidden');
-                document.getElementById('detail-order-id').textContent = orderId;
-            };
-
-            window.closeOrderDetail = function() {
-                document.getElementById('order-detail-modal').classList.add('hidden');
-            };
-
-            // 手动订单模态框
-            window.openManualOrderModal = function() {
-                document.getElementById('manual-order-modal').classList.remove('hidden');
-            };
-
-            window.closeManualOrderModal = function() {
-                document.getElementById('manual-order-modal').classList.add('hidden');
-            };
-
-            // 添加订单行
-            window.addOrderRow = function() {
-                const tableBody = document.querySelector('#manual-order-table tbody');
-                const newRow = document.createElement('tr');
-                newRow.innerHTML = `
-                    <td class="px-4 py-3">
-                        <select class="bg-transparent font-bold text-slate-700 outline-none w-full product-select">
-                            <option value="0">--- 选择产品 ---</option>
-                            <option value="12.5" data-sku="G-8821">金色镂空灯 (G-8821)</option>
-                            <option value="48.0" data-sku="CP-T2">露营折叠桌 (CP-T2)</option>
+            sampleItems.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-5 py-4">
+                        <select class="form-input product-select" data-index="${index}">
+                            <option value="">-- 选择产品 --</option>
+                            ${window.productList ? window.productList.map(product => 
+                                `<option value="${product.productId}">${product.name} (${product.sku})</option>`
+                            ).join('') : ''}
                         </select>
                     </td>
-                    <td class="px-4 py-3"><input type="number" value="1" min="1" oninput="window.calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono qty-input"></td>
-                    <td class="px-4 py-3"><input type="number" value="0" step="0.01" oninput="window.calculateManualTotal()" class="w-full text-center bg-white border border-slate-200 rounded-lg py-1.5 font-mono price-input"></td>
-                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">$0.00</td>
+                    <td class="px-5 py-4 text-center">
+                        <input type="number" value="${item.quantity}" min="1" class="form-input w-20 text-center">
+                    </td>
+                    <td class="px-5 py-4 text-right">
+                        <input type="number" value="${item.price}" step="0.01" class="form-input w-24 text-right price-input">
+                    </td>
+                    <td class="px-5 py-4 text-right font-mono font-bold text-slate-900">
+                        $${(item.quantity * item.price).toFixed(2)}
+                    </td>
                 `;
-                tableBody.appendChild(newRow);
-                
-                // 添加产品选择事件监听器
-                const productSelect = newRow.querySelector('.product-select');
-                productSelect.addEventListener('change', function() {
-                    const priceInput = newRow.querySelector('.price-input');
-                    priceInput.value = this.value;
-                    window.calculateManualTotal();
-                });
-            };
+                orderItemsBody.appendChild(row);
+            });
+        }
 
-            // 计算手动订单总计
-            window.calculateManualTotal = function() {
-                const rows = document.querySelectorAll('#manual-order-table tbody tr');
-                let grandTotal = 0;
-                
-                rows.forEach(row => {
-                    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                    const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                    const subtotal = qty * price;
-                    
-                    row.querySelector('.row-total').textContent = `$${subtotal.toFixed(2)}`;
-                    grandTotal += subtotal;
-                });
-                
-                document.getElementById('manual-grand-total').textContent = `$${grandTotal.toFixed(2)}`;
-            };
+        // 关闭审核弹窗
+        function closeAuditModal() {
+            document.getElementById('audit-modal').classList.add('hidden');
+        }
 
-            // 保存手动订单
-            window.saveManualOrder = function() {
-                // 这里可以添加保存订单的逻辑
-                alert('订单已保存！');
-                window.closeManualOrderModal();
-            };
+        // 切换审核标签页
+        function switchAuditTab(tabName) {
+            // 隐藏所有标签页内容
+            document.querySelectorAll('.sub-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
 
-            // 高级配置切换
-            window.toggleAdvanced = function(type) {
-                const drawer = document.getElementById(`drawer-${type}`);
-                const icon = document.getElementById(`icon-${type}`);
-                
-                if (drawer.classList.contains('open')) {
-                    drawer.classList.remove('open');
+            // 移除所有标签按钮的活动状态
+            document.querySelectorAll('.sub-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // 显示选中的标签页内容
+            if (tabName === 'product') {
+                document.getElementById('confirm-product-tab').classList.remove('hidden');
+            } else if (tabName === 'customer') {
+                document.getElementById('confirm-customer-tab').classList.remove('hidden');
+            } else {
+                document.getElementById(`pane-${tabName}`).classList.remove('hidden');
+            }
+
+            // 添加选中标签按钮的活动状态
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // 切换高级配置抽屉
+        function toggleAdvanced(type, event) {
+            if (event) event.preventDefault();
+            const drawer = document.getElementById(`drawer-${type}`);
+            const icon = document.getElementById(`icon-${type}`) || document.getElementById(`advanced-icon-${type}`);
+            
+            if (drawer.classList.contains('open')) {
+                drawer.classList.remove('open');
+                drawer.classList.add('hidden');
+                if (icon) {
                     icon.classList.remove('ph-caret-up');
                     icon.classList.add('ph-caret-down');
-                } else {
-                    drawer.classList.add('open');
+                }
+            } else {
+                drawer.classList.remove('hidden');
+                drawer.classList.add('open');
+                if (icon) {
                     icon.classList.remove('ph-caret-down');
                     icon.classList.add('ph-caret-up');
                 }
+            }
+        }
+
+        // 保存新产品信息
+        async function saveNewProduct() {
+            const productData = {
+                name: document.getElementById('product-name').value,
+                sku: document.getElementById('product-sku').value,
+                price: parseFloat(document.getElementById('product-price').value),
+                base_unit: document.getElementById('product-base-unit').value,
+                category: document.getElementById('product-category').value,
+                warning_stock: parseInt(document.getElementById('product-warning-stock').value),
+                description: document.getElementById('product-description').value
             };
 
-            // 初始化产品选择事件
-            document.addEventListener('DOMContentLoaded', function() {
-                const productSelects = document.querySelectorAll('.product-select');
-                productSelects.forEach(select => {
-                    select.addEventListener('change', function() {
-                        const row = this.closest('tr');
-                        const priceInput = row.querySelector('.price-input');
-                        priceInput.value = this.value;
-                        window.calculateManualTotal();
-                    });
+            try {
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/rd/products/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(productData)
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    const result = await response.json();
+                    alert('产品创建成功！');
+                    // 隐藏产品 Tab 页
+                    document.getElementById('confirm-product-tab').classList.add('hidden');
+                    // 将生成的 product_id 传给订单页签
+                    // 这里可以添加逻辑来更新订单页签中的产品选择
+                } else {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    const error = await response.json();
+                    alert('产品创建失败: ' + error.message);
+                }
+            } catch (error) {
+                console.error('保存产品失败:', error);
+                // 检查是否为 401 错误
+                if (error.status === 401 && !loginExpiredShown) {
+                    loginExpiredShown = true;
+                    // 引导至登录页
+                    window.location.href = '../../login.html';
+                } else {
+                    alert('保存产品失败，请重试');
+                }
+            }
+        }
+
+        // 跳过新产品创建
+        function skipNewProduct() {
+            // 隐藏产品 Tab 页
+            document.getElementById('confirm-product-tab').classList.add('hidden');
+        }
+
+        // 保存新客户信息
+        async function saveNewCustomer() {
+            const customerData = {
+                name: document.getElementById('customer-name').value,
+                phone: document.getElementById('customer-phone').value,
+                email: document.getElementById('customer-email').value,
+                source: document.getElementById('customer-source').value,
+                region: document.getElementById('customer-region').value,
+                address: document.getElementById('customer-address').value
+            };
+
+            try {
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/crm/customers/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(customerData)
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    const result = await response.json();
+                    alert('客户创建成功！');
+                    // 隐藏客户 Tab 页
+                    document.getElementById('confirm-customer-tab').classList.add('hidden');
+                    // 将生成的 cust_id 传给订单页签
+                    const custId = result.cust_id;
+                    const customerSelect = document.getElementById('order-customer');
+                    // 添加新客户到下拉列表并选中
+                    const option = document.createElement('option');
+                    option.value = custId;
+                    option.textContent = customerData.name;
+                    option.selected = true;
+                    customerSelect.appendChild(option);
+                } else {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    const error = await response.json();
+                    alert('客户创建失败: ' + error.message);
+                }
+            } catch (error) {
+                console.error('保存客户失败:', error);
+                // 检查是否为 401 错误
+                if (error.status === 401 && !loginExpiredShown) {
+                    loginExpiredShown = true;
+                    // 引导至登录页
+                    window.location.href = '../../login.html';
+                } else {
+                    alert('保存客户失败，请重试');
+                }
+            }
+        }
+
+        // 跳过新客户创建
+        function skipNewCustomer() {
+            // 隐藏客户 Tab 页
+            document.getElementById('confirm-customer-tab').classList.add('hidden');
+        }
+
+        // 确认订单并下单
+        async function confirmOrder() {
+            const custId = document.getElementById('order-customer').value;
+            const deliveryDate = document.getElementById('order-delivery-date').value;
+            
+            // 检查客户 ID 是否为空
+            if (!custId) {
+                alert('请选择客户');
+                return;
+            }
+
+            // 收集订单明细
+            const items = [];
+            const rows = document.querySelectorAll('#order-items-body tr');
+            let hasEmptyProductId = false;
+
+            rows.forEach(row => {
+                const productSelect = row.querySelector('select');
+                const quantityInput = row.querySelector('input[type="number"]');
+                const priceInput = row.querySelector('input[type="number"].price-input');
+                
+                const productId = productSelect.value;
+                if (!productId) {
+                    hasEmptyProductId = true;
+                }
+                
+                items.push({
+                    product_id: productId,
+                    quantity: parseInt(quantityInput.value),
+                    price_at_time: parseFloat(priceInput.value),
+                    total_amount: parseFloat(priceInput.value) * parseInt(quantityInput.value)
                 });
             });
-        });
+
+            // 检查是否有产品 ID 为空
+            if (hasEmptyProductId) {
+                alert('请选择所有产品');
+                return;
+            }
+
+            // 计算订单总金额
+            const totalAmount = items.reduce((sum, item) => sum + item.total_amount, 0);
+
+            const orderData = {
+                cust_id: custId,
+                delivery_date: deliveryDate,
+                total_amount: totalAmount,
+                order_items: items
+            };
+
+            try {
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/rd/orders/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    const result = await response.json();
+                    alert('订单确认成功！库存已实时扣减');
+                    closeAuditModal();
+                    // 重新加载待确认单据列表
+                    loadPendingOrders();
+                } else {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    const error = await response.json();
+                    alert('订单确认失败: ' + error.message);
+                }
+            } catch (error) {
+                console.error('确认订单失败:', error);
+                // 检查是否为 401 错误
+                if (error.status === 401 && !loginExpiredShown) {
+                    loginExpiredShown = true;
+                    // 引导至登录页
+                    window.location.href = '../../login.html';
+                } else {
+                    alert('确认订单失败，请重试');
+                }
+            }
+        }
+
+        // 打开单位配置模态框
+        function openUnitModal() {
+            document.getElementById('unit-modal').classList.remove('hidden');
+        }
+
+        // 关闭单位配置模态框
+        function closeUnitModal() {
+            document.getElementById('unit-modal').classList.add('hidden');
+        }
+
+        // 打开订单详情模态框
+        function openOrderDetail(orderId) {
+            document.getElementById('order-detail-modal').classList.remove('hidden');
+            document.getElementById('detail-order-id').textContent = orderId;
+        }
+
+        // 关闭订单详情模态框
+        function closeOrderDetail() {
+            document.getElementById('order-detail-modal').classList.add('hidden');
+        }
+
+        // 打开手动订单模态框
+        function openManualOrderModal() {
+            // 这里可以添加打开手动订单模态框的逻辑
+            alert('手动订单功能开发中');
+        }
+
+        // 切换主标签页
+        function switchTab(tabName) {
+            try {
+                // 根据 tabName 跳转到对应的物理路径
+                switch (tabName) {
+                    case 'dashboard':
+                        // 保持在当前页面
+                        break;
+                    case 'biz':
+                        window.location.href = '../SmartOps/SmartOps.html';
+                        break;
+                    case 'crm':
+                        window.location.href = '../crm/crm.html';
+                        break;
+                    case 'supply':
+                        window.location.href = '../product-center/product-center.html';
+                        break;
+                    case 'supplier':
+                        window.location.href = '../supply-chain/supply-chain.html';
+                        break;
+                    default:
+                        // 保持在当前页面
+                        break;
+                }
+
+                console.log('切换到标签页:', tabName);
+            } catch (error) {
+                console.error('切换标签页失败:', error);
+            }
+        }
+
+        // 打开语音模态框
+        function openVoiceModal() {
+            document.getElementById('voice-modal').classList.remove('hidden');
+        }
+
+        // 关闭语音模态框
+        function closeVoiceModal() {
+            document.getElementById('voice-modal').classList.add('hidden');
+        }
+
+        // 开始录音
+        async function startVoiceRecording() {
+            try {
+                // 切换到录音状态 UI
+                document.getElementById('voice-ready-ui').classList.add('hidden');
+                document.getElementById('voice-active-ui').classList.remove('hidden');
+                
+                // 获取麦克风权限
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // 创建录音器
+                recorder = new MediaRecorder(stream);
+                audioChunks = [];
+                recording = true;
+                
+                // 记录录音数据
+                recorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                // 开始录音
+                recorder.start();
+                console.log('开始录音');
+                
+                // 开始计时
+                startVoiceTimer();
+            } catch (error) {
+                console.error('开始录音失败:', error);
+                showToast('获取麦克风权限失败，请检查权限设置');
+                closeVoiceModal();
+            }
+        }
+
+        // 停止录音
+        async function stopVoiceRecording() {
+            try {
+                if (!recorder || !recording) return;
+                
+                // 切换到处理状态 UI
+                document.getElementById('voice-active-ui').classList.add('hidden');
+                document.getElementById('voice-processing-ui').classList.remove('hidden');
+                
+                // 停止录音
+                recorder.stop();
+                recording = false;
+                
+                // 等待录音完成
+                await new Promise((resolve) => {
+                    recorder.onstop = async () => {
+                        // 停止计时
+                        stopVoiceTimer();
+                        
+                        // 处理录音数据
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        await processVoiceWithAIService(audioBlob);
+                        resolve();
+                    };
+                });
+            } catch (error) {
+                console.error('停止录音失败:', error);
+                showToast('处理录音失败，请重试');
+                closeVoiceModal();
+            }
+        }
+
+        // 语音计时
+        let voiceTimerInterval = null;
+        let voiceTimerSeconds = 0;
+
+        function startVoiceTimer() {
+            voiceTimerSeconds = 0;
+            updateVoiceTimer();
+            voiceTimerInterval = setInterval(() => {
+                voiceTimerSeconds++;
+                updateVoiceTimer();
+            }, 1000);
+        }
+
+        function stopVoiceTimer() {
+            if (voiceTimerInterval) {
+                clearInterval(voiceTimerInterval);
+                voiceTimerInterval = null;
+            }
+        }
+
+        function updateVoiceTimer() {
+            const minutes = Math.floor(voiceTimerSeconds / 60);
+            const seconds = voiceTimerSeconds % 60;
+            document.getElementById('voice-timer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 处理语音数据
+        async function processVoiceWithAIService(audioBlob) {
+            try {
+                // 确保 OSS 服务已初始化
+                if (!OSSService) {
+                    await initOSSService();
+                    if (!OSSService) {
+                        throw new Error('OSS 服务初始化失败');
+                    }
+                }
+                
+                // 上传到 OSS
+                const fileName = `voice-${Date.now()}.wav`;
+                const result = await OSSService.put(fileName, audioBlob);
+                const audioUrl = result.url;
+                
+                // 隐藏模态框
+                closeVoiceModal();
+                
+                // 显示通知
+                showToast('已提交AI订单提取，正在识别中...');
+                
+                // 刷新待确认单据列表
+                loadPendingOrders();
+                
+                // 调用 AI 服务
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/ai/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        taskType: 'ORDER_EXTRACT',
+                        inputType: 'VOICE',
+                        payload: {
+                            mediaUrls: [audioUrl]
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    // 打开审核弹窗
+                    openAuditModal(result.id);
+                } else {
+                    throw new Error('AI 服务调用失败');
+                }
+            } catch (error) {
+                console.error('处理语音失败:', error);
+                showToast('处理语音失败，请重试');
+                closeVoiceModal();
+            }
+        }
+
+        // 打开拍照模态框
+        function openPhotoModal() {
+            document.getElementById('photo-modal').classList.remove('hidden');
+        }
+
+        // 关闭拍照模态框
+        function closePhotoModal() {
+            // 释放摄像头资源
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                
+                const video = document.getElementById('camera-video');
+                if (video) {
+                    video.srcObject = null;
+                }
+                
+                const cameraPreviewArea = document.getElementById('camera-preview-area');
+                if (cameraPreviewArea) {
+                    cameraPreviewArea.classList.add('hidden');
+                }
+            }
+            
+            document.getElementById('photo-modal').classList.add('hidden');
+        }
+
+        // 处理照片选择
+        function handlePhotoSelected(input) {
+            try {
+                if (input.files && input.files[0]) {
+                    const file = input.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('image-preview');
+                        const previewArea = document.getElementById('photo-preview-area');
+                        const submitBtn = document.getElementById('photo-submit-btn');
+                        
+                        preview.src = e.target.result;
+                        previewArea.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+            } catch (error) {
+                console.error('处理照片选择失败:', error);
+                showToast('处理照片失败，请重试');
+            }
+        }
+
+        // 摄像头相关变量
+        let cameraStream = null;
+        
+        // 启动摄像头
+        async function startCamera() {
+            try {
+                // 检查运行环境
+                if (window.location.hostname !== 'localhost' && window.location.protocol !== 'https:') {
+                    showToast('浏览器安全策略限制：摄像头功能仅在 HTTPS 或 localhost 下可用');
+                    return;
+                }
+                
+                // 获取摄像头权限，使用ideal约束确保兼容性
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: "environment" },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                // 显示摄像头预览
+                const video = document.getElementById('camera-video');
+                const cameraPreviewArea = document.getElementById('camera-preview-area');
+                const photoPreviewArea = document.getElementById('photo-preview-area');
+                
+                video.srcObject = cameraStream;
+                cameraPreviewArea.classList.remove('hidden');
+                photoPreviewArea.classList.add('hidden');
+                
+                // 确保视频播放
+                video.play().catch(error => {
+                    console.error('视频播放失败:', error);
+                });
+            } catch (error) {
+                console.error('启动摄像头失败:', error);
+                if (error.name === 'NotAllowedError') {
+                    showToast('用户拒绝了摄像头权限');
+                } else if (error.name === 'NotFoundError') {
+                    showToast('未检测到摄像头设备');
+                } else {
+                    showToast('获取摄像头权限失败，请检查权限设置');
+                }
+            }
+        }
+        
+        // 停止摄像头
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            const video = document.getElementById('camera-video');
+            const cameraPreviewArea = document.getElementById('camera-preview-area');
+            
+            video.srcObject = null;
+            cameraPreviewArea.classList.add('hidden');
+        }
+        
+        // 拍照
+        function capturePhoto() {
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('capture-canvas');
+            
+            // 检查视频宽度，解决华为等高清摄像头启动慢导致的黑屏问题
+            function capture() {
+                console.log('Video width:', video.videoWidth);
+                if (video.videoWidth === 0) {
+                    // 如果视频宽度为0，设置延时后重试
+                    setTimeout(capture, 200);
+                    return;
+                }
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 转换为 blob 并处理
+                canvas.toBlob(async function(blob) {
+                    if (blob) {
+                        // 停止摄像头
+                        stopCamera();
+                        
+                        // 显示预览
+                        const preview = document.getElementById('image-preview');
+                        const previewArea = document.getElementById('photo-preview-area');
+                        const submitBtn = document.getElementById('photo-submit-btn');
+                        
+                        preview.src = URL.createObjectURL(blob);
+                        previewArea.classList.remove('hidden');
+                        submitBtn.disabled = false;
+                        
+                        // 存储 blob 以便提交
+                        window.capturedImageBlob = blob;
+                    }
+                }, 'image/jpeg', 0.8);
+            }
+            
+            // 开始捕获
+            capture();
+        }
+        
+        // 重置照片
+        function resetPhoto() {
+            const preview = document.getElementById('image-preview');
+            const previewArea = document.getElementById('photo-preview-area');
+            const submitBtn = document.getElementById('photo-submit-btn');
+            
+            preview.src = '';
+            previewArea.classList.add('hidden');
+            submitBtn.disabled = true;
+            window.capturedImageBlob = null;
+        }
+
+        // 提交照片
+        async function submitPhoto() {
+            try {
+                const preview = document.getElementById('image-preview');
+                if (!preview.src) {
+                    showToast('请先选择照片');
+                    return;
+                }
+                
+                let blob;
+                if (window.capturedImageBlob) {
+                    // 使用从摄像头捕获的 blob
+                    blob = window.capturedImageBlob;
+                } else {
+                    // 从预览中获取图片数据
+                    const imageUrl = preview.src;
+                    const response = await window.wrappedFetch(imageUrl, {
+                        method: 'GET'
+                    });
+                    blob = await response.blob();
+                }
+                
+                // 处理图片数据
+                await processImageWithAIService(blob);
+            } catch (error) {
+                console.error('提交照片失败:', error);
+                showToast('提交照片失败，请重试');
+            }
+        }
+
+        // 处理图片数据
+        async function processImageWithAIService(imageBlob) {
+            try {
+                // 确保 OSS 服务已初始化
+                if (!OSSService) {
+                    await initOSSService();
+                    if (!OSSService) {
+                        throw new Error('OSS 服务初始化失败');
+                    }
+                }
+                
+                // 上传到 OSS
+                const fileName = `image-${Date.now()}.jpg`;
+                const result = await OSSService.put(fileName, imageBlob);
+                const imageUrl = result.url;
+                
+                // 隐藏模态框
+                closePhotoModal();
+                resetPhoto();
+                
+                // 显示通知
+                showToast('已提交AI订单提取，正在识别中...');
+                
+                // 刷新待确认单据列表
+                loadPendingOrders();
+                
+                // 调用 AI 服务
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/ai/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        taskType: 'ORDER_EXTRACT',
+                        inputType: 'IMAGE',
+                        payload: {
+                            imageUrls: [imageUrl]
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    // 打开审核弹窗
+                    openAuditModal(result.id);
+                } else {
+                    throw new Error('AI 服务调用失败');
+                }
+            } catch (error) {
+                console.error('处理图片失败:', error);
+                showToast('处理图片失败，请重试');
+            }
+        }
+
+        // 处理文本提交
+        async function handleTextSubmit() {
+            try {
+                const textInput = document.getElementById('orderTextInput');
+                const text = textInput.value.trim();
+                
+                if (!text) {
+                    showToast('请输入文本内容');
+                    return;
+                }
+                
+                // 记录内容并清空输入框
+                const originalText = text;
+                textInput.value = '';
+                showToast('已提交AI订单提取，正在识别中...');
+                
+                // 刷新待确认单据列表
+                loadPendingOrders();
+                
+                // 处理文本数据
+                await processTextWithAIService(originalText);
+            } catch (error) {
+                console.error('处理文本失败:', error);
+                showToast('处理文本失败，请重试');
+            }
+        }
+
+        // 处理文本数据
+        async function processTextWithAIService(text) {
+            try {
+                // 调用 AI 服务
+                const response = await window.wrappedFetch('http://localhost:8080/api/v1/ai/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        taskType: 'ORDER_EXTRACT',
+                        inputType: 'TEXT',
+                        payload: {
+                            text: text
+                        }
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showToast('文本解析成功');
+                    // 打开审核弹窗
+                    openAuditModal(result.id);
+                } else {
+                    throw new Error('AI 服务调用失败');
+                }
+            } catch (error) {
+                console.error('处理文本失败:', error);
+                showToast('处理文本失败，请重试');
+            }
+        }
+
+        // 关闭手动订单模态框
+        function closeManualOrderModal() {
+            document.getElementById('manual-order-modal').classList.add('hidden');
+        }
+
+        // 添加订单行
+        function addOrderRow() {
+            // 这里可以添加添加订单行的逻辑
+            console.log('添加订单行');
+        }
+
+        // 显示提示信息
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toast-text');
+            
+            if (toast && toastText) {
+                toastText.textContent = message;
+                toast.style.opacity = '1';
+                
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                }, 3000);
+            }
+        }
     </script>
 </body>
 </html>

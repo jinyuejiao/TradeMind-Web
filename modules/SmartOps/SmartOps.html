@@ -133,7 +133,7 @@
             theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
         }
     </script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/dist/phosphor-icons.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
@@ -162,9 +162,16 @@
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center">
-            <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono">Jin</div>
-            <div class="ml-3"><p class="text-xs font-bold text-slate-200">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="userInitial">Jin</div>
+                    <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="userInfo">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
+                </div>
+                <button id="logoutBtn" class="text-xs text-slate-400 hover:text-white transition">
+                    <i class="ph ph-sign-out text-lg"></i>
+                </button>
+            </div>
         </div>
     </aside>
 
@@ -377,7 +384,7 @@
                     url = '../supply-chain/supply-chain.html';
                     break;
                 case 'supplier':
-                    url = '../supplier/supplier.html';
+                    url = '../supply-chain/supply-chain.html';
                     break;
                 case 'rd':
                     url = '../product-center/product-center.html';
@@ -388,8 +395,27 @@
             }
         }
 
+        // API 调用函数
+        async function fetchReportData(endpoint) {
+            try {
+                const response = await fetch(`http://localhost:8089/api/v1/im/report/${endpoint}`, {
+                    headers: {
+                        'X-Tenant-Id': 'test-tenant',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching report data:', error);
+                return [];
+            }
+        }
+
         // 报表切换
-        function switchReport(type) {
+        async function switchReport(type) {
             // 修复：确保 active 状态切换到正确的按钮上
             document.querySelectorAll('.report-tab').forEach(btn => btn.classList.remove('report-active'));
             // 直接通过ID获取当前按钮并添加active状态
@@ -403,29 +429,31 @@
 
             container.style.opacity = '0';
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 container.style.opacity = '1';
                 if (type === 'rev') {
-                    title.innerText = '营收趋势分析 (近6个月)';
+                    title.innerText = '营收趋势分析 (近30天)';
                     if (legend) {
                         legend.style.display = 'flex';
                         legend.innerHTML = `
-                                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-brand-500 rounded-full"></span> 实绩</span>
-                                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-slate-200 rounded-full"></span> 历史</span>
-                                        <span class="flex items-center gap-1"><span class="w-2 h-0.5 border-t border-brand-500 border-dashed"></span> 预测</span>
+                                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-brand-500 rounded-full"></span> 营收额</span>
                                     `;
                     }
 
                     // 重新定义容器布局：[Y轴区域] + [主绘图区]
                     container.className = 'flex-1 flex flex-row items-stretch overflow-hidden pt-4';
 
-                    container.innerHTML = `
+                    // 获取营收数据
+                    const revenueData = await fetchReportData('revenue');
+                    
+                    // 生成柱状图
+                    let chartHTML = `
                                         <!-- 1. Y轴刻度区域 -->
                                         <div class="flex flex-col justify-between mb-8 pb-1 axis-text shrink-0 text-right w-10 pr-3 border-r border-slate-100">
-                                            <span>20k</span>
-                                            <span>15k</span>
-                                            <span>10k</span>
-                                            <span>5k</span>
+                                            <span>${Math.max(...revenueData.map(item => item.amount)).toFixed(0)}</span>
+                                            <span>${(Math.max(...revenueData.map(item => item.amount)) * 0.75).toFixed(0)}</span>
+                                            <span>${(Math.max(...revenueData.map(item => item.amount)) * 0.5).toFixed(0)}</span>
+                                            <span>${(Math.max(...revenueData.map(item => item.amount)) * 0.25).toFixed(0)}</span>
                                             <span class="text-slate-300">0</span>
                                         </div>
 
@@ -441,44 +469,31 @@
                                             </div>
 
                                         <!-- 数据列：[柱体 + 标签] 强绑定 -->
+                                    `;
 
-                                        <!-- 8月：历史 -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="bar-item-slim bg-slate-100 h-[40%] hover:bg-slate-200 transition-colors"></div>
-                                            <span class="axis-text mt-3">08月</span>
-                                        </div>
+                    // 添加数据柱
+                    const maxAmount = Math.max(...revenueData.map(item => item.amount), 1);
+                    revenueData.forEach((item, index) => {
+                        const height = (item.amount / maxAmount) * 100;
+                        const date = new Date(item.date);
+                        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                        const day = date.getDate().toString().padStart(2, '0');
+                        const dateLabel = `${month}-${day}`;
 
-                                        <!-- 9月：历史 -->
+                        chartHTML += `
                                         <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="bar-item-slim bg-slate-100 h-[52%] hover:bg-slate-200 transition-colors"></div>
-                                            <span class="axis-text mt-3">09月</span>
+                                            <div class="bar-item-slim h-[${height}%] hover:bg-brand-600 transition-colors"></div>
+                                            <span class="axis-text mt-3">${dateLabel}</span>
                                         </div>
+                                    `;
+                    });
 
-                                        <!-- 10月：历史 -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="bar-item-slim bg-slate-100 h-[45%] hover:bg-slate-200 transition-colors"></div>
-                                            <span class="axis-text mt-3">10月</span>
-                                        </div>
-
-                                        <!-- 11月：实绩上涨 -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="bar-item-slim bg-brand-100 h-[68%] border-t-2 border-brand-500"></div>
-                                            <span class="axis-text mt-3">11月</span>
-                                        </div>
-
-                                        <!-- 12月：实绩高峰 -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="bar-item-slim h-[82%] shadow-lg shadow-brand-500/10"></div>
-                                            <span class="axis-text mt-3">12月</span>
-                                        </div>
-
-                                        <!-- 1月：当前/预测 -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="bar-item-slim h-[92%] bg-brand-50 border-2 border-dashed border-brand-400 opacity-80"></div>
-                                            <span class="axis-text mt-3 text-brand-600 font-bold">预测01</span>
-                                        </div>
+                    chartHTML += `
                                     </div>
                                 `;
+
+                    container.innerHTML = chartHTML;
+                    
                     // 隐藏旧的外部 Label 容器，防止布局位移
                     if (labelContainer) {
                         labelContainer.innerHTML = '';
@@ -486,132 +501,129 @@
                     }
                 }
                 else if (type === 'stock') {
-                    title.innerText = '实时库存健康状况分布';
+                    title.innerText = '实时库存健康状况';
                     if (legend) legend.style.display = 'none';
                     container.className = 'flex-1 flex flex-col items-center justify-center';
 
-                    /**
-                     * 精确数学计算 (半径 r=70, 周长 C ≈ 439.82)
-                     * 1. 正常 (绿色): 82%  => 长度 360.65
-                     * 2. 积压 (黄色): 10%  => 长度 43.98
-                     * 3. 缺货 (红色): 8%   => 长度 35.19
-                     * 
-                     * 移除 stroke-linecap，使用默认的 butt (平头)，确保衔接严丝合缝
-                     */
+                    // 获取库存健康数据
+                    const inventoryData = await fetchReportData('inventory-health');
+                    
+                    // 计算健康度
+                    const totalProducts = inventoryData.length;
+                    const healthyProducts = inventoryData.filter(item => item.status === '正常').length;
+                    const healthyPercentage = totalProducts > 0 ? Math.round((healthyProducts / totalProducts) * 100) : 0;
+                    const warningProducts = inventoryData.filter(item => item.status === '缺货风险').length;
+                    const warningPercentage = totalProducts > 0 ? Math.round((warningProducts / totalProducts) * 100) : 0;
+                    const otherPercentage = 100 - healthyPercentage - warningPercentage;
+
+                    // 计算圆环数据
+                    const radius = 70;
+                    const circumference = 2 * Math.PI * radius;
+                    const healthyLength = (healthyPercentage / 100) * circumference;
+                    const warningLength = (warningPercentage / 100) * circumference;
+                    const otherLength = (otherPercentage / 100) * circumference;
+
                     container.innerHTML = `
                                         <div class="chart-container-svg fade-in">
                                         <svg width="180" height="180" viewBox="0 0 160 160">
                                             <!-- 底部背景圆环 -->
                                             <circle cx="80" cy="80" r="70" stroke="#F1F5F9" stroke-width="15" fill="none" />
 
-                                            <!-- 正常 (82%) - 起点: 12点钟 -->
+                                            <!-- 正常 (绿色) -->
                                             <circle cx="80" cy="80" r="70" stroke="#14B8A6" stroke-width="15" fill="none"
-                                                stroke-dasharray="360.65 439.82"
+                                                stroke-dasharray="${healthyLength} ${circumference}"
                                                 stroke-dashoffset="0"
                                                 transform="rotate(-90 80 80)" />
 
-                                            <!-- 积压 (10%) - 起点: 紧随绿色终点 -->
-                                            <circle cx="80" cy="80" r="70" stroke="#F59E0B" stroke-width="15" fill="none"
-                                                stroke-dasharray="43.98 439.82"
-                                                stroke-dashoffset="-360.65"
+                                            <!-- 缺货风险 (红色) -->
+                                            <circle cx="80" cy="80" r="70" stroke="#F43F5E" stroke-width="15" fill="none"
+                                                stroke-dasharray="${warningLength} ${circumference}"
+                                                stroke-dashoffset="-${healthyLength}"
                                                 transform="rotate(-90 80 80)" />
 
-                                            <!-- 缺货 (8%) - 起点: 紧随黄色终点 -->
-                                            <circle cx="80" cy="80" r="70" stroke="#F43F5E" stroke-width="15" fill="none"
-                                                stroke-dasharray="35.19 439.82"
-                                                stroke-dashoffset="-404.63"
+                                            <!-- 其他 (黄色) -->
+                                            <circle cx="80" cy="80" r="70" stroke="#F59E0B" stroke-width="15" fill="none"
+                                                stroke-dasharray="${otherLength} ${circumference}"
+                                                stroke-dashoffset="-${healthyLength + warningLength}"
                                                 transform="rotate(-90 80 80)" />
                                         </svg>
                                         <div class="donut-text-box">
                                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">健康度</p>
-                                            <p class="text-3xl font-mono font-bold text-brand-600">82%</p>
+                                            <p class="text-3xl font-mono font-bold text-brand-600">${healthyPercentage}%</p>
                                         </div>
                                     </div>
                                     <!-- 图例展示 -->
                                     <div class="flex gap-6 mt-8 text-[11px] font-bold">
-                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-brand-500 rounded-sm"></span> 正常 82%</span>
-                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-500 rounded-sm"></span> 积压 10%</span>
-                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-red-500 rounded-sm"></span> 缺货 8%</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-brand-500 rounded-sm"></span> 正常 ${healthyPercentage}%</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-red-500 rounded-sm"></span> 缺货风险 ${warningPercentage}%</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-yellow-500 rounded-sm"></span> 其他 ${otherPercentage}%</span>
                                     </div>`;
                     labelContainer.innerHTML = '';
                 }
                 else if (type === 'profit') {
-                    title.innerText = '销售盈利报表 (Top 3 利润贡献)';
+                    title.innerText = '销售盈利报表';
                     if (legend) {
                         legend.style.display = 'flex';
                         legend.innerHTML = `
-                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #FBBF24, #D97706);"></span> 第一名</span>
-                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #34D399, #059669);"></span> 第二名</span>
-                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #22D3EE, #0891B2);"></span> 第三名</span>
+                                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(to bottom, #FBBF24, #D97706);"></span> 利润贡献</span>
                                     `;
                     }
 
                     container.className = 'flex-1 flex flex-col w-full px-4 md:px-10 justify-center gap-8';
 
-                    container.innerHTML = `
-                                            <!-- Top 1 -->
+                    // 获取销售盈利数据
+                    const profitData = await fetchReportData('profit');
+                    
+                    // 按净利润排序，取前3名
+                    profitData.sort((a, b) => b.net_profit - a.net_profit);
+                    const top3ProfitData = profitData.slice(0, 3);
+                    
+                    let profitHTML = '';
+                    top3ProfitData.forEach((item, index) => {
+                        const maxProfit = Math.max(...profitData.map(p => p.net_profit), 1);
+                        const percentage = (item.net_profit / maxProfit) * 100;
+                        let gradient = '';
+                        let color = '';
+                        
+                        switch(index) {
+                            case 0:
+                                gradient = 'linear-gradient(90deg, #FDE68A 0%, #F59E0B 100%)';
+                                color = 'text-yellow-600';
+                                break;
+                            case 1:
+                                gradient = 'linear-gradient(90deg, #6EE7B7 0%, #059669 100%)';
+                                color = 'text-emerald-600';
+                                break;
+                            case 2:
+                                gradient = 'linear-gradient(90deg, #67E8F9 0%, #0891B2 100%)';
+                                color = 'text-cyan-600';
+                                break;
+                        }
+
+                        profitHTML += `
                                             <div class="w-full fade-in group">
                                                 <div class="flex justify-between items-end mb-2.5">
                                                     <div class="flex items-center gap-3">
-                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-yellow-300 to-yellow-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-yellow-100">1</span>
+                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-yellow-300 to-yellow-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-yellow-100">${index + 1}</span>
                                                         <div>
-                                                            <p class="text-sm font-bold text-slate-900 tracking-tight">金色镂空户外灯具 (V3)</p>
-                                                            <p class="text-[10px] text-slate-400 font-medium">中东/欧美市场畅销款</p>
+                                                            <p class="text-sm font-bold text-slate-900 tracking-tight">${item.name}</p>
+                                                            <p class="text-[10px] text-slate-400 font-medium">销量: ${item.total_qty} | 销售额: ¥${item.total_sales.toFixed(2)}</p>
                                                         </div>
                                                     </div>
                                                     <div class="text-right">
-                                                        <p class="text-[10px] text-yellow-600 font-bold uppercase tracking-widest">Gross Profit</p>
-                                                        <p class="text-lg font-mono font-black text-slate-900">$42,000</p>
+                                                        <p class="text-[10px] ${color} font-bold uppercase tracking-widest">Net Profit</p>
+                                                        <p class="text-lg font-mono font-black text-slate-900">¥${item.net_profit.toFixed(2)}</p>
                                                     </div>
                                                 </div>
                                                 <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-[1px]">
                                                     <div class="h-full rounded-full transition-all duration-1000 shadow-sm group-hover:brightness-110"
-                                                        style="width: 92%; background: linear-gradient(90deg, #FDE68A 0%, #F59E0B 100%); box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);"></div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Top 2 -->
-                                            <div class="w-full fade-in group" style="animation-delay: 0.1s">
-                                                <div class="flex justify-between items-end mb-2.5">
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-emerald-300 to-emerald-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-emerald-100">2</span>
-                                                        <div>
-                                                            <p class="text-sm font-bold text-slate-800 tracking-tight">智能感应极简香薰机</p>
-                                                            <p class="text-[10px] text-slate-400 font-medium">东南亚区域利润之星</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="text-right">
-                                                        <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Gross Profit</p>
-                                                        <p class="text-lg font-mono font-black text-slate-800">$28,500</p>
-                                                    </div>
-                                                </div>
-                                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-[1px]">
-                                                    <div class="h-full rounded-full transition-all duration-1000 group-hover:brightness-110"
-                                                        style="width: 65%; background: linear-gradient(90deg, #6EE7B7 0%, #059669 100%); box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);"></div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Top 3 -->
-                                            <div class="w-full fade-in group" style="animation-delay: 0.2s">
-                                                <div class="flex justify-between items-end mb-2.5">
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="flex items-center justify-center w-7 h-7 bg-gradient-to-br from-cyan-300 to-cyan-600 text-white text-xs font-black rounded-lg shadow-md ring-2 ring-cyan-100">3</span>
-                                                        <div>
-                                                            <p class="text-sm font-bold text-slate-800 tracking-tight">多功能户外折叠桌板</p>
-                                                            <p class="text-[10px] text-slate-400 font-medium">高频爆款薄利多销</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="text-right">
-                                                        <p class="text-[10px] text-cyan-600 font-bold uppercase tracking-widest">Gross Profit</p>
-                                                        <p class="text-lg font-mono font-black text-slate-800">$14,200</p>
-                                                    </div>
-                                                </div>
-                                                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-[1px]">
-                                                    <div class="h-full rounded-full transition-all duration-1000 group-hover:brightness-110"
-                                                        style="width: 35%; background: linear-gradient(90deg, #67E8F9 0%, #0891B2 100%); box-shadow: 0 2px 8px rgba(8, 145, 178, 0.2);"></div>
+                                                        style="width: ${percentage}%; background: ${gradient}; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);"></div>
                                                 </div>
                                             </div>
                                         `;
+                    });
+
+                    container.innerHTML = profitHTML;
 
                     // 同步隐藏底部 Label
                     if (labelContainer) {
@@ -620,27 +632,35 @@
                     }
                 }
                 else if (type === 'finance') {
-                    title.innerText = '往来账务分析 (应收账款账龄)';
+                    title.innerText = '往来账务分析';
                     if (legend) {
                         legend.style.display = 'flex';
                         legend.innerHTML = `
-                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #10B981;"></span> 健康</span>
-                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #F59E0B;"></span> 关注</span>
-                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #EA580C;"></span> 风险</span>
-                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #F43F5E;"></span> 高危</span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #10B981;"></span> 应收账款</span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: #F59E0B;"></span> 应付账款</span>
                                 `;
                     }
 
                     // 容器布局：[Y轴区域] + [绘图主区]
                     container.className = 'flex-1 flex flex-row items-stretch overflow-hidden pt-6';
 
+                    // 获取往来账务数据
+                    const accountsData = await fetchReportData('accounts');
+                    
+                    // 生成账务图表
+                    const receivable = accountsData.receivable || 0;
+                    const payable = accountsData.payable || 0;
+                    const maxAmount = Math.max(receivable, payable, 1);
+                    const receivableHeight = (receivable / maxAmount) * 100;
+                    const payableHeight = (payable / maxAmount) * 100;
+
                     container.innerHTML = `
                                     <!-- 1. Y轴刻度区域 -->
                                     <div class="flex flex-col justify-between mb-9 pb-1 axis-text shrink-0 text-right w-12 pr-3 border-r border-slate-100">
-                                        <span>$40k</span>
-                                        <span>$30k</span>
-                                        <span>$20k</span>
-                                        <span>$10k</span>
+                                        <span>¥${maxAmount.toFixed(0)}</span>
+                                        <span>¥${(maxAmount * 0.75).toFixed(0)}</span>
+                                        <span>¥${(maxAmount * 0.5).toFixed(0)}</span>
+                                        <span>¥${(maxAmount * 0.25).toFixed(0)}</span>
                                         <span class="text-slate-300">0</span>
                                     </div>
 
@@ -655,28 +675,16 @@
                                             <div class="w-full"></div>
                                         </div>
 
-                                        <!-- 0-30天 (健康) -->
+                                        <!-- 应收账款 -->
                                         <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[70%] bg-green-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
-                                            <span class="axis-text mt-3 text-center">0-30天</span>
+                                            <div class="w-10 md:w-12 h-[${receivableHeight}%] bg-green-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
+                                            <span class="axis-text mt-3 text-center">应收账款</span>
                                         </div>
 
-                                        <!-- 31-60天 (关注) -->
+                                        <!-- 应付账款 -->
                                         <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[45%] bg-yellow-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
-                                            <span class="axis-text mt-3 text-center">31-60天</span>
-                                        </div>
-
-                                        <!-- 61-90天 (风险) -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[25%] bg-orange-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
-                                            <span class="axis-text mt-3 text-center">61-90天</span>
-                                        </div>
-
-                                        <!-- 90+天 (高危) -->
-                                        <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[15%] bg-red-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all animate-pulse"></div>
-                                            <span class="axis-text mt-3 text-center">90+天</span>
+                                            <div class="w-10 md:w-12 h-[${payableHeight}%] bg-yellow-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
+                                            <span class="axis-text mt-3 text-center">应付账款</span>
                                         </div>
                                     </div>
                                 `;
@@ -688,6 +696,26 @@
                     }
                 }
             }, 200);
+        }
+
+        // 加载效率监控数据
+        async function loadEfficiencyData() {
+            try {
+                const efficiencyData = await fetchReportData('efficiency');
+                const inventoryTurnover = efficiencyData.inventory_turnover || 0;
+                const paymentCycle = efficiencyData.payment_cycle || 0;
+
+                // 更新库存周转率
+                document.querySelector('.text-brand-600').textContent = inventoryTurnover.toFixed(1);
+                document.querySelector('.bg-brand-500').style.width = `${Math.min(inventoryTurnover * 20, 100)}%`;
+
+                // 更新回款周期
+                const paymentCycleElement = document.querySelectorAll('.text-risk-high')[0];
+                paymentCycleElement.textContent = paymentCycle.toFixed(0) + '天';
+                document.querySelectorAll('.bg-risk-high')[0].style.width = `${Math.min(paymentCycle / 60 * 100, 100)}%`;
+            } catch (error) {
+                console.error('Error loading efficiency data:', error);
+            }
         }
 
         // 打开AI分析弹窗
@@ -718,6 +746,12 @@
 
             // 默认显示智能经营界面
             showView('biz');
+            
+            // 加载效率监控数据
+            loadEfficiencyData();
+            
+            // 默认显示营收报表
+            switchReport('rev');
         });
     </script>
 </body>
