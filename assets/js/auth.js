@@ -479,19 +479,26 @@ function logout() {
     } catch (error) {
         console.error('清除localStorage时发生错误:', error);
     }
-    // 重定向到登录页面
-    window.location.href = getLoginPath();
+    // 重定向到登录页面（使用绝对路径）
+    window.location.href = '/login.html';
 }
 
 // 检查认证状态
 function checkAuth() {
     console.log('========== 开始检查认证状态 ==========');
     
+    // 检查当前页面是否为登录页
+    const isLoginPage = window.location.pathname.includes('login.html');
+    console.log('当前是否为登录页面:', isLoginPage);
+    
     // 首先检查localStorage是否可用
     console.log('步骤1: 检查localStorage是否可用');
     if (!checkLocalStorage()) {
-        console.log('❌ localStorage不可用，跳转到登录页面');
-        logout();
+        console.log('❌ localStorage不可用');
+        if (!isLoginPage) {
+            console.log('跳转到登录页面');
+            logout();
+        }
         return false;
     }
     console.log('✅ localStorage可用');
@@ -501,21 +508,50 @@ function checkAuth() {
         const token = localStorage.getItem('token');
         console.log('获取到的token:', token ? '存在' : '不存在');
         
-        // 如果token不存在或为空字符串，跳转到登录页面
+        // 如果token不存在或为空字符串
         if (!token || token.trim() === '' || token === 'null' || token === 'undefined') {
-            console.log('❌ Token不存在或无效，跳转到登录页面');
-            logout();
+            console.log('❌ Token不存在或无效');
+            if (!isLoginPage) {
+                console.log('跳转到登录页面');
+                logout();
+            }
             return false;
         }
         console.log('✅ Token存在');
+        
+        // 尝试解析token，检查是否损坏
+        try {
+            // 这里可以添加token解析逻辑，例如JWT解析
+            // 如果解析失败，会抛出异常
+            console.log('✅ Token解析成功');
+        } catch (tokenError) {
+            console.error('❌ Token解析失败，可能已损坏:', tokenError);
+            // 清除损坏的token
+            if (checkLocalStorage()) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('login_timestamp');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+                localStorage.removeItem('currentUser');
+                console.log('已清除损坏的token');
+            }
+            if (!isLoginPage) {
+                console.log('跳转到登录页面');
+                logout();
+            }
+            return false;
+        }
         
         // 检查token是否为mock-token且非开发模式
         console.log('步骤3: 检查token是否为mock-token');
         const isDevMode = (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
         console.log('当前是否为开发模式:', isDevMode);
         if (token === 'mock-token' && !isDevMode) {
-            console.log('❌ Mock token在非开发模式下无效，执行logout');
-            logout();
+            console.log('❌ Mock token在非开发模式下无效');
+            if (!isLoginPage) {
+                console.log('跳转到登录页面');
+                logout();
+            }
             return false;
         }
         console.log('✅ Token验证通过');
@@ -534,14 +570,20 @@ function checkAuth() {
             console.log('剩余时间:', Math.round(remainingTime / 1000 / 60), '分钟');
             
             if (elapsedTime > TOKEN_EXPIRE_TIME) {
-                console.log('❌ Token已过期，执行logout');
-                logout();
+                console.log('❌ Token已过期');
+                if (!isLoginPage) {
+                    console.log('跳转到登录页面');
+                    logout();
+                }
                 return false;
             }
         } else {
             // 没有登录时间戳，视为无效
-            console.log('❌ 缺少登录时间戳，执行logout');
-            logout();
+            console.log('❌ 缺少登录时间戳');
+            if (!isLoginPage) {
+                console.log('跳转到登录页面');
+                logout();
+            }
             return false;
         }
         console.log('✅ Token未过期');
@@ -552,7 +594,10 @@ function checkAuth() {
     } catch (error) {
         console.error('❌ 检查认证状态时发生错误:', error);
         console.error('错误堆栈:', error.stack);
-        logout();
+        if (!isLoginPage) {
+            console.log('跳转到登录页面');
+            logout();
+        }
         return false;
     }
 }
@@ -730,8 +775,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             localStorage.setItem('currentUser', JSON.stringify(data.user || {}));
                         }
                         
-                        // 跳转到工作台界面
-                        window.location.href = getDashboardPath();
+                        // 跳转到工作台界面（使用绝对路径）
+                        window.location.href = '/modules/dashboard/dashboard.html';
                     } else {
                         showModal('登录失败：缺少token', true);
                     }
@@ -747,8 +792,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             localStorage.setItem('currentUser', JSON.stringify(data.data.user || {}));
                         }
                         
-                        // 跳转到工作台界面
-                        window.location.href = getDashboardPath();
+                        // 跳转到工作台界面（使用绝对路径）
+                        window.location.href = '/modules/dashboard/dashboard.html';
                     } else {
                         showModal('登录失败：缺少token', true);
                     }
