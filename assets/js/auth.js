@@ -479,16 +479,20 @@ function logout() {
     } catch (error) {
         console.error('清除localStorage时发生错误:', error);
     }
-    // 重定向到登录页面（使用绝对路径）
-    window.location.href = '/login.html';
+    // 重定向到登录页面（使用绝对路径，防止加入历史记录堆栈）
+    window.location.replace('/login.html');
 }
 
 // 检查认证状态
 function checkAuth() {
     console.log('========== 开始检查认证状态 ==========');
     
-    // 检查当前页面是否为登录页
-    const isLoginPage = window.location.pathname.includes('login.html');
+    // 规范化路径判断
+    const path = window.location.pathname;
+    console.log('当前路径:', path);
+    
+    // 更健壮的登录页面判断
+    const isLoginPage = path.endsWith('login.html');
     console.log('当前是否为登录页面:', isLoginPage);
     
     // 首先检查localStorage是否可用
@@ -496,8 +500,8 @@ function checkAuth() {
     if (!checkLocalStorage()) {
         console.log('❌ localStorage不可用');
         if (!isLoginPage) {
-            console.log('跳转到登录页面');
-            logout();
+            console.log('未登录，跳转至登录页');
+            window.location.replace('/login.html');
         }
         return false;
     }
@@ -508,16 +512,23 @@ function checkAuth() {
         const token = localStorage.getItem('token');
         console.log('获取到的token:', token ? '存在' : '不存在');
         
-        // 如果token不存在或为空字符串
+        // 核心重定向逻辑
         if (!token || token.trim() === '' || token === 'null' || token === 'undefined') {
             console.log('❌ Token不存在或无效');
             if (!isLoginPage) {
-                console.log('跳转到登录页面');
-                logout();
+                console.log('未登录，跳转至登录页');
+                window.location.replace('/login.html');
             }
             return false;
         }
-        console.log('✅ Token存在');
+        
+        if (token && isLoginPage) {
+            console.log('已登录，跳转至工作台');
+            window.location.replace('/modules/dashboard/dashboard.html');
+            return false;
+        }
+        
+        console.log('✅ Token存在且当前页面正确');
         
         // 尝试解析token，检查是否损坏
         try {
@@ -536,8 +547,8 @@ function checkAuth() {
                 console.log('已清除损坏的token');
             }
             if (!isLoginPage) {
-                console.log('跳转到登录页面');
-                logout();
+                console.log('未登录，跳转至登录页');
+                window.location.replace('/login.html');
             }
             return false;
         }
@@ -548,9 +559,17 @@ function checkAuth() {
         console.log('当前是否为开发模式:', isDevMode);
         if (token === 'mock-token' && !isDevMode) {
             console.log('❌ Mock token在非开发模式下无效');
+            if (checkLocalStorage()) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('login_timestamp');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+                localStorage.removeItem('currentUser');
+                console.log('已清除无效的mock token');
+            }
             if (!isLoginPage) {
-                console.log('跳转到登录页面');
-                logout();
+                console.log('未登录，跳转至登录页');
+                window.location.replace('/login.html');
             }
             return false;
         }
@@ -571,18 +590,34 @@ function checkAuth() {
             
             if (elapsedTime > TOKEN_EXPIRE_TIME) {
                 console.log('❌ Token已过期');
+                if (checkLocalStorage()) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('login_timestamp');
+                    localStorage.removeItem('user_info');
+                    localStorage.removeItem('username');
+                    localStorage.removeItem('currentUser');
+                    console.log('已清除过期的token');
+                }
                 if (!isLoginPage) {
-                    console.log('跳转到登录页面');
-                    logout();
+                    console.log('未登录，跳转至登录页');
+                    window.location.replace('/login.html');
                 }
                 return false;
             }
         } else {
             // 没有登录时间戳，视为无效
             console.log('❌ 缺少登录时间戳');
+            if (checkLocalStorage()) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('login_timestamp');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('username');
+                localStorage.removeItem('currentUser');
+                console.log('已清除无效的认证信息');
+            }
             if (!isLoginPage) {
-                console.log('跳转到登录页面');
-                logout();
+                console.log('未登录，跳转至登录页');
+                window.location.replace('/login.html');
             }
             return false;
         }
@@ -594,9 +629,17 @@ function checkAuth() {
     } catch (error) {
         console.error('❌ 检查认证状态时发生错误:', error);
         console.error('错误堆栈:', error.stack);
+        if (checkLocalStorage()) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('login_timestamp');
+            localStorage.removeItem('user_info');
+            localStorage.removeItem('username');
+            localStorage.removeItem('currentUser');
+            console.log('已清除可能损坏的认证信息');
+        }
         if (!isLoginPage) {
-            console.log('跳转到登录页面');
-            logout();
+            console.log('未登录，跳转至登录页');
+            window.location.replace('/login.html');
         }
         return false;
     }
@@ -690,6 +733,36 @@ function wrappedFetch(url, options = {}) {
         return Promise.reject(error);
     }
 }
+
+// 跳转异常检测
+let lastRedirectTime = 0;
+const REDIRECT_THRESHOLD = 1000; // 1秒内连续跳转视为异常
+
+// 检测跳转异常的函数
+function detectRedirectLoop() {
+    const currentTime = Date.now();
+    if (currentTime - lastRedirectTime < REDIRECT_THRESHOLD) {
+        console.error('检测到跳转异常，可能存在重定向循环');
+        // 清除localStorage
+        if (checkLocalStorage()) {
+            localStorage.clear();
+            console.log('已强制清理localStorage');
+        }
+        // 重置跳转时间
+        lastRedirectTime = 0;
+        return true;
+    }
+    lastRedirectTime = currentTime;
+    return false;
+}
+
+// 重写window.location.replace方法，添加跳转检测
+const originalReplace = window.location.replace;
+window.location.replace = function(url) {
+    if (!detectRedirectLoop()) {
+        originalReplace.call(window.location, url);
+    }
+};
 
 // 将函数暴露到全局作用域，以便其他页面使用
 window.checkAuth = checkAuth;
