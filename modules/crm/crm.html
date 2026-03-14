@@ -231,7 +231,13 @@
 
     <!-- 1. 侧边导航栏 -->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
-        <div id="sidebar-logo-container"></div>
+        <!-- Logo 区域 -->
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center mr-3 text-white shadow-lg shadow-[#14B8A6]/20">
+                <i class="ph ph-brain text-xl"></i>
+            </div>
+            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
+        </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
             <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
@@ -249,7 +255,17 @@
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div id="sidebar-user-container"></div>
+        <!-- 用户信息区域 -->
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">
+            <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>
+            <div class="ml-3 text-left">
+                <p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>
+                    <span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>
+                </div>
+            </div>
+        </div>
     </aside>
 
     <!-- 2. 主工作区 -->

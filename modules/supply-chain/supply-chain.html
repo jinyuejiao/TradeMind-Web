@@ -174,7 +174,13 @@
 
     <!-- 1. 侧边导航栏 -->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
-        <div id="sidebar-logo-container"></div>
+        <!-- Logo 区域 -->
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center mr-3 text-white shadow-lg shadow-[#14B8A6]/20">
+                <i class="ph ph-brain text-xl"></i>
+            </div>
+            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
+        </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
             <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
@@ -188,11 +194,21 @@
             <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
-            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-white bg-slate-800 rounded-lg transition-all active-nav border-l-4 border-[#14B8A6]">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div id="sidebar-user-container"></div>
+        <!-- 用户信息区域 -->
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">
+            <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>
+            <div class="ml-3 text-left">
+                <p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>
+                    <span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>
+                </div>
+            </div>
+        </div>
     </aside>
 
     <!-- 2. 主工作区 -->
@@ -274,265 +290,196 @@
                                     <span class="text-xs font-mono font-bold text-red-600">C-</span>
                                 </div>
                                 <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
-                                    <div class="w-[60%] bg-red-500 h-full"></div>
+                                    <div class="w-[60%] bg-red-500 h-full animate-pulse"></div>
                                 </div>
                                 <p class="text-[10px] text-red-400 font-bold">警告: 原料短缺风险</p>
                             </div>
                             <!-- Supplier 3 -->
-                            <div class="border border-slate-100 rounded p-3">
+                            <div class="border border-orange-100 bg-orange-50/10 rounded p-3">
                                 <div class="flex justify-between items-start mb-2">
                                     <span class="text-sm font-bold text-slate-700">广州电子元件</span>
-                                    <span class="text-xs font-mono font-bold text-blue-600">B+</span>
+                                    <span class="text-xs font-mono font-bold text-orange-600">B</span>
                                 </div>
                                 <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
-                                    <div class="w-[85%] bg-blue-500 h-full"></div>
+                                    <div class="w-[75%] bg-orange-500 h-full"></div>
                                 </div>
-                                <p class="text-[10px] text-slate-400">准时交付率: 85%</p>
+                                <p class="text-[10px] text-orange-400">注意: 价格波动较大</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 场景 B: 进货单据列表 (新增核心功能) -->
+                <!-- 场景 B: 进货单据列表 (默认隐藏) -->
                 <div id="sup-list-view" class="hidden fade-in space-y-4">
+                    <!-- 单据列表卡片 -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div class="overflow-x-auto no-scrollbar">
-                            <table class="w-full text-left border-collapse text-xs">
-                                <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest border-b border-slate-100">
-                                    <tr>
-                                        <th class="px-6 py-4">进货日期</th>
-                                        <th class="px-6 py-4">单据编号 / 来源</th>
-                                        <th class="px-6 py-4">供应商名称</th>
-                                        <th class="px-6 py-4 text-right col-hide-mobile">进货总额</th>
-                                        <th class="px-6 py-4 text-center">状态</th>
-                                        <th class="px-6 py-4 text-right">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50 text-slate-700">
-                                    <tr onclick="openPurchaseDetail('PUR-2026-001')" class="hover:bg-slate-50/80 transition-all cursor-pointer group">
-                                        <td class="px-6 py-4 font-mono text-slate-400">2026.02.25</td>
-                                        <td class="px-6 py-4">
-                                            <p class="font-bold text-slate-800">PUR-2026-001</p>
-                                            <p class="text-[9px] text-slate-300 font-medium">提取源：图片识别 (OCR)</p>
-                                        </td>
-                                        <td class="px-6 py-4"><span class="font-bold text-brand-600">深圳照明科技集团</span></td>
-                                        <td class="px-6 py-4 text-right font-mono font-bold col-hide-mobile">$12,500.00</td>
-                                        <td class="px-6 py-4 text-center"><span class="px-2 py-0.5 bg-green-50 text-green-600 rounded-full font-bold text-[10px]">已入库</span></td>
-                                        <td class="px-6 py-4 text-right"><i class="ph ph-caret-right text-slate-300 group-hover:text-brand-500 transition-colors"></i></td>
-                                    </tr>
-                                    <tr class="hover:bg-slate-50/80 transition-all cursor-pointer group opacity-60">
-                                        <td class="px-6 py-4 font-mono">2026.02.23</td>
-                                        <td class="px-6 py-4"><p class="font-bold">PUR-2026-002</p><p class="text-[9px] text-slate-300">提取源：语音输入</p></td>
-                                        <td class="px-6 py-4"><span class="font-bold text-slate-500">东莞红运包装制品</span></td>
-                                        <td class="px-6 py-4 text-right font-mono col-hide-mobile">$3,200.00</td>
-                                        <td class="px-6 py-4 text-center"><span class="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full font-bold text-[10px]">待收货</span></td>
-                                        <td class="px-6 py-4 text-right"><i class="ph ph-caret-right text-slate-300"></i></td>
-                                    </tr>
-                                    <tr onclick="openPurchaseDetail('PUR-2026-003')" class="hover:bg-slate-50/80 transition-all cursor-pointer group">
-                                        <td class="px-6 py-4 font-mono text-slate-400">2026.02.20</td>
-                                        <td class="px-6 py-4">
-                                            <p class="font-bold text-slate-800">PUR-2026-003</p>
-                                            <p class="text-[9px] text-slate-300 font-medium">提取源：手动录入</p>
-                                        </td>
-                                        <td class="px-6 py-4"><span class="font-bold text-brand-600">广州电子元件有限公司</span></td>
-                                        <td class="px-6 py-4 text-right font-mono font-bold col-hide-mobile">$8,750.00</td>
-                                        <td class="px-6 py-4 text-center"><span class="px-2 py-0.5 bg-green-50 text-green-600 rounded-full font-bold text-[10px]">已入库</span></td>
-                                        <td class="px-6 py-4 text-right"><i class="ph ph-caret-right text-slate-300 group-hover:text-brand-500 transition-colors"></i></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单据明细</h3>
+                            <button class="text-xs text-brand-600 font-bold flex items-center gap-1.5 hover:underline">
+                                <i class="ph ph-plus-circle text-sm"></i> 新增进货单
+                            </button>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ================= [3] 添加供应商 ================= -->
-            <div id="view-add-supplier" class="view-section w-full p-4 md:p-8 space-y-6 fade-in" style="display: none;">
-                <div class="flex flex-col md:flex-row md:items-end justify-between">
-                    <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">添加供应商</h1>
-                        <p class="text-xs md:text-sm text-slate-500 mt-1">添加新的供应商信息</p>
-                    </div>
-                </div>
-
-                <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-plus-circle text-brand-600 mr-2"></i> 供应商信息</div>
-                    <div class="p-6">
-                        <form id="add-supplier-form" class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">供应商名称</label>
-                                    <input type="text" id="supplier-name" name="supplier-name" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 transition">
+                        <div class="p-4">
+                            <div class="space-y-3">
+                                <!-- 单据 1 -->
+                                <div class="border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer" onclick="openPurchaseDetail('PO-2026-001')">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">PO-2026-001</p>
+                                            <p class="text-[10px] text-slate-400">深圳照明科技 | 2026-01-10</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-mono font-bold text-slate-900">$2,300.00</p>
+                                            <span class="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">已完成</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[10px] text-slate-500">
+                                        <span>1000套 LED 灯</span>
+                                        <span>交付周期: 5天</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">联系人</label>
-                                    <input type="text" id="contact-person" name="contact-person" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 transition">
+                                <!-- 单据 2 -->
+                                <div class="border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer" onclick="openPurchaseDetail('PO-2026-002')">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">PO-2026-002</p>
+                                            <p class="text-[10px] text-slate-400">东莞包装制品 | 2026-01-08</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-mono font-bold text-slate-900">$5,200.00</p>
+                                            <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">处理中</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[10px] text-slate-500">
+                                        <span>5000个 包装盒</span>
+                                        <span>交付周期: 7天</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">电话</label>
-                                    <input type="tel" id="phone" name="phone" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 transition">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">地址</label>
-                                    <textarea id="address" name="address" rows="3" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 transition"></textarea>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">状态</label>
-                                    <select id="status" name="status" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 transition">
-                                        <option value="1">启用</option>
-                                        <option value="2">禁用</option>
-                                    </select>
+                                <!-- 单据 3 -->
+                                <div class="border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer" onclick="openPurchaseDetail('PO-2026-003')">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800">PO-2026-003</p>
+                                            <p class="text-[10px] text-slate-400">广州电子元件 | 2026-01-05</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-sm font-mono font-bold text-slate-900">$5,000.00</p>
+                                            <span class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">延期</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center text-[10px] text-slate-500">
+                                        <span>2000个 电子元件</span>
+                                        <span>交付周期: 10天</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex justify-end space-x-4 pt-4 border-t border-slate-100">
-                                <button type="button" onclick="showView('suppliers')" class="px-6 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 transition">取消</button>
-                                <button type="submit" class="px-6 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-700 transition">保存</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
-            </div>
-
-            <!-- ================= [4] 库存管理 ================= -->
-            <div id="view-inventory" class="view-section w-full p-4 md:p-8 space-y-6 fade-in" style="display: none;">
-                <div class="flex flex-col md:flex-row md:items-end justify-between">
-                    <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">库存管理</h1>
-                        <p class="text-xs md:text-sm text-slate-500 mt-1">管理您的商品库存和库存预警</p>
-                    </div>
-                </div>
-
-                <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-box text-brand-600 mr-2"></i> 库存列表</div>
-                    <div class="p-6">
-                        <div class="flex flex-col md:flex-row gap-4 mb-6">
-                            <input type="text" placeholder="搜索商品名称、SKU或分类" class="flex-1 px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-brand-500 transition">
-                            <button class="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-700 transition">搜索</button>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full min-w-[768px] border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50">
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">商品ID</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">商品名称</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">SKU</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">分类</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">库存</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">预警值</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">状态</th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="border-b border-slate-200">
-                                        <td class="px-4 py-3 text-sm">PROD001</td>
-                                        <td class="px-4 py-3 text-sm">商品A</td>
-                                        <td class="px-4 py-3 text-sm">SKU001</td>
-                                        <td class="px-4 py-3 text-sm">电子产品</td>
-                                        <td class="px-4 py-3 text-sm">1,200</td>
-                                        <td class="px-4 py-3 text-sm">100</td>
-                                        <td class="px-4 py-3 text-sm"><span class="px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded-full text-xs font-bold">正常</span></td>
-                                        <td class="px-4 py-3 text-sm">
-                                            <div class="flex gap-2">
-                                                <button class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs font-bold hover:bg-blue-100 transition">查看</button>
-                                                <button class="px-2 py-1 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded text-xs font-bold hover:bg-yellow-100 transition">编辑</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr class="border-b border-slate-200">
-                                        <td class="px-4 py-3 text-sm">PROD002</td>
-                                        <td class="px-4 py-3 text-sm">商品B</td>
-                                        <td class="px-4 py-3 text-sm">SKU002</td>
-                                        <td class="px-4 py-3 text-sm">服装</td>
-                                        <td class="px-4 py-3 text-sm">80</td>
-                                        <td class="px-4 py-3 text-sm">100</td>
-                                        <td class="px-4 py-3 text-sm"><span class="px-2 py-1 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-full text-xs font-bold">低库存</span></td>
-                                        <td class="px-4 py-3 text-sm">
-                                            <div class="flex gap-2">
-                                                <button class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs font-bold hover:bg-blue-100 transition">查看</button>
-                                                <button class="px-2 py-1 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded text-xs font-bold hover:bg-yellow-100 transition">编辑</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="px-4 py-3 text-sm">PROD003</td>
-                                        <td class="px-4 py-3 text-sm">商品C</td>
-                                        <td class="px-4 py-3 text-sm">SKU003</td>
-                                        <td class="px-4 py-3 text-sm">食品</td>
-                                        <td class="px-4 py-3 text-sm">500</td>
-                                        <td class="px-4 py-3 text-sm">50</td>
-                                        <td class="px-4 py-3 text-sm"><span class="px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded-full text-xs font-bold">正常</span></td>
-                                        <td class="px-4 py-3 text-sm">
-                                            <div class="flex gap-2">
-                                                <button class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs font-bold hover:bg-blue-100 transition">查看</button>
-                                                <button class="px-2 py-1 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded text-xs font-bold hover:bg-yellow-100 transition">编辑</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- [5] 供应商弹窗逻辑 -->
-            <div id="purchase-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePurchaseDetail()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-full max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-
-                    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="ph ph-file-arrow-down text-xl"></i></div>
-                            <div>
-                                <h2 class="text-sm font-bold text-slate-800" id="detail-purchase-id">PUR-2026-001</h2>
-                                <p class="text-[9px] text-slate-300 font-medium uppercase tracking-tighter">提取源：图片识别 (OCR)</p>
-                            </div>
-                        </div>
-                        <button onclick="closePurchaseDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
-                    </div>
-
-                    <div class="flex-1 overflow-y-auto p-8 no-scrollbar space-y-10">
-                        <section>
-                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-list-bullets text-brand-500"></i> 批次进货明细 (本次成本核算)</h3>
-                            <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
-                                <table class="w-full text-left text-xs">
-                                    <thead class="bg-slate-100/50 text-slate-400 font-black uppercase tracking-widest">
-                                        <tr class="border-b border-slate-100"><th class="px-6 py-4">产品名 / 规格</th><th class="px-6 py-4 text-center">进货单价</th><th class="px-6 py-4 text-center">数量</th><th class="px-6 py-4 text-right">分项金额</th></tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        <tr>
-                                            <td class="px-6 py-4 font-bold text-slate-800">金色镂空户外灯 (G-8821)<p class="text-[9px] text-slate-400 font-mono tracking-tighter mt-0.5">BATCH: 2602A</p></td>
-                                            <td class="px-6 py-4 text-center font-mono">$10.20 <span class="text-[9px] text-slate-400 italic">(箱入)</span></td>
-                                            <td class="px-6 py-4 text-center font-mono font-bold text-slate-900">1,000</td>
-                                            <td class="px-6 py-4 text-right font-mono font-black text-slate-900">$10,200.00</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-6 py-4 font-bold text-slate-800">定制包材组件</td>
-                                            <td class="px-6 py-4 text-center font-mono">$0.46</td>
-                                            <td class="px-6 py-4 text-center font-mono font-bold text-slate-900">5,000</td>
-                                            <td class="px-6 py-4 text-right font-mono font-black text-slate-900">$2,300.00</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-
-                        <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
-                            <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-circle-dollar text-8xl"></i></div>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单总计 (Total Cost)</p>
-                            <p class="text-2xl font-mono font-black text-brand-500">$12,500.00</p>
-                        </div>
-                    </div>
-
-                    <div class="p-5 border-t border-slate-100 bg-white flex gap-4 shrink-0">
-                        <button onclick="closePurchaseDetail()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors">返回管理界面</button>
-                        <button class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"><i class="ph ph-printer"></i> 打印入库单</button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- 进货详情弹窗 -->
+    <div id="purchase-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+        <!-- 遮罩 -->
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePurchaseDetail()"></div>
+        <!-- 弹窗主体 -->
+        <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10">
+            <!-- 弹窗头部 -->
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph ph-clipboard-text text-brand-600"></i> 进货单详情
+                </h3>
+                <button onclick="closePurchaseDetail()" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                    <i class="ph ph-x text-xl text-slate-400"></i>
+                </button>
+            </div>
+            <!-- 弹窗内容 -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <!-- 订单基本信息 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">订单编号</p>
+                        <p class="text-sm font-bold text-slate-800" id="detail-purchase-id">PO-2026-001</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">供应商</p>
+                        <p class="text-sm font-bold text-slate-800">深圳照明科技</p>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">下单日期</p>
+                        <p class="text-sm font-bold text-slate-800">2026-01-10</p>
+                    </div>
+                </div>
+                <!-- 商品列表 -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">商品明细</h4>
+                    </div>
+                    <div class="p-4">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="text-left py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">商品名称</th>
+                                    <th class="text-center py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">数量</th>
+                                    <th class="text-right py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">单价</th>
+                                    <th class="text-right py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">金额</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-slate-200">
+                                    <td class="px-6 py-4 text-sm">LED 灯泡</td>
+                                    <td class="px-6 py-4 text-center text-sm">1000</td>
+                                    <td class="px-6 py-4 text-right font-mono text-sm">$2.00</td>
+                                    <td class="px-6 py-4 text-right font-mono font-black text-slate-900">$2,000.00</td>
+                                </tr>
+                                <tr class="border-b border-slate-200">
+                                    <td class="px-6 py-4 text-sm">LED 灯管</td>
+                                    <td class="px-6 py-4 text-center text-sm">500</td>
+                                    <td class="px-6 py-4 text-right font-mono text-sm">$0.60</td>
+                                    <td class="px-6 py-4 text-right font-mono font-black text-slate-900">$300.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- 物流信息 -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">物流信息</h4>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">物流公司</span>
+                            <span class="text-sm font-bold text-slate-800">顺丰速运</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">运单编号</span>
+                            <span class="text-sm font-mono font-bold text-slate-800">SF1234567890</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">预计到达时间</span>
+                            <span class="text-sm font-bold text-slate-800">2026-01-15</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-slate-600">当前状态</span>
+                            <span class="text-sm font-bold text-green-600">已送达</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
+                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-circle-dollar text-8xl"></i></div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单总计 (Total Cost)</p>
+                    <p class="text-2xl font-mono font-black text-brand-500">$12,500.00</p>
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-100 bg-white flex gap-4 shrink-0">
+                <button onclick="closePurchaseDetail()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors">返回管理界面</button>
+                <button class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"><i class="ph ph-printer"></i> 打印入库单</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // 导航切换
@@ -651,14 +598,12 @@
                     <td class="px-4 py-3 text-sm">${supplier.contact}</td>
                     <td class="px-4 py-3 text-sm">${supplier.phone}</td>
                     <td class="px-4 py-3 text-sm">${supplier.region}</td>
-                    <td class="px-4 py-3 text-sm"><span class="px-2 py-1 ${statusClass} rounded-full text-xs font-bold">${statusText}</span></td>
-                    <td class="px-4 py-3 text-sm">${supplier.rating}</td>
-                    <td class="px-4 py-3 text-sm">${supplier.deliveryRate}</td>
                     <td class="px-4 py-3 text-sm">
-                        <div class="flex gap-2">
-                            <button class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs font-bold hover:bg-blue-100 transition" onclick="openSupplierDetail('edit', '${supplier.supplierId}')">编辑</button>
-                            <button class="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-bold hover:bg-red-100 transition" onclick="confirmDeleteSupplier('${supplier.name}', '${supplier.supplierId}')">删除</button>
-                        </div>
+                        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <button onclick="editSupplier(${supplier.supplierId})" class="text-blue-600 hover:underline">编辑</button>
+                        <button onclick="deleteSupplier(${supplier.supplierId})" class="text-red-600 hover:underline ml-2">删除</button>
                     </td>
                 `;
                 
@@ -666,125 +611,7 @@
             });
         }
 
-        // 打开供应商表单
-        function openSupplierForm(mode) {
-            if (mode === 'add') {
-                // 清空表单
-                document.getElementById('supplier-name').value = '';
-                document.getElementById('contact-person').value = '';
-                document.getElementById('phone').value = '';
-                document.getElementById('address').value = '';
-                document.getElementById('status').value = '1';
-                document.getElementById('add-supplier-form').dataset.mode = 'add';
-                document.getElementById('add-supplier-form').dataset.supplierId = '';
-                showView('add-supplier');
-            }
-        }
-
-        // 打开供应商详情
-        async function openSupplierDetail(mode, supplierId) {
-            if (mode === 'add') {
-                // 清空表单
-                document.getElementById('supplier-name').value = '';
-                document.getElementById('contact-person').value = '';
-                document.getElementById('phone').value = '';
-                document.getElementById('address').value = '';
-                document.getElementById('status').value = '1';
-                document.getElementById('add-supplier-form').dataset.mode = 'add';
-                document.getElementById('add-supplier-form').dataset.supplierId = '';
-                showView('add-supplier');
-            } else if (mode === 'edit' && supplierId) {
-                try {
-                    const response = await window.wrappedFetch(`http://localhost:8080/api/v1/supp/suppliers/${supplierId}`, {
-                        method: 'GET'
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('Failed to load supplier details');
-                    }
-                    
-                    const supplier = await response.json();
-                    document.getElementById('supplier-name').value = supplier.name;
-                    document.getElementById('contact-person').value = supplier.contact;
-                    document.getElementById('phone').value = supplier.phone;
-                    document.getElementById('address').value = supplier.address;
-                    document.getElementById('status').value = supplier.status;
-                    document.getElementById('add-supplier-form').dataset.mode = 'edit';
-                    document.getElementById('add-supplier-form').dataset.supplierId = supplierId;
-                    showView('add-supplier');
-                } catch (error) {
-                    console.error('Error loading supplier details:', error);
-                    alert('加载供应商详情失败');
-                }
-            }
-        }
-
-        // 确认删除供应商
-        function confirmDeleteSupplier(supplierName, supplierId) {
-            if (confirm(`确定要删除供应商 ${supplierName} 吗？`)) {
-                deleteSupplier(supplierId);
-            }
-        }
-
-        // 删除供应商
-        async function deleteSupplier(supplierId) {
-            try {
-                const response = await window.wrappedFetch(`http://localhost:8080/api/v1/supp/suppliers/${supplierId}`, {
-                    method: 'DELETE'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to delete supplier');
-                }
-                
-                alert('删除成功！');
-                loadSuppliers();
-            } catch (error) {
-                console.error('Error deleting supplier:', error);
-                alert('删除供应商失败');
-            }
-        }
-
-        // 保存供应商
-        async function saveSupplier(form) {
-            const mode = form.dataset.mode;
-            const supplierId = form.dataset.supplierId;
-            
-            const supplierData = {
-                name: document.getElementById('supplier-name').value,
-                contact: document.getElementById('contact-person').value,
-                phone: document.getElementById('phone').value,
-                address: document.getElementById('address').value,
-                status: parseInt(document.getElementById('status').value)
-            };
-            
-            try {
-                let response;
-                if (mode === 'add') {
-                    response = await window.wrappedFetch('http://localhost:8080/api/v1/supp/suppliers', {
-                        method: 'POST',
-                        body: JSON.stringify(supplierData)
-                    });
-                } else if (mode === 'edit' && supplierId) {
-                    response = await window.wrappedFetch(`http://localhost:8080/api/v1/supp/suppliers/${supplierId}`, {
-                        method: 'PUT',
-                        body: JSON.stringify(supplierData)
-                    });
-                }
-                
-                if (!response.ok) {
-                    throw new Error('Failed to save supplier');
-                }
-                
-                alert('保存成功！');
-                showView('suppliers');
-            } catch (error) {
-                console.error('Error saving supplier:', error);
-                alert('保存供应商失败');
-            }
-        }
-
-        // 加载进货单列表
+        // 加载采购订单
         async function loadPurchases() {
             try {
                 const response = await window.wrappedFetch('http://localhost:8080/api/v1/supp/purchases', {
@@ -799,11 +626,11 @@
                 renderPurchaseList(purchases);
             } catch (error) {
                 console.error('Error loading purchases:', error);
-                alert('加载进货单列表失败');
+                alert('加载采购订单失败');
             }
         }
 
-        // 渲染进货单列表
+        // 渲染采购订单列表
         function renderPurchaseList(purchases) {
             const tbody = document.querySelector('#view-purchasing table tbody');
             if (!tbody) return;
@@ -814,43 +641,38 @@
                 const row = document.createElement('tr');
                 row.className = 'border-b border-slate-200';
                 
-                let statusClass, statusText;
-                switch(purchase.purchaseStatus) {
-                    case 'COMPLETED':
-                        statusClass = 'bg-green-50 text-green-600 border border-green-200';
-                        statusText = '已完成';
+                let statusClass = '';
+                let statusText = '';
+                
+                switch (purchase.status) {
+                    case 0:
+                        statusClass = 'bg-gray-50 text-gray-600 border border-gray-200';
+                        statusText = '待处理';
                         break;
-                    case 'PROCESSING':
+                    case 1:
                         statusClass = 'bg-blue-50 text-blue-600 border border-blue-200';
                         statusText = '处理中';
                         break;
-                    case 'PENDING':
-                        statusClass = 'bg-yellow-50 text-yellow-600 border border-yellow-200';
-                        statusText = '待处理';
+                    case 2:
+                        statusClass = 'bg-green-50 text-green-600 border border-green-200';
+                        statusText = '已完成';
                         break;
-                    default:
-                        statusClass = 'bg-slate-50 text-slate-600 border border-slate-200';
-                        statusText = '未知';
+                    case 3:
+                        statusClass = 'bg-red-50 text-red-600 border border-red-200';
+                        statusText = '已取消';
+                        break;
                 }
                 
                 row.innerHTML = `
-                    <td class="px-4 py-3 text-sm">${purchase.purchaseCode}</td>
-                    <td class="px-4 py-3 text-sm">${purchase.supplierName || '未知'}</td>
-                    <td class="px-4 py-3 text-sm">${purchase.items ? purchase.items.length : 0} 件商品</td>
-                    <td class="px-4 py-3 text-sm">${purchase.items ? purchase.items.reduce((sum, item) => sum + item.quantity, 0) : 0}</td>
-                    <td class="px-4 py-3 text-sm">¥${purchase.totalAmount.toFixed(2)}</td>
-                    <td class="px-4 py-3 text-sm">${new Date(purchase.createTime).toLocaleDateString()}</td>
-                    <td class="px-4 py-3 text-sm"><span class="px-2 py-1 ${statusClass} rounded-full text-xs font-bold">${statusText}</span></td>
+                    <td class="px-4 py-3 text-sm">${purchase.purchaseId}</td>
+                    <td class="px-4 py-3 text-sm">${purchase.supplierName}</td>
+                    <td class="px-4 py-3 text-sm">${purchase.purchaseDate}</td>
+                    <td class="px-4 py-3 text-sm font-mono">$${purchase.totalAmount.toFixed(2)}</td>
                     <td class="px-4 py-3 text-sm">
-                        <div class="flex gap-2">
-                            <button class="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs font-bold hover:bg-blue-100 transition" onclick="openPurchaseDetail('${purchase.purchaseId}')">查看</button>
-                            ${(purchase.purchaseStatus === 'PENDING' || purchase.purchaseStatus === 'PROCESSING') ? `
-                                <button class="px-2 py-1 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded text-xs font-bold hover:bg-yellow-100 transition">编辑</button>
-                            ` : ''}
-                            ${purchase.purchaseStatus === 'PENDING' ? `
-                                <button class="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-bold hover:bg-red-100 transition" onclick="confirmDeletePurchase('${purchase.purchaseCode}', '${purchase.purchaseId}')">删除</button>
-                            ` : ''}
-                        </div>
+                        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                        <button onclick="viewPurchaseDetail('${purchase.purchaseId}')" class="text-blue-600 hover:underline">查看</button>
                     </td>
                 `;
                 
@@ -858,65 +680,25 @@
             });
         }
 
-        // 打开进货单详情
-        async function openPurchaseDetail(purchaseId) {
-            try {
-                const response = await window.wrappedFetch(`http://localhost:8080/api/v1/supp/purchases/${purchaseId}`, {
-                    method: 'GET'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load purchase details');
-                }
-                
-                const purchase = await response.json();
-                // 这里可以打开详情弹窗并显示数据
-                console.log('Purchase details:', purchase);
-                alert(`进货单详情：${purchase.purchaseCode}\n供应商：${purchase.supplierName}\n金额：¥${purchase.totalAmount.toFixed(2)}\n状态：${purchase.purchaseStatus}`);
-            } catch (error) {
-                console.error('Error loading purchase details:', error);
-                alert('加载进货单详情失败');
+        // 编辑供应商
+        function editSupplier(supplierId) {
+            // 实现编辑供应商逻辑
+            console.log('Edit supplier:', supplierId);
+        }
+
+        // 删除供应商
+        function deleteSupplier(supplierId) {
+            if (confirm('确定要删除这个供应商吗？')) {
+                // 实现删除供应商逻辑
+                console.log('Delete supplier:', supplierId);
             }
         }
 
-        // 确认删除进货单
-        function confirmDeletePurchase(purchaseCode, purchaseId) {
-            if (confirm(`确定要删除进货单 ${purchaseCode} 吗？`)) {
-                deletePurchase(purchaseId);
-            }
+        // 查看采购详情
+        function viewPurchaseDetail(purchaseId) {
+            // 实现查看采购详情逻辑
+            console.log('View purchase detail:', purchaseId);
         }
-
-        // 删除进货单
-        async function deletePurchase(purchaseId) {
-            try {
-                const response = await window.wrappedFetch(`http://localhost:8080/api/v1/supp/purchases/${purchaseId}`, {
-                    method: 'DELETE'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to delete purchase');
-                }
-                
-                alert('删除成功！');
-                loadPurchases();
-            } catch (error) {
-                console.error('Error deleting purchase:', error);
-                alert('删除进货单失败');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // 表单提交逻辑
-            const form = document.getElementById('add-supplier-form');
-            if(form) {
-                form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const supplierName = document.getElementById('supplier-name').value;
-                    alert('供应商 ' + supplierName + ' 添加成功！');
-                    showView('overview');
-                });
-            }
-        });
     </script>
 </body>
 </html>

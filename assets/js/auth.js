@@ -1018,24 +1018,12 @@ function closePoster() {
 
 // 统一注入公共 UI 组件
 window.injectCommonUI = function() {
-    // 1. Logo 注入
-    const logoContainer = document.getElementById('sidebar-logo-container');
-    if (logoContainer) {
-        logoContainer.innerHTML = LOGO_TEMPLATE;
-    }
-    
-    // 2. 用户信息注入
-    const userContainer = document.getElementById('sidebar-user-container');
-    if (userContainer) {
-        userContainer.innerHTML = USER_SECTION_TEMPLATE;
-    }
-    
-    // 3. 弹窗注入
+    // 1. 弹窗注入
     if (!document.getElementById('subscription-modal')) {
         document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
     }
     
-    // 4. 动态数据绑定
+    // 2. 动态数据绑定
     loadUserInfo();
 };
 
