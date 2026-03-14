@@ -136,17 +136,46 @@
             background-color: #fff;
             box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
         }
+
+        /* 导航状态 */
+        .nav-btn.active-nav {
+            background-color: #1e293b;
+            color: var(--brand-primary);
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        /* 蓝色相关色彩修复 */
+        :root {
+            --brand-primary: #14B8A6;
+            --brand-dark: #0F172A;
+            --slate-bg: #F1F5F9;
+            --text-main: #334155;
+            --risk-high: #F43F5E;
+        }
     </style>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
+            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
+            future: {
+                disableColorOpacityUtilitiesByDefault: true,
+                relativeContentPathsByDefault: true
+            }
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/dist/phosphor-icons.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@latest"></script>
     <!-- 确保 auth.js 加载完成后再执行页面代码 -->
     <script src="../../assets/js/auth.js?version=1.0.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        // 打开会员订阅弹窗
+        // 使用 auth.js 中定义的全局函数
+        // function openSubscriptionModal() {
+        //     // 这里可以添加弹窗逻辑
+        //     console.log('打开会员订阅弹窗');
+        // }
+    </script>
     <script>
         // 全局认证状态变量
         let authChecked = false;
@@ -188,18 +217,21 @@
         
         // 立即执行预检查
         preCheckAuth();
+        
+        // 页面加载时同步用户上下文信息
+        document.addEventListener('DOMContentLoaded', function() {
+            // 注入公共 UI 组件
+            if (window.injectCommonUI) {
+                window.injectCommonUI();
+            }
+        });
     </script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
     <!-- 1. 侧边导航栏 -->
-    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
-        <div class="h-16 flex items-center px-6 border-b border-slate-800">
-            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
-                <i class="ph ph-brain text-xl"></i>
-            </div>
-            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
-        </div>
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
+        <div id="sidebar-logo-container"></div>
         <nav class="flex-1 py-6 px-3 space-y-1">
             <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
@@ -210,17 +242,14 @@
             <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
-            <button onclick="switchTab('rd')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
-            </button>
             <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
+            </button>
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center">
-            <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="user-avatar">Jin</div>
-            <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="user-info">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
-        </div>
+        <div id="sidebar-user-container"></div>
     </aside>
 
     <!-- 2. 主工作区 -->
@@ -578,13 +607,10 @@
                     showView('crm');
                     break;
                 case 'supply':
-                    url = '../supply-chain/supply-chain.html';
+                    url = '../product-center/product-center.html';
                     break;
                 case 'supplier':
                     url = '../supply-chain/supply-chain.html';
-                    break;
-                case 'rd':
-                    url = '../product-center/product-center.html';
                     break;
             }
             if (url) {
@@ -799,74 +825,7 @@
             `;
         }
         
-        // 加载用户信息
-        function loadUserInfo() {
-            console.log('========== 开始加载用户信息 ==========');
-            
-            try {
-                // 检查localStorage是否可用
-                if (!checkLocalStorage()) {
-                    console.log('❌ localStorage不可用，无法加载用户信息');
-                    return;
-                }
-                
-                // 从localStorage获取用户信息
-                const userInfoStr = localStorage.getItem('user_info');
-                const username = localStorage.getItem('username');
-                
-                console.log('获取到的user_info:', userInfoStr);
-                console.log('获取到的username:', username);
-                
-                let userInfo = null;
-                if (userInfoStr) {
-                    try {
-                        userInfo = JSON.parse(userInfoStr);
-                    } catch (parseError) {
-                        console.error('解析user_info失败:', parseError);
-                    }
-                }
-                
-                // 提取用户信息
-                const realUsername = userInfo?.username || userInfo?.userName || username || '未知用户';
-                const role = userInfo?.role || userInfo?.userRole || '用户';
-                
-                console.log('提取到的用户名:', realUsername);
-                console.log('提取到的角色:', role);
-                
-                // 更新用户头像（使用用户名的前两个字符）
-                const userAvatarEl = document.getElementById('user-avatar');
-                if (userAvatarEl) {
-                    const avatarText = realUsername.substring(0, 2).toUpperCase();
-                    userAvatarEl.textContent = avatarText;
-                    console.log('更新了用户头像:', avatarText);
-                }
-                
-                // 更新用户信息
-                const userInfoEl = document.getElementById('user-info');
-                if (userInfoEl) {
-                    const roleText = role === 'ADMIN' ? '管理员' : role;
-                    userInfoEl.textContent = `${realUsername} (${roleText})`;
-                    console.log('更新了用户信息:', `${realUsername} (${roleText})`);
-                }
-                
-                console.log('✅ 用户信息加载完成');
-            } catch (error) {
-                console.error('加载用户信息时发生错误:', error);
-            }
-        }
-        
-        // 检查localStorage是否可用
-        function checkLocalStorage() {
-            try {
-                const test = 'test';
-                localStorage.setItem(test, test);
-                localStorage.removeItem(test);
-                return true;
-            } catch (e) {
-                console.warn('localStorage不可用，请关闭"无痕模式"或"严苛的跟踪保护"');
-                return false;
-            }
-        }
+
 
         // 渲染客户详情
         function renderCustomerDetail(customer) {
@@ -1397,5 +1356,6 @@
             }
         });
     </script>
+
 </body>
 </html>

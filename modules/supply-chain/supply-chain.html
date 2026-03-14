@@ -113,6 +113,22 @@
             box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3) !important;
         }
 
+        /* 导航状态 */
+        .nav-btn.active-nav {
+            background-color: #1e293b;
+            color: var(--brand-primary);
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        /* 蓝色相关色彩修复 */
+        :root {
+            --brand-primary: #14B8A6;
+            --brand-dark: #0F172A;
+            --slate-bg: #F1F5F9;
+            --text-main: #334155;
+            --risk-high: #F43F5E;
+        }
+
         /* --- 手机端 CRM 专用适配样式 --- */
         @media (max-width: 768px) {
             /* 详情页显示时隐藏列表页 */
@@ -132,25 +148,33 @@
         }
     </style>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } } }
+            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
+            future: {
+                disableColorOpacityUtilitiesByDefault: true,
+                relativeContentPathsByDefault: true
+            }
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/dist/phosphor-icons.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+        // 页面加载时注入公共 UI 组件
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.injectCommonUI) {
+                window.injectCommonUI();
+            }
+        });
+    </script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
     <!-- 1. 侧边导航栏 -->
-    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl">
-        <div class="h-16 flex items-center px-6 border-b border-slate-800">
-            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
-                <i class="ph ph-brain text-xl"></i>
-            </div>
-            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
-        </div>
+    <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
+        <div id="sidebar-logo-container"></div>
         <nav class="flex-1 py-6 px-3 space-y-1">
             <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
@@ -161,24 +185,14 @@
             <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
-            <button onclick="switchTab('rd')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产研中心</span>
+            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center">
-                    <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="userInitial">Jin</div>
-                    <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="userInfo">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
-                </div>
-                <button id="logoutBtn" class="text-xs text-slate-400 hover:text-white transition">
-                    <i class="ph ph-sign-out text-lg"></i>
-                </button>
-            </div>
-        </div>
+        <div id="sidebar-user-container"></div>
     </aside>
 
     <!-- 2. 主工作区 -->
@@ -535,13 +549,10 @@
                     url = '../crm/crm.html';
                     break;
                 case 'supply':
-                    url = '../supply-chain/supply-chain.html';
+                    url = '../product-center/product-center.html';
                     break;
                 case 'supplier':
                     url = '../supply-chain/supply-chain.html';
-                    break;
-                case 'rd':
-                    url = '../product-center/product-center.html';
                     break;
             }
             if (url) {
@@ -896,15 +907,15 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             // 表单提交逻辑
-            const forms = document.querySelectorAll('form');
-            forms.forEach(form => {
+            const form = document.getElementById('add-supplier-form');
+            if(form) {
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    if (this.id === 'add-supplier-form') {
-                        saveSupplier(this);
-                    }
+                    const supplierName = document.getElementById('supplier-name').value;
+                    alert('供应商 ' + supplierName + ' 添加成功！');
+                    showView('overview');
                 });
-            });
+            }
         });
     </script>
 </body>

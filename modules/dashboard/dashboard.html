@@ -302,7 +302,7 @@
         }
     </style>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -322,98 +322,34 @@
                         }
                     }
                 }
+            },
+            future: {
+                disableColorOpacityUtilitiesByDefault: true,
+                relativeContentPathsByDefault: true
             }
         }
     </script>
     <script>
-        // 打开会员订阅弹窗
-        function openSubscriptionModal() {
-            document.getElementById('subscription-modal').classList.remove('hidden');
-        }
 
-        // 关闭会员订阅弹窗
-        function closeSubscriptionModal() {
-            document.getElementById('subscription-modal').classList.add('hidden');
-        }
-
-        // 复制推荐码
-        function copyReferralCode() {
-            const referralCode = document.getElementById('referral-code');
-            referralCode.select();
-            document.execCommand('copy');
-            showNotification('推荐码已复制到剪贴板');
-        }
-
-        // 下载海报
-        function downloadPoster() {
-            const posterPreview = document.getElementById('poster-preview');
-            html2canvas(posterPreview).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'trademind-referral-poster.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                showNotification('海报已成功下载');
-            });
-        }
-
-        // 加载用户信息
-        function loadUserInfo() {
-            try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    // 解析JWT token
-                    const tokenParts = token.split('.');
-                    if (tokenParts.length === 3) {
-                        const payload = JSON.parse(atob(tokenParts[1]));
-                        const userName = payload.userName || payload.username || '用户';
-                        const role = payload.role || 'USER';
-                        const userId = payload.userId || '100001';
-
-                        // 生成推荐码
-                        const referralCode = `TM-${userId.padStart(6, '0')}`;
-
-                        // 更新界面元素
-                        document.getElementById('user-name').textContent = `${userName} (${role === 'ADMIN' ? '管理员' : '操作员'})`;
-                        document.getElementById('user-avatar').textContent = userName.charAt(0).toUpperCase();
-                        document.getElementById('mobile-user-avatar').textContent = userName.charAt(0).toUpperCase();
-                        document.getElementById('referral-code').value = referralCode;
-
-                        // 更新二维码
-                        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=https://trademind.ai/reg?ref=${referralCode.replace('-', '')}`;
-                        document.getElementById('qrcode-img').src = qrCodeUrl;
-
-                        // 更新海报上的推荐码
-                        const posterCodeElement = document.querySelector('#poster-preview .bg-brand-50 p');
-                        if (posterCodeElement) {
-                            posterCodeElement.textContent = `推荐码: ${referralCode}`;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('加载用户信息失败:', error);
-            }
-        }
-
-        // 页面加载时加载用户信息
-        document.addEventListener('DOMContentLoaded', function() {
-            loadUserInfo();
-        });
     </script>
     <script src="https://unpkg.com/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="../../assets/js/auth.js"></script>
+    <script>
+        // 页面加载时注入公共 UI 组件
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.injectCommonUI) {
+                window.injectCommonUI();
+            }
+        });
+    </script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
     <!-- 1. 侧边导航栏 -->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
-        <div class="h-16 flex items-center px-6 border-b border-slate-800">
-            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
-                <i class="ph ph-brain text-xl"></i>
-            </div>
-            <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
-        </div>
+        <div id="sidebar-logo-container"></div>
         <nav class="flex-1 py-6 px-3 space-y-1">
             <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
@@ -431,10 +367,7 @@
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer" onclick="openSubscriptionModal()">
-            <div class="w-10 h-10 rounded-full bg-brand-900 text-brand-400 border border-brand-700 flex items-center justify-center text-xs font-bold font-mono" id="user-avatar">Jin</div>
-            <div class="ml-3"><p class="text-xs font-bold text-slate-200" id="user-name">Jin (管理员)</p><p class="text-[10px] text-brand-500 font-bold uppercase">AI 实时监测</p></div>
-        </div>
+        <div id="sidebar-user-container"></div>
     </aside>
 
     <!-- 2. 主工作区 -->
@@ -450,7 +383,7 @@
                 </div>
                 <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
                 <!-- 手机端：顶部 Header 右侧用户信息 -->
-                <div class="flex md:hidden fixed top-4 right-4 z-40 items-center gap-2" onclick="openSubscriptionModal()">
+                <div class="flex md:hidden items-center gap-2 cursor-pointer" onclick="openSubscriptionModal()">
                     <div class="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px]" id="mobile-user-avatar">J</div>
                 </div>
             </div>
@@ -890,60 +823,6 @@
         </div>
     </div>
 
-    <!-- 会员订阅与推荐码弹窗 -->
-    <div id="subscription-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeSubscriptionModal()"></div>
-        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden fade-in modal-content-box text-left">
-            <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="font-black text-slate-800 text-lg tracking-tight">会员订阅与推荐</h3>
-                <button onclick="closeSubscriptionModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
-            </div>
-            <div class="p-8 space-y-6">
-                <!-- 会员等级展示 -->
-                <div class="bg-brand-50 rounded-2xl p-4 border border-brand-100">
-                    <h4 class="text-sm font-bold text-brand-600 mb-2">会员等级</h4>
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-full bg-brand-500 text-white flex items-center justify-center text-sm font-bold">VIP</div>
-                        <div>
-                            <p class="text-sm font-bold text-slate-800">高级会员</p>
-                            <p class="text-xs text-slate-500">享有所需的全部功能</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 用户专属推荐码 -->
-                <div class="space-y-3">
-                    <h4 class="text-sm font-bold text-slate-800">专属推荐码</h4>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="referral-code" value="TM-100001" class="form-input font-mono font-bold text-brand-600" readonly>
-                        <button onclick="copyReferralCode()" class="px-3 py-2 bg-brand-50 text-brand-600 rounded-xl text-xs font-bold hover:bg-brand-100 transition-colors">
-                            <i class="ph ph-copy"></i> 复制
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 分享海报预览区 -->
-                <div class="space-y-3">
-                    <h4 class="text-sm font-bold text-slate-800">分享海报</h4>
-                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-inner" id="poster-preview">
-                        <div class="text-center">
-                            <div class="w-32 h-32 mx-auto bg-brand-50 rounded-2xl flex items-center justify-center mb-4">
-                                <img id="qrcode-img" src="https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=https://trademind.ai/reg?ref=TM12345" alt="二维码" class="w-24 h-24">
-                            </div>
-                            <p class="text-sm font-bold text-slate-800 mb-2">TradeMind 商贸智脑</p>
-                            <p class="text-xs text-slate-500 mb-4">智能经营一体化平台</p>
-                            <div class="bg-brand-50 rounded-lg px-4 py-2 inline-block">
-                                <p class="text-xs font-mono font-bold text-brand-600">推荐码: TM-100001</p>
-                            </div>
-                        </div>
-                    </div>
-                    <button onclick="downloadPoster()" class="btn-brand btn-click-effect w-full py-3 rounded-2xl font-bold shadow-xl">
-                        <i class="ph ph-download"></i> 下载海报
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 进行中业务弹窗 -->
     <div id="order-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
@@ -1141,6 +1020,10 @@
 
         // 页面加载完成后执行
         document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化公共 UI 组件
+            if (window.initCommonUI) {
+                window.initCommonUI();
+            }
             // 初始化 OSS 服务
             await initOSSService();
             // 加载待确认单据
@@ -1149,43 +1032,9 @@
             loadCustomerList();
             // 加载产品列表
             loadProductList();
-            // 加载用户信息
-            loadUserInfo();
         });
 
-        // 加载用户信息
-        function loadUserInfo() {
-            try {
-                const token = localStorage.getItem('token');
-                if (token) {
-                    // 解析 JWT Token
-                    const payload = JSON.parse(atob(token.split('.')[1]));
-                    const userName = payload.userName || '未知用户';
-                    const role = payload.role || 'USER';
-                    
-                    // 映射角色到中文
-                    const roleMap = {
-                        'ADMIN': '管理员',
-                        'USER': '用户'
-                    };
-                    const roleChinese = roleMap[role] || role;
-                    
-                    // 更新 UI
-                    const userAvatar = document.getElementById('user-avatar');
-                    const userNameElement = document.getElementById('user-name');
-                    
-                    if (userAvatar) {
-                        userAvatar.textContent = userName.charAt(0).toUpperCase();
-                    }
-                    
-                    if (userNameElement) {
-                        userNameElement.textContent = `${userName} (${roleChinese})`;
-                    }
-                }
-            } catch (error) {
-                console.error('解析用户信息失败:', error);
-            }
-        }
+
 
         // 加载产品列表
         function loadProductList() {

@@ -1,6 +1,190 @@
 // 配置常量
 const TOKEN_EXPIRE_TIME = 24 * 60 * 60 * 1000; // 24小时
 
+// 公共 HTML 模板常量
+const LOGO_TEMPLATE = '<div class="h-16 flex items-center px-6 border-b border-slate-800">' +
+    '<div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center mr-3 text-white shadow-lg shadow-[#14B8A6]/20">' +
+        '<i class="ph ph-brain text-xl"></i>' +
+    '</div>' +
+    '<span class="text-white text-lg font-bold tracking-wider">TradeMind</span>' +
+'</div>';
+
+const USER_SECTION_TEMPLATE = '<div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">' +
+    '<div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>' +
+    '<div class="ml-3 text-left">' +
+        '<p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>' +
+        '<div class="flex items-center gap-1.5 mt-1">' +
+            '<i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>' +
+            '<span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>' +
+        '</div>' +
+    '</div>' +
+'</div>';
+
+
+const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ================= -->' +
+'<div id="subscription-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 modal-blur">' +
+'    <div class="absolute inset-0" onclick="closeSubscriptionModal()"></div>' +
+'    <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[95vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">' +
+'        <!-- 头部 -->' +
+'        <div class="px-8 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">' +
+'            <div class="flex items-center gap-3">' +
+'                <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#14B8A6]/30">' +
+'                    <i class="ph ph-brain text-xl"></i>' +
+'                </div>' +
+'                <div>' +
+'                    <h2 class="text-sm font-black text-slate-800 tracking-tight">TradeMind 会员中心</h2>' +
+'                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Subscription Protocol v1.9</p>' +
+'                </div>' +
+'            </div>' +
+'            <button onclick="closeSubscriptionModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>' +
+'        </div>' +
+'        <!-- 主体内容：适配单屏展示 -->' +
+'        <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-6">' +
+'            <!-- 订阅等级对比 -->' +
+'            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">' +
+'                <!-- 试用版卡片 -->' +
+'                <div class="p-5 rounded-[2rem] border border-slate-200 bg-slate-50 relative flex flex-col justify-between">' +
+'                    <div>' +
+'                        <span class="absolute top-4 right-8 text-[9px] font-black text-slate-300 uppercase tracking-widest">Current Plan</span>' +
+'                        <h4 class="text-base font-bold text-slate-600">基础试用版</h4>' +
+'                        <div class="mt-4 space-y-2 text-[11px] text-slate-500 border-l-2 border-slate-200 pl-3">' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-user"></i> 1位 管理员账号</p>' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-package"></i> 100个 产品SKU限制</p>' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-users-three"></i> 100个 客户档案上限</p>' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-warehouse"></i> 10个 供应商配额</p>' +
+'                        </div>' +
+'                    </div>' +
+'                    <div class="mt-6 text-2xl font-mono font-black text-slate-400">¥ 0</div>' +
+'                </div>' +
+'                <!-- 普通会员卡片：凸显 888 与 3.7折 -->' +
+'                <div class="p-6 rounded-[2rem] border-4 border-[#14B8A6] bg-white shadow-2xl relative overflow-hidden group flex flex-col justify-between transition-all hover:-translate-y-1">' +
+'                    <!-- 3.7折 飘带 -->' +
+'                    <div class="absolute -right-14 top-8 rotate-45 discount-ribbon text-white text-[11px] font-black py-2 px-16 shadow-lg uppercase tracking-tighter">' +
+'                        首发 3.7 折' +
+'                    </div>' +
+'                    <div>' +
+'                        <p class="text-[9px] font-black text-[#14B8A6] uppercase tracking-widest mb-1">Recommended</p>' +
+'                        <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">普通会员订阅 <i class="ph ph-seal-check-fill text-[#14B8A6]"></i></h4>' +
+'                        <div class="mt-4 space-y-2 text-[11px] text-slate-800 font-bold">' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-users-four text-[#14B8A6] text-base"></i> 5个 不同角色子账号</p>' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-package text-[#14B8A6] text-base"></i> 1000个 产品数量管理</p>' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-address-book text-[#14B8A6] text-base"></i> 1000个 客户管理权限</p>' +
+'                            <p class="flex items-center gap-2"><i class="ph ph-warehouse text-[#14B8A6] text-base"></i> 100个 供应商管理</p>' +
+'                        </div>' +
+'                    </div>' +
+'                    <div class="mt-6 pt-4 border-t border-slate-50 flex items-end justify-between">' +
+'                        <div>' +
+'                            <p class="text-[10px] text-slate-300 line-through font-bold italic">原价 ¥2388</p>' +
+'                            <div class="flex items-baseline gap-1">' +
+'                                <span class="text-5xl font-mono font-black text-[#14B8A6] tracking-tighter">¥888</span>' +
+'                                <span class="text-[10px] font-bold text-slate-400 uppercase">/ Year</span>' +
+'                            </div>' +
+'                        </div>' +
+'                        <button class="mb-1 px-8 py-3 bg-[#14B8A6] text-white rounded-xl font-black text-xs shadow-xl shadow-[#14B8A6]/30 hover:bg-[#0D9488] transition-all active:scale-95">立即升级</button>' +
+'                    </div>' +
+'                </div>' +
+'            </div>' +
+'            <!-- 2. 推荐官计划 (保留金色 UI) -->' +
+'            <div class="gold-referral-card rounded-[2rem] p-5 relative overflow-hidden shadow-sm">' +
+'                <div class="absolute -right-8 -top-8 opacity-10 rotate-12"><i class="ph ph-medal text-[10rem] text-amber-600"></i></div>' +
+'                <div class="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">' +
+'                    <div class="flex items-center gap-4">' +
+'                        <div class="w-12 h-12 bg-white/50 rounded-full flex items-center justify-center text-amber-700 shrink-0 shadow-sm"><i class="ph ph-users-plus text-2xl"></i></div>' +
+'                        <div class="text-left">' +
+'                            <h3 class="text-base font-black text-amber-900 flex items-center gap-2">巨猿推荐官计划 <i class="ph ph-sparkle-fill text-amber-500 text-xs"></i></h3>' +
+'                            <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励。</p>' +
+'                        </div>' +
+'                    </div>' +
+'                    <div class="flex items-center gap-3 w-full md:w-auto">' +
+'                        <div class="bg-white/70 backdrop-blur-sm px-5 py-2 rounded-xl border border-amber-300 text-center flex-1 md:flex-none">' +
+'                            <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>' +
+'                            <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">TM-100001</p>' +
+'                        </div>' +
+'                        <button onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">' +
+'                            <i class="ph ph-image-square-bold text-lg"></i> 生成海报' +
+'                        </button>' +
+'                    </div>' +
+'                </div>' +
+'            </div>' +
+'        </div>' +
+'        <div class="p-4 bg-slate-50 border-t border-slate-100 text-center"><p class="text-[9px] text-slate-300 font-bold uppercase tracking-widest">TradeMind Security & Billing Terminal</p></div>' +
+'    </div>' +
+'</div>' +
+'<!-- ================= [2. 品牌推荐海报弹窗] ================= -->' +
+'<div id="poster-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden p-4">' +
+'    <!-- 遮罩 -->' +
+'    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePoster()"></div>' +
+'    <!-- 弹窗主体 (已移除左侧，仅保留推荐页，宽度调整为 max-w-lg) -->' +
+'    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-[460px] overflow-hidden relative z-10 animate-in fade-in zoom-in duration-300">' +
+'        <!-- 关闭按钮 -->' +
+'        <button onclick="closePoster()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 z-20 transition-colors">' +
+'            <i class="ph ph-x text-2xl font-bold"></i>' +
+'        </button>' +
+'        <!-- 推荐海报区域 -->' +
+'        <div class="w-full bg-white p-6 md:p-8 flex flex-col items-center">' +
+'            <div class="text-center mb-6">' +
+'                <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">专属推荐海报</h3>' +
+'                <p class="text-xs text-slate-500 mt-1">分享您的专属名片，邀好友加入</p>' +
+'            </div>' +
+'            <!-- 海报快照区域 (html2canvas 将截取此处) -->' +
+'            <div id="poster-capture-area" class="w-full p-2 bg-white rounded-[2.8rem] shadow-xl">' +
+'                <!-- 海报主体：内联样式确保渐变生效 -->' +
+'                <div class="w-full aspect-[3/4.2] rounded-[2.2rem] p-8 flex flex-col relative overflow-hidden text-white" style="background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);">' +
+'                    <!-- 装饰光晕 -->' +
+'                    <div class="absolute top-[-10%] right-[-10%] w-40 h-40 bg-white/20 rounded-full blur-[40px]"></div>' +
+'                    <div class="absolute bottom-[20%] left-[-20%] w-32 h-32 bg-teal-300/20 rounded-full blur-[30px]"></div>' +
+'                    <!-- Header -->' +
+'                    <div class="flex items-center gap-2 mb-8 relative z-10">' +
+'                        <div class="bg-white/20 backdrop-blur-md p-1.5 rounded-lg border border-white/30">' +
+'                            <i class="ph ph-intersect text-white text-lg"></i>' +
+'                        </div>' +
+'                        <span class="text-sm font-black tracking-tighter uppercase italic">TradeMind AI</span>' +
+'                    </div>' +
+'                    <!-- Slogan -->' +
+'                    <h4 class="text-2xl font-bold leading-tight mb-8 relative z-10">' +
+'                        重塑商贸效率<br>' +
+'                        <span style="color: #99f6e4;">AI 驱动经营决策</span>' +
+'                    </h4>' +
+'                    <!-- 功能列表 -->' +
+'                    <div class="space-y-3 mb-auto relative z-10">' +
+'                        <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">' +
+'                            <i class="ph ph-sparkle-fill text-yellow-300"></i> 多模态订单自动提取' +
+'                        </div>' +
+'                        <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">' +
+'                            <i class="ph ph-sparkle-fill text-yellow-300"></i> 数字化供应链智能预警' +
+'                        </div>' +
+'                        <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">' +
+'                            <i class="ph ph-sparkle-fill text-yellow-300"></i> 全量多租户经营看板' +
+'                        </div>' +
+'                    </div>' +
+'                    <!-- 推荐码卡片区域 (毛玻璃效果内联实现) -->' +
+'                    <div class="mt-8 p-4 rounded-[1.5rem] flex items-center justify-between relative z-10" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2);">' +
+'                        <div>' +
+'                            <p class="text-[8px] text-white/60 uppercase tracking-widest mb-0.5 font-bold">我的专属推荐码</p>' +
+'                            <p id="poster-ref-code" class="text-xl font-bold text-white" style="font-family: \"Space Grotesk\", monospace; letter-spacing: 0.05em;">TM-100001</p>' +
+'                        </div>' +
+'                        <div class="bg-white p-1.5 rounded-xl shadow-lg">' +
+'                            <!-- 动态二维码 -->' +
+'                            <img id="poster-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-TM100001" class="w-10 h-10" alt="QR">' +
+'                        </div>' +
+'                    </div>' +
+'                </div>' +
+'            </div>' +
+'            <div class="mt-6 text-center">' +
+'                <p class="text-[11px] text-slate-400 leading-relaxed">' +
+'                    邀请好友注册，双方立享 <span class="text-teal-600 font-bold">15天 专业版</span> 奖励' +
+'                </p>' +
+'                <!-- 生成并保存海报按钮 -->' +
+'                <button onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">' +
+'                    <i class="ph ph-download-simple-bold text-lg group-hover:translate-y-0.5 transition-transform"></i>' +
+'                    保存高清海报到相册' +
+'                </button>' +
+'            </div>' +
+'        </div>' +
+'    </div>' +
+'</div>'
+
+
 // MD5加密函数
 function md5Hash(string) {
     // 使用Web Crypto API实现MD5加密
@@ -395,16 +579,7 @@ function showModal(message, isError = false) {
     
     // 添加动画样式
     const style = document.createElement('style');
-    style.textContent = `
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-    `;
+    style.textContent = "@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }";
     document.head.appendChild(style);
     
     // 添加弹窗到页面
@@ -673,7 +848,7 @@ function wrappedFetch(url, options = {}) {
         };
         
         if (token && token.trim() !== '' && token !== 'null' && token !== 'undefined') {
-            headers['Authorization'] = `Bearer ${token}`;
+            headers['Authorization'] = 'Bearer ' + token;
             console.log('✅ 添加了Authorization头:', headers['Authorization']);
             
             // 从localStorage中获取用户信息并添加租户ID和用户ID到请求头
@@ -764,11 +939,249 @@ window.location.replace = function(url) {
     }
 };
 
+// 显示通知
+function showNotification(message) {
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toast-text');
+    if (toast && toastText) {
+        toastText.textContent = message;
+        toast.style.opacity = '1';
+        toast.style.pointerEvents = 'auto';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.pointerEvents = 'none';
+        }, 3000);
+    }
+}
+
+// 打开会员订阅弹窗
+function openSubscriptionModal() {
+    document.getElementById('subscription-modal').classList.remove('hidden');
+}
+
+// 关闭会员订阅弹窗
+function closeSubscriptionModal() {
+    document.getElementById('subscription-modal').classList.add('hidden');
+}
+
+// 复制推荐码
+function copyReferralCode() {
+    const referralCode = document.getElementById('referral-code');
+    referralCode.select();
+    document.execCommand('copy');
+    showNotification('推荐码已复制到剪贴板');
+}
+
+// 下载海报
+function downloadPoster() {
+    const posterPreview = document.getElementById('poster-capture-area');
+    if (posterPreview) {
+        html2canvas(posterPreview, {
+            scale: 2, // 提高清晰度
+            useCORS: true, // 允许加载跨域图片
+            logging: false
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'trademind-referral-poster.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showNotification('海报已成功下载');
+        }).catch(error => {
+            console.error('下载海报失败:', error);
+            showNotification('海报下载失败，请重试');
+        });
+    } else {
+        console.error('未找到海报预览元素');
+        showNotification('海报元素未找到');
+    }
+}
+
+// 打开会员中心弹窗
+function openMemberModal() {
+    document.getElementById('member-modal').classList.remove('hidden');
+}
+
+// 关闭会员中心弹窗
+function closeMemberModal() {
+    document.getElementById('member-modal').classList.add('hidden');
+}
+
+// 显示海报弹窗
+function showPoster() {
+    document.getElementById('poster-modal').classList.remove('hidden');
+}
+
+// 关闭海报弹窗
+function closePoster() {
+    document.getElementById('poster-modal').classList.add('hidden');
+}
+
+// 统一注入公共 UI 组件
+window.injectCommonUI = function() {
+    // 1. Logo 注入
+    const logoContainer = document.getElementById('sidebar-logo-container');
+    if (logoContainer) {
+        logoContainer.innerHTML = LOGO_TEMPLATE;
+    }
+    
+    // 2. 用户信息注入
+    const userContainer = document.getElementById('sidebar-user-container');
+    if (userContainer) {
+        userContainer.innerHTML = USER_SECTION_TEMPLATE;
+    }
+    
+    // 3. 弹窗注入
+    if (!document.getElementById('subscription-modal')) {
+        document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
+    }
+    
+    // 4. 动态数据绑定
+    loadUserInfo();
+};
+
+// 加载用户信息
+function loadUserInfo() {
+    try {
+        const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+        if (token) {
+            // 解析JWT token
+            const tokenParts = token.split('.');
+            if (tokenParts.length === 3) {
+                const payload = JSON.parse(atob(tokenParts[1]));
+                const userName = payload.userName || payload.username || '用户';
+                const role = payload.roleType || payload.role || 'USER';
+                const userId = payload.userId || '100001';
+
+                // 生成推荐码
+                const referralCode = 'TM-' + String(userId).padStart(6, '0');
+
+                // 更新界面元素
+                if (document.getElementById('sidebar-user-name')) {
+                    document.getElementById('sidebar-user-name').textContent = userName + ' (' + (role === 'ADMIN' ? '管理员' : '操作员') + ')';
+                }
+                if (document.getElementById('sidebar-user-avatar')) {
+                    document.getElementById('sidebar-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+                }
+                if (document.getElementById('mobile-user-avatar')) {
+                    document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+                }
+                if (document.getElementById('referral-code')) {
+                    document.getElementById('referral-code').textContent = referralCode;
+                }
+                if (document.getElementById('poster-ref-code')) {
+                    document.getElementById('poster-ref-code').textContent = referralCode;
+                }
+                if (document.getElementById('poster-qr')) {
+                    document.getElementById('poster-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-${referralCode}`;
+                }
+
+                // 更新二维码
+                if (document.getElementById('qrcode-img')) {
+                    const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://trademind.ai/reg?ref=' + referralCode.replace('-', '');
+                    document.getElementById('qrcode-img').src = qrCodeUrl;
+                }
+
+                // 更新海报上的推荐码
+                if (document.getElementById('poster-ref-code')) {
+                    document.getElementById('poster-ref-code').textContent = referralCode;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('加载用户信息失败:', error);
+    }
+}
+
+// 初始化公共 UI 组件 (保持向后兼容)
+window.initCommonUI = function() {
+    // 直接调用 injectCommonUI 函数，确保所有页面使用相同的逻辑
+    window.injectCommonUI();
+};
+
 // 将函数暴露到全局作用域，以便其他页面使用
 window.checkAuth = checkAuth;
 window.logout = logout;
 window.wrappedFetch = wrappedFetch;
 window.getApiUrl = getApiUrl;
+window.checkLocalStorage = checkLocalStorage;
+window.showNotification = showNotification;
+window.openSubscriptionModal = openSubscriptionModal;
+window.closeSubscriptionModal = closeSubscriptionModal;
+window.copyReferralCode = copyReferralCode;
+window.downloadPoster = downloadPoster;
+window.loadUserInfo = loadUserInfo;
+window.openMemberModal = openMemberModal;
+window.closeMemberModal = closeMemberModal;
+window.showPoster = showPoster;
+window.closePoster = closePoster;
+window.initCommonUI = initCommonUI;
+
+// 同步用户上下文信息
+window.syncUserContext = function() {
+    try {
+        // 检查localStorage是否可用
+        if (!checkLocalStorage()) {
+            console.log('❌ localStorage不可用，无法加载用户信息');
+            return;
+        }
+        
+        // 从localStorage获取Token
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+        if (token) {
+            // 解析JWT token
+            const tokenParts = token.split('.');
+            if (tokenParts.length === 3) {
+                const payload = JSON.parse(atob(tokenParts[1]));
+                const userName = payload.userName || payload.username || '用户';
+                const role = payload.roleType || payload.role || 'USER';
+                const userId = payload.userId || '100001';
+                
+                // 生成推荐码
+                const referralCode = 'TM-' + String(userId).padStart(6, '0');
+                
+                // 自动寻找页面中ID为sidebar-user-name和sidebar-user-role的元素并赋值
+                if (document.getElementById('sidebar-user-name')) {
+                    document.getElementById('sidebar-user-name').textContent = userName + ' (' + (role === 'ADMIN' ? '管理员' : '操作员') + ')';
+                }
+                if (document.getElementById('sidebar-user-avatar')) {
+                    document.getElementById('sidebar-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+                }
+                if (document.getElementById('sidebar-user-role')) {
+                    document.getElementById('sidebar-user-role').textContent = role === 'ADMIN' ? '管理员' : '操作员';
+                }
+                
+                // 同时更新其他可能的用户信息元素
+                if (document.getElementById('user-name')) {
+                    document.getElementById('user-name').textContent = userName + ' (' + (role === 'ADMIN' ? '管理员' : '操作员') + ')';
+                }
+                if (document.getElementById('user-avatar')) {
+                    document.getElementById('user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+                }
+                if (document.getElementById('mobile-user-avatar')) {
+                    document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+                }
+                
+                // 更新弹窗内的推荐码和用户名
+                if (document.getElementById('referral-code')) {
+                    document.getElementById('referral-code').textContent = referralCode;
+                }
+                if (document.getElementById('poster-ref-code')) {
+                    document.getElementById('poster-ref-code').textContent = referralCode;
+                }
+                if (document.getElementById('qrcode-img')) {
+                    const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://trademind.ai/reg?ref=' + referralCode.replace('-', '');
+                    document.getElementById('qrcode-img').src = qrCodeUrl;
+                }
+                if (document.getElementById('poster-qr')) {
+                    const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-' + referralCode.replace('-', '');
+                    document.getElementById('poster-qr').src = qrCodeUrl;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('加载用户信息失败:', error);
+    }
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     const togglePassword = document.getElementById('togglePassword');
@@ -808,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const encryptedPassword = await md5Hash(password);
                 
                 const gatewayUrl = getApiUrl('gateway');
-                const url = `${gatewayUrl}/api/v1/tenant/login`;
+                const url = gatewayUrl + '/api/v1/tenant/login';
                 
                 // 发送MD5加密后的密码
                 const loginData = {
@@ -908,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const timer = setInterval(function() {
                     countdown--;
-                    sendCodeBtn.textContent = `${countdown}秒后重发`;
+                    sendCodeBtn.textContent = countdown + '秒后重发';
                     
                     if (countdown <= 0) {
                         clearInterval(timer);
@@ -1009,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const encryptedPassword = await md5Hash(password);
                 
                 const gatewayUrl = getApiUrl('gateway');
-                const url = `${gatewayUrl}/api/v1/tenant/register`;
+                const url = gatewayUrl + '/api/v1/tenant/register';
                 
                 // 构建注册数据
                 const registerData = {
