@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <script src="../../assets/js/env-config.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 产品中心</title>
@@ -507,7 +508,7 @@
                 async function loadProducts() {
                     try {
                         // 调用后端接口，不需要传递X-Tenant-Id，因为后端会从UserContext中获取
-                        const response = await window.wrappedFetch('http://localhost:8080/api/v1/rd/products', {
+                        const response = await window.wrappedFetch('/api/v1/rd/products', {
                             method: 'GET'
                         });
                         
@@ -550,7 +551,7 @@
             }
             
             // 调用后端接口获取进货建议
-            const response = await window.wrappedFetch('http://localhost:8080/api/v1/rd/products/restock/suggestions', {
+            const response = await window.wrappedFetch('/api/v1/rd/products/restock/suggestions', {
                 method: 'GET'
             });
             
@@ -730,7 +731,7 @@
                     }
                     
                     // 调用后端搜索接口
-                    window.wrappedFetch(`http://localhost:8080/api/v1/rd/products?search=${encodeURIComponent(searchTerm)}`, {
+                    window.wrappedFetch(`/api/v1/rd/products?search=${encodeURIComponent(searchTerm)}`, {
                         method: 'GET'
                     })
                     .then(response => {
@@ -784,7 +785,7 @@
                 // 加载供应商列表
                 async function loadSuppliers() {
                     try {
-                        const response = await window.wrappedFetch('http://localhost:8080/api/v1/supp/suppliers', {
+                        const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
                             method: 'GET'
                         });
                         
@@ -870,7 +871,7 @@
                             document.getElementById('sales_unit').value = product.sales_unit || product.base_unit;
                         } else {
                             // 发起产品详情请求
-                            window.wrappedFetch(`http://localhost:8080/api/v1/rd/products/${productId}`, {
+                            window.wrappedFetch(`/api/v1/rd/products/${productId}`, {
                                 method: 'GET'
                             })
                             .then(response => {
@@ -911,7 +912,7 @@
 
                         // 发起单位换算请求（如果本地没有数据）
                         if (!product) {
-                            window.wrappedFetch(`http://localhost:8080/api/v1/rd/products/${productId}/units`, {
+                            window.wrappedFetch(`/api/v1/rd/products/${productId}/units`, {
                                 method: 'GET'
                             })
                             .then(response => {
@@ -1022,7 +1023,7 @@
                 function confirmDelete() {
                     if (currentDeleteProductId) {
                         // 发起删除请求
-                        window.wrappedFetch(`http://localhost:8080/api/v1/rd/products/${currentDeleteProductId}`, {
+                        window.wrappedFetch(`/api/v1/rd/products/${currentDeleteProductId}`, {
                             method: 'DELETE'
                         })
                         .then(response => {
@@ -1076,7 +1077,7 @@
                         };
 
                         // 发起保存请求
-                        const response = await window.wrappedFetch('http://localhost:8080/api/v1/rd/products/save', {
+                        const response = await window.wrappedFetch('/api/v1/rd/products/save', {
                             method: 'POST',
                             body: JSON.stringify(productWithUnitsDTO)
                         });

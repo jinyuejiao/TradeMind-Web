@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = (window.TM_API_BASE || '') + '/api';
 let selectedFile = null;
 let analyzedData = null;
 

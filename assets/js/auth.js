@@ -589,8 +589,8 @@ function showModal(message, isError = false) {
 
 // 从环境变量读取配置的工具函数
 function getApiUrl(serviceName) {
-    // 所有服务都通过网关访问
-    return 'http://localhost:8080';
+    // 所有服务都通过网关访问，使用环境配置
+    return window.TM_API_BASE || '';
 }
 
 // 获取登录页面路径
@@ -823,8 +823,12 @@ function checkAuth() {
 // 包装fetch函数，自动添加Authorization头并处理401响应
 function wrappedFetch(url, options = {}) {
     console.log('========== 开始发送请求 ==========');
-    console.log('请求URL:', url);
+    console.log('原始请求URL:', url);
     console.log('请求选项:', options);
+    
+    // 核心修复：自动识别并拼接基准路径
+    const finalUrl = url.startsWith('http') ? url : (window.TM_API_BASE + url);
+    console.log('最终请求URL:', finalUrl);
     
     // 首先检查localStorage是否可用
     console.log('步骤1: 检查localStorage是否可用');
@@ -877,7 +881,7 @@ function wrappedFetch(url, options = {}) {
         
         // 发送请求
         console.log('步骤4: 发送请求');
-        return fetch(url, {
+        return fetch(finalUrl, {
             ...options,
             headers
         }).then(response => {

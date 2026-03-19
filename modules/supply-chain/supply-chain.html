@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <script src="../../assets/js/env-config.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
@@ -562,7 +563,7 @@
         // 加载供应商列表
         async function loadSuppliers() {
             try {
-                const response = await window.wrappedFetch('http://localhost:8080/api/v1/supp/suppliers', {
+                const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
                     method: 'GET'
                 });
                 
@@ -614,7 +615,7 @@
         // 加载采购订单
         async function loadPurchases() {
             try {
-                const response = await window.wrappedFetch('http://localhost:8080/api/v1/supp/purchases', {
+                const response = await window.wrappedFetch('/api/v1/supp/purchases', {
                     method: 'GET'
                 });
                 

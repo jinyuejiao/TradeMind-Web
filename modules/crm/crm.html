@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <script src="../../assets/js/env-config.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
@@ -1057,7 +1058,7 @@
 
         // 加载客户订单，渲染时间轴
         async function loadCustomerOrders(custId) {
-            const url = `http://localhost:8080/api/v1/rd/orders/customer/${custId}`;
+            const url = `/api/v1/rd/orders/customer/${custId}`;
             
             try {
                 const response = await wrappedFetch(url, {
