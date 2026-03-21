@@ -130,6 +130,66 @@
             --risk-high: #F43F5E;
         }
 
+        /* 表单输入框样式 */
+        .form-input {
+            width: 100%;
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+            color: #334155;
+            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+        }
+
+            .form-input:focus {
+                border-color: #14B8A6;
+                background-color: #fff;
+                box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+            }
+
+        /* 保存按钮样式 */
+        .btn-save-primary {
+            background-color: #0F172A !important;
+            color: white !important;
+            font-weight: 700 !important;
+            font-size: 12px !important;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+            .btn-save-primary:hover {
+                filter: brightness(1.1);
+            }
+
+            .btn-save-primary:active {
+                transform: scale(0.98);
+            }
+
+        /* 新增按钮样式 */
+        .btn-add-supplier {
+            background-color: #14B8A6 !important;
+            color: white !important;
+            padding: 10px 16px !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+            .btn-add-supplier:hover {
+                background-color: #0D9488 !important;
+            }
+
+            .btn-add-supplier:active {
+                transform: scale(0.95);
+            }
+
         /* --- 手机端 CRM 专用适配样式 --- */
         @media (max-width: 768px) {
             /* 详情页显示时隐藏列表页 */
@@ -145,6 +205,11 @@
             .modal-content-box {
                 height: 92vh !important;
                 border-radius: 1.5rem 1.5rem 0 0 !important;
+            }
+
+            /* 手机端表单布局 */
+            .purchase-form-grid {
+                grid-template-columns: 1fr !important;
             }
         }
     </style>
@@ -236,19 +301,19 @@
                 <!-- 顶部视图切换药丸 -->
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex bg-white p-1 rounded-xl border border-slate-200 w-fit">
-                        <button onclick="switchSupplierView('map')" id="btn-sup-map" class="view-toggle-btn active px-5 py-1.5 rounded-lg text-xs font-bold">风险地图看板</button>
-                        <button onclick="switchSupplierView('list')" id="btn-sup-list" class="view-toggle-btn px-5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600">进货单据明细</button>
+                        <button onclick="switchSupplierView('list')" id="btn-sup-list" class="view-toggle-btn active px-5 py-1.5 rounded-lg text-xs font-bold">进货单据明细</button>
+                        <button onclick="switchSupplierView('map')" id="btn-sup-map" class="view-toggle-btn px-5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600">风险地图看板</button>
                     </div>
 
                     <!-- 仅在列表模式下显示的统计卡 -->
-                    <div id="sup-stat-chips" class="hidden flex gap-3 overflow-x-auto no-scrollbar">
+                    <div id="sup-stat-chips" class="flex gap-3 overflow-x-auto no-scrollbar">
                         <div class="px-3 py-1.5 bg-white rounded-lg border border-slate-200 text-[10px] font-bold"><span class="text-slate-400 uppercase">本月进货:</span> <span class="text-slate-800 ml-1">$128,400</span></div>
                         <div class="px-3 py-1.5 bg-white rounded-lg border border-slate-200 text-[10px] font-bold"><span class="text-slate-400 uppercase">待收货:</span> <span class="text-orange-500 ml-1">3 笔</span></div>
                     </div>
                 </div>
 
                 <!-- 场景 A: 风险地图 (原有核心功能) -->
-                <div id="sup-map-view" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div id="sup-map-view" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[500px] lg:h-auto overflow-hidden">
                         <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">供应商地理风控地图</h3>
@@ -310,69 +375,18 @@
                     </div>
                 </div>
 
-                <!-- 场景 B: 进货单据列表 (默认隐藏) -->
-                <div id="sup-list-view" class="hidden fade-in space-y-4">
+                <!-- 场景 B: 进货单据列表 (默认显示) -->
+                <div id="sup-list-view" class="fade-in space-y-4">
                     <!-- 单据列表卡片 -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单据明细</h3>
-                            <button class="text-xs text-brand-600 font-bold flex items-center gap-1.5 hover:underline">
+                            <button onclick="openNewPurchaseModal()" class="text-xs text-brand-600 font-bold flex items-center gap-1.5 hover:underline">
                                 <i class="ph ph-plus-circle text-sm"></i> 新增进货单
                             </button>
                         </div>
                         <div class="p-4">
                             <div class="space-y-3">
-                                <!-- 单据 1 -->
-                                <div class="border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer" onclick="openPurchaseDetail('PO-2026-001')">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p class="text-sm font-bold text-slate-800">PO-2026-001</p>
-                                            <p class="text-[10px] text-slate-400">深圳照明科技 | 2026-01-10</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm font-mono font-bold text-slate-900">$2,300.00</p>
-                                            <span class="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">已完成</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between items-center text-[10px] text-slate-500">
-                                        <span>1000套 LED 灯</span>
-                                        <span>交付周期: 5天</span>
-                                    </div>
-                                </div>
-                                <!-- 单据 2 -->
-                                <div class="border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer" onclick="openPurchaseDetail('PO-2026-002')">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p class="text-sm font-bold text-slate-800">PO-2026-002</p>
-                                            <p class="text-[10px] text-slate-400">东莞包装制品 | 2026-01-08</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm font-mono font-bold text-slate-900">$5,200.00</p>
-                                            <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">处理中</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between items-center text-[10px] text-slate-500">
-                                        <span>5000个 包装盒</span>
-                                        <span>交付周期: 7天</span>
-                                    </div>
-                                </div>
-                                <!-- 单据 3 -->
-                                <div class="border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer" onclick="openPurchaseDetail('PO-2026-003')">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p class="text-sm font-bold text-slate-800">PO-2026-003</p>
-                                            <p class="text-[10px] text-slate-400">广州电子元件 | 2026-01-05</p>
-                                        </div>
-                                        <div class="text-right">
-                                            <p class="text-sm font-mono font-bold text-slate-900">$5,000.00</p>
-                                            <span class="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">延期</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between items-center text-[10px] text-slate-500">
-                                        <span>2000个 电子元件</span>
-                                        <span>交付周期: 10天</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -380,6 +394,137 @@
             </div>
         </div>
     </main>
+
+    <!-- 新增进货单弹窗 -->
+    <div id="new-purchase-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeNewPurchaseModal()"></div>
+        <div class="relative bg-white w-full max-w-4xl h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2">新增进货单</h2>
+                <button onclick="closeNewPurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
+                <!-- 基础信息 -->
+                <div class="purchase-form-grid grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div class="md:col-span-5 space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">供应商</label>
+                        <div class="flex gap-2 items-center">
+                            <select id="new-purchase-supplier" class="form-input flex-1">
+                                <option value="">--- 请选择供应商 ---</option>
+                            </select>
+                            <button onclick="openNewSupplierModal()" class="btn-add-supplier flex items-center justify-center">
+                                <i class="ph ph-plus text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="md:col-span-3 space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">进货状态</label>
+                        <select id="new-purchase-status" class="form-input">
+                            <option value="">--- 请选择状态 ---</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-4 space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">进货日期</label>
+                        <input type="date" id="new-purchase-date" class="form-input">
+                    </div>
+                </div>
+
+                <!-- 商品列表 -->
+                <div class="space-y-4">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
+                        <span>进货商品明细</span>
+                        <button onclick="addPurchaseItemRow()" class="text-brand-600 hover:underline">+ 添加商品行</button>
+                    </h3>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                        <table class="w-full text-xs" id="new-purchase-items-table">
+                            <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">产品</th>
+                                    <th class="px-4 py-3 text-center w-24">数量</th>
+                                    <th class="px-4 py-3 text-center w-28">进货单价</th>
+                                    <th class="px-4 py-3 text-center w-24">单位</th>
+                                    <th class="px-4 py-3 text-center w-28">批次号</th>
+                                    <th class="px-4 py-3 text-right">小计</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <select class="form-input product-select" onchange="onProductSelect(this)">
+                                            <option value="">--- 选择产品 ---</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="1" min="1" oninput="calculatePurchaseTotal()"></td>
+                                    <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="calculatePurchaseTotal()"></td>
+                                    <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
+                                    <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号" onfocus="if(this.value==='批次号')this.value=''"></td>
+                                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 自动更新的总金额展示区 -->
+                <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
+                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">进货单总计</p>
+                        <p class="text-[9px] text-slate-500 mt-1 italic">请核对商品明细</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-3xl font-black font-mono text-brand-500" id="new-purchase-grand-total">¥0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">
+                <button onclick="closeNewPurchaseModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
+                <button onclick="saveNewPurchase()" class="flex-[2] py-3 rounded-2xl btn-save-primary shadow-xl flex items-center justify-center gap-2">
+                    <i class="ph ph-floppy-disk"></i>
+                    保存进货单据
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增供应商弹窗 -->
+    <div id="new-supplier-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeNewSupplierModal()"></div>
+        <div class="relative bg-white w-full max-w-lg h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2">新增供应商</h2>
+                <button onclick="closeNewSupplierModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar space-y-6">
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">供应商名称</label>
+                        <input type="text" id="new-supplier-name" class="form-input font-bold text-slate-700" placeholder="请输入供应商名称">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">联系人</label>
+                        <input type="text" id="new-supplier-contact" class="form-input font-bold text-slate-700" placeholder="请输入联系人">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">联系电话</label>
+                        <input type="text" id="new-supplier-phone" class="form-input font-bold text-slate-700" placeholder="请输入联系电话">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">地址</label>
+                        <textarea id="new-supplier-address" class="form-input font-bold text-slate-700 resize-none" rows="3" placeholder="请输入地址"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">
+                <button onclick="closeNewSupplierModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
+                <button onclick="saveNewSupplier()" class="flex-[2] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl active:scale-95 transition-all">保存供应商</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 进货详情弹窗 -->
     <div id="purchase-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
@@ -483,7 +628,16 @@
     </div>
 
     <script>
-        // 导航切换
+        let currentPurchase = null;
+        let purchaseStatusDict = [];
+        let suppliers = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPurchaseStatusDict();
+            loadSuppliers();
+            loadPurchases();
+        });
+
         function switchTab(tabName) {
             let url = '';
             switch(tabName) {
@@ -508,25 +662,6 @@
             }
         }
 
-        // 显示不同的视图
-        function showView(viewName) {
-            // 隐藏所有视图
-            document.querySelectorAll('.view-section').forEach(view => {
-                view.style.display = 'none';
-            });
-            
-            // 显示选中的视图
-            document.getElementById(`view-${viewName}`).style.display = 'block';
-            
-            // 加载对应数据
-            if (viewName === 'suppliers') {
-                loadSuppliers();
-            } else if (viewName === 'purchasing') {
-                loadPurchases();
-            }
-        }
-
-        // 切换供应商视图
         function switchSupplierView(viewType) {
             if (viewType === 'map') {
                 document.getElementById('sup-map-view').classList.remove('hidden');
@@ -547,72 +682,73 @@
             }
         }
 
-        // 打开采购详情
-        function openPurchaseDetail(purchaseId) {
-            document.getElementById('detail-purchase-id').textContent = purchaseId;
-            document.getElementById('purchase-detail-modal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+        async function loadPurchaseStatusDict() {
+            try {
+                const response = await window.wrappedFetch('/api/v1/supp/dictionaries/D012', {
+                    method: 'GET'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        purchaseStatusDict = result.data;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading status dictionary:', error);
+            }
         }
 
-        // 关闭采购详情
-        function closePurchaseDetail() {
-            document.getElementById('purchase-detail-modal').classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-
-        // 加载供应商列表
         async function loadSuppliers() {
             try {
                 const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
                     method: 'GET'
                 });
                 
-                if (!response.ok) {
-                    throw new Error('Failed to load suppliers');
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        suppliers = result.data;
+                    }
                 }
-                
-                const suppliers = await response.json();
-                renderSupplierList(suppliers);
             } catch (error) {
                 console.error('Error loading suppliers:', error);
-                alert('加载供应商列表失败');
             }
         }
 
-        // 渲染供应商列表
-        function renderSupplierList(suppliers) {
-            const tbody = document.querySelector('#view-suppliers table tbody');
-            if (!tbody) return;
+        function getStatusStyle(status) {
+            let statusClass = '';
+            let statusText = status || '未知';
             
-            tbody.innerHTML = '';
+            const dictItem = purchaseStatusDict.find(d => d.dictCode === status || d.dictName === status);
+            if (dictItem) {
+                statusText = dictItem.dictName;
+            }
             
-            suppliers.forEach(supplier => {
-                const row = document.createElement('tr');
-                row.className = 'border-b border-slate-200';
-                
-                const statusClass = supplier.status === 1 ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200';
-                const statusText = supplier.status === 1 ? '启用' : '禁用';
-                
-                row.innerHTML = `
-                    <td class="px-4 py-3 text-sm">${supplier.supplierId}</td>
-                    <td class="px-4 py-3 text-sm">${supplier.name}</td>
-                    <td class="px-4 py-3 text-sm">${supplier.contact}</td>
-                    <td class="px-4 py-3 text-sm">${supplier.phone}</td>
-                    <td class="px-4 py-3 text-sm">${supplier.region}</td>
-                    <td class="px-4 py-3 text-sm">
-                        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${statusText}</span>
-                    </td>
-                    <td class="px-4 py-3 text-sm">
-                        <button onclick="editSupplier(${supplier.supplierId})" class="text-blue-600 hover:underline">编辑</button>
-                        <button onclick="deleteSupplier(${supplier.supplierId})" class="text-red-600 hover:underline ml-2">删除</button>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
+            switch(status) {
+                case '草稿':
+                case 'DRAFT':
+                    statusClass = 'bg-gray-50 text-gray-600 border border-gray-200';
+                    break;
+                case '已入库':
+                case 'RECEIVED':
+                    statusClass = 'bg-teal-50 text-teal-600 border border-teal-200';
+                    break;
+                case '已结清':
+                case 'SETTLED':
+                    statusClass = 'bg-green-50 text-green-600 border border-green-200';
+                    break;
+                case '已退货':
+                case 'RETURNED':
+                    statusClass = 'bg-red-50 text-red-600 border border-red-200';
+                    break;
+                default:
+                    statusClass = 'bg-gray-50 text-gray-600 border border-gray-200';
+            }
+            
+            return { class: statusClass, text: statusText };
         }
 
-        // 加载采购订单
         async function loadPurchases() {
             try {
                 const response = await window.wrappedFetch('/api/v1/supp/purchases', {
@@ -623,82 +759,505 @@
                     throw new Error('Failed to load purchases');
                 }
                 
-                const purchases = await response.json();
-                renderPurchaseList(purchases);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    renderPurchaseList(result.data);
+                }
             } catch (error) {
                 console.error('Error loading purchases:', error);
-                alert('加载采购订单失败');
             }
         }
 
-        // 渲染采购订单列表
         function renderPurchaseList(purchases) {
-            const tbody = document.querySelector('#view-purchasing table tbody');
-            if (!tbody) return;
+            const container = document.querySelector('#sup-list-view .space-y-3');
+            if (!container) return;
             
-            tbody.innerHTML = '';
+            container.innerHTML = '';
             
             purchases.forEach(purchase => {
-                const row = document.createElement('tr');
-                row.className = 'border-b border-slate-200';
+                const statusStyle = getStatusStyle(purchase.purchaseStatus);
+                const supplierName = purchase.supplierName || '未知供应商';
                 
-                let statusClass = '';
-                let statusText = '';
+                const div = document.createElement('div');
+                div.className = 'border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer';
+                div.onclick = () => openPurchaseDetail(purchase);
                 
-                switch (purchase.status) {
-                    case 0:
-                        statusClass = 'bg-gray-50 text-gray-600 border border-gray-200';
-                        statusText = '待处理';
-                        break;
-                    case 1:
-                        statusClass = 'bg-blue-50 text-blue-600 border border-blue-200';
-                        statusText = '处理中';
-                        break;
-                    case 2:
-                        statusClass = 'bg-green-50 text-green-600 border border-green-200';
-                        statusText = '已完成';
-                        break;
-                    case 3:
-                        statusClass = 'bg-red-50 text-red-600 border border-red-200';
-                        statusText = '已取消';
-                        break;
-                }
-                
-                row.innerHTML = `
-                    <td class="px-4 py-3 text-sm">${purchase.purchaseId}</td>
-                    <td class="px-4 py-3 text-sm">${purchase.supplierName}</td>
-                    <td class="px-4 py-3 text-sm">${purchase.purchaseDate}</td>
-                    <td class="px-4 py-3 text-sm font-mono">$${purchase.totalAmount.toFixed(2)}</td>
-                    <td class="px-4 py-3 text-sm">
-                        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusClass}">${statusText}</span>
-                    </td>
-                    <td class="px-4 py-3 text-sm">
-                        <button onclick="viewPurchaseDetail('${purchase.purchaseId}')" class="text-blue-600 hover:underline">查看</button>
-                    </td>
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">${purchase.purchaseCode || 'PO-' + purchase.purchaseId}</p>
+                            <p class="text-[10px] text-slate-400">${supplierName} | ${purchase.purchaseDate || ''}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-mono font-bold text-slate-900">¥${(purchase.totalAmount || 0).toFixed(2)}</p>
+                            <span class="text-[10px] ${statusStyle.class} px-2 py-0.5 rounded-full font-bold">${statusStyle.text}</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] text-slate-500">
+                        <span>${purchase.items ? purchase.items.length + ' 项商品' : ''}</span>
+                        <div class="flex gap-2">
+                            <button onclick="event.stopPropagation(); deletePurchase(${purchase.purchaseId}, '${purchase.purchaseStatus}')" class="text-red-500 hover:text-red-700">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 `;
                 
-                tbody.appendChild(row);
+                container.appendChild(div);
             });
         }
 
-        // 编辑供应商
-        function editSupplier(supplierId) {
-            // 实现编辑供应商逻辑
-            console.log('Edit supplier:', supplierId);
-        }
-
-        // 删除供应商
-        function deleteSupplier(supplierId) {
-            if (confirm('确定要删除这个供应商吗？')) {
-                // 实现删除供应商逻辑
-                console.log('Delete supplier:', supplierId);
+        async function openPurchaseDetail(purchase) {
+            currentPurchase = purchase;
+            
+            try {
+                const response = await window.wrappedFetch(`/api/v1/supp/purchases/${purchase.purchaseId}/items`, {
+                    method: 'GET'
+                });
+                
+                let items = [];
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        items = result.data;
+                    }
+                }
+                
+                renderPurchaseDetailModal(purchase, items);
+                document.getElementById('purchase-detail-modal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } catch (error) {
+                console.error('Error loading purchase items:', error);
             }
         }
 
-        // 查看采购详情
-        function viewPurchaseDetail(purchaseId) {
-            // 实现查看采购详情逻辑
-            console.log('View purchase detail:', purchaseId);
+        function renderPurchaseDetailModal(purchase, items) {
+            const statusStyle = getStatusStyle(purchase.purchaseStatus);
+            
+            document.getElementById('detail-purchase-id').textContent = purchase.purchaseCode || 'PO-' + purchase.purchaseId;
+            
+            const itemsContainer = document.querySelector('#purchase-detail-modal tbody');
+            if (itemsContainer) {
+                itemsContainer.innerHTML = '';
+                
+                items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-slate-200';
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 text-sm">${item.productName || ''}</td>
+                        <td class="px-6 py-4 text-center text-sm">${item.quantity || 0}</td>
+                        <td class="px-6 py-4 text-right font-mono text-sm">¥${(item.unitPrice || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4 text-right font-mono font-black text-slate-900">¥${(item.subtotal || 0).toFixed(2)}</td>
+                    `;
+                    itemsContainer.appendChild(tr);
+                });
+            }
+            
+            const totalElement = document.querySelector('#purchase-detail-modal .text-2xl');
+            if (totalElement) {
+                totalElement.textContent = '¥' + (purchase.totalAmount || 0).toFixed(2);
+            }
+        }
+
+        function closePurchaseDetail() {
+            document.getElementById('purchase-detail-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            currentPurchase = null;
+        }
+
+        function deletePurchase(purchaseId, currentStatus) {
+            let message = '确定要删除这个进货单吗？';
+            if (currentStatus === '已入库') {
+                message = '删除已入库单据将同步扣减实时库存，是否继续？';
+            }
+            
+            if (confirm(message)) {
+                performDeletePurchase(purchaseId);
+            }
+        }
+
+        async function performDeletePurchase(purchaseId) {
+            try {
+                const response = await window.wrappedFetch(`/api/v1/supp/purchases/${purchaseId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('删除成功');
+                    loadPurchases();
+                } else {
+                    alert('删除失败');
+                }
+            } catch (error) {
+                console.error('Error deleting purchase:', error);
+                alert('删除失败');
+            }
+        }
+
+        let products = [];
+
+        function openNewPurchaseModal() {
+            document.getElementById('new-purchase-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('new-purchase-date').value = today;
+            
+            loadSuppliersToDropdown();
+            loadPurchaseStatusDict();
+            loadProductsToDropdown();
+            calculatePurchaseTotal();
+        }
+
+        function closeNewPurchaseModal() {
+            document.getElementById('new-purchase-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            resetNewPurchaseModal();
+        }
+
+        function resetNewPurchaseModal() {
+            document.getElementById('new-purchase-supplier').value = '';
+            document.getElementById('new-purchase-status').value = '';
+            const tbody = document.querySelector('#new-purchase-items-table tbody');
+            tbody.innerHTML = `
+                <tr>
+                    <td class="px-4 py-3">
+                        <select class="form-input product-select" onchange="onProductSelect(this)">
+                            <option value="">--- 选择产品 ---</option>
+                        </select>
+                    </td>
+                    <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="1" min="1" oninput="calculatePurchaseTotal()"></td>
+                    <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="calculatePurchaseTotal()"></td>
+                    <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
+                    <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号" onfocus="if(this.value==='批次号')this.value=''"></td>
+                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
+                </tr>
+            `;
+            document.getElementById('new-purchase-grand-total').textContent = '¥0.00';
+        }
+
+        async function loadPurchaseStatusDict() {
+            try {
+                const response = await window.wrappedFetch('/api/v1/supp/dictionaries/D012', { method: 'GET' });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const select = document.getElementById('new-purchase-status');
+                        select.innerHTML = '<option value="">--- 请选择状态 ---</option>';
+                        result.data.forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = item.dictCode;
+                            option.textContent = item.dictName;
+                            select.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading purchase status dictionary:', error);
+            }
+        }
+
+        async function loadSuppliersToDropdown() {
+            try {
+                const response = await window.wrappedFetch('/api/v1/supp/suppliers', { method: 'GET' });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const select = document.getElementById('new-purchase-supplier');
+                        select.innerHTML = '<option value="">--- 请选择供应商 ---</option>';
+                        result.data.forEach(supplier => {
+                            const option = document.createElement('option');
+                            option.value = supplier.supplierId;
+                            option.textContent = supplier.supplierName || supplier.name;
+                            select.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading suppliers:', error);
+            }
+        }
+
+        async function loadProductsToDropdown() {
+            try {
+                const response = await window.wrappedFetch('/api/v1/rd/products', { method: 'GET' });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        products = result.data;
+                        const selects = document.querySelectorAll('#new-purchase-items-table .product-select');
+                        selects.forEach(select => {
+                            const currentValue = select.value;
+                            select.innerHTML = '<option value="">--- 选择产品 ---</option>';
+                            products.forEach(product => {
+                                const option = document.createElement('option');
+                                option.value = product.productId;
+                                option.textContent = product.productName || product.name;
+                                option.dataset.unit = product.purchaseUnit || product.unit || '';
+                                option.dataset.price = product.purchasePrice || product.price || 0;
+                                select.appendChild(option);
+                            });
+                            if (currentValue) {
+                                select.value = currentValue;
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+            }
+        }
+
+        async function onProductSelect(selectElement) {
+            const row = selectElement.closest('tr');
+            const productId = selectElement.value;
+            const unitSelect = row.querySelector('.unit-select');
+            
+            if (!productId) {
+                unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
+                row.querySelector('.price-input').value = 0;
+                calculatePurchaseTotal();
+                return;
+            }
+            
+            try {
+                const response = await window.wrappedFetch(`/api/v1/rd/products/${productId}`, { method: 'GET' });
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const product = result.data;
+                        
+                        row.querySelector('.price-input').value = product.purchasePrice || product.price || 0;
+                        
+                        unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
+                        
+                        if (product.unitConversions && product.unitConversions.length > 0) {
+                            product.unitConversions.forEach(uc => {
+                                const option = document.createElement('option');
+                                option.value = uc.unitName;
+                                option.textContent = uc.unitName;
+                                unitSelect.appendChild(option);
+                            });
+                        }
+                        
+                        if (product.purchaseUnit) {
+                            unitSelect.value = product.purchaseUnit;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading product details:', error);
+            }
+            
+            calculatePurchaseTotal();
+        }
+
+        function addPurchaseItemRow() {
+            const tbody = document.querySelector('#new-purchase-items-table tbody');
+            const firstRow = tbody.querySelector('tr');
+            const newRow = firstRow.cloneNode(true);
+            
+            newRow.querySelectorAll('input').forEach(input => {
+                if (input.classList.contains('qty-input')) {
+                    input.value = 1;
+                } else if (input.classList.contains('price-input')) {
+                    input.value = 0;
+                } else {
+                    input.value = '';
+                }
+            });
+            
+            const unitSelect = newRow.querySelector('.unit-select');
+            unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
+            
+            newRow.querySelector('.row-total').textContent = '¥0.00';
+            
+            const productSelect = newRow.querySelector('.product-select');
+            productSelect.value = '';
+            productSelect.addEventListener('change', function() {
+                onProductSelect(this);
+            });
+            
+            newRow.querySelectorAll('.qty-input, .price-input').forEach(input => {
+                input.addEventListener('input', calculatePurchaseTotal);
+            });
+            
+            tbody.appendChild(newRow);
+            loadProductsToDropdown();
+        }
+
+        function calculatePurchaseTotal() {
+            let grandTotal = 0;
+            const rows = document.querySelectorAll('#new-purchase-items-table tbody tr');
+            
+            rows.forEach(row => {
+                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                const price = parseFloat(row.querySelector('.price-input').value) || 0;
+                const subtotal = qty * price;
+                row.querySelector('.row-total').textContent = `¥${subtotal.toFixed(2)}`;
+                grandTotal += subtotal;
+            });
+            
+            document.getElementById('new-purchase-grand-total').textContent = `¥${grandTotal.toFixed(2)}`;
+        }
+
+        async function saveNewPurchase() {
+            const supplierId = document.getElementById('new-purchase-supplier').value;
+            const purchaseStatus = document.getElementById('new-purchase-status').value;
+            const purchaseDate = document.getElementById('new-purchase-date').value;
+            
+            if (!supplierId) {
+                alert('请选择供应商');
+                return;
+            }
+            if (!purchaseStatus) {
+                alert('请选择进货状态');
+                return;
+            }
+            if (!purchaseDate) {
+                alert('请选择进货日期');
+                return;
+            }
+            
+            const items = [];
+            const rows = document.querySelectorAll('#new-purchase-items-table tbody tr');
+            let hasItems = false;
+            
+            rows.forEach(row => {
+                const productSelect = row.querySelector('.product-select');
+                const productId = productSelect.value;
+                if (productId) {
+                    hasItems = true;
+                    const qty = parseInt(row.querySelector('.qty-input').value) || 0;
+                    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+                    const unitName = row.querySelector('.unit-select').value || '';
+                    const batchNo = row.querySelector('.batch-input').value || '';
+                    
+                    if (qty > 0 && price > 0) {
+                        items.push({
+                            productId: productId,
+                            quantity: qty,
+                            unitPrice: price,
+                            unitName: unitName,
+                            batchNo: batchNo
+                        });
+                    }
+                }
+            });
+            
+            if (!hasItems || items.length === 0) {
+                alert('请至少添加一个商品');
+                return;
+            }
+            
+            try {
+                const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                
+                const purchaseData = {
+                    supplierId: parseInt(supplierId),
+                    purchaseDate: purchaseDate,
+                    totalAmount: totalAmount,
+                    purchaseStatus: purchaseStatus,
+                    items: items
+                };
+                
+                const response = await window.wrappedFetch('/api/v1/supp/purchases', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(purchaseData)
+                });
+                
+                if (response.ok) {
+                    let message = '进货单据已成功保存';
+                    if (purchaseStatus === '已入库') {
+                        message += '\n\n相关产品库存已由系统自动更新';
+                    }
+                    alert(message);
+                    closeNewPurchaseModal();
+                    loadPurchases();
+                } else {
+                    alert('保存失败，请重试');
+                }
+            } catch (error) {
+                console.error('Error saving purchase:', error);
+                alert('保存失败，请重试');
+            }
+        }
+
+        let newSupplierId = null;
+
+        function openNewSupplierModal() {
+            document.getElementById('new-supplier-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            resetNewSupplierModal();
+        }
+
+        function closeNewSupplierModal() {
+            document.getElementById('new-supplier-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            resetNewSupplierModal();
+        }
+
+        function resetNewSupplierModal() {
+            document.getElementById('new-supplier-name').value = '';
+            document.getElementById('new-supplier-contact').value = '';
+            document.getElementById('new-supplier-phone').value = '';
+            document.getElementById('new-supplier-address').value = '';
+            newSupplierId = null;
+        }
+
+        async function saveNewSupplier() {
+            const name = document.getElementById('new-supplier-name').value;
+            const contact = document.getElementById('new-supplier-contact').value;
+            const phone = document.getElementById('new-supplier-phone').value;
+            const address = document.getElementById('new-supplier-address').value;
+
+            if (!name) {
+                alert('请输入供应商名称');
+                return;
+            }
+
+            try {
+                const supplierData = {
+                    name: name,
+                    contact: contact,
+                    phone: phone,
+                    address: address,
+                    status: 1
+                };
+
+                const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(supplierData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        newSupplierId = result.data.supplierId;
+                        alert('供应商保存成功');
+                        closeNewSupplierModal();
+                        
+                        await loadSuppliersToDropdown();
+                        
+                        if (newSupplierId) {
+                            document.getElementById('new-purchase-supplier').value = newSupplierId;
+                        }
+                    } else {
+                        alert('保存失败，请重试');
+                    }
+                } else {
+                    alert('保存失败，请重试');
+                }
+            } catch (error) {
+                console.error('Error saving supplier:', error);
+                alert('保存失败，请重试');
+            }
         }
     </script>
 </body>
