@@ -1,3 +1,401 @@
+// 注入全局 UI 样式
+(function injectGlobalStyles() {
+    console.log('TradeMindUI: 开始注入全局 CSS 样式');
+    try {
+        const styles = `
+            <style>
+                /* ================= [统一CSS变量定义] ================= */
+                :root {
+                    --brand-primary: #14B8A6;
+                    --brand-dark: #0F172A;
+                    --brand-teal: #0D9488;
+                    --slate-bg: #F1F5F9;
+                    --text-main: #334155;
+                    --risk-high: #F43F5E;
+                    --gold-light: #fef3c7;
+                    --gold-dark: #fbbf24;
+                    --gold-text: #92400e;
+                    --slate-50: #F8FAFC;
+                    --slate-100: #F1F5F9;
+                    --slate-200: #E2E8F0;
+                    --slate-400: #94A3B8;
+                    --slate-600: #475569;
+                    --slate-800: #1E293B;
+                    --slate-900: #0F172A;
+                }
+
+                /* ================= [统一文字字体规范] ================= */
+                body {
+                    font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+                }
+
+                /* 标题文字大小规范 */
+                .text-xxs { font-size: 8px; }
+                .text-xs { font-size: 10px; }
+                .text-sm { font-size: 13px; }
+                .text-base { font-size: 16px; }
+                .text-lg { font-size: 18px; }
+                .text-xl { font-size: 20px; }
+                .text-2xl { font-size: 24px; }
+                .text-5xl { font-size: 48px; }
+
+                /* 弹窗包装器 - 全屏遮罩 */
+                .tm-modal-wrapper {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 1000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(8px);
+                    transition: opacity 0.3s ease;
+                }
+
+                /* 弹窗容器 - PC端居中 */
+                .tm-modal-container {
+                    background: white;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    transition: all 0.3s ease;
+                }
+
+                /* ================= [统一表单控件规范] ================= */
+                /* 输入框与表单控件 */
+                .form-input,
+                input[type="text"],
+                input[type="password"],
+                input[type="email"],
+                input[type="number"],
+                input[type="date"],
+                select,
+                textarea {
+                    width: 100%;
+                    background-color: #F8FAFC;
+                    border: 1px solid #E2E8F0;
+                    padding: 10px 14px;
+                    border-radius: 12px;
+                    font-size: 13px;
+                    outline: none;
+                    transition: all 0.2s;
+                    font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+                    box-sizing: border-box;
+                }
+
+                .form-input:focus,
+                input[type="text"]:focus,
+                input[type="password"]:focus,
+                input[type="email"]:focus,
+                input[type="number"]:focus,
+                input[type="date"]:focus,
+                select:focus,
+                textarea:focus {
+                    border-color: var(--brand-primary);
+                    background-color: #fff;
+                    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+                }
+
+                /* 下拉框特定样式 */
+                select {
+                    cursor: pointer;
+                    appearance: none;
+                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+                    background-repeat: no-repeat;
+                    background-position: right 12px center;
+                    background-size: 16px;
+                    padding-right: 40px;
+                }
+
+                /* 文本域特定样式 */
+                textarea {
+                    resize: vertical;
+                    min-height: 80px;
+                }
+
+                /* ================= [统一按钮规范] ================= */
+                .btn-brand {
+                    background-color: var(--brand-primary) !important;
+                    color: white !important;
+                    transition: all 0.2s;
+                    border: none;
+                    cursor: pointer;
+                    font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+                }
+
+                .btn-brand:hover {
+                    filter: brightness(1.1);
+                }
+
+                .btn-brand:disabled {
+                    background-color: #E2E8F0 !important;
+                    color: #94A3B8 !important;
+                    cursor: not-allowed !important;
+                    box-shadow: none !important;
+                }
+
+                .btn-click-effect:active {
+                    transform: scale(0.96);
+                }
+
+                /* ================= [其他统一UI规范] ================= */
+                /* 滚动条隐藏 */
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+
+                .no-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+
+                /* 淡入动画 */
+                .fade-in {
+                    animation: fadeIn 0.4s ease-in-out;
+                }
+
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(8px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                /* 品牌脉冲动画 */
+                .tech-pulse {
+                    animation: pulse-teal 3s infinite;
+                }
+
+                @keyframes pulse-teal {
+                    0% {
+                        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+                    }
+                    70% {
+                        box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
+                    }
+                    100% {
+                        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+                    }
+                }
+
+                /* 磨砂玻璃弹窗 */
+                .modal-blur {
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    background: rgba(15, 23, 42, 0.5);
+                }
+
+                /* 子Tab按钮 */
+                .sub-tab-btn {
+                    padding: 12px 24px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    color: #94A3B8;
+                    border-bottom: 3px solid transparent;
+                    transition: all 0.3s;
+                    background: transparent;
+                    border-left: none;
+                    border-right: none;
+                    border-top: none;
+                    cursor: pointer;
+                }
+
+                .sub-tab-btn.active {
+                    color: var(--brand-primary);
+                    border-bottom-color: var(--brand-primary);
+                }
+
+                /* PC端样式 */
+                @media (min-width: 768px) {
+                    .tm-modal-container {
+                        width: 100%;
+                        max-width: 42rem;
+                        border-radius: 2.5rem;
+                        max-height: 85vh;
+                    }
+                }
+
+                /* 移动端样式 */
+                @media (max-width: 767px) {
+                    .tm-modal-container {
+                        width: 100%;
+                        height: 100%;
+                        border-radius: 0;
+                        transform: translateY(0);
+                    }
+                    
+                    /* 移动端关闭手柄 */
+                    .tm-modal-handle {
+                        width: 3rem;
+                        height: 0.375rem;
+                        background: #e2e8f0;
+                        border-radius: 9999px;
+                        margin: 0.75rem auto;
+                        cursor: pointer;
+                    }
+                    
+                    /* 移动端时，移除 body 的 padding，确保全屏展示 */
+                    body:has(.tm-mobile-header),
+                    body.tm-mobile-active {
+                        padding-top: 0 !important;
+                        padding-bottom: 0 !important;
+                        padding-left: 0 !important;
+                        padding-right: 0 !important;
+                    }
+                    
+                    /* 内容区域适配移动端上下边距 - 保持内容不被导航栏遮挡 */
+                    .main-content-section,
+                    [class*="content"],
+                    .page-content,
+                    #content-area {
+                        padding-top: 4rem;
+                        padding-bottom: 5rem;
+                    }
+                }
+
+                /* 移动端顶部导航 */
+                .tm-mobile-header {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    height: 4rem;
+                    background: rgba(255, 255, 255, 0.8);
+                    backdrop-filter: blur(12px);
+                    border-bottom: 1px solid #e2e8f0;
+                    z-index: 900;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 0 1.5rem;
+                }
+
+                .tm-mobile-logo {
+                    height: 2rem;
+                    width: auto;
+                }
+
+                .tm-mobile-avatar {
+                    width: 2.5rem;
+                    height: 2.5rem;
+                    border-radius: 9999px;
+                    border: 2px solid #14B8A6;
+                    overflow: hidden;
+                    cursor: pointer;
+                }
+                
+                /* 确保 dashboard.html 中的移动端用户头像正确显示 */
+                #mobile-user-avatar {
+                    background-color: #14B8A6 !important;
+                    color: white !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                }
+                
+                /* 确保 dashboard.html 中的移动端 Header 元素在移动端显示 */
+                @media (max-width: 767px) {
+                    /* 确保移动端 Header 中的 Logo 和用户头像显示 */
+                    header .md\\:hidden {
+                        display: flex !important;
+                    }
+                    
+                    /* 确保用户头像容器显示 */
+                    header .flex.md\\:hidden {
+                        display: flex !important;
+                    }
+                    
+                    /* 确保用户头像的父容器显示 */
+                    header [onclick*="openSubscriptionModal"] {
+                        display: flex !important;
+                    }
+                }
+
+                /* 移动端底部导航 */
+                .tm-mobile-nav {
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    height: 5rem;
+                    background: rgba(255, 255, 255, 0.95);
+                    backdrop-filter: blur(20px);
+                    border-top: 1px solid #e2e8f0;
+                    z-index: 9999;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-around;
+                    padding-bottom: 0.5rem;
+                }
+
+                .tm-nav-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 0.25rem;
+                    text-decoration: none;
+                    color: #94a3b8;
+                    transition: color 0.2s ease;
+                }
+
+                .tm-nav-item.active {
+                    color: #14B8A6;
+                }
+
+                .tm-nav-item i {
+                    font-size: 1.5rem;
+                }
+
+                .tm-nav-item span {
+                    font-size: 0.625rem;
+                    font-weight: 700;
+                }
+
+                /* 隐藏 PC 端元素在移动端 */
+                @media (max-width: 767px) {
+                    .md\\:hidden {
+                        display: none !important;
+                    }
+                    
+                    .tm-mobile-only {
+                        display: flex !important;
+                    }
+                    
+                    /* 确保移动端导航在移动端显示 */
+                    .tm-mobile-nav {
+                        display: flex !important;
+                    }
+                    
+                    .tm-mobile-header {
+                        display: flex !important;
+                    }
+                }
+
+                /* 隐藏移动端元素在 PC 端 */
+                @media (min-width: 768px) {
+                    .tm-mobile-header,
+                    .tm-mobile-nav {
+                        display: none !important;
+                    }
+                }
+            </style>
+        `;
+        if (document.head) {
+            document.head.insertAdjacentHTML('beforeend', styles);
+            console.log('TradeMindUI: 全局 CSS 样式注入成功');
+        } else {
+            console.error('TradeMindUI: document.head 不存在，无法注入 CSS 样式');
+        }
+    } catch (error) {
+        console.error('TradeMindUI: 注入全局 CSS 样式时出错:', error);
+    }
+})();
+
 // 配置常量
 const TOKEN_EXPIRE_TIME = 24 * 60 * 60 * 1000; // 24小时
 
@@ -960,75 +1358,346 @@ function showNotification(message) {
 
 // 打开会员订阅弹窗
 function openSubscriptionModal() {
-    document.getElementById('subscription-modal').classList.remove('hidden');
+    console.log('========== 打开会员订阅弹窗 ==========');
+    console.log('openSubscriptionModal: 开始执行');
+    try {
+        console.log('openSubscriptionModal: 调用 TradeMindUI.wrapModal');
+        TradeMindUI.wrapModal('subscription-modal');
+        const modal = document.getElementById('subscription-modal');
+        if (modal) {
+            console.log('openSubscriptionModal: 找到弹窗元素，移除 hidden 类');
+            modal.classList.remove('hidden');
+            console.log('openSubscriptionModal: 弹窗已显示');
+        } else {
+            console.error('openSubscriptionModal: 未找到弹窗元素');
+        }
+    } catch (error) {
+        console.error('openSubscriptionModal: 打开弹窗时出错:', error);
+    }
+    console.log('========== 打开会员订阅弹窗完成 ==========');
 }
 
 // 关闭会员订阅弹窗
 function closeSubscriptionModal() {
-    document.getElementById('subscription-modal').classList.add('hidden');
+    console.log('========== 关闭会员订阅弹窗 ==========');
+    console.log('closeSubscriptionModal: 开始执行');
+    try {
+        const modal = document.getElementById('subscription-modal');
+        if (modal) {
+            console.log('closeSubscriptionModal: 找到弹窗元素，添加 hidden 类');
+            modal.classList.add('hidden');
+            console.log('closeSubscriptionModal: 弹窗已隐藏');
+        } else {
+            console.error('closeSubscriptionModal: 未找到弹窗元素');
+        }
+    } catch (error) {
+        console.error('closeSubscriptionModal: 关闭弹窗时出错:', error);
+    }
+    console.log('========== 关闭会员订阅弹窗完成 ==========');
 }
 
 // 复制推荐码
 function copyReferralCode() {
-    const referralCode = document.getElementById('referral-code');
-    referralCode.select();
-    document.execCommand('copy');
-    showNotification('推荐码已复制到剪贴板');
+    console.log('copyReferralCode: 开始执行');
+    try {
+        const referralCode = document.getElementById('referral-code');
+        if (referralCode) {
+            referralCode.select();
+            document.execCommand('copy');
+            console.log('copyReferralCode: 推荐码已复制');
+            showNotification('推荐码已复制到剪贴板');
+        } else {
+            console.error('copyReferralCode: 未找到推荐码元素');
+        }
+    } catch (error) {
+        console.error('copyReferralCode: 复制推荐码时出错:', error);
+    }
 }
 
 // 下载海报
 function downloadPoster() {
+    console.log('downloadPoster: 开始执行');
     const posterPreview = document.getElementById('poster-capture-area');
     if (posterPreview) {
+        console.log('downloadPoster: 找到海报捕获区域，开始生成海报');
         html2canvas(posterPreview, {
             scale: 2, // 提高清晰度
             useCORS: true, // 允许加载跨域图片
-            logging: false
+            logging: true
         }).then(canvas => {
+            console.log('downloadPoster: 海报生成成功，准备下载');
             const link = document.createElement('a');
             link.download = 'trademind-referral-poster.png';
             link.href = canvas.toDataURL('image/png');
             link.click();
+            console.log('downloadPoster: 海报下载触发成功');
             showNotification('海报已成功下载');
         }).catch(error => {
-            console.error('下载海报失败:', error);
+            console.error('downloadPoster: 下载海报失败:', error);
             showNotification('海报下载失败，请重试');
         });
     } else {
-        console.error('未找到海报预览元素');
+        console.error('downloadPoster: 未找到海报预览元素');
         showNotification('海报元素未找到');
     }
 }
 
 // 打开会员中心弹窗
 function openMemberModal() {
-    document.getElementById('member-modal').classList.remove('hidden');
+    console.log('========== 打开会员中心弹窗 ==========');
+    console.log('openMemberModal: 开始执行');
+    try {
+        console.log('openMemberModal: 调用 TradeMindUI.wrapModal');
+        TradeMindUI.wrapModal('member-modal');
+        const modal = document.getElementById('member-modal');
+        if (modal) {
+            console.log('openMemberModal: 找到弹窗元素，移除 hidden 类');
+            modal.classList.remove('hidden');
+            console.log('openMemberModal: 弹窗已显示');
+        } else {
+            console.error('openMemberModal: 未找到弹窗元素');
+        }
+    } catch (error) {
+        console.error('openMemberModal: 打开弹窗时出错:', error);
+    }
+    console.log('========== 打开会员中心弹窗完成 ==========');
 }
 
 // 关闭会员中心弹窗
 function closeMemberModal() {
-    document.getElementById('member-modal').classList.add('hidden');
+    console.log('========== 关闭会员中心弹窗 ==========');
+    console.log('closeMemberModal: 开始执行');
+    try {
+        const modal = document.getElementById('member-modal');
+        if (modal) {
+            console.log('closeMemberModal: 找到弹窗元素，添加 hidden 类');
+            modal.classList.add('hidden');
+            console.log('closeMemberModal: 弹窗已隐藏');
+        } else {
+            console.error('closeMemberModal: 未找到弹窗元素');
+        }
+    } catch (error) {
+        console.error('closeMemberModal: 关闭弹窗时出错:', error);
+    }
+    console.log('========== 关闭会员中心弹窗完成 ==========');
 }
 
 // 显示海报弹窗
 function showPoster() {
-    document.getElementById('poster-modal').classList.remove('hidden');
+    console.log('========== 显示海报弹窗 ==========');
+    console.log('showPoster: 开始执行');
+    try {
+        console.log('showPoster: 调用 TradeMindUI.wrapModal');
+        TradeMindUI.wrapModal('poster-modal');
+        const modal = document.getElementById('poster-modal');
+        if (modal) {
+            console.log('showPoster: 找到弹窗元素，移除 hidden 类');
+            modal.classList.remove('hidden');
+            console.log('showPoster: 弹窗已显示');
+        } else {
+            console.error('showPoster: 未找到弹窗元素');
+        }
+    } catch (error) {
+        console.error('showPoster: 显示海报弹窗时出错:', error);
+    }
+    console.log('========== 显示海报弹窗完成 ==========');
 }
 
 // 关闭海报弹窗
 function closePoster() {
-    document.getElementById('poster-modal').classList.add('hidden');
+    console.log('========== 关闭海报弹窗 ==========');
+    console.log('closePoster: 开始执行');
+    try {
+        const modal = document.getElementById('poster-modal');
+        if (modal) {
+            console.log('closePoster: 找到弹窗元素，添加 hidden 类');
+            modal.classList.add('hidden');
+            console.log('closePoster: 弹窗已隐藏');
+        } else {
+            console.error('closePoster: 未找到弹窗元素');
+        }
+    } catch (error) {
+        console.error('closePoster: 关闭海报弹窗时出错:', error);
+    }
+    console.log('========== 关闭海报弹窗完成 ==========');
 }
 
 // 统一注入公共 UI 组件
 window.injectCommonUI = function() {
-    // 1. 弹窗注入
-    if (!document.getElementById('subscription-modal')) {
-        document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
-    }
+    console.log('========== TradeMindUI: injectCommonUI 开始执行 ==========');
+    console.log('TradeMindUI.injectCommonUI: 函数被调用');
     
-    // 2. 动态数据绑定
-    loadUserInfo();
+    try {
+        // 1. 弹窗注入
+        console.log('TradeMindUI.injectCommonUI: 步骤1 - 检查并注入弹窗模板');
+        const existingModal = document.getElementById('subscription-modal');
+        if (!existingModal) {
+            console.log('TradeMindUI.injectCommonUI: 未找到订阅弹窗，开始注入 MODAL_TEMPLATE');
+            document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
+            console.log('TradeMindUI.injectCommonUI: 弹窗模板注入成功');
+        } else {
+            console.log('TradeMindUI.injectCommonUI: 订阅弹窗已存在，跳过注入');
+        }
+        
+        // 2. 检测环境并适配移动端
+        const isMobile = window.innerWidth < 768;
+        console.log('TradeMindUI.injectCommonUI: 步骤2 - 检测环境 - isMobile:', isMobile, '窗口宽度:', window.innerWidth);
+        
+        if (isMobile) {
+            console.log('TradeMindUI.injectCommonUI: 检测到移动设备，开始移动端适配');
+            
+            // 给 body 添加移动端类名
+            document.body.classList.add('tm-mobile-active');
+            console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active 类');
+            
+            // 移动端布局适配
+            const sidebar = document.querySelector('aside');
+            if (sidebar) {
+                console.log('TradeMindUI.injectCommonUI: 找到侧边栏，准备隐藏');
+                sidebar.classList.add('hidden');
+                sidebar.classList.add('md:hidden');
+                console.log('TradeMindUI.injectCommonUI: 侧边栏已隐藏');
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 未找到侧边栏元素');
+            }
+            
+            // 注入移动端顶部导航（统一组件）
+            console.log('TradeMindUI.injectCommonUI: 检查并注入移动端顶部导航');
+            const existingHeader = document.querySelector('.tm-mobile-header');
+            if (!existingHeader) {
+                console.log('TradeMindUI.injectCommonUI: 未找到移动端Header，开始注入');
+                
+                // 根据当前路径确定页面标题
+                const currentPath = window.location.pathname;
+                let pageTitle = '商贸智脑';
+                
+                if (currentPath.includes('/dashboard/')) {
+                    pageTitle = '工作台';
+                } else if (currentPath.includes('/SmartOps/')) {
+                    pageTitle = '智能经营';
+                } else if (currentPath.includes('/crm/')) {
+                    pageTitle = '客户CRM';
+                } else if (currentPath.includes('/product-center/')) {
+                    pageTitle = '产品中心';
+                } else if (currentPath.includes('/supply-chain/')) {
+                    pageTitle = '供应商管理';
+                } else {
+                    pageTitle = '商贸智脑';
+                }
+                
+                console.log('TradeMindUI.injectCommonUI: 当前页面标题:', pageTitle);
+                
+                // 创建统一的移动端 Header
+                const headerHtml = TradeMindUI.createMobileHeader({
+                    pageTitle: pageTitle
+                });
+                
+                // 直接在 body 开头注入移动端 Header
+                console.log('TradeMindUI.injectCommonUI: 在body开头注入Header');
+                document.body.insertAdjacentHTML('afterbegin', headerHtml);
+                
+                console.log('TradeMindUI.injectCommonUI: 移动端Header注入成功');
+                
+                // 延迟一下，确保DOM更新后再加载用户信息
+                setTimeout(() => {
+                    console.log('TradeMindUI.injectCommonUI: Header注入后，重新加载用户信息');
+                    try {
+                        loadUserInfo();
+                    } catch (e) {
+                        console.error('TradeMindUI.injectCommonUI: 重新加载用户信息时出错:', e);
+                    }
+                }, 50);
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 移动端Header已存在，跳过注入');
+            }
+            
+            // 注入移动端底部导航
+            const existingNav = document.querySelector('.tm-mobile-nav');
+            if (!existingNav) {
+                console.log('TradeMindUI.injectCommonUI: 注入移动端底部导航');
+                const mobileNav = `
+                    <nav class="tm-mobile-nav">
+                        <a href="/modules/dashboard/dashboard.html" class="tm-nav-item active">
+                            <i class="ph-bold ph-squares-four"></i>
+                            <span>工作台</span>
+                        </a>
+                        <a href="/modules/SmartOps/SmartOps.html" class="tm-nav-item">
+                            <i class="ph-bold ph-chart-line-up"></i>
+                            <span>智能经营</span>
+                        </a>
+                        <a href="/modules/crm/crm.html" class="tm-nav-item">
+                            <i class="ph-bold ph-users"></i>
+                            <span>客户</span>
+                        </a>
+                        <a href="/modules/product-center/product-center.html" class="tm-nav-item">
+                            <i class="ph-bold ph-flask"></i>
+                            <span>产品中心</span>
+                        </a>
+                        <a href="/modules/supply-chain/supply-chain.html" class="tm-nav-item">
+                            <i class="ph-bold ph-warehouse"></i>
+                            <span>供应商</span>
+                        </a>
+                    </nav>
+                `;
+                document.body.insertAdjacentHTML('beforeend', mobileNav);
+                console.log('TradeMindUI.injectCommonUI: 移动端底部导航注入成功');
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 移动端底部导航已存在，跳过注入');
+            }
+            
+            // 高亮当前页的导航项
+            console.log('TradeMindUI.injectCommonUI: 步骤3 - 高亮当前页导航项');
+            const currentPath = window.location.pathname;
+            const navItems = document.querySelectorAll('.tm-nav-item');
+            console.log('TradeMindUI.injectCommonUI: 当前路径:', currentPath, '找到导航项数量:', navItems.length);
+            
+            navItems.forEach((item, index) => {
+                const href = item.getAttribute('href');
+                console.log(`TradeMindUI.injectCommonUI: 导航项 ${index} href:`, href);
+                if (currentPath === href || currentPath.startsWith(href.replace('.html', ''))) {
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                    console.log('TradeMindUI.injectCommonUI: 已高亮导航项:', href);
+                }
+            });
+        } else {
+            console.log('TradeMindUI.injectCommonUI: 检测到桌面设备，跳过移动端适配');
+        }
+        
+        // 3. 动态数据绑定
+        console.log('TradeMindUI.injectCommonUI: 步骤4 - 加载用户信息');
+        try {
+            loadUserInfo();
+            console.log('TradeMindUI.injectCommonUI: 用户信息加载完成');
+        } catch (error) {
+            console.error('TradeMindUI.injectCommonUI: 加载用户信息时出错:', error);
+        }
+        
+        // 4. 绑定移动端头像点击事件
+        console.log('TradeMindUI.injectCommonUI: 步骤5 - 绑定移动端头像点击事件');
+        
+        // 尝试两种可能的 ID：mobile-user-avatar (dashboard.html 中的) 和 mobile-user-trigger
+        let mobileUserTrigger = document.getElementById('mobile-user-avatar');
+        if (!mobileUserTrigger) {
+            mobileUserTrigger = document.getElementById('mobile-user-trigger');
+        }
+        
+        if (mobileUserTrigger) {
+            console.log('TradeMindUI.injectCommonUI: 找到移动端头像触发元素，绑定点击事件');
+            mobileUserTrigger.onclick = function() {
+                console.log('TradeMindUI.injectCommonUI: 移动端头像被点击');
+                openSubscriptionModal();
+            };
+        } else {
+            console.log('TradeMindUI.injectCommonUI: 未找到移动端头像触发元素');
+        }
+        
+        console.log('========== TradeMindUI: injectCommonUI 执行完成 ==========');
+    } catch (error) {
+        console.error('========== TradeMindUI: injectCommonUI 执行出错 ==========');
+        console.error('TradeMindUI.injectCommonUI: 错误详情:', error);
+        console.error('TradeMindUI.injectCommonUI: 错误堆栈:', error.stack);
+    }
 };
 
 // 加载用户信息
@@ -1088,6 +1757,165 @@ function loadUserInfo() {
 window.initCommonUI = function() {
     // 直接调用 injectCommonUI 函数，确保所有页面使用相同的逻辑
     window.injectCommonUI();
+};
+
+// TradeMind UI 工具对象
+window.TradeMindUI = {
+    /**
+     * 创建移动端 Header 组件
+     * @param {Object} options - 配置选项
+     * @param {string} [options.pageTitle='商贸智脑'] - 页面标题
+     * @param {string} [options.userInitial='J'] - 用户头像首字母
+     * @returns {string} - 移动端 Header 的 HTML 字符串
+     */
+    createMobileHeader: function(options) {
+        console.log('TradeMindUI.createMobileHeader: 开始创建移动端Header，参数:', options);
+        
+        const opts = options || {};
+        const pageTitle = opts.pageTitle || '商贸智脑';
+        const userInitial = opts.userInitial || 'J';
+        
+        const headerHtml = `
+            <header class="tm-mobile-header">
+                <div class="flex items-center">
+                    <div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2">
+                        <i class="ph ph-brain text-lg"></i>
+                    </div>
+                    <span class="font-bold text-slate-800">${pageTitle}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="relative text-slate-400 hover:text-brand-600 transition">
+                        <i class="ph ph-bell text-xl"></i>
+                    </button>
+                    <div class="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px] cursor-pointer" id="mobile-user-avatar" onclick="openSubscriptionModal()">
+                        ${userInitial}
+                    </div>
+                </div>
+            </header>
+        `;
+        
+        console.log('TradeMindUI.createMobileHeader: 移动端Header创建完成');
+        return headerHtml;
+    },
+
+    /**
+     * 包装业务弹窗，添加统一的样式和交互
+     * @param {string} modalId - 弹窗的 ID
+     */
+    wrapModal: function(modalId) {
+        console.log('TradeMindUI.wrapModal: 开始包装弹窗，ID:', modalId);
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error('TradeMindUI.wrapModal: 未找到弹窗元素，ID:', modalId);
+            return;
+        }
+        
+        // 检查是否已经包装过
+        if (modal.classList.contains('tm-modal-wrapper')) {
+            console.log('TradeMindUI.wrapModal: 弹窗已经包装过，ID:', modalId);
+            return;
+        }
+        
+        const isMobile = window.innerWidth < 768;
+        console.log('TradeMindUI.wrapModal: 检测设备类型 - isMobile:', isMobile, '窗口宽度:', window.innerWidth);
+        
+        // 添加包装类
+        modal.classList.add('tm-modal-wrapper');
+        
+        // 找到真正的弹窗内容容器（跳过第一个点击遮罩层的 div）
+        // 使用更可靠的选择器来找到弹窗内容容器
+        let modalContent = null;
+        const allDivs = modal.querySelectorAll('div');
+        console.log('TradeMindUI.wrapModal: 弹窗内共有', allDivs.length, '个 div 元素');
+        
+        // 找到第一个不是绝对定位的且有实际内容的 div
+        for (let i = 0; i < allDivs.length; i++) {
+            const div = allDivs[i];
+            const computedStyle = window.getComputedStyle(div);
+            if (computedStyle.position !== 'absolute' && div.children.length > 0) {
+                modalContent = div;
+                console.log('TradeMindUI.wrapModal: 找到弹窗内容容器，索引:', i);
+                break;
+            }
+        }
+        
+        // 如果上面的方法没找到，尝试查找 modal-content-box 类或类似的类
+        if (!modalContent) {
+            modalContent = modal.querySelector('.modal-content-box') || 
+                           modal.querySelector('[class*="modal-content"]') ||
+                           modal.querySelector('div[class*="relative"]');
+            if (modalContent) {
+                console.log('TradeMindUI.wrapModal: 通过备选选择器找到弹窗内容容器');
+            }
+        }
+        
+        if (modalContent) {
+            modalContent.classList.add('tm-modal-container');
+            console.log('TradeMindUI.wrapModal: 已添加 tm-modal-container 类到内容容器');
+            
+            // 移动端添加关闭手柄
+            if (isMobile && !modalContent.querySelector('.tm-modal-handle')) {
+                console.log('TradeMindUI.wrapModal: 移动端添加关闭手柄');
+                const handle = document.createElement('div');
+                handle.className = 'tm-modal-handle';
+                handle.onclick = function() {
+                    console.log('TradeMindUI.wrapModal: 关闭手柄被点击');
+                    // 查找并调用对应的关闭函数
+                    const closeFunctions = [
+                        'closeSubscriptionModal',
+                        'closeMemberModal',
+                        'closePoster',
+                        'closeCustomerModal',
+                        'closeCustomerDetailModal',
+                        'closeModal',
+                        'closeErrorModal',
+                        'closeOrderModal',
+                        'closeVoiceModal',
+                        'closePhotoModal',
+                        'closeAuditModal',
+                        'closeUnitModal',
+                        'closeManualOrderModal',
+                        'closeClientEditModal',
+                        'closeWorkshopModal',
+                        'closeClearanceModal',
+                        'closeCostAnalysis',
+                        'closeNewProductReport',
+                        'closeProductDetail',
+                        'closeOrderDetail'
+                    ];
+                    let closed = false;
+                    for (const fnName of closeFunctions) {
+                        if (typeof window[fnName] === 'function') {
+                            console.log('TradeMindUI.wrapModal: 调用关闭函数:', fnName);
+                            window[fnName]();
+                            closed = true;
+                            break;
+                        }
+                    }
+                    if (!closed) {
+                        console.log('TradeMindUI.wrapModal: 未找到关闭函数，直接隐藏弹窗');
+                        modal.classList.add('hidden');
+                    }
+                };
+                modalContent.insertBefore(handle, modalContent.firstChild);
+            }
+            
+            // 添加动画效果
+            if (isMobile) {
+                console.log('TradeMindUI.wrapModal: 添加移动端动画效果');
+                modalContent.style.transform = 'translateY(100%)';
+                modalContent.style.transition = 'transform 0.3s ease';
+                setTimeout(() => {
+                    modalContent.style.transform = 'translateY(0)';
+                    console.log('TradeMindUI.wrapModal: 动画开始执行');
+                }, 10);
+            }
+        } else {
+            console.error('TradeMindUI.wrapModal: 未找到弹窗内容容器，ID:', modalId);
+        }
+        
+        console.log('TradeMindUI.wrapModal: 弹窗包装完成，ID:', modalId);
+    }
 };
 
 // 将函数暴露到全局作用域，以便其他页面使用
@@ -1497,6 +2325,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // 初始化公共 UI 组件
+    console.log('TradeMindUI: DOM 加载完成，准备调用 injectCommonUI');
+    try {
+        window.injectCommonUI();
+    } catch (error) {
+        console.error('TradeMindUI: 调用 injectCommonUI 时出错:', error);
+    }
+    
     // 检查当前页面是否需要认证
     const isLoginPage = window.location.pathname.includes('login.html');
     const isRegisterPage = window.location.pathname.includes('register.html');
@@ -1515,3 +2351,69 @@ document.addEventListener('DOMContentLoaded', function() {
         checkAuth();
     }
 });
+
+// ================= [图标库降级加载方案] =================
+(function loadPhosphorIconsWithFallback() {
+    console.log('TradeMindUI: 图标库降级加载方案初始化');
+    
+    // 定义多个CDN源作为降级方案
+    const iconCdnSources = [
+        'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest',
+        'https://unpkg.com/@phosphor-icons/web@latest',
+        'https://cdnjs.cloudflare.com/ajax/libs/phosphor-icons/2.1.2/web.min.js'
+    ];
+    
+    let currentSourceIndex = 0;
+    let iconsLoaded = false;
+    
+    // 检查图标库是否已加载
+    function checkIconsLoaded() {
+        // 检查 Phosphor Icons 是否已加载
+        if (window.PhosphorIcons || document.querySelector('i[class*="ph-"]')) {
+            return true;
+        }
+        return false;
+    }
+    
+    // 加载图标库
+    function loadIconsFromSource(sourceUrl) {
+        console.log(`TradeMindUI: 尝试从 ${sourceUrl} 加载图标库`);
+        
+        const script = document.createElement('script');
+        script.src = sourceUrl;
+        script.async = false;
+        
+        script.onload = function() {
+            console.log(`TradeMindUI: 图标库从 ${sourceUrl} 加载成功`);
+            iconsLoaded = true;
+        };
+        
+        script.onerror = function() {
+            console.error(`TradeMindUI: 图标库从 ${sourceUrl} 加载失败`);
+            tryNextSource();
+        };
+        
+        document.head.appendChild(script);
+    }
+    
+    // 尝试下一个CDN源
+    function tryNextSource() {
+        currentSourceIndex++;
+        if (currentSourceIndex < iconCdnSources.length) {
+            console.log(`TradeMindUI: 尝试下一个CDN源 (${currentSourceIndex + 1}/${iconCdnSources.length})`);
+            loadIconsFromSource(iconCdnSources[currentSourceIndex]);
+        } else {
+            console.error('TradeMindUI: 所有CDN源都加载失败，图标可能无法正常显示');
+        }
+    }
+    
+    // 延迟检查图标库加载状态
+    setTimeout(function() {
+        if (!checkIconsLoaded()) {
+            console.log('TradeMindUI: 图标库未检测到，启动降级加载方案');
+            loadIconsFromSource(iconCdnSources[0]);
+        } else {
+            console.log('TradeMindUI: 图标库已正常加载');
+        }
+    }, 1000);
+})();

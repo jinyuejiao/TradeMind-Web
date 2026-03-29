@@ -111,6 +111,7 @@ function renderCustomers(customersToRender = customers) {
 }
 
 function openAddCustomerModal() {
+    TradeMindUI.wrapModal('customerModal');
     document.getElementById('modalTitle').textContent = '新增客户';
     document.getElementById('customerId').value = '';
     document.getElementById('customerNickname').value = '';
@@ -122,6 +123,7 @@ function openAddCustomerModal() {
 }
 
 function openEditCustomerModal(customerId) {
+    TradeMindUI.wrapModal('customerModal');
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return;
     
@@ -182,6 +184,7 @@ async function saveCustomer(e) {
 }
 
 async function showCustomerDetail(customerId) {
+    TradeMindUI.wrapModal('customerDetailModal');
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return;
     

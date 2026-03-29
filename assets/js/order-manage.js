@@ -125,6 +125,7 @@ function getStatusClass(status) {
 }
 
 async function showOrderDetail(orderId) {
+    TradeMindUI.wrapModal('orderDetailModal');
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
     

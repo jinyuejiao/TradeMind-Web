@@ -333,7 +333,7 @@
     <script>
 
     </script>
-    <script src="https://unpkg.com/@phosphor-icons/web@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="../../assets/js/auth.js"></script>
@@ -391,7 +391,7 @@
     <!-- 2. 主工作区 -->
     <main class="flex-1 flex flex-col min-w-0 relative h-full">
         <!-- Header -->
-        <header class="h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
+        <header class="hidden md:flex h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
             <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
             <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
             <div class="flex items-center space-x-3 md:space-x-5">
@@ -400,10 +400,6 @@
                     <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">工作台</span>
                 </div>
                 <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
-                <!-- 手机端：顶部 Header 右侧用户信息 -->
-                <div class="flex md:hidden items-center gap-2 cursor-pointer" onclick="openSubscriptionModal()">
-                    <div class="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px]" id="mobile-user-avatar">J</div>
-                </div>
             </div>
         </header>
 
