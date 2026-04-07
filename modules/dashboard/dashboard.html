@@ -9,127 +9,10 @@
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
 
     <style>
-        :root {
-            --brand-primary: #14B8A6;
-            --brand-dark: #0F172A;
-            --slate-bg: #F1F5F9;
-            --text-main: #334155;
-            --risk-high: #F43F5E;
-        }
-
         body {
-            background-color: #F1F5F9;
-            color: #334155;
-            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
             display: flex;
             height: 100vh;
             overflow: hidden;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.4s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .tech-pulse {
-            animation: pulse-teal 3s infinite;
-        }
-
-        @keyframes pulse-teal {
-            0% {
-                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
-            }
-
-            70% {
-                box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
-            }
-        }
-
-        .pb-safe {
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-
-        .report-active {
-            background-color: #14B8A6 !important;
-            color: white !important;
-            border-color: #14B8A6 !important;
-            box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
-        }
-
-        /* 录音呼吸波纹动画 */
-        .recording-pulse {
-            animation: pulse-active 1.5s infinite;
-            background-color: #EF4444 !important; /* 录音时强制变红 */
-        }
-
-        @keyframes pulse-active {
-            0% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
-                transform: scale(1);
-            }
-
-            50% {
-                box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
-                transform: scale(1.05);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-                transform: scale(1);
-            }
-        }
-
-        /* 统一按钮规范 */
-        .btn-brand {
-            background-color: var(--brand-primary) !important;
-            color: white !important;
-            transition: all 0.2s;
-        }
-
-            .btn-brand:hover {
-                filter: brightness(1.1);
-            }
-
-            .btn-brand:disabled {
-                background-color: #E2E8F0 !important;
-                color: #94A3B8 !important;
-                cursor: not-allowed !important;
-                box-shadow: none !important;
-            }
-
-        .btn-click-effect:active {
-            transform: scale(0.96);
-        }
-
-        /* 磨砂玻璃弹窗 */
-        .modal-blur {
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            background: rgba(15, 23, 42, 0.5);
         }
 
         /* 报表美化 CSS */
@@ -190,24 +73,6 @@
                 border-bottom-color: var(--brand-primary);
             }
 
-        /* 输入框与表单控件 */
-        .form-input {
-            width: 100%;
-            background-color: #F8FAFC;
-            border: 1px solid #E2E8F0;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 13px;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-            .form-input:focus {
-                border-color: var(--brand-primary);
-                background-color: #fff;
-                box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
-            }
-
         .donut-ring {
             width: 160px;
             height: 160px;
@@ -232,13 +97,6 @@
             z-index: 5;
         }
 
-        /* 导航状态 */
-        .nav-btn.active-nav {
-            background-color: #1e293b;
-            color: var(--brand-primary);
-            border-left: 4px solid var(--brand-primary);
-        }
-
         /* --- 手机端 CRM 专用适配样式 --- */
         @media (max-width: 768px) {
             /* 详情页显示时隐藏列表页 */
@@ -248,12 +106,6 @@
 
             .crm-detail-active #crm-detail-pane {
                 display: block;
-            }
-
-            /* 弹窗高度优化 */
-            .modal-content-box {
-                height: 92vh !important;
-                border-radius: 1.5rem 1.5rem 0 0 !important;
             }
         }
 
@@ -303,7 +155,8 @@
         }
     </style>
 
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../CSS/common.css">
     <script>
         tailwind.config = {
             theme: {
@@ -473,7 +326,7 @@
                                     <i class="ph ph-plus-circle text-lg"></i> 添加订单
                                 </button>
                                 <!-- 状态筛选下拉框 -->
-                                <select class="text-[10px] bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none font-bold text-slate-600">
+                                <select class="form-input text-[10px] font-bold text-slate-600">
                                     <option>全部状态</option>
                                     <option>待支付</option>
                                     <option>已发货</option>
@@ -948,7 +801,7 @@
                             <tbody>
                                 <tr class="border-t border-slate-100">
                                     <td class="px-4 py-3">
-                                        <select class="bg-transparent font-bold text-brand-600 outline-none w-full cursor-pointer hover:underline">
+                                        <select class="form-input font-bold text-slate-700 product-select">
                                             <option>金色镂空户外灯 (G-8821)</option>
                                             <option>便携无叶挂脖扇 (V2)</option>
                                             <option>-- 重新匹配现有产品 --</option>

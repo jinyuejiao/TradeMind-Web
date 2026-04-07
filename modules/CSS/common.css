@@ -1,0 +1,203 @@
+/* TradeMind Common UI Styles */
+
+:root {
+    --brand-primary: #14B8A6;
+    --brand-dark: #0F172A;
+    --slate-bg: #F1F5F9;
+    --text-main: #334155;
+    --risk-high: #F43F5E;
+    --gold-light: #fef3c7;
+    --gold-dark: #fbbf24;
+    --gold-text: #92400e;
+}
+
+body {
+    background-color: #F1F5F9;
+    color: #334155;
+    font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tech-pulse {
+    animation: pulse-teal 3s infinite;
+}
+
+@keyframes pulse-teal {
+    0% {
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    }
+}
+
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.report-active {
+    background-color: #14B8A6 !important;
+    color: white !important;
+    border-color: #14B8A6 !important;
+    box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
+}
+
+.recording-pulse {
+    animation: pulse-active 1.5s infinite;
+    background-color: #EF4444 !important;
+}
+
+@keyframes pulse-active {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+        transform: scale(1);
+    }
+
+    50% {
+        box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+        transform: scale(1.05);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        transform: scale(1);
+    }
+}
+
+.btn-brand {
+    background-color: var(--brand-primary) !important;
+    color: white !important;
+    transition: all 0.2s;
+}
+
+.btn-brand:hover {
+    filter: brightness(1.1);
+}
+
+.btn-brand:disabled {
+    background-color: #E2E8F0 !important;
+    color: #94A3B8 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+.btn-click-effect:active {
+    transform: scale(0.96);
+}
+
+.discount-ribbon {
+    background: linear-gradient(135deg, #F43F5E, #BE123C);
+    box-shadow: 0 4px 10px rgba(244, 63, 94, 0.3);
+    animation: badge-bounce 2s infinite ease-in-out;
+}
+
+@keyframes badge-bounce {
+    0%, 100% {
+        transform: scale(1) rotate(45deg);
+    }
+
+    50% {
+        transform: scale(1.1) rotate(45deg);
+    }
+}
+
+.gold-referral-card {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #f59e0b;
+}
+
+.form-input,
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+    width: 100%;
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+    font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--brand-primary);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.nav-btn.active-nav {
+    background-color: #1e293b;
+    color: var(--brand-primary);
+    border-left: 4px solid var(--brand-primary);
+}
+
+.modal-blur {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(15, 23, 42, 0.5);
+}
+
+@media (max-width: 768px) {
+    .modal-content-box {
+        height: 95vh !important;
+        border-radius: 1.5rem 1.5rem 0 0 !important;
+    }
+}

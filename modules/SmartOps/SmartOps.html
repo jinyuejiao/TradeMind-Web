@@ -5,85 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
+    <link rel="icon" href="../../favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
 
     <style>
         body {
-            background-color: #F1F5F9;
-            color: #334155;
-            font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
             display: flex;
             height: 100vh;
             overflow: hidden;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        /* 导航状态 */
-        .nav-btn.active-nav {
-            background-color: #1e293b;
-            color: var(--brand-primary);
-            border-left: 4px solid var(--brand-primary);
-        }
-
-        /* 蓝色相关色彩修复 */
-        :root {
-            --brand-primary: #14B8A6;
-            --brand-dark: #0F172A;
-            --slate-bg: #F1F5F9;
-            --text-main: #334155;
-            --risk-high: #F43F5E;
-        }
-
-        .fade-in {
-            animation: fadeIn 0.4s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .tech-pulse {
-            animation: pulse-teal 3s infinite;
-        }
-
-        @keyframes pulse-teal {
-            0% {
-                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
-            }
-
-            70% {
-                box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
-            }
-        }
-
-        .pb-safe {
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-
-        .report-active {
-            background-color: #14B8A6 !important;
-            color: white !important;
-            border-color: #14B8A6 !important;
-            box-shadow: 0 4px 10px rgba(20, 184, 166, 0.2);
         }
 
         /* 报表美化 CSS */
@@ -124,27 +53,10 @@
             justify-content: center;
             z-index: 5;
         }
-
-        /* --- 手机端 CRM 专用适配样式 --- */
-        @media (max-width: 768px) {
-            /* 详情页显示时隐藏列表页 */
-            .crm-detail-active #crm-list-pane {
-                display: none;
-            }
-
-            .crm-detail-active #crm-detail-pane {
-                display: block;
-            }
-
-            /* 弹窗高度优化 */
-            .modal-content-box {
-                height: 92vh !important;
-                border-radius: 1.5rem 1.5rem 0 0 !important;
-            }
-        }
     </style>
 
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../CSS/common.css"></script>
     <script>
         tailwind.config = {
             theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
