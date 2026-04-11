@@ -1,4 +1,4 @@
-// ============== 移动端适配模块开始 ==============
+﻿// ============== 移动端适配模块开始 ==============
 (function() {
     console.log('TradeMind: 移动端适配模块初始化');
 
@@ -94,29 +94,29 @@
         }
 
         const mobileNavHTML = `
-            &lt;!-- 移动端底部导航栏 --&gt;
-            &lt;nav class="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur border-t border-slate-200 z-50 flex items-center justify-around pb-2 md:hidden" id="mobile-nav"&gt;
-                &lt;button onclick="switchTab('dashboard')" class="flex flex-col items-center justify-center px-3 py-2 text-brand-500 transition-colors" data-tab="dashboard"&gt;
-                    &lt;i class="ph ph-squares-four text-2xl mb-1"&gt;&lt;/i&gt;
-                    &lt;span class="text-xs font-bold"&gt;工作台&lt;/span&gt;
-                &lt;/button&gt;
-                &lt;button onclick="switchTab('biz')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="biz"&gt;
-                    &lt;i class="ph ph-chart-line-up text-2xl mb-1"&gt;&lt;/i&gt;
-                    &lt;span class="text-xs font-bold"&gt;智能经营&lt;/span&gt;
-                &lt;/button&gt;
-                &lt;button onclick="switchTab('crm')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="crm"&gt;
-                    &lt;i class="ph ph-users text-2xl mb-1"&gt;&lt;/i&gt;
-                    &lt;span class="text-xs font-bold"&gt;客户CRM&lt;/span&gt;
-                &lt;/button&gt;
-                &lt;button onclick="switchTab('supply')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="supply"&gt;
-                    &lt;i class="ph ph-flask text-2xl mb-1"&gt;&lt;/i&gt;
-                    &lt;span class="text-xs font-bold"&gt;产品中心&lt;/span&gt;
-                &lt;/button&gt;
-                &lt;button onclick="switchTab('supplier')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="supplier"&gt;
-                    &lt;i class="ph ph-warehouse text-2xl mb-1"&gt;&lt;/i&gt;
-                    &lt;span class="text-xs font-bold"&gt;供应商&lt;/span&gt;
-                &lt;/button&gt;
-            &lt;/nav&gt;
+            <!-- 移动端底部导航栏 -->
+            <nav class="fixed bottom-0 left-0 right-0 h-20 bg-white/90 backdrop-blur border-t border-slate-200 z-50 flex items-center justify-around pb-2 md:hidden" id="mobile-nav">
+                <button onclick="switchTab('dashboard')" class="flex flex-col items-center justify-center px-3 py-2 text-brand-500 transition-colors" data-tab="dashboard">
+                    <i class="ph ph-squares-four text-2xl mb-1"></i>
+                    <span class="text-xs font-bold">工作台</span>
+                </button>
+                <button onclick="switchTab('biz')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="biz">
+                    <i class="ph ph-chart-line-up text-2xl mb-1"></i>
+                    <span class="text-xs font-bold">智能经营</span>
+                </button>
+                <button onclick="switchTab('crm')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="crm">
+                    <i class="ph ph-users text-2xl mb-1"></i>
+                    <span class="text-xs font-bold">客户CRM</span>
+                </button>
+                <button onclick="switchTab('supply')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="supply">
+                    <i class="ph ph-flask text-2xl mb-1"></i>
+                    <span class="text-xs font-bold">产品中心</span>
+                </button>
+                <button onclick="switchTab('supplier')" class="flex flex-col items-center justify-center px-3 py-2 text-slate-400 hover:text-brand-500 transition-colors" data-tab="supplier">
+                    <i class="ph ph-warehouse text-2xl mb-1"></i>
+                    <span class="text-xs font-bold">供应商</span>
+                </button>
+            </nav>
         `;
 
         const body = document.body;
@@ -128,13 +128,13 @@
 
     // 3. 检测是否为移动端
     function isMobile() {
-        return window.innerWidth &lt; 768;
+        return window.innerWidth < 768;
     }
 
     // 4. 更新移动端导航栏激活状态
     window.updateMobileNavActive = function(tabName) {
         const navButtons = document.querySelectorAll('#mobile-nav button[data-tab]');
-        navButtons.forEach(btn =&gt; {
+        navButtons.forEach(btn => {
             if (btn.getAttribute('data-tab') === tabName) {
                 btn.classList.add('active', 'text-brand-500');
                 btn.classList.remove('text-slate-400');
@@ -149,7 +149,7 @@
     let resizeTimeout;
     function handleResize() {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() =&gt; {
+        resizeTimeout = setTimeout(() => {
             console.log('TradeMind: 窗口大小变化，重新适配');
             
             if (isMobile()) {
@@ -236,7 +236,7 @@ function switchTab(tabName, event) {
     targetBtn.classList.add('active-nav', 'bg-slate-800', 'text-brand-500');
     targetBtn.classList.remove('text-slate-400');
     // 确保文字颜色正确
-    targetBtn.querySelectorAll('span, svg').forEach(child =&gt; {
+    targetBtn.querySelectorAll('span, svg').forEach(child => {
         child.style.color = 'var(--brand-500)';
     });
     

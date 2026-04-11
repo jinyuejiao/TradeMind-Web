@@ -376,6 +376,11 @@
                     }
                 }
 
+                /* 登录注册页输入框特殊样式 - 防止图标和文字重叠 */
+                .login-register-input {
+                    padding-left: 40px !important;
+                }
+                
                 /* 隐藏移动端元素在 PC 端 */
                 @media (min-width: 768px) {
                     .tm-mobile-header,
@@ -393,6 +398,41 @@
         }
     } catch (error) {
         console.error('TradeMindUI: 注入全局 CSS 样式时出错:', error);
+    }
+    
+    // 给登录页和注册页的输入框添加特殊padding，避免图标和文字重叠
+    try {
+        const path = window.location.pathname;
+        const isLoginPage = path.endsWith('login.html');
+        const isRegisterPage = path.endsWith('register.html');
+        
+        if (isLoginPage || isRegisterPage) {
+            console.log('TradeMindUI: 检测到登录/注册页面，调整输入框样式');
+            
+            // 给所有输入框添加左侧padding
+            const adjustInputPadding = function() {
+                const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"], input[type="tel"]');
+                inputs.forEach(input => {
+                    input.style.paddingLeft = '40px';
+                    input.classList.add('login-register-input');
+                });
+            };
+            
+            // 立即执行一次
+            adjustInputPadding();
+            
+            // DOM加载完成后再执行一次
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', adjustInputPadding);
+            }
+            
+            // 延迟执行，确保样式生效
+            setTimeout(adjustInputPadding, 100);
+            setTimeout(adjustInputPadding, 500);
+            setTimeout(adjustInputPadding, 1000);
+        }
+    } catch (e) {
+        console.warn('TradeMindUI: 调整输入框样式时出错', e);
     }
 })();
 
@@ -1528,6 +1568,11 @@ window.injectCommonUI = function() {
     console.log('TradeMindUI.injectCommonUI: 函数被调用');
     
     try {
+        // 0. 注入统一的页面标题
+        console.log('TradeMindUI.injectCommonUI: 步骤0 - 注入统一页面标题');
+        document.title = '杭州巨猿科技有限公司 - TradeMind商贸智脑';
+        console.log('TradeMindUI.injectCommonUI: 页面标题已设置');
+        
         // 1. 弹窗注入
         console.log('TradeMindUI.injectCommonUI: 步骤1 - 检查并注入弹窗模板');
         const existingModal = document.getElementById('subscription-modal');
@@ -1690,6 +1735,42 @@ window.injectCommonUI = function() {
             };
         } else {
             console.log('TradeMindUI.injectCommonUI: 未找到移动端头像触发元素');
+        }
+        
+        // 6. 注入统一的备案Footer - 仅给 login.html 和 register.html 添加
+        console.log('TradeMindUI.injectCommonUI: 步骤6 - 注入统一备案Footer');
+        const currentPath = window.location.pathname;
+        const isLoginPage = currentPath.endsWith('login.html');
+        const isRegisterPage = currentPath.endsWith('register.html');
+        
+        // 仅给登录页和注册页添加备案Footer，避免影响dashboard和其他模块的布局
+        if (isLoginPage || isRegisterPage) {
+            const existingFooter = document.getElementById('tm-compliance-footer');
+            if (!existingFooter) {
+                console.log('TradeMindUI.injectCommonUI: 未找到Footer，开始注入');
+                
+                document.body.classList.add('flex', 'flex-col', 'min-h-screen');
+                const mainContent = document.querySelector('.min-h-screen > div') || document.querySelector('.bg-slate-50');
+                if (mainContent) {
+                    mainContent.classList.add('flex-1');
+                }
+                
+                const footerHtml = `
+                    <footer id="tm-compliance-footer" class="w-full py-4 text-center text-slate-600 text-xs mt-auto">
+                        <p>&copy; 2026 杭州巨猿科技有限公司 |
+                           <a href=" " target="_blank" class="hover:text-teal-500 transition-colors">
+                              浙ICP备2026010267号-1
+                           </a>
+                        </p>
+                    </footer>
+                `;
+                document.body.insertAdjacentHTML('beforeend', footerHtml);
+                console.log('TradeMindUI.injectCommonUI: Footer注入成功');
+            } else {
+                console.log('TradeMindUI.injectCommonUI: Footer已存在，跳过注入');
+            }
+        } else {
+            console.log('TradeMindUI.injectCommonUI: 非登录/注册页面，跳过Footer注入');
         }
         
         console.log('========== TradeMindUI: injectCommonUI 执行完成 ==========');
