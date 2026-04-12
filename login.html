@@ -96,5 +96,13 @@
     </div>
     
     <script src="./assets/js/auth.js"></script>
+    <script>
+        // 页面加载时注入公共 UI 组件
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.injectCommonUI) {
+                window.injectCommonUI();
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1568,6 +1568,12 @@ window.injectCommonUI = function() {
     console.log('TradeMindUI.injectCommonUI: 函数被调用');
     
     try {
+        // 防止重复注入
+        if (document.getElementById('tm-compliance-footer')) {
+            console.log('TradeMindUI.injectCommonUI: Footer已存在，跳过注入');
+            return;
+        }
+        
         // 0. 注入统一的页面标题
         console.log('TradeMindUI.injectCommonUI: 步骤0 - 注入统一页面标题');
         document.title = '杭州巨猿科技有限公司 - TradeMind商贸智脑';
@@ -1737,40 +1743,206 @@ window.injectCommonUI = function() {
             console.log('TradeMindUI.injectCommonUI: 未找到移动端头像触发元素');
         }
         
-        // 6. 注入统一的备案Footer - 仅给 login.html 和 register.html 添加
+        // 6. 注入统一的备案Footer - 智能定位
         console.log('TradeMindUI.injectCommonUI: 步骤6 - 注入统一备案Footer');
-        const currentPath = window.location.pathname;
-        const isLoginPage = currentPath.endsWith('login.html');
-        const isRegisterPage = currentPath.endsWith('register.html');
         
-        // 仅给登录页和注册页添加备案Footer，避免影响dashboard和其他模块的布局
-        if (isLoginPage || isRegisterPage) {
-            const existingFooter = document.getElementById('tm-compliance-footer');
-            if (!existingFooter) {
-                console.log('TradeMindUI.injectCommonUI: 未找到Footer，开始注入');
-                
-                document.body.classList.add('flex', 'flex-col', 'min-h-screen');
-                const mainContent = document.querySelector('.min-h-screen > div') || document.querySelector('.bg-slate-50');
-                if (mainContent) {
-                    mainContent.classList.add('flex-1');
-                }
-                
-                const footerHtml = `
-                    <footer id="tm-compliance-footer" class="w-full py-4 text-center text-slate-600 text-xs mt-auto">
-                        <p>&copy; 2026 杭州巨猿科技有限公司 |
-                           <a href=" " target="_blank" class="hover:text-teal-500 transition-colors">
-                              浙ICP备2026010267号-1
-                           </a>
-                        </p>
-                    </footer>
-                `;
-                document.body.insertAdjacentHTML('beforeend', footerHtml);
-                console.log('TradeMindUI.injectCommonUI: Footer注入成功');
+        // 注入Footer
+        const footerHtml = `
+            <footer id="tm-compliance-footer" class="w-full py-6 text-center text-slate-500 text-[10px] md:text-xs bg-transparent border-t border-slate-100 relative z-10 clear-both">
+                <p class="opacity-80">&copy; 2026 杭州巨猿科技有限公司 |
+                   <a href="https://beian.miit.gov.cn" target="_blank" class="hover:text-teal-600 underline decoration-slate-200 underline-offset-4" style="pointer-events: auto; cursor: pointer; position: relative; z-index: 9999; display: inline-block; padding: 2px 4px; margin: 0 2px;">
+                      浙ICP备2026010267号-1
+                   </a>
+                </p>
+            </footer>
+        `;
+        
+        // 尝试多种容器注入，确保Footer能显示
+        let injectionSuccess = false;
+        let targetContainer = null;
+        let contentArea = null;
+        let mainElement = null;
+        
+        // 特殊处理：对于注册和登录页面，找到合适的容器注入到页面末尾
+        if (window.location.pathname.includes('register.html') || window.location.pathname.includes('login.html')) {
+            // 尝试找到注册/登录表单的容器
+            const formContainer = document.querySelector('.max-w-md');
+            if (formContainer) {
+                formContainer.insertAdjacentHTML('beforeend', footerHtml);
+                console.log('TradeMindUI.injectCommonUI: 注册/登录页面，Footer注入到表单容器末尾');
+                injectionSuccess = true;
+                targetContainer = formContainer;
             } else {
-                console.log('TradeMindUI.injectCommonUI: Footer已存在，跳过注入');
+                // 如果找不到表单容器，直接注入到 body
+                document.body.insertAdjacentHTML('beforeend', footerHtml);
+                console.log('TradeMindUI.injectCommonUI: 注册/登录页面，Footer直接注入到 body');
+                injectionSuccess = true;
+                targetContainer = document.body;
             }
         } else {
-            console.log('TradeMindUI.injectCommonUI: 非登录/注册页面，跳过Footer注入');
+            // 1. 优先注入到 #content-area（工作台等页面的主内容区）
+            contentArea = document.getElementById('content-area');
+            if (contentArea) {
+                contentArea.insertAdjacentHTML('beforeend', footerHtml);
+                console.log('TradeMindUI.injectCommonUI: Footer注入到 #content-area');
+                injectionSuccess = true;
+                targetContainer = contentArea;
+            }
+            
+            // 2. 如果失败，尝试注入到 main 标签
+            if (!injectionSuccess) {
+                mainElement = document.querySelector('main');
+                if (mainElement) {
+                    mainElement.insertAdjacentHTML('beforeend', footerHtml);
+                    console.log('TradeMindUI.injectCommonUI: Footer注入到 main 标签');
+                    injectionSuccess = true;
+                    targetContainer = mainElement;
+                }
+            }
+            
+            // 3. 如果失败，尝试注入到可见的 .view-section
+            if (!injectionSuccess) {
+                const viewSection = document.querySelector('.view-section:not(.hidden)');
+                if (viewSection) {
+                    viewSection.insertAdjacentHTML('beforeend', footerHtml);
+                    console.log('TradeMindUI.injectCommonUI: Footer注入到可见的 .view-section');
+                    injectionSuccess = true;
+                    targetContainer = viewSection;
+                }
+            }
+            
+            // 4. 如果所有尝试都失败，直接注入到 body
+            if (!injectionSuccess) {
+                document.body.insertAdjacentHTML('beforeend', footerHtml);
+                console.log('TradeMindUI.injectCommonUI: Footer直接注入到 body');
+                targetContainer = document.body;
+            }
+        }
+        
+        // 获取注入的Footer元素
+        const footer = document.getElementById('tm-compliance-footer');
+        if (footer) {
+            console.log('TradeMindUI.injectCommonUI: Footer注入成功');
+            
+            // 确保Footer可见
+            footer.style.display = 'block';
+            footer.style.visibility = 'visible';
+            footer.style.opacity = '1';
+            footer.style.position = 'relative';
+            footer.style.zIndex = '9999';
+            footer.style.width = '100%';
+            footer.style.boxSizing = 'border-box';
+            
+            // 针对 Dashboard 等复杂布局的特殊修正
+            if (window.location.pathname.includes('dashboard')) {
+                footer.classList.add('mt-10');
+                console.log('TradeMindUI.injectCommonUI: 为Dashboard页面添加额外间距');
+            }
+            
+            // 检测是否存在侧边栏，调整PC端布局
+            const sidebar = document.querySelector('aside');
+            if (sidebar && !isMobile) {
+                // 为Footer添加与侧边栏宽度相同的margin-left
+                const sidebarWidth = window.getComputedStyle(sidebar).width;
+                footer.style.marginLeft = sidebarWidth;
+                // 调整Footer宽度，使其从侧边栏右侧开始一直延伸到页面右侧
+                footer.style.width = `calc(100% - ${sidebarWidth})`;
+                console.log('TradeMindUI.injectCommonUI: 为Footer添加侧边栏宽度的margin-left:', sidebarWidth);
+                console.log('TradeMindUI.injectCommonUI: 调整Footer宽度为:', `calc(100% - ${sidebarWidth})`);
+            }
+            
+            // 移动端适配：防止被底部导航栏遮挡
+            if (isMobile) {
+                footer.classList.add('pb-24');
+                console.log('TradeMindUI.injectCommonUI: 为移动端Footer添加底部内边距');
+            }
+            
+            // 确保链接可点击
+            const beianLink = footer.querySelector('a');
+            if (beianLink) {
+                beianLink.style.pointerEvents = 'auto';
+                beianLink.style.cursor = 'pointer';
+                beianLink.style.textDecoration = 'underline';
+                beianLink.style.underlineOffset = '4px';
+                beianLink.style.color = 'inherit';
+                beianLink.style.transition = 'color 0.3s';
+                beianLink.style.position = 'relative';
+                beianLink.style.zIndex = '99999';
+                beianLink.style.display = 'inline-block';
+                beianLink.style.padding = '2px 4px';
+                beianLink.style.margin = '0 2px';
+                console.log('TradeMindUI.injectCommonUI: 确保备案号链接可点击');
+                
+                // 防止事件冒泡
+                beianLink.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    console.log('TradeMindUI.injectCommonUI: 备案号链接被点击，跳转到工信部网站');
+                });
+            }
+            
+            // 确保Footer在底部显示
+            if (targetContainer) {
+                // 检查是否是注册/登录页面的表单容器
+                const isAuthPage = window.location.pathname.includes('register.html') || window.location.pathname.includes('login.html');
+                const isDashboardPage = window.location.pathname.includes('dashboard') || window.location.pathname.includes('crm') || window.location.pathname.includes('SmartOps') || window.location.pathname.includes('product-center') || window.location.pathname.includes('supply-chain');
+                
+                if (isAuthPage) {
+                    // 对于注册和登录页面，使用相对定位，跟随页面末尾
+                    footer.style.position = 'static';
+                    footer.style.bottom = 'auto';
+                    footer.style.left = 'auto';
+                    footer.style.right = 'auto';
+                    footer.style.backgroundColor = 'transparent';
+                    footer.style.zIndex = '10';
+                    footer.style.width = '100%';
+                    footer.style.boxSizing = 'border-box';
+                    footer.style.marginTop = '2rem';
+                    console.log('TradeMindUI.injectCommonUI: 为注册/登录页面设置static布局，跟随页面末尾');
+                } else if (isDashboardPage) {
+                    // 对于工作台等页面，使用相对定位，平铺在除去左边导航栏的底部
+                    footer.style.position = 'static';
+                    footer.style.bottom = 'auto';
+                    footer.style.left = 'auto';
+                    footer.style.right = 'auto';
+                    footer.style.backgroundColor = 'transparent';
+                    footer.style.zIndex = '10';
+                    footer.style.width = '100%';
+                    footer.style.boxSizing = 'border-box';
+                    footer.style.marginTop = 'auto';
+                    console.log('TradeMindUI.injectCommonUI: 为工作台等页面设置static布局，平铺在底部');
+                } else if (contentArea && targetContainer === contentArea) {
+                    contentArea.style.flex = '1';
+                    contentArea.style.display = 'flex';
+                    contentArea.style.flexDirection = 'column';
+                    footer.style.marginTop = 'auto';
+                    console.log('TradeMindUI.injectCommonUI: 为contentArea设置flex布局，确保Footer在底部');
+                } else if (mainElement && targetContainer === mainElement) {
+                    mainElement.style.flex = '1';
+                    mainElement.style.display = 'flex';
+                    mainElement.style.flexDirection = 'column';
+                    footer.style.marginTop = 'auto';
+                    console.log('TradeMindUI.injectCommonUI: 为mainElement设置flex布局，确保Footer在底部');
+                } else if (targetContainer === document.body) {
+                    document.body.style.position = 'relative';
+                    footer.style.position = 'fixed';
+                    footer.style.bottom = '0';
+                    footer.style.left = '0';
+                    footer.style.right = '0';
+                    footer.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+                    console.log('TradeMindUI.injectCommonUI: 为body设置fixed布局，确保Footer在底部');
+                }
+            }
+            
+            // 确保Footer不被其他元素覆盖
+            // 只对非注册/登录/工作台页面添加阴影和背景模糊效果
+            const isAuthPage = window.location.pathname.includes('register.html') || window.location.pathname.includes('login.html');
+            const isDashboardPage = window.location.pathname.includes('dashboard') || window.location.pathname.includes('crm') || window.location.pathname.includes('SmartOps') || window.location.pathname.includes('product-center') || window.location.pathname.includes('supply-chain');
+            if (!isAuthPage && !isDashboardPage) {
+                footer.style.boxShadow = '0 -2px 10px rgba(0, 0, 0, 0.1)';
+                footer.style.backdropFilter = 'blur(10px)';
+            }
+        } else {
+            console.error('TradeMindUI.injectCommonUI: 注入Footer后未找到tm-compliance-footer元素');
         }
         
         console.log('========== TradeMindUI: injectCommonUI 执行完成 ==========');
