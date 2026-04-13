@@ -1,0 +1,182 @@
+/* 手机端适配样式 */
+
+/* 底部导航栏 */
+.md\:hidden {
+    display: block;
+}
+
+.fixed {
+    position: fixed;
+}
+
+.bottom-0 {
+    bottom: 0;
+}
+
+.left-0 {
+    left: 0;
+}
+
+.right-0 {
+    right: 0;
+}
+
+.bg-white\/95 {
+    background-color: rgba(255, 255, 255, 0.95);
+}
+
+.backdrop-blur-md {
+    backdrop-filter: blur(12px);
+}
+
+.border-t {
+    border-top-width: 1px;
+}
+
+.border-slate-200 {
+    border-color: #e2e8f0;
+}
+
+.px-1 {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+.py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.flex {
+    display: flex;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.items-end {
+    align-items: flex-end;
+}
+
+.z-40 {
+    z-index: 40;
+}
+
+.shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 手机端导航按钮 */
+.mobile-nav-btn {
+    flex: 1;
+    padding-top: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.mobile-nav-btn i {
+    font-size: 1.25rem;
+    margin-bottom: 0.125rem;
+}
+
+.mobile-nav-btn span {
+    font-size: 0.5625rem;
+    font-weight: bold;
+    letter-spacing: -0.025em;
+}
+
+/* 中心扫码/AI按钮 */
+.relative {
+    position: relative;
+}
+
+.-top-5 {
+    top: -1.25rem;
+}
+
+.w-12 {
+    width: 3rem;
+}
+
+.h-12 {
+    height: 3rem;
+}
+
+.bg-brand-600 {
+    background-color: #0D9488;
+}
+
+.rounded-full {
+    border-radius: 9999px;
+}
+
+.text-white {
+    color: #ffffff;
+}
+
+.flex {
+    display: flex;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.border-4 {
+    border-width: 4px;
+}
+
+.border-white {
+    border-color: #ffffff;
+}
+
+.active\:scale-90:active {
+    transform: scale(0.9);
+}
+
+.transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* 响应式布局 */
+@media (min-width: 768px) {
+    .md\:hidden {
+        display: none;
+    }
+}
+
+/* 移动端适配的其他样式 */
+.col-width-mobile {
+    width: 140px;
+}
+
+.col-hide-mobile {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .col-hide-mobile {
+        display: table-cell;
+    }
+}
+
+/* 移动端的安全区域适配 */
+@supports (padding: max(0px)) {
+    .pb-safe {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+}

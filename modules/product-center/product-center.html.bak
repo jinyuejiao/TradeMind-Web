@@ -6,101 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 产品中心</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">     
-
-    <script>
-        // 全局函数定义
-        function switchTab(tab) {
-            const tabs = {
-                dashboard: '../dashboard/dashboard.html',
-                biz: '../SmartOps/SmartOps.html',
-                crm: '../crm/crm.html',
-                supply: 'product-center.html',
-                supplier: '../supply-chain/supply-chain.html'
-            };
-
-            if (tabs[tab]) {
-                window.location.href = tabs[tab];
-            }
-        }
-
-        function openWarehouseDrawer() {
-            document.getElementById('warehouse-drawer').classList.remove('hidden');
-            // 确保 loadWarehouses 函数已经定义
-            if (typeof loadWarehouses === 'function') {
-                loadWarehouses();
-            }
-        }
-
-        // 显示通知
-        function showNotification(message, type = "success") {
-            // 创建通知元素
-            const notification = document.createElement('div');
-            const bgColor = type === "error" ? "bg-risk-high" : "bg-brand-600";
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in`;
-            notification.textContent = message;
-            
-            // 添加到页面
-            document.body.appendChild(notification);
-            
-            // 3秒后自动移除
-            setTimeout(() => {
-                notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 500);
-            }, 3000);
-        }
-
-        // 处理API响应
-        async function handleApiResponse(response) {
-            // 检查响应状态码
-            if (response.status === 401) {
-                showNotification("登录过期，请重新登录", "error");
-                // 跳转到登录页面
-                window.location.href = '../../login.html';
-                return null;
-            } else if (response.status === 500) {
-                showNotification("服务器配置错误", "error");
-                return null;
-            }
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error(data.message || '操作失败');
-            }
-
-            return data;
-        }
-
-        async function openPurchaseSuggestionModal() {
-            try {
-                // 检查认证状态
-                if (!window.checkAuth()) {
-                    return;
-                }
-
-                // 调用后端接口获取全量产品
-                const response = await window.wrappedFetch('/api/v1/rd/products', {
-                    method: 'GET'
-                });
-
-                const data = await handleApiResponse(response);
-                if (!data) return;
-
-                const allProducts = data.data;
-                // 筛选出库存低于预警值的产品
-                const suggestions = allProducts.filter(p => p.stock <= (p.warning_stock || 0));
-            } catch (error) {
-                console.error('获取产品列表异常:', error);
-                showNotification('获取产品列表失败: ' + error.message);
-            }
-        }
-    </script>
+    <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
 
     <style>
         body {
@@ -140,7 +46,7 @@
             margin-top: 10px;
         }
 
-        /* 弹窗及表单专用*/
+        /* 弹窗及表单专�?*/
         .sub-tab-btn {
             padding: 12px 24px;
             font-size: 13px;
@@ -223,7 +129,7 @@
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
-    <!-- 1. 侧边导航 -->
+    <!-- 1. 侧边导航�?-->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
         <!-- Logo 区域 -->
         <div class="h-16 flex items-center px-6 border-b border-slate-800">
@@ -234,7 +140,7 @@
         </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
             <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
+                <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作�?/span>
             </button>
             <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
@@ -246,7 +152,7 @@
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管�?/span>
             </button>
         </nav>
         <!-- 用户信息区域 -->
@@ -285,7 +191,7 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h2 class="text-xl font-bold text-slate-800 uppercase tracking-tight">产品中心</h2>
                     <div class="flex items-center gap-3 flex-wrap">
-                        <!-- 搜索框 -->
+                        <!-- 搜索�?-->
                         <div class="relative flex-1 max-w-xs">
                             <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
                             <input type="text" id="inventorySearch" onkeyup="filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all">
@@ -302,10 +208,10 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-6">
-                    <!-- 产品库主 (全屏宽度) -->
+                    <!-- 产品库主�?(全屏宽度) -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                             <div class="px-6 py-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/30">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品库</h3>
+                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品�?/h3>
                                 <!-- 新增按钮 -->
                                 <div class="flex items-center">
                                     <button id="addProductBtn" onclick="openProductDetail('add')" class="bg-brand-500 text-white p-2 rounded-xl shadow-sm hover:bg-brand-600 transition-all">
@@ -320,13 +226,13 @@
                                         <tr>
                                             <th class="px-6 py-4 col-width-mobile">产品基础信息</th>
                                             <th class="px-6 py-4 col-hide-mobile">主销区域</th>
-                                            <th class="px-6 py-4 text-right col-hide-mobile">销售均价</th>
+                                            <th class="px-6 py-4 text-right col-hide-mobile">销售均�?/th>
                                             <th class="px-6 py-4 text-right">实时库存</th>
                                             <th class="px-6 py-4 text-right">管理</th>
                                         </tr>
                                     </thead>
                                     <tbody class="text-xs divide-y divide-slate-50">
-                                        <!-- 产品行将通过JavaScript动态生成 -->
+                                        <!-- 产品行将通过JavaScript动态生�?-->
                                     </tbody>
                                 </table>
                             </div>
@@ -335,7 +241,7 @@
                 </div>
             </div>
 
-            <!-- ================= [4] 所有弹窗模板 ================= -->
+            <!-- ================= [4] 所有弹窗模�?================= -->
 
             <!-- 进货列表弹窗 -->
 
@@ -355,7 +261,7 @@
                         </div>
                     </div>
 
-                    <!-- 详情内容�?-->
+                    <!-- 详情内容�?-->
                     <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
                         <!-- 1. 核心经营信息 -->
                         <section>
@@ -365,26 +271,26 @@
                                 <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" id="sku" value="DB-ICE-001" class="form-input font-mono"></div>
                                 <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" id="price" step="0.01" value="1.50" class="form-input font-mono font-bold text-brand-600"></div>
 
-                                <!-- 单位角色配置�?-->
+                                <!-- 单位角色配置�?-->
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">基本单位 (结算底数)</label>
                                     <div class="flex gap-2">
-                                        <input type="text" id="base_unit" value="�? class="form-input flex-1" placeholder="如：�?>
+                                        <input type="text" id="base_unit" value="�? class="form-input flex-1" placeholder="如：�?>
                                         <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100 transition-colors whitespace-nowrap">配置单位换算</button>
                                     </div>
                                 </div>
 
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">默认入库单位 (采购)</label>
-                                    <select id="purchase_unit" class="form-input font-bold"><option>�?(1�?200�?</option><option>�?(1�?10�?</option><option>�?(基本单位)</option></select>
+                                    <select id="purchase_unit" class="form-input font-bold"><option>�?(1�?200�?</option><option>�?(1�?10�?</option><option>�?(基本单位)</option></select>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">默认销售单�?(出库)</label>
-                                    <select id="sales_unit" class="form-input font-bold text-brand-600"><option>�?(1�?10�?</option><option>�?(基本单位)</option></select>
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">默认销售单�?(出库)</label>
+                                    <select id="sales_unit" class="form-input font-bold text-brand-600"><option>�?(1�?10�?</option><option>�?(基本单位)</option></select>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">供应�?/label>
-                                    <select id="supplier_id" class="form-input font-bold"><option value="">请选择供应�?/option></select>
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">供应�?/label>
+                                    <select id="supplier_id" class="form-input font-bold"><option value="">请选择供应�?/option></select>
                                 </div>
                             </div>
                         </section>
@@ -430,7 +336,7 @@
                     </div>
 
                     <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8" id="purchase-suggestion-content">
-                        <!-- 内容将通过 JavaScript 动态生�?-->
+                        <!-- 内容将通过 JavaScript 动态生�?-->
                         <div class="text-center py-12">
                             <i class="ph ph-hourglass-simple text-4xl text-slate-300 mb-4"></i>
                             <p class="text-sm text-slate-400">正在生成进货建议...</p>
@@ -438,13 +344,13 @@
                     </div>
 
                     <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:bg-white/90 max-sm:backdrop-blur">
-                        <p class="text-[10px] text-slate-400 italic">基于当前库存预警值自动计�?/p>
+                        <p class="text-[10px] text-slate-400 italic">基于当前库存预警值自动计�?/p>
                         <div class="flex gap-3 w-full md:w-auto">
                             <button onclick="closePurchaseSuggestionModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">
                                 取消返回
                             </button>
                             <button onclick="savePurchaseOrder()" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95 flex items-center justify-center gap-2">
-                                <i class="ph ph-floppy-disk-back"></i> 保存进货�?                            </button>
+                                <i class="ph ph-floppy-disk-back"></i> 保存进货�?                            </button>
                         </div>
                     </div>
                 </div>
@@ -474,11 +380,11 @@
                         <div class="space-y-3">
                             <div>
                                 <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">仓库名称</label>
-                                <input type="text" id="new-warehouse-name" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all" placeholder="请输入仓库名�?>
+                                <input type="text" id="new-warehouse-name" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all" placeholder="请输入仓库名�?>
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">位置</label>
-                                <input type="text" id="new-warehouse-location" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all" placeholder="请输入仓库位�?>
+                                <input type="text" id="new-warehouse-location" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all" placeholder="请输入仓库位�?>
                             </div>
                             <button onclick="saveWarehouse()" class="w-full py-2.5 bg-brand-500 text-white text-xs font-bold rounded-xl hover:bg-brand-600 transition-colors">
                                 保存仓库
@@ -490,7 +396,7 @@
                     <div>
                         <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">现有仓库</h3>
                         <div class="space-y-3" id="warehouse-list">
-                            <!-- 仓库列表将通过JavaScript动态生�?-->
+                            <!-- 仓库列表将通过JavaScript动态生�?-->
                         </div>
                     </div>
                 </div>
@@ -528,9 +434,9 @@
                 let currentDeleteWarehouseId = null;
                 let isEditMode = false;
 
-                // 多单位换算算�?                function formatStock(stock, baseUnit, conversions) {
+                // 多单位换算算�?                function formatStock(stock, baseUnit, conversions) {
                     if (!conversions || conversions.length === 0) return `${stock} ${baseUnit || 'Pcs'}`;
-                    // 按比例从大到小排�?                    const sorted = conversions.sort((a, b) => b.ratio - a.ratio);
+                    // 按比例从大到小排�?                    const sorted = conversions.sort((a, b) => b.ratio - a.ratio);
                     let remaining = stock;
                     let result = "";
                     sorted.forEach(c => {
@@ -546,8 +452,8 @@
 
                 // 页面加载时初始化
                 document.addEventListener('DOMContentLoaded', function() {
-                    // 检查认证状态                    if (window.checkAuth) {
-                        console.log('调用全局checkAuth函数检查认证状态);
+                    // 检查认证状�?                    if (window.checkAuth) {
+                        console.log('调用全局checkAuth函数检查认证状�?);
                         if (!window.checkAuth()) {
                             return;
                         }
@@ -555,14 +461,14 @@
                         console.log('全局checkAuth函数不存在，检查本地存储中的token');
                         const token = localStorage.getItem('token');
                         if (!token) {
-                            console.log('Token不存在，跳转到登录页�?);
+                            console.log('Token不存在，跳转到登录页�?);
                             localStorage.clear();
                             window.location.href = '../../login.html';
                             return;
                         }
                     }
                     
-                    // 同步用户上下文信�?                    if (window.syncUserContext) {
+                    // 同步用户上下文信�?                    if (window.syncUserContext) {
                         window.syncUserContext();
                     }
                     
@@ -572,17 +478,17 @@
                 // 加载产品列表
                 async function loadProducts() {
                     try {
-                        // 调用后端接口，不需要传递X-Tenant-Id，因为后端会从UserContext中获�?                        const response = await window.wrappedFetch('/api/v1/rd/products', {
+                        // 调用后端接口，不需要传递X-Tenant-Id，因为后端会从UserContext中获�?                        const response = await window.wrappedFetch('/api/v1/rd/products', {
                             method: 'GET'
                         });
                         
                         // 检查响应状态码
                         if (response.status === 401) {
                             showNotification("登录过期，请重新登录", "error");
-                            // 跳转到登录页�?                            window.location.href = '../../login.html';
+                            // 跳转到登录页�?                            window.location.href = '../../login.html';
                             return;
                         } else if (response.status === 500) {
-                            showNotification("服务器配置错�?, "error");
+                            showNotification("服务器配置错�?, "error");
                             return;
                         }
                         
@@ -621,11 +527,11 @@
                         row.className = 'product-row hover:bg-slate-50 transition-all cursor-pointer group';
                         row.onclick = () => openProductDetail('edit', product.productId);
 
-                        // 计算库存预警状�?                        const isWarning = product.stock <= (product.warning_stock || 0);
+                        // 计算库存预警状�?                        const isWarning = product.stock <= (product.warning_stock || 0);
                         const stockColorClass = isWarning ? 'text-risk-high' : 'text-slate-900';
                         const progressColorClass = isWarning ? 'bg-risk-high' : 'bg-brand-500';
                         
-                        // 计算库存进度百分比（假设最大库存为 2000�?                        const maxStock = 2000;
+                        // 计算库存进度百分比（假设最大库存为 2000�?                        const maxStock = 2000;
                         const stockPercentage = Math.min((product.stock / maxStock) * 100, 100);
 
                         // 格式化多单位库存
@@ -644,7 +550,7 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 col-hide-mobile">
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-bold">${product.region || '未设�?}</span>
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-bold">${product.region || '未设�?}</span>
                             </td>
                             <td class="px-6 py-4 text-right font-mono font-bold text-slate-500 col-hide-mobile">
                                 $${product.price}
@@ -684,12 +590,12 @@
                     };
                 }
 
-                // 搜索框模糊检索（改为后端搜索�?                const filterInventoryTable = debounce(function() {
+                // 搜索框模糊检索（改为后端搜索�?                const filterInventoryTable = debounce(function() {
                     const searchInput = document.getElementById('inventorySearch');
                     const searchTerm = searchInput.value.trim();
                     
                     if (searchTerm.length === 0) {
-                        // 如果搜索词为空，加载所有产�?                        loadProducts();
+                        // 如果搜索词为空，加载所有产�?                        loadProducts();
                         return;
                     }
                     
@@ -729,7 +635,7 @@
                     const tr = table.getElementsByTagName('tr');
                     const filterUpper = filter.toUpperCase();
 
-                    // 从第二行开始（跳过表头�?                    for (let i = 1; i < tr.length; i++) {
+                    // 从第二行开始（跳过表头�?                    for (let i = 1; i < tr.length; i++) {
                         const nameCell = tr[i].querySelector('.product-name-cell');
                         const skuCell = tr[i].querySelector('.product-sku-cell');
                         if (nameCell && skuCell) {
@@ -744,7 +650,7 @@
                     }
                 }
 
-                // 加载供应商列�?                async function loadSuppliers() {
+                // 加载供应商列�?                async function loadSuppliers() {
                     try {
                         const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
                             method: 'GET'
@@ -768,25 +674,25 @@
                             });
                         }
                     } catch (error) {
-                        console.error('加载供应商列表失�?', error);
+                        console.error('加载供应商列表失�?', error);
                     }
                 }
 
                 // 打开产品详情
                 async function openProductDetail(mode, productId) {
                     currentProductId = productId;
-                    isEditMode = mode === 'add'; // 新增模式默认是编辑模�?                    
+                    isEditMode = mode === 'add'; // 新增模式默认是编辑模�?                    
                     // 显示模态框
                     document.getElementById('product-detail-modal').classList.remove('hidden');
                     
-                    // 加载供应商列�?                    await loadSuppliers();
+                    // 加载供应商列�?                    await loadSuppliers();
                     
                     if (mode === 'add') {
                         // 新增模式
                         document.getElementById('detail-title').textContent = `新增产品`;
                         document.getElementById('detail-sku').textContent = `SKU: 自动生成`;
                         
-                        // 清空表单所有字�?                        const formInputs = document.querySelectorAll('.form-input');
+                        // 清空表单所有字�?                        const formInputs = document.querySelectorAll('.form-input');
                         formInputs.forEach(input => {
                             if (input.type === 'text' || input.type === 'number' || input.tagName === 'TEXTAREA') {
                                 input.value = '';
@@ -795,7 +701,7 @@
                             }
                         });
                         
-                        // 设置基本单位默认�?                        document.getElementById('base_unit').value = '�?;
+                        // 设置基本单位默认�?                        document.getElementById('base_unit').value = '�?;
                         
                         // 清空当前产品单位
                         currentProductUnits = [];
@@ -803,7 +709,7 @@
                         // 编辑模式
                         document.getElementById('detail-title').textContent = `产品详情编辑`;
                         
-                        // 先尝试从本地数据中获取产品信�?                        const product = allProducts.find(p => p.productId === productId);
+                        // 先尝试从本地数据中获取产品信�?                        const product = allProducts.find(p => p.productId === productId);
                         
                         if (product) {
                             // 填充详情表单
@@ -819,9 +725,9 @@
                             // 保存单位换算信息
                             currentProductUnits = product.unitConversions || [];
                             
-                            // 更新单位选择下拉�?                            updateUnitSelects();
+                            // 更新单位选择下拉�?                            updateUnitSelects();
                             
-                            // 设置默认入库单位和默认销售单�?                            document.getElementById('purchase_unit').value = product.purchase_unit || product.base_unit;
+                            // 设置默认入库单位和默认销售单�?                            document.getElementById('purchase_unit').value = product.purchase_unit || product.base_unit;
                             document.getElementById('sales_unit').value = product.sales_unit || product.base_unit;
                         } else {
                             // 发起产品详情请求
@@ -850,15 +756,15 @@
                                     // 保存单位换算信息
                                     currentProductUnits = product.unitConversions || [];
                                     
-                                    // 更新单位选择下拉�?                                    updateUnitSelects();
+                                    // 更新单位选择下拉�?                                    updateUnitSelects();
                                     
-                                    // 设置默认入库单位和默认销售单�?                                    document.getElementById('purchase_unit').value = product.purchase_unit || product.base_unit;
+                                    // 设置默认入库单位和默认销售单�?                                    document.getElementById('purchase_unit').value = product.purchase_unit || product.base_unit;
                                     document.getElementById('sales_unit').value = product.sales_unit || product.base_unit;
                                 }
                             })
                             .catch(error => {
                                 console.error('请求产品详情失败:', error);
-                                // 即使请求失败，模态框也保持显�?                            });
+                                // 即使请求失败，模态框也保持显�?                            });
                         }
 
                         // 发起单位换算请求（如果本地没有数据）
@@ -881,7 +787,7 @@
                             .catch(error => {
                                 console.error('请求单位换算失败:', error);
                             });
-                            // 即使请求失败，模态框也保持显�?                        }
+                            // 即使请求失败，模态框也保持显�?                        }
                     } else {
                         // 其他情况
                         console.log('没有提供产品ID，显示空的产品详情模态框');
@@ -904,7 +810,7 @@
                     const productActions = document.getElementById('productActions');
                     const configUnitBtn = document.querySelector('button[onclick="openUnitModal()"]');
                     
-                    // 设置表单元素的只读状�?                    formInputs.forEach(input => {
+                    // 设置表单元素的只读状�?                    formInputs.forEach(input => {
                         if (editMode) {
                             input.removeAttribute('readonly');
                             input.classList.remove('bg-slate-50', 'cursor-not-allowed');
@@ -943,7 +849,7 @@
                     notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in`;
                     notification.textContent = message;
                     
-                    // 添加到页�?                    document.body.appendChild(notification);
+                    // 添加到页�?                    document.body.appendChild(notification);
                     
                     // 3秒后自动移除
                     setTimeout(() => {
@@ -1007,8 +913,8 @@
                             name: document.getElementById('name').value,
                             sku: document.getElementById('sku').value,
                             price: parseFloat(document.getElementById('price').value),
-                            stock: 0, // 默认�?
-                            userId: 1, // 默认�?
+                            stock: 0, // 默认�?
+                            userId: 1, // 默认�?
                             supplierId: document.getElementById('supplier_id').value ? parseInt(document.getElementById('supplier_id').value) : null,
                             baseUnit: document.getElementById('base_unit').value,
                             purchaseUnit: document.getElementById('purchase_unit').value,
@@ -1033,10 +939,10 @@
                         // 检查响应状态码
                         if (response.status === 401) {
                             showNotification("登录过期，请重新登录", "error");
-                            // 跳转到登录页�?                            window.location.href = '../../login.html';
+                            // 跳转到登录页�?                            window.location.href = '../../login.html';
                             return;
                         } else if (response.status === 500) {
-                            showNotification("服务器配置错�?, "error");
+                            showNotification("服务器配置错�?, "error");
                             return;
                         }
                         
@@ -1044,7 +950,7 @@
                         
                         if(data.success) {
                             showNotification("保存成功");
-                            closeProductDetail(); // 仅在成功时关�?                            loadProducts();
+                            closeProductDetail(); // 仅在成功时关�?                            loadProducts();
                         } else {
                             showNotification(data.message, "error");
                         }
@@ -1078,7 +984,7 @@
                 }
 
                 function requestNewProductAnalysis(productName) {
-                    document.getElementById('analysisTargetName').textContent = `研讨目标: ${productName}`;
+                    document.getElementById('analysisTargetName').textContent = `研讨目标�?{productName}`;
                     document.getElementById('product-select-modal').classList.add('hidden');
                     document.getElementById('new-product-report-modal').classList.remove('hidden');
                 }
@@ -1094,7 +1000,7 @@
                     // 清空现有内容
                     unitConversionList.innerHTML = '';
                     
-                    // 如果没有单位换算记录，添加一条默认记�?                    if (currentProductUnits.length === 0) {
+                    // 如果没有单位换算记录，添加一条默认记�?                    if (currentProductUnits.length === 0) {
                         addUnitConversionRow();
                     } else {
                         // 显示现有单位换算记录
@@ -1110,15 +1016,15 @@
                     document.getElementById('unit-modal').classList.add('hidden');
                 }
 
-                // 添加单位换算�?                function addUnitConversionRow(unitData = null, index = null) {
+                // 添加单位换算�?                function addUnitConversionRow(unitData = null, index = null) {
                     const unitConversionList = document.getElementById('unitConversionList');
                     const rowIndex = index !== null ? index : unitConversionList.children.length;
                     
-                    // 创建新的单位换算�?                    const row = document.createElement('div');
+                    // 创建新的单位换算�?                    const row = document.createElement('div');
                     row.className = 'flex items-center gap-4';
                     row.dataset.index = rowIndex;
                     
-                    // 设置默认�?                    const unitName = unitData ? unitData.unitName : '';
+                    // 设置默认�?                    const unitName = unitData ? unitData.unitName : '';
                     const ratio = unitData ? unitData.ratio : 1.0;
                     const isDefault = unitData ? unitData.isDefault : false;
                     
@@ -1146,7 +1052,7 @@
                     unitConversionList.appendChild(row);
                 }
 
-                // 移除单位换算�?                function removeUnitConversionRow(index) {
+                // 移除单位换算�?                function removeUnitConversionRow(index) {
                     const unitConversionList = document.getElementById('unitConversionList');
                     const row = document.querySelector(`[data-index="${index}"]`);
                     
@@ -1157,7 +1063,7 @@
                         const rows = unitConversionList.children;
                         for (let i = 0; i < rows.length; i++) {
                             rows[i].dataset.index = i;
-                            // 更新移除按钮的索�?                            const removeBtn = rows[i].querySelector('button');
+                            // 更新移除按钮的索�?                            const removeBtn = rows[i].querySelector('button');
                             if (removeBtn) {
                                 removeBtn.onclick = () => removeUnitConversionRow(i);
                             }
@@ -1171,7 +1077,7 @@
                     const rows = unitConversionList.children;
                     const unitConversions = [];
                     
-                    // 采集所有单位换算记�?                    for (let i = 0; i < rows.length; i++) {
+                    // 采集所有单位换算记�?                    for (let i = 0; i < rows.length; i++) {
                         const row = rows[i];
                         const unitNameInput = row.querySelector('.unit-name-input');
                         const ratioInput = row.querySelector('.ratio-input');
@@ -1199,17 +1105,17 @@
                     closeUnitModal();
                     
                     // 显示保存成功提示
-                    showNotification('单位换算已保�?);
+                    showNotification('单位换算已保�?);
                     
-                    // 更新默认入库单位和默认销售单位的下拉�?                    updateUnitSelects();
+                    // 更新默认入库单位和默认销售单位的下拉�?                    updateUnitSelects();
                 }
                 
-                // 更新单位选择下拉�?                function updateUnitSelects() {
+                // 更新单位选择下拉�?                function updateUnitSelects() {
                     const baseUnit = document.getElementById('base_unit').value;
                     const purchaseUnitSelect = document.getElementById('purchase_unit');
                     const salesUnitSelect = document.getElementById('sales_unit');
                     
-                    // 保存当前选中的�?                    const currentPurchaseUnit = purchaseUnitSelect.value;
+                    // 保存当前选中的�?                    const currentPurchaseUnit = purchaseUnitSelect.value;
                     const currentSalesUnit = salesUnitSelect.value;
                     
                     // 清空现有选项
@@ -1232,8 +1138,8 @@
                         salesUnitSelect.appendChild(option);
                     });
                     
-                    // 恢复选中的�?                    if (currentPurchaseUnit) {
-                        // 检查选项是否存在，如果不存在则使用基本单�?                        let optionExists = false;
+                    // 恢复选中的�?                    if (currentPurchaseUnit) {
+                        // 检查选项是否存在，如果不存在则使用基本单�?                        let optionExists = false;
                         for (let i = 0; i < purchaseUnitSelect.options.length; i++) {
                             if (purchaseUnitSelect.options[i].value === currentPurchaseUnit) {
                                 optionExists = true;
@@ -1247,7 +1153,7 @@
                         }
                     }
                     if (currentSalesUnit) {
-                        // 检查选项是否存在，如果不存在则使用基本单�?                        let optionExists = false;
+                        // 检查选项是否存在，如果不存在则使用基本单�?                        let optionExists = false;
                         for (let i = 0; i < salesUnitSelect.options.length; i++) {
                             if (salesUnitSelect.options[i].value === currentSalesUnit) {
                                 optionExists = true;
@@ -1273,10 +1179,10 @@
                     // 检查响应状态码
                     if (response.status === 401) {
                         showNotification("登录过期，请重新登录", "error");
-                        // 跳转到登录页�?                        window.location.href = '../../login.html';
+                        // 跳转到登录页�?                        window.location.href = '../../login.html';
                         return null;
                     } else if (response.status === 500) {
-                        showNotification("服务器配置错�?, "error");
+                        showNotification("服务器配置错�?, "error");
                         return null;
                     }
 
@@ -1335,7 +1241,7 @@
                  */
                 async function loadWarehouses() {
                     try {
-                        // 检查认证状态                        if (!window.checkAuth()) {
+                        // 检查认证状�?                        if (!window.checkAuth()) {
                             return;
                         }
 
@@ -1397,7 +1303,7 @@
                     const location = document.getElementById('new-warehouse-location').value.trim();
 
                     if (!name) {
-                        showNotification('请输入仓库名�?, 'error');
+                        showNotification('请输入仓库名�?, 'error');
                         return;
                     }
 
@@ -1477,7 +1383,7 @@
                  */
                 async function openPurchaseSuggestionModal() {
                     try {
-                        // 检查认证状态                        if (!window.checkAuth()) {
+                        // 检查认证状�?                        if (!window.checkAuth()) {
                             return;
                         }
 
@@ -1495,7 +1401,7 @@
                         
                         // 按供应商分组
                         const groupedBySupplier = suggestions.reduce((acc, p) => {
-                            const key = p.supplierName || '未知供应商;
+                            const key = p.supplierName || '未知供应�?;
                             if (!acc[key]) acc[key] = [];
                             acc[key].push({
                                 id: p.productId,
@@ -1519,7 +1425,7 @@
 
                 /**
                  * 渲染进货建议弹窗
-                 * @param {Object} groupedBySupplier - 按供应商分组的进货建�?                 */
+                 * @param {Object} groupedBySupplier - 按供应商分组的进货建�?                 */
                 function renderPurchaseModal(groupedBySupplier) {
                     const content = document.getElementById('purchase-suggestion-content');
                     content.innerHTML = '';
@@ -1531,7 +1437,7 @@
                             <div class="text-center py-12">
                                 <i class="ph ph-check-circle text-4xl text-brand-500 mb-4"></i>
                                 <p class="text-sm font-bold text-slate-700">暂无进货建议</p>
-                                <p class="text-xs text-slate-400 mt-2">所有产品库存充�?/p>
+                                <p class="text-xs text-slate-400 mt-2">所有产品库存充�?/p>
                             </div>
                         `;
                         return;
@@ -1547,14 +1453,14 @@
                         supplierSection.innerHTML = `
                             <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
                                 <h3 class="text-sm font-bold text-slate-800">${supplierName}</h3>
-                                <span class="text-xs font-bold text-brand-600">供应商总计�?${supplierTotal.toFixed(2)}</span>
+                                <span class="text-xs font-bold text-brand-600">供应商总计�?${supplierTotal.toFixed(2)}</span>
                             </div>
                             <div class="p-4">
                                 <table class="w-full text-left border-collapse">
                                     <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
                                         <tr>
-                                            <th class="px-4 py-3">产品�?(SKU)</th>
-                                            <th class="px-4 py-3 text-right">缺货状�?/th>
+                                            <th class="px-4 py-3">产品�?(SKU)</th>
+                                            <th class="px-4 py-3 text-right">缺货状�?/th>
                                             <th class="px-4 py-3 text-right">建议采购</th>
                                             <th class="px-4 py-3 text-right">预估小计</th>
                                         </tr>
@@ -1621,7 +1527,7 @@
 
                 /**
                  * 更新小计金额
-                 * @param {HTMLElement} input - 数量输入�?                 */
+                 * @param {HTMLElement} input - 数量输入�?                 */
                 function updateSubtotal(input) {
                     const row = input.closest('tr');
                     const price = parseFloat(row.querySelector('.subtotal').textContent.replace('$', ''));
@@ -1638,7 +1544,7 @@
                 }
 
                 /**
-                 * 保存进货�?                 */
+                 * 保存进货�?                 */
                 function savePurchaseOrder() {
                     // 这里可以添加保存进货单的逻辑
                     showNotification('进货单保存功能开发中', 'info');
@@ -1651,11 +1557,11 @@
         <div class="relative bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl fade-in">
             <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 多级单位换算配置</h3>
             <div class="space-y-6" id="unitConversionList">
-                <!-- 单位换算行将通过JavaScript动态生�?-->
+                <!-- 单位换算行将通过JavaScript动态生�?-->
             </div>
             <div class="flex justify-end mb-6">
                 <button onclick="addUnitConversionRow()" class="px-4 py-2 bg-brand-50 text-brand-600 rounded-xl text-xs font-bold border border-brand-100 hover:bg-brand-100 transition-colors">
-                    <i class="ph ph-plus mr-1"></i> 添加�?                </button>
+                    <i class="ph ph-plus mr-1"></i> 添加�?                </button>
             </div>
             <div class="flex flex-col gap-2">
                 <button onclick="saveUnitConversions()" class="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg">保存单位配置</button>
@@ -1687,36 +1593,36 @@
             <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-6">
                 <!-- 订阅等级对比 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- 试用版卡�?-->
+                    <!-- 试用版卡�?-->
                     <div class="p-5 rounded-[2rem] border border-slate-200 bg-slate-50 relative flex flex-col justify-between">
                         <div>
                             <span class="absolute top-4 right-8 text-[9px] font-black text-slate-300 uppercase tracking-widest">Current Plan</span>
-                            <h4 class="text-base font-bold text-slate-600">基础试用�?/h4>
+                            <h4 class="text-base font-bold text-slate-600">基础试用�?/h4>
                             <div class="mt-4 space-y-2 text-[11px] text-slate-500 border-l-2 border-slate-200 pl-3">
-                                <p class="flex items-center gap-2"><i class="ph ph-user"></i> 1�?管理员账�?/p>
-                                <p class="flex items-center gap-2"><i class="ph ph-package"></i> 100�?产品SKU限制</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-users-three"></i> 100�?客户档案上限</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-warehouse"></i> 10�?供应商配�?/p>
+                                <p class="flex items-center gap-2"><i class="ph ph-user"></i> 1�?管理员账�?/p>
+                                <p class="flex items-center gap-2"><i class="ph ph-package"></i> 100�?产品SKU限制</p>
+                                <p class="flex items-center gap-2"><i class="ph ph-users-three"></i> 100�?客户档案上限</p>
+                                <p class="flex items-center gap-2"><i class="ph ph-warehouse"></i> 10�?供应商配�?/p>
                             </div>
                         </div>
                         <div class="mt-6 text-2xl font-mono font-black text-slate-400">¥ 0</div>
                     </div>
 
-                    <!-- 普通会员卡片：凸显 888 �?3.7�?-->
+                    <!-- 普通会员卡片：凸显 888 �?3.7�?-->
                     <div class="p-6 rounded-[2rem] border-4 border-[#14B8A6] bg-white shadow-2xl relative overflow-hidden group flex flex-col justify-between transition-all hover:-translate-y-1">
-                        <!-- 3.7�?飘带 -->
+                        <!-- 3.7�?飘带 -->
                         <div class="absolute -right-14 top-8 rotate-45 discount-ribbon text-white text-[11px] font-black py-2 px-16 shadow-lg uppercase tracking-tighter">
-                            首发 3.7 �?                        </div>
+                            首发 3.7 �?                        </div>
 
                         <div>
                             <p class="text-[9px] font-black text-[#14B8A6] uppercase tracking-widest mb-1">Recommended</p>
-                            <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">普通会员订�?<i class="ph ph-seal-check-fill text-[#14B8A6]"></i></h4>
+                            <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">普通会员订�?<i class="ph ph-seal-check-fill text-[#14B8A6]"></i></h4>
 
                             <div class="mt-4 space-y-2 text-[11px] text-slate-800 font-bold">
-                                <p class="flex items-center gap-2"><i class="ph ph-users-four text-[#14B8A6] text-base"></i> 5�?不同角色子账�?/p>
-                                <p class="flex items-center gap-2"><i class="ph ph-package text-[#14B8A6] text-base"></i> 1000�?产品数量管理</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-address-book text-[#14B8A6] text-base"></i> 1000�?客户管理权限</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-warehouse text-[#14B8A6] text-base"></i> 100�?供应商管�?/p>
+                                <p class="flex items-center gap-2"><i class="ph ph-users-four text-[#14B8A6] text-base"></i> 5�?不同角色子账�?/p>
+                                <p class="flex items-center gap-2"><i class="ph ph-package text-[#14B8A6] text-base"></i> 1000�?产品数量管理</p>
+                                <p class="flex items-center gap-2"><i class="ph ph-address-book text-[#14B8A6] text-base"></i> 1000�?客户管理权限</p>
+                                <p class="flex items-center gap-2"><i class="ph ph-warehouse text-[#14B8A6] text-base"></i> 100�?供应商管�?/p>
                             </div>
                         </div>
 
@@ -1733,20 +1639,20 @@
                     </div>
                 </div>
 
-                <!-- 2. 推荐官计�?(保留金色 UI) -->
+                <!-- 2. 推荐官计�?(保留金色 UI) -->
                 <div class="gold-referral-card rounded-[2rem] p-5 relative overflow-hidden shadow-sm">
                     <div class="absolute -right-8 -top-8 opacity-10 rotate-12"><i class="ph ph-medal text-[10rem] text-amber-600"></i></div>
                     <div class="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-12 bg-white/50 rounded-full flex items-center justify-center text-amber-700 shrink-0 shadow-sm"><i class="ph ph-users-plus text-2xl"></i></div>
                             <div class="text-left">
-                                <h3 class="text-base font-black text-amber-900 flex items-center gap-2">巨猿推荐官计�?<i class="ph ph-sparkle-fill text-amber-500 text-xs"></i></h3>
-                                <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励�?/p>
+                                <h3 class="text-base font-black text-amber-900 flex items-center gap-2">巨猿推荐官计�?<i class="ph ph-sparkle-fill text-amber-500 text-xs"></i></h3>
+                                <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励�?/p>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 w-full md:w-auto">
                             <div class="bg-white/70 backdrop-blur-sm px-5 py-2 rounded-xl border border-amber-300 text-center flex-1 md:flex-none">
-                                <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐�?/p>
+                                <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐�?/p>
                                 <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">TM-100001</p>
                             </div>
                             <button onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">
@@ -1781,9 +1687,9 @@
                     <p class="text-xs text-slate-500 mt-1">分享您的专属名片，邀好友加入</p>
                 </div>
 
-                <!-- 海报快照区域 (html2canvas 将截取此�? -->
+                <!-- 海报快照区域 (html2canvas 将截取此�? -->
                 <div id="poster-capture-area" class="w-full p-2 bg-white rounded-[2.8rem] shadow-xl">
-                    <!-- 海报主体：内联样式确保渐变生�?-->
+                    <!-- 海报主体：内联样式确保渐变生�?-->
                     <div class="w-full aspect-[3/4.2] rounded-[2.2rem] p-8 flex flex-col relative overflow-hidden text-white"
                          style="background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);">
 
@@ -1808,19 +1714,19 @@
                         <!-- 功能列表 -->
                         <div class="space-y-3 mb-auto relative z-10">
                             <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">
-                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 多模态订单自动提�?                            </div>
+                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 多模态订单自动提�?                            </div>
                             <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">
                                 <i class="ph ph-sparkle-fill text-yellow-300"></i> 数字化供应链智能预警
                             </div>
                             <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">
-                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 全量多租户经营看�?                            </div>
+                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 全量多租户经营看�?                            </div>
                         </div>
 
-                        <!-- 推荐码卡片区�?(毛玻璃效果内联实�? -->
+                        <!-- 推荐码卡片区�?(毛玻璃效果内联实�? -->
                         <div class="mt-8 p-4 rounded-[1.5rem] flex items-center justify-between relative z-10"
                              style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2);">
                             <div>
-                                <p class="text-[8px] text-white/60 uppercase tracking-widest mb-0.5 font-bold">我的专属推荐�?/p>
+                                <p class="text-[8px] text-white/60 uppercase tracking-widest mb-0.5 font-bold">我的专属推荐�?/p>
                                 <p id="poster-ref-code" class="text-xl font-bold text-white" style="font-family: 'Space Grotesk', monospace; letter-spacing: 0.05em;">TM-100001</p>
                             </div>
                             <div class="bg-white p-1.5 rounded-xl shadow-lg">
@@ -1833,13 +1739,13 @@
 
                 <div class="mt-6 text-center">
                     <p class="text-[11px] text-slate-400 leading-relaxed">
-                        邀请好友注册，双方立享 <span class="text-teal-600 font-bold">15�?专业�?/span> 奖励
+                        邀请好友注册，双方立享 <span class="text-teal-600 font-bold">15�?专业�?/span> 奖励
                     </p>
 
-                    <!-- 生成并保存海报按�?-->
+                    <!-- 生成并保存海报按�?-->
                     <button onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">
                         <i class="ph ph-download-simple-bold text-lg group-hover:translate-y-0.5 transition-transform"></i>
-                        保存高清海报到相�?                    </button>
+                        保存高清海报到相�?                    </button>
                 </div>
             </div>
         </div>
