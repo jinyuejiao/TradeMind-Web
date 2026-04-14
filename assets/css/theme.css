@@ -1,0 +1,158 @@
+/* ========================================================
+ * TradeMind - 主题变量系统
+ * ========================================================
+ * 统一管理品牌色、圆角、阴影等样式
+ * ======================================================== */
+
+:root {
+    /* ================ 品牌颜色 ================ */
+    --tm-primary: #14B8A6;
+    --tm-primary-dark: #0D9488;
+    --tm-primary-light: #5EEAD4;
+    --tm-brand-teal: #0D9488;
+    
+    /* ================ 背景颜色 ================ */
+    --tm-bg-dark: #0F172A;
+    --tm-bg-slate: #F1F5F9;
+    --tm-bg-slate-50: #F8FAFC;
+    --tm-bg-slate-100: #F1F5F9;
+    --tm-bg-slate-200: #E2E8F0;
+    --tm-bg-white: #FFFFFF;
+    
+    /* ================ 文本颜色 ================ */
+    --tm-text-main: #334155;
+    --tm-text-slate-400: #94A3B8;
+    --tm-text-slate-600: #475569;
+    --tm-text-slate-800: #1E293B;
+    --tm-text-slate-900: #0F172A;
+    
+    /* ================ 状态颜色 ================ */
+    --tm-risk-high: #F43F5E;
+    --tm-warning: #FBBF24;
+    --tm-success: #10B981;
+    --tm-info: #3B82F6;
+    
+    /* ================ 金色主题 ================ */
+    --tm-gold-light: #fef3c7;
+    --tm-gold-dark: #fbbf24;
+    --tm-gold-text: #92400e;
+    --tm-amber-600: #D97706;
+    --tm-amber-700: #B45309;
+    --tm-amber-800: #92400E;
+    
+    /* ================ 圆角 ================ */
+    --tm-radius-sm: 0.5rem;
+    --tm-radius-md: 0.75rem;
+    --tm-radius-lg: 1.5rem;
+    --tm-radius-xl: 2.5rem;
+    --tm-radius-2xl: 3rem;
+    --tm-radius-full: 9999px;
+    
+    /* ================ 阴影 ================ */
+    --tm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --tm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --tm-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --tm-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --tm-shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    
+    /* ================ 间距 ================ */
+    --tm-spacing-xs: 0.25rem;
+    --tm-spacing-sm: 0.5rem;
+    --tm-spacing-md: 1rem;
+    --tm-spacing-lg: 1.5rem;
+    --tm-spacing-xl: 2rem;
+    --tm-spacing-2xl: 3rem;
+    
+    /* ================ 字体大小 ================ */
+    --tm-text-xxs: 0.5rem;
+    --tm-text-xs: 0.625rem;
+    --tm-text-sm: 0.8125rem;
+    --tm-text-base: 1rem;
+    --tm-text-lg: 1.125rem;
+    --tm-text-xl: 1.25rem;
+    --tm-text-2xl: 1.5rem;
+    --tm-text-5xl: 3rem;
+    
+    /* ================ 过渡动画 ================ */
+    --tm-transition-fast: 0.2s;
+    --tm-transition-normal: 0.3s;
+    --tm-transition-slow: 0.4s;
+    
+    /* ================ Z-index ================ */
+    --tm-z-dropdown: 100;
+    --tm-z-sticky: 200;
+    --tm-z-fixed: 300;
+    --tm-z-modal-backdrop: 900;
+    --tm-z-modal: 1000;
+    --tm-z-popover: 110;
+    --tm-z-toast: 50;
+}
+
+/* ================ 基础样式 ================ */
+body {
+    font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif;
+    background-color: var(--tm-bg-slate);
+    color: var(--tm-text-main);
+}
+
+/* ================ 滚动条隐藏 ================ */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ================ 淡入动画 ================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn var(--tm-transition-slow) ease-in-out;
+}
+
+/* ================ 品牌脉冲动画 ================ */
+@keyframes pulse-teal {
+    0% {
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(20, 184, 166, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    }
+}
+
+.tech-pulse {
+    animation: pulse-teal 3s infinite;
+}
+
+/* ================ 响应式断点 ================ */
+@media (max-width: 767px) {
+    .mobile-only {
+        display: block;
+    }
+    .desktop-only {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .mobile-only {
+        display: none;
+    }
+    .desktop-only {
+        display: block;
+    }
+}
