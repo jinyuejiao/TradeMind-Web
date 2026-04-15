@@ -1,203 +1,19 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <script src="../../assets/js/env-config.js"></script>
+    <script src="/assets/js/env-config.js"></script>
+    <script src="/assets/js/api-client.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 产品中心</title>
-    <link rel="icon" href="../../favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">     
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon">
 
-    <script>
-        // 全局函数定义
-        function switchTab(tab) {
-            const tabs = {
-                dashboard: '../dashboard/dashboard.html',
-                biz: '../SmartOps/SmartOps.html',
-                crm: '../crm/crm.html',
-                supply: 'product-center.html',
-                supplier: '../supply-chain/supply-chain.html'
-            };
-
-            if (tabs[tab]) {
-                window.location.href = tabs[tab];
-            }
-        }
-
-        function openWarehouseDrawer() {
-            document.getElementById('warehouse-drawer').classList.remove('hidden');
-            // 确保 loadWarehouses 函数已经定义
-            if (typeof loadWarehouses === 'function') {
-                loadWarehouses();
-            }
-        }
-
-        // 显示通知
-        function showNotification(message, type = "success") {
-            // 创建通知元素
-            const notification = document.createElement('div');
-            const bgColor = type === "error" ? "bg-risk-high" : "bg-brand-600";
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in`;
-            notification.textContent = message;
-            
-            // 添加到页面
-            document.body.appendChild(notification);
-            
-            // 3秒后自动移除
-            setTimeout(() => {
-                notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 500);
-            }, 3000);
-        }
-
-        // 处理API响应
-        async function handleApiResponse(response) {
-            // 检查响应状态码
-            if (response.status === 401) {
-                showNotification("登录过期，请重新登录", "error");
-                // 跳转到登录页面
-                window.location.href = '../../login.html';
-                return null;
-            } else if (response.status === 500) {
-                showNotification("服务器配置错误", "error");
-                return null;
-            }
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            if (!data.success) {
-                throw new Error(data.message || '操作失败');
-            }
-
-            return data;
-        }
-
-        async function openPurchaseSuggestionModal() {
-            try {
-                // 检查认证状态
-                if (!window.checkAuth()) {
-                    return;
-                }
-
-                // 调用后端接口获取全量产品
-                const response = await window.wrappedFetch('/api/v1/rd/products', {
-                    method: 'GET'
-                });
-
-                const data = await handleApiResponse(response);
-                if (!data) return;
-
-                const allProducts = data.data;
-                // 筛选出库存低于预警值的产品
-                const suggestions = allProducts.filter(p => p.stock <= (p.warning_stock || 0));
-            } catch (error) {
-                console.error('获取产品列表异常:', error);
-                showNotification('获取产品列表失败: ' + error.message);
-            }
-        }
-    </script>
-
-    <style>
-        body {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* 报表美化 CSS */
-        .bar-item-slim {
-            width: 14px;
-            border-radius: 20px 20px 2px 2px;
-            transition: height 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67);
-            background: linear-gradient(180deg, #14B8A6 0%, #0D9488 100%);
-        }
-
-        .chart-container-svg {
-            width: 180px;
-            height: 180px;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .donut-text-box {
-            position: absolute;
-            text-align: center;
-            z-index: 10;
-        }
-
-        .axis-text {
-            font-size: 10px;
-            color: #94A3B8;
-            font-family: font-mono, sans-serif;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        /* 弹窗及表单专用*/
-        .sub-tab-btn {
-            padding: 12px 24px;
-            font-size: 13px;
-            font-weight: 700;
-            color: #94A3B8;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-        }
-
-            .sub-tab-btn.active {
-                color: var(--brand-primary);
-                border-bottom-color: var(--brand-primary);
-            }
-
-        /* 高级配置抽屉 */
-        .advanced-drawer {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0, 1, 0, 1);
-        }
-
-            .advanced-drawer.open {
-                max-height: 1000px;
-                transition: max-height 0.4s ease-in;
-            }
-
-        /* 响应式列表展示逻辑 */
-        @media (max-width: 768px) {
-            #main-sidebar { position: fixed; inset-y: 0; left: 0; z-index: 50; transform: translateX(-100%); transition: transform 0.3s ease; }
-            #main-sidebar.open { transform: translateX(0); }
-            
-            /* 手机端隐藏部分列 */
-            .col-hide-mobile { display: none !important; }
-            .col-width-mobile { width: 70% !important; }
-        }
-
-        /* 操作按钮样式 */
-        .action-icon-btn {
-            padding: 6px;
-            border-radius: 8px;
-            transition: all 0.2s;
-            color: #94A3B8;
-        }
-
-        .action-icon-btn:hover {
-            background-color: #F1F5F9;
-            color: #14B8A6;
-        }
-
-        .action-icon-btn.delete:hover {
-            color: #F43F5E;
-            background-color: #FEF2F2;
-        }
-    </style>
+    <link rel="stylesheet" href="/assets/css/theme.css">
+    <link rel="stylesheet" href="/assets/css/ui-main.css">
+    <link rel="stylesheet" href="/assets/css/ui-mobile.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css">
     <script>
         tailwind.config = {
             theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
@@ -208,52 +24,54 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
-    <script src="../../assets/js/auth.js"></script>
+    <script src="/assets/js/auth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="/assets/js/main-app.js"></script>
+    <script src="/assets/js/ui-components.js"></script>
+    <script src="/assets/js/ui-product-center.js"></script>
     <script>
-        // 页面加载时初始化公共 UI 组件
         document.addEventListener('DOMContentLoaded', function() {
-            // 注入公共 UI 组件
+            console.log('[product-center] 页面加载完成');
             if (window.injectCommonUI) {
                 window.injectCommonUI();
             }
+            if (window.ProductModule && window.ProductModule.init) {
+                console.log('[product-center] 初始化 ProductModule');
+                setTimeout(() => window.ProductModule.init(), 100);
+            }
         });
     </script>
-
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
-    <!-- 1. 侧边导航 -->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
-        <!-- Logo 区域 -->
         <div class="h-16 flex items-center px-6 border-b border-slate-800">
-            <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center mr-3 text-white shadow-lg shadow-[#14B8A6]/20">
+            <div class="w-8 h-8 bg-brand-500 rounded flex items-center justify-center mr-3 text-white shadow-[0_0_15px_rgba(20,184,166,0.5)]">
                 <i class="ph ph-brain text-xl"></i>
             </div>
             <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
         </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
-            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='../dashboard/dashboard.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
             </button>
-            <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='../SmartOps/SmartOps.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
             </button>
-            <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='../crm/crm.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
-            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
+            <button class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
-            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='../supply-chain/supply-chain.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <!-- 用户信息区域 -->
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">
-            <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>
+        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="alert('会员功能开发中')">
+            <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono">AD</div>
             <div class="ml-3 text-left">
-                <p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>
+                <p class="text-xs font-bold text-slate-200">用户 (角色)</p>
                 <div class="flex items-center gap-1.5 mt-1">
                     <i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>
                     <span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>
@@ -262,9 +80,7 @@
         </div>
     </aside>
 
-    <!-- 2. 主工作区 -->
     <main class="flex-1 flex flex-col min-w-0 relative h-full">
-        <!-- Header -->
         <header class="hidden md:flex h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
             <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
             <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
@@ -277,143 +93,280 @@
             </div>
         </header>
 
-        <!-- 内容区域 -->
         <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
 
-            <!-- ================= [4] 产品中心 ================= -->
-            <div id="view-supply" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h2 class="text-xl font-bold text-slate-800 uppercase tracking-tight">产品中心</h2>
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <!-- 搜索框 -->
-                        <div class="relative flex-1 max-w-xs">
+            <div class="w-full p-4 md:p-8 space-y-6 fade-in">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/30">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品库</h3>
+                        <div class="relative w-full md:w-72">
                             <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
-                            <input type="text" id="inventorySearch" onkeyup="filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all">
+                            <input type="text" id="inventorySearch" onkeyup="window.ProductModule.filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all">
                         </div>
-                        <!-- 仓库管理按钮 -->
-                        <button id="btn-warehouse-management" onclick="openWarehouseDrawer()" class="p-2.5 bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors flex items-center justify-center">
-                            <i class="ph ph-buildings text-lg"></i>
-                        </button>
-                        <!-- 生成进货单据按钮 -->
-                        <button id="btn-generate-restock" onclick="openPurchaseSuggestionModal()" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
-                            <i class="ph ph-receipt text-lg"></i> 生成进货单据
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="window.ProductModule.openCategoryManager()" class="w-10 h-10 max-md:w-8 max-md:h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-teal-50 hover:text-teal-600 rounded-xl transition-all" title="产品类别管理">
+                                <i class="ph-bold ph-tree-structure text-xl max-md:text-lg"></i>
+                            </button>
+                            <button onclick="openWarehouseDrawer()" class="w-10 h-10 max-md:w-8 max-md:h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-teal-50 hover:text-teal-600 rounded-xl transition-all" title="仓库管理">
+                                <i class="ph-bold ph-buildings text-xl max-md:text-lg"></i>
+                            </button>
+                            <button onclick="openPurchaseSuggestionModal()" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 max-md:px-3 max-md:py-2">
+                                <i class="ph ph-receipt text-lg"></i> <span class="max-md:hidden">生成进货单据</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-1 gap-6">
-                    <!-- 产品库主 (全屏宽度) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div class="px-6 py-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/30">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品库</h3>
-                                <!-- 新增按钮 -->
-                                <div class="flex items-center">
-                                    <button id="addProductBtn" onclick="openProductDetail('add')" class="bg-brand-500 text-white p-2 rounded-xl shadow-sm hover:bg-brand-600 transition-all">
-                                        <i class="ph ph-plus text-lg"></i>
-                                    </button>
+                    <div class="px-6 py-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <div class="relative" id="category-filter">
+                                <button onclick="window.ProductModule.toggleDropdown('category-dropdown')" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
+                                    <i class="ph ph-tree-structure text-teal-500"></i>
+                                    <span id="category-label">产品类别</span>
+                                    <i class="ph ph-caret-down text-xs"></i>
+                                </button>
+                                <div id="category-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                    <div class="p-2">
+                                        <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">选择分类</div>
+                                        <div id="category-options"></div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto no-scrollbar">
-                                <table class="w-full text-left border-collapse" id="existingProdTable">
-                                    <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
-                                        <tr>
-                                            <th class="px-6 py-4 col-width-mobile">产品基础信息</th>
-                                            <th class="px-6 py-4 col-hide-mobile">主销区域</th>
-                                            <th class="px-6 py-4 text-right col-hide-mobile">销售均价</th>
-                                            <th class="px-6 py-4 text-right">实时库存</th>
-                                            <th class="px-6 py-4 text-right">管理</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="text-xs divide-y divide-slate-50">
-                                        <!-- 产品行将通过JavaScript动态生成 -->
-                                    </tbody>
-                                </table>
+                            <div class="relative" id="supplier-filter">
+                                <button onclick="window.ProductModule.toggleDropdown('supplier-dropdown')" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
+                                    <i class="ph ph-users text-teal-500"></i>
+                                    <span id="supplier-label">供应商</span>
+                                    <i class="ph ph-caret-down text-xs"></i>
+                                </button>
+                                <div id="supplier-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                    <div class="p-2">
+                                        <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">选择供应商</div>
+                                        <div id="supplier-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative" id="stock-filter">
+                                <button onclick="window.ProductModule.toggleDropdown('stock-dropdown')" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
+                                    <i class="ph ph-box text-teal-500"></i>
+                                    <span id="stock-label">库存情况</span>
+                                    <i class="ph ph-caret-down text-xs"></i>
+                                </button>
+                                <div id="stock-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                    <div class="p-2">
+                                        <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">库存状态</div>
+                                        <div id="stock-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="window.ProductModule.resetFilters()" id="reset-filter-btn" class="hidden px-4 py-2.5 text-teal-600 text-sm font-bold hover:bg-teal-50 rounded-2xl transition-all items-center gap-1">
+                                <i class="ph ph-x-circle"></i> 重置
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left border-collapse" id="existingProdTable">
+                            <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
+                                <tr>
+                                    <th class="px-6 py-4 col-width-mobile">产品基础信息</th>
+                                    <th class="px-6 py-4 col-hide-mobile">主销区域</th>
+                                    <th class="px-6 py-4 text-right col-hide-mobile">销售均价</th>
+                                    <th class="px-6 py-4 text-right col-hide-mobile">进货均价</th>
+                                    <th class="px-6 py-4 text-right">实时库存</th>
+                                    <th class="px-6 py-4 text-right">管理</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-xs divide-y divide-slate-50">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="md:hidden space-y-4" id="mobile-product-cards"></div>
+            </div>
+
+            <div id="cost-analysis-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-0 md:p-8 modal-blur">
+                <div class="absolute inset-0" onclick="closeCostAnalysis()"></div>
+                <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+                    <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center text-[#14B8A6] shadow-lg"><i class="ph ph-chart-line-up-bold text-2xl"></i></div>
+                            <div><h2 class="text-lg font-black text-slate-800 tracking-tight">产品成本溯源分析</h2><p class="text-[10px] text-slate-400 font-mono tracking-widest uppercase mt-0.5">Historical Purchase Analysis</p></div>
+                        </div>
+                        <button onclick="closeCostAnalysis()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-8 md:p-12 no-scrollbar space-y-12">
+                        <div class="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
+                            <div class="flex justify-between items-center mb-8"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">进货单价走势 (Historical Average)</p></div>
+                            <div class="h-32 flex items-end justify-between px-10 gap-2 md:gap-12">
+                                <div class="bar-item-slim flex-1 h-[40%]"></div><div class="bar-item-slim flex-1 h-[55%] opacity-60"></div><div class="bar-item-slim flex-1 h-[45%] opacity-60"></div><div class="bar-item-slim flex-1 h-[70%] opacity-80"></div><div class="bar-item-slim flex-1 h-[92%] shadow-lg shadow-[#14B8A6]/20"></div>
                             </div>
                         </div>
-
+                        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 text-slate-400 font-bold uppercase tracking-widest border-b">
+                                    <tr><th class="px-6 py-4">日期/批次</th><th class="px-6 py-4">供应商</th><th class="px-6 py-4 text-center">进货单价</th><th class="px-6 py-4 text-right">进货量</th></tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
+                                    <tr class="hover:bg-slate-50 transition-colors"><td class="px-6 py-4 font-mono font-bold">2026.02.15<br><span class="text-[8px] font-normal text-slate-300">BATCH-26A</span></td><td class="px-6 py-4 font-black text-[#14B8A6]">深圳照明科技</td><td class="px-6 py-4 text-center font-mono font-black text-slate-900">$10.20</td><td class="px-6 py-4 text-right font-mono">1,000 Pcs</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-white border-t border-slate-100"><button onclick="closeCostAnalysis()" class="w-full py-4 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400 uppercase tracking-widest">Back to Inventory</button></div>
                 </div>
             </div>
 
-            <!-- ================= [4] 所有弹窗模板 ================= -->
+            <div id="workshop-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
+                <div class="absolute inset-0" onclick="closeWorkshopModal()"></div>
+                <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[95vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+                    <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h2 class="text-sm font-black text-slate-800 tracking-widest uppercase italic"><i class="ph ph-sparkle text-[#14B8A6] mr-2 text-xl font-bold"></i> AI R&D Insight Report</h2>
+                        <button onclick="closeWorkshopModal()" class="p-2 hover:bg-slate-200 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-12 no-scrollbar space-y-12 text-left">
+                        <div class="text-center border-b border-slate-100 pb-10"><h1 class="text-3xl font-black text-slate-900 mb-3 tracking-tight">Q1 智能选品研讨与营收预测</h1><p class="text-[10px] text-slate-400 font-mono uppercase">Doc ID: TM-RD-2026-001 | 实时市场数据驱动</p></div>
+                        <section><h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-[#14B8A6] rounded-full"></span> 市场机遇与近期热点分析</h3><p class="text-sm text-slate-500 leading-relaxed indent-8">监测显示：TikTok 东南亚区域"极简户外"标签点击量环比增长 120%。结合阿联酋即将到来的节庆备货季，<span class="text-slate-900 font-bold">"长效储能光伏灯"</span>具备极高的爆品潜力。建议重点布局具备 IP65 防尘防水等级的单品。</p></section>
+                        <section>
+                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-[#14B8A6] rounded-full"></span> 产研财务指标预测</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200"><p class="text-[10px] text-slate-400 font-black uppercase mb-1">预测成本</p><p class="text-xl font-mono font-black text-slate-900">$12.50</p></div>
+                                <div class="p-5 bg-brand-50 rounded-2xl border border-brand-200"><p class="text-[10px] text-brand-600 font-black uppercase mb-1">建议售价</p><p class="text-xl font-mono font-black text-brand-600">$48.00</p></div>
+                                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200"><p class="text-[10px] text-slate-400 font-black uppercase mb-1">首批预销</p><p class="text-xl font-mono font-black text-slate-900">2,500+</p></div>
+                                <div class="p-5 bg-brand-50 rounded-2xl border border-brand-200"><p class="text-[10px] text-brand-600 font-black uppercase mb-1">营收潜力</p><p class="text-xl font-mono font-black text-brand-600">$120k</p></div>
+                            </div>
+                        </section>
+                        <div class="bg-slate-900 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden"><div class="absolute -right-8 -top-8 opacity-10"><i class="ph ph-rocket-launch text-8xl"></i></div><p class="text-xs font-bold text-brand-400 mb-3 uppercase tracking-widest">Final Conclusion</p><p class="text-sm font-medium leading-relaxed italic">判定结果：<span class="text-brand-400 font-black">HIGH POTENTIAL</span>。建议立即启动首批 500 套打样，并利用当前汇率空档期锁定上游包材料成本。</p></div>
+                    </div>
+                    <div class="p-6 border-t border-slate-100 bg-white flex gap-4"><button onclick="closeWorkshopModal()" class="flex-1 py-4 rounded-2xl border border-slate-200 text-xs font-black text-slate-400 uppercase tracking-widest">Close Report</button></div>
+                </div>
+            </div>
 
-            <!-- 进货列表弹窗 -->
+            <div id="clearance-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
+                <div class="absolute inset-0" onclick="closeClearanceModal()"></div>
+                <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+                    <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-4"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white"><i class="ph ph-lightning-bold text-xl"></i></div><h2 class="text-sm font-black text-slate-800 uppercase tracking-widest italic">AI Inventory Clearance Plan</h2></div>
+                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-10 no-scrollbar space-y-12 text-left">
+                        <section>
+                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
+                            <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">"监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理。"</div>
+                        </section>
+                        <section>
+                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 建议执行策略 (Strategy)</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="p-5 border border-slate-200 rounded-2xl">
+                                    <p class="text-xs font-black text-slate-900 uppercase mb-2">1. 阶梯折扣促销</p>
+                                    <p class="text-[11px] text-slate-400 leading-relaxed italic">针对 A 类大客户，推行'买三赠一'或'85折尾货清仓'政策，重点回笼现金流。</p>
+                                </div>
+                                <div class="p-5 border border-slate-200 rounded-2xl">
+                                    <p class="text-xs font-black text-slate-900 uppercase mb-2">2. 区域调拨</p>
+                                    <p class="text-[11px] text-slate-400 leading-relaxed italic">将当前积压的产品从华东仓调拨至需求旺季的东南亚分销点，平衡库存结构。</p>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="p-6 border-t border-slate-100 bg-white"><button onclick="closeClearanceModal()" class="w-full py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                </div>
+            </div>
 
-            <!-- [沉浸式弹窗] 产品详情编辑 (核心配置) -->
             <div id="product-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeProductDetail()"></div>
                 <div class="relative bg-white w-full max-w-4xl h-full max-h-[92vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-                    <!-- 弹窗页眉 -->
                     <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="ph ph-pencil-line text-xl"></i></div>
                             <div><h2 class="text-sm font-black text-slate-800" id="detail-title">产品详情编辑</h2><p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5" id="detail-sku">SKU: ---</p></div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button id="editProductBtn" onclick="toggleEditMode()" class="p-2 hover:bg-slate-100 rounded-full transition-colors hidden"><i class="ph ph-pencil-simple-line text-lg text-brand-600"></i></button>
-                            <button onclick="closeProductDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
-                        </div>
+                        <button onclick="closeProductDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
                     </div>
-
-                    <!-- 详情内容�?-->
                     <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
-                        <!-- 1. 核心经营信息 -->
                         <section>
                             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心经营信息</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" id="name" value="东北大板 (原味经典)" class="form-input"></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" id="sku" value="DB-ICE-001" class="form-input font-mono"></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" id="price" step="0.01" value="1.50" class="form-input font-mono font-bold text-brand-600"></div>
-
-                                <!-- 单位角色配置�?-->
+                                <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" value="东北大板 (原味经典)" class="form-input"></div>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" value="DB-ICE-001" class="form-input font-mono"></div>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" value="1.50" class="form-input font-mono font-bold text-brand-600"></div>
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">基本单位 (结算底数)</label>
                                     <div class="flex gap-2">
-                                        <input type="text" id="base_unit" value="�? class="form-input flex-1" placeholder="如：�?>
+                                        <input type="text" value="根" class="form-input flex-1" placeholder="如：根">
                                         <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100 transition-colors whitespace-nowrap">配置单位换算</button>
                                     </div>
                                 </div>
-
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">默认入库单位 (采购)</label>
-                                    <select id="purchase_unit" class="form-input font-bold"><option>�?(1�?200�?</option><option>�?(1�?10�?</option><option>�?(基本单位)</option></select>
+                                    <select class="form-input font-bold"><option>箱 (1箱=200根)</option><option>包 (1包=10根)</option><option>根 (基本单位)</option></select>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">默认销售单�?(出库)</label>
-                                    <select id="sales_unit" class="form-input font-bold text-brand-600"><option>�?(1�?10�?</option><option>�?(基本单位)</option></select>
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">默认销售单位 (出库)</label>
+                                    <select class="form-input font-bold text-brand-600"><option>包 (1包=10根)</option><option>根 (基本单位)</option><option>箱 (1箱=200根)</option></select>
                                 </div>
-                                <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">供应�?/label>
-                                    <select id="supplier_id" class="form-input font-bold"><option value="">请选择供应�?/option></select>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">当前库存总量 (基本单位)</label><input type="number" value="1200" class="form-input font-mono"></div>
+                                <div class="space-y-2 col-span-full">
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">关联主供应商</label>
+                                    <select class="form-input font-bold text-slate-700">
+                                        <option>哈尔滨红运冷链贸易中心 (Rating: A)</option>
+                                        <option>大连大发制冷厂</option>
+                                        <option>广东恒温物流服务公司</option>
+                                    </select>
                                 </div>
                             </div>
                         </section>
-
-                        <!-- 2. 产品高级信息 -->
-                        <div class="pt-4 border-t border-slate-50 mt-6">
-                            <button onclick="toggleAdvanced('prod')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">高级配置信息 <i id="icon-prod" class="ph ph-caret-down"></i></button>
-                            <div id="drawer-prod" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品分类</label><select id="category" class="form-input"><option>户外照明</option><option>家居装饰</option></select></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存</label><input type="number" id="warning_stock" value="100" class="form-input"></div>
-                                <div class="space-y-2 md:col-span-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea id="description" class="form-input h-24 no-scrollbar">AI 自动提取生成的描述：具备光感自适应调节功能...</textarea></div>
+                        <section class="pt-6 border-t border-slate-50">
+                            <button onclick="toggleAdvanced()" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+                                <span>展开高级配置与描述信息</span><i id="advanced-icon" class="ph ph-caret-down group-hover:translate-y-0.5 transition-transform"></i>
+                            </button>
+                            <div id="advanced-drawer" class="advanced-drawer">
+                                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存下限</label><input type="number" value="100" class="form-input border-red-100"></div>
+                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">主销区域</label><input type="text" value="华北/华东" class="form-input"></div>
+                                    <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea class="form-input h-24 no-scrollbar">经典原味，特级奶油，-18度冷链保存。2026 年新包装版。</textarea></div>
+                                </div>
                             </div>
-                        </div>
+                        </section>
                     </div>
-                    
-                    <!-- 弹窗底部操作 -->
-                    <div id="productActions" class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 hidden">
-                        <button onclick="closeProductDetail()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
-                        <button onclick="saveProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">保存修改内容</button>
+                    <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+                        <p class="text-[10px] text-slate-400 italic">保存后将自动更新单据提取与库存算力逻辑</p>
+                        <div class="flex gap-3 w-full md:w-auto">
+                            <button onclick="closeProductDetail()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
+                            <button onclick="saveProduct()" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95 flex items-center justify-center gap-2">
+                                <i class="ph ph-floppy-disk-back"></i> 保存修改内容
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
+            <div id="unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
+                <div class="relative bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl fade-in text-left">
+                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 单位换算配置</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">包装单位</label><input type="text" value="箱" class="form-input text-center font-bold"></div>
+                            <div class="pt-4 text-slate-300">=</div>
+                            <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">折合基本数</label><input type="number" value="200" class="form-input text-center text-brand-600 font-black"></div>
+                            <div class="pt-4 text-xs font-bold text-slate-400">根</div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1"><input type="text" value="包" class="form-input text-center font-bold"></div>
+                            <div class="pt-1 text-slate-300">=</div>
+                            <div class="flex-1"><input type="number" value="10" class="form-input text-center text-brand-600 font-black"></div>
+                            <div class="pt-1 text-xs font-bold text-slate-400">根</div>
+                        </div>
+                    </div>
+                    <button onclick="closeUnitModal()" class="w-full mt-8 bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg active:scale-95">保存换算规则</button>
+                </div>
+            </div>
 
-
-            <!-- 进货建议弹窗 -->
-            <div id="purchase-suggestion-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8">
+            <div id="purchase-suggestion-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePurchaseSuggestionModal()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-full max-sm:h-full max-sm:rounded-none md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in">
+                <div class="relative bg-white w-full max-w-4xl h-full max-sm:h-full max-sm:rounded-none md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
                     <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -428,30 +381,27 @@
                             <i class="ph ph-x text-xl text-slate-400"></i>
                         </button>
                     </div>
-
                     <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8" id="purchase-suggestion-content">
-                        <!-- 内容将通过 JavaScript 动态生�?-->
                         <div class="text-center py-12">
                             <i class="ph ph-hourglass-simple text-4xl text-slate-300 mb-4"></i>
                             <p class="text-sm text-slate-400">正在生成进货建议...</p>
                         </div>
                     </div>
-
                     <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:bg-white/90 max-sm:backdrop-blur">
-                        <p class="text-[10px] text-slate-400 italic">基于当前库存预警值自动计�?/p>
+                        <p class="text-[10px] text-slate-400 italic">基于当前库存预警值自动计算</p>
                         <div class="flex gap-3 w-full md:w-auto">
                             <button onclick="closePurchaseSuggestionModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">
                                 取消返回
                             </button>
                             <button onclick="savePurchaseOrder()" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95 flex items-center justify-center gap-2">
-                                <i class="ph ph-floppy-disk-back"></i> 保存进货�?                            </button>
+                                <i class="ph ph-floppy-disk-back"></i> 保存进货单
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 仓库管理抽屉 -->
-            <div id="warehouse-drawer" class="hidden fixed right-0 inset-y-0 z-[130] w-full sm:w-96 bg-white shadow-2xl overflow-hidden flex flex-col">
+            <div id="warehouse-drawer" class="hidden fixed right-0 inset-y-0 z-[130] w-96 bg-white shadow-2xl overflow-hidden flex flex-col">
                 <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -466,1383 +416,110 @@
                         <i class="ph ph-x text-xl text-slate-400"></i>
                     </button>
                 </div>
-
                 <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                    <!-- 新增仓库 -->
                     <div class="bg-slate-50 rounded-2xl p-4">
                         <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">新增仓库</h3>
                         <div class="space-y-3">
                             <div>
                                 <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">仓库名称</label>
-                                <input type="text" id="new-warehouse-name" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all" placeholder="请输入仓库名�?>
+                                <input type="text" id="new-warehouse-name" class="form-input w-full bg-white border-slate-200 text-slate-800" placeholder="请输入仓库名称">
                             </div>
                             <div>
                                 <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">位置</label>
-                                <input type="text" id="new-warehouse-location" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all" placeholder="请输入仓库位�?>
+                                <input type="text" id="new-warehouse-location" class="form-input w-full bg-white border-slate-200 text-slate-800" placeholder="请输入仓库位置">
                             </div>
                             <button onclick="saveWarehouse()" class="w-full py-2.5 bg-brand-500 text-white text-xs font-bold rounded-xl hover:bg-brand-600 transition-colors">
                                 保存仓库
                             </button>
                         </div>
                     </div>
-
-                    <!-- 仓库列表 -->
                     <div>
                         <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">现有仓库</h3>
-                        <div class="space-y-3" id="warehouse-list">
-                            <!-- 仓库列表将通过JavaScript动态生�?-->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 删除确认弹窗 -->
-            <div id="delete-confirm-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeDeleteConfirm()"></div>
-                <div class="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden fade-in">
-                    <div class="px-6 py-5 border-b border-slate-100 font-bold text-slate-800 flex justify-between items-center bg-slate-50/50">
-                        <span>确认删除</span>
-                        <i class="ph ph-x cursor-pointer text-slate-400" onclick="closeDeleteConfirm()"></i>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div class="text-center">
-                            <i class="ph ph-warning-circle text-4xl text-risk-high mb-4"></i>
-                            <p class="text-sm font-bold text-slate-800" id="delete-confirm-message">确定删除产品 [name] 吗？</p>
-                            <p class="text-[11px] text-slate-400 mt-2">此操作不可撤销</p>
-                        </div>
-                    </div>
-                    <div class="p-4 border-t border-slate-50 bg-slate-50/50 flex gap-4">
-                        <button onclick="closeDeleteConfirm()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition">取消</button>
-                        <button onclick="confirmDelete()" class="flex-1 py-3 rounded-xl bg-risk-high text-white text-xs font-bold shadow-lg active:scale-95 transition">删除</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- JavaScript 代码 -->
-            <script>
-                // 全局变量
-                let allProducts = [];
-                let currentProductId = null;
-                let currentProductUnits = [];
-                let currentDeleteProductId = null;
-                let currentDeleteWarehouseId = null;
-                let isEditMode = false;
-
-                // 多单位换算算�?                function formatStock(stock, baseUnit, conversions) {
-                    if (!conversions || conversions.length === 0) return `${stock} ${baseUnit || 'Pcs'}`;
-                    // 按比例从大到小排�?                    const sorted = conversions.sort((a, b) => b.ratio - a.ratio);
-                    let remaining = stock;
-                    let result = "";
-                    sorted.forEach(c => {
-                        const count = Math.floor(remaining / c.ratio);
-                        if (count > 0) {
-                            result += `${count}${c.unitName}`;
-                            remaining %= c.ratio;
-                        }
-                    });
-                    if (remaining > 0 || result === "") result += `${remaining}${baseUnit || 'Pcs'}`;
-                    return result;
-                }
-
-                // 页面加载时初始化
-                document.addEventListener('DOMContentLoaded', function() {
-                    // 检查认证状态                    if (window.checkAuth) {
-                        console.log('调用全局checkAuth函数检查认证状态);
-                        if (!window.checkAuth()) {
-                            return;
-                        }
-                    } else {
-                        console.log('全局checkAuth函数不存在，检查本地存储中的token');
-                        const token = localStorage.getItem('token');
-                        if (!token) {
-                            console.log('Token不存在，跳转到登录页�?);
-                            localStorage.clear();
-                            window.location.href = '../../login.html';
-                            return;
-                        }
-                    }
-                    
-                    // 同步用户上下文信�?                    if (window.syncUserContext) {
-                        window.syncUserContext();
-                    }
-                    
-                    loadProducts();
-                });
-
-                // 加载产品列表
-                async function loadProducts() {
-                    try {
-                        // 调用后端接口，不需要传递X-Tenant-Id，因为后端会从UserContext中获�?                        const response = await window.wrappedFetch('/api/v1/rd/products', {
-                            method: 'GET'
-                        });
-                        
-                        // 检查响应状态码
-                        if (response.status === 401) {
-                            showNotification("登录过期，请重新登录", "error");
-                            // 跳转到登录页�?                            window.location.href = '../../login.html';
-                            return;
-                        } else if (response.status === 500) {
-                            showNotification("服务器配置错�?, "error");
-                            return;
-                        }
-                        
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            allProducts = data.data;
-                            renderProductTable(allProducts);
-                        } else {
-                            console.error('加载产品列表失败:', data.message);
-                            showNotification('加载失败: ' + data.message);
-                        }
-                    } catch (error) {
-                        console.error('加载产品列表异常:', error);
-                        showNotification('加载失败: ' + error.message);
-                    }
-                }
-                
-                // 生成进货列表
-                
-                // 渲染进货列表
-                
-                // 关闭进货列表弹窗
-
-                // 渲染产品表格
-                function renderProductTable(products) {
-                    const tableBody = document.querySelector('#existingProdTable tbody');
-                    tableBody.innerHTML = '';
-
-                    products.forEach(product => {
-                        const row = document.createElement('tr');
-                        row.className = 'product-row hover:bg-slate-50 transition-all cursor-pointer group';
-                        row.onclick = () => openProductDetail('edit', product.productId);
-
-                        // 计算库存预警状�?                        const isWarning = product.stock <= (product.warning_stock || 0);
-                        const stockColorClass = isWarning ? 'text-risk-high' : 'text-slate-900';
-                        const progressColorClass = isWarning ? 'bg-risk-high' : 'bg-brand-500';
-                        
-                        // 计算库存进度百分比（假设最大库存为 2000�?                        const maxStock = 2000;
-                        const stockPercentage = Math.min((product.stock / maxStock) * 100, 100);
-
-                        // 格式化多单位库存
-                        const stockDisplay = formatStock(product.stock, product.base_unit || 'Pcs', product.unitConversions);
-
-                        row.innerHTML = `
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-500 transition-colors">
-                                        <i class="ph ph-lightbulb text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-bold text-slate-800 product-name-cell">${product.name}</p>
-                                        <p class="text-[10px] text-slate-400 font-mono product-sku-cell uppercase">SKU: ${product.sku}</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 col-hide-mobile">
-                                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-bold">${product.region || '未设�?}</span>
-                            </td>
-                            <td class="px-6 py-4 text-right font-mono font-bold text-slate-500 col-hide-mobile">
-                                $${product.price}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <p class="font-mono font-bold ${stockColorClass} tracking-tighter">${stockDisplay}</p>
-                                <div class="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden md:block hidden">
-                                    <div class="w-[${stockPercentage}%] ${progressColorClass} h-full"></div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-right whitespace-nowrap">
-                                <div class="flex justify-end gap-1">
-                                    <button onclick="openProductDetail('edit', ${product.productId})" title="编辑" class="action-icon-btn">
-                                        <i class="ph ph-pencil-simple-line text-lg"></i>
-                                    </button>
-                                    <button onclick="confirmDeleteProduct(${product.productId}, '${product.name}')" title="删除" class="action-icon-btn delete">
-                                        <i class="ph ph-trash text-lg"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        `;
-
-                        tableBody.appendChild(row);
-                    });
-                }
-
-                // 防抖函数
-                function debounce(func, wait) {
-                    let timeout;
-                    return function executedFunction(...args) {
-                        const later = () => {
-                            clearTimeout(timeout);
-                            func(...args);
-                        };
-                        clearTimeout(timeout);
-                        timeout = setTimeout(later, wait);
-                    };
-                }
-
-                // 搜索框模糊检索（改为后端搜索�?                const filterInventoryTable = debounce(function() {
-                    const searchInput = document.getElementById('inventorySearch');
-                    const searchTerm = searchInput.value.trim();
-                    
-                    if (searchTerm.length === 0) {
-                        // 如果搜索词为空，加载所有产�?                        loadProducts();
-                        return;
-                    }
-                    
-                    // 调用后端搜索接口
-                    window.wrappedFetch(`/api/v1/rd/products?search=${encodeURIComponent(searchTerm)}`, {
-                        method: 'GET'
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            // 后端服务不可用，使用前端过滤
-                            console.log('后端搜索服务不可用，使用前端过滤');
-                            frontendFilter(searchTerm);
-                            throw new Error('Backend search service unavailable');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            const filteredProducts = data.data;
-                            renderProductTable(filteredProducts);
-                        } else {
-                            console.error('搜索产品失败:', data.message);
-                            // 使用前端过滤
-                            frontendFilter(searchTerm);
-                        }
-                    })
-                    .catch(error => {
-                        console.log('使用前端过滤');
-                        // 使用前端过滤
-                        frontendFilter(searchTerm);
-                    });
-                }, 300);
-
-                // 前端过滤（备用）
-                function frontendFilter(filter) {
-                    const table = document.getElementById('existingProdTable');
-                    const tr = table.getElementsByTagName('tr');
-                    const filterUpper = filter.toUpperCase();
-
-                    // 从第二行开始（跳过表头�?                    for (let i = 1; i < tr.length; i++) {
-                        const nameCell = tr[i].querySelector('.product-name-cell');
-                        const skuCell = tr[i].querySelector('.product-sku-cell');
-                        if (nameCell && skuCell) {
-                            const nameText = nameCell.textContent || nameCell.innerText;
-                            const skuText = skuCell.textContent || skuCell.innerText;
-                            if (nameText.toUpperCase().indexOf(filterUpper) > -1 || skuText.toUpperCase().indexOf(filterUpper) > -1) {
-                                tr[i].style.display = '';
-                            } else {
-                                tr[i].style.display = 'none';
-                            }
-                        }
-                    }
-                }
-
-                // 加载供应商列�?                async function loadSuppliers() {
-                    try {
-                        const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
-                            method: 'GET'
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        
-                        const data = await response.json();
-                        if (data.success) {
-                            const suppliers = data.data;
-                            const supplierSelect = document.getElementById('supplier_id');
-                            supplierSelect.innerHTML = '<option value="">不关联固定供应商</option>';
-                            
-                            suppliers.forEach(supplier => {
-                                const option = document.createElement('option');
-                                option.value = supplier.supplierId;
-                                option.textContent = supplier.name;
-                                supplierSelect.appendChild(option);
-                            });
-                        }
-                    } catch (error) {
-                        console.error('加载供应商列表失�?', error);
-                    }
-                }
-
-                // 打开产品详情
-                async function openProductDetail(mode, productId) {
-                    currentProductId = productId;
-                    isEditMode = mode === 'add'; // 新增模式默认是编辑模�?                    
-                    // 显示模态框
-                    document.getElementById('product-detail-modal').classList.remove('hidden');
-                    
-                    // 加载供应商列�?                    await loadSuppliers();
-                    
-                    if (mode === 'add') {
-                        // 新增模式
-                        document.getElementById('detail-title').textContent = `新增产品`;
-                        document.getElementById('detail-sku').textContent = `SKU: 自动生成`;
-                        
-                        // 清空表单所有字�?                        const formInputs = document.querySelectorAll('.form-input');
-                        formInputs.forEach(input => {
-                            if (input.type === 'text' || input.type === 'number' || input.tagName === 'TEXTAREA') {
-                                input.value = '';
-                            } else if (input.tagName === 'SELECT') {
-                                input.selectedIndex = 0;
-                            }
-                        });
-                        
-                        // 设置基本单位默认�?                        document.getElementById('base_unit').value = '�?;
-                        
-                        // 清空当前产品单位
-                        currentProductUnits = [];
-                    } else if (mode === 'edit' && productId && productId !== undefined) {
-                        // 编辑模式
-                        document.getElementById('detail-title').textContent = `产品详情编辑`;
-                        
-                        // 先尝试从本地数据中获取产品信�?                        const product = allProducts.find(p => p.productId === productId);
-                        
-                        if (product) {
-                            // 填充详情表单
-                            document.getElementById('detail-sku').textContent = `SKU: ${product.sku}`;
-                            document.getElementById('name').value = product.name;
-                            document.getElementById('sku').value = product.sku;
-                            document.getElementById('price').value = product.price;
-                            document.getElementById('base_unit').value = product.base_unit;
-                            document.getElementById('supplier_id').value = product.supplierId || '';
-                            document.getElementById('warning_stock').value = product.warning_stock;
-                            document.getElementById('description').value = product.description;
-                            
-                            // 保存单位换算信息
-                            currentProductUnits = product.unitConversions || [];
-                            
-                            // 更新单位选择下拉�?                            updateUnitSelects();
-                            
-                            // 设置默认入库单位和默认销售单�?                            document.getElementById('purchase_unit').value = product.purchase_unit || product.base_unit;
-                            document.getElementById('sales_unit').value = product.sales_unit || product.base_unit;
-                        } else {
-                            // 发起产品详情请求
-                            window.wrappedFetch(`/api/v1/rd/products/${productId}`, {
-                                method: 'GET'
-                            })
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error('Network response was not ok');
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                if (data.success) {
-                                    const product = data.data;
-                                    // 填充详情表单
-                                    document.getElementById('detail-sku').textContent = `SKU: ${product.sku}`;
-                                    document.getElementById('name').value = product.name;
-                                    document.getElementById('sku').value = product.sku;
-                                    document.getElementById('price').value = product.price;
-                                    document.getElementById('base_unit').value = product.base_unit;
-                                    document.getElementById('supplier_id').value = product.supplierId || '';
-                                    document.getElementById('warning_stock').value = product.warning_stock;
-                                    document.getElementById('description').value = product.description;
-                                    
-                                    // 保存单位换算信息
-                                    currentProductUnits = product.unitConversions || [];
-                                    
-                                    // 更新单位选择下拉�?                                    updateUnitSelects();
-                                    
-                                    // 设置默认入库单位和默认销售单�?                                    document.getElementById('purchase_unit').value = product.purchase_unit || product.base_unit;
-                                    document.getElementById('sales_unit').value = product.sales_unit || product.base_unit;
-                                }
-                            })
-                            .catch(error => {
-                                console.error('请求产品详情失败:', error);
-                                // 即使请求失败，模态框也保持显�?                            });
-                        }
-
-                        // 发起单位换算请求（如果本地没有数据）
-                        if (!product) {
-                            window.wrappedFetch(`/api/v1/rd/products/${productId}/units`, {
-                                method: 'GET'
-                            })
-                            .then(response => {
-                                if (!response.ok) {
-                                    throw new Error('Network response was not ok');
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                if (data.success) {
-                                    currentProductUnits = data.data;
-                                }
-                                // 暂存换算记录，点击“配置单位换算”时展示
-                            })
-                            .catch(error => {
-                                console.error('请求单位换算失败:', error);
-                            });
-                            // 即使请求失败，模态框也保持显�?                        }
-                    } else {
-                        // 其他情况
-                        console.log('没有提供产品ID，显示空的产品详情模态框');
-                    }
-                    
-                    // 设置初始模式
-                    setEditMode(isEditMode);
-                }
-                
-                // 切换编辑模式
-                function toggleEditMode() {
-                    isEditMode = !isEditMode;
-                    setEditMode(isEditMode);
-                }
-                
-                // 设置编辑模式
-                function setEditMode(editMode) {
-                    const formInputs = document.querySelectorAll('.form-input');
-                    const editBtn = document.getElementById('editProductBtn');
-                    const productActions = document.getElementById('productActions');
-                    const configUnitBtn = document.querySelector('button[onclick="openUnitModal()"]');
-                    
-                    // 设置表单元素的只读状�?                    formInputs.forEach(input => {
-                        if (editMode) {
-                            input.removeAttribute('readonly');
-                            input.classList.remove('bg-slate-50', 'cursor-not-allowed');
-                            input.classList.add('bg-white');
-                        } else {
-                            input.setAttribute('readonly', 'readonly');
-                            input.classList.add('bg-slate-50', 'cursor-not-allowed');
-                            input.classList.remove('bg-white');
-                        }
-                    });
-                    
-                    // 显示/隐藏修改按钮
-                    if (editMode) {
-                        editBtn.classList.add('hidden');
-                        productActions.classList.remove('hidden');
-                        if (configUnitBtn) configUnitBtn.classList.remove('hidden');
-                    } else {
-                        editBtn.classList.remove('hidden');
-                        productActions.classList.add('hidden');
-                        if (configUnitBtn) configUnitBtn.classList.add('hidden');
-                    }
-                }
-
-                // 关闭产品详情
-                function closeProductDetail() {
-                    document.getElementById('product-detail-modal').classList.add('hidden');
-                    currentProductId = null;
-                    currentProductUnits = [];
-                }
-
-                // 显示通知
-                function showNotification(message, type = "success") {
-                    // 创建通知元素
-                    const notification = document.createElement('div');
-                    const bgColor = type === "error" ? "bg-risk-high" : "bg-brand-600";
-                    notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in`;
-                    notification.textContent = message;
-                    
-                    // 添加到页�?                    document.body.appendChild(notification);
-                    
-                    // 3秒后自动移除
-                    setTimeout(() => {
-                        notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
-                        setTimeout(() => {
-                            document.body.removeChild(notification);
-                        }, 500);
-                    }, 3000);
-                }
-
-                // 确认删除产品
-                function confirmDeleteProduct(productId, productName) {
-                    currentDeleteProductId = productId;
-                    document.getElementById('delete-confirm-message').textContent = `确定删除产品 ${productName} 吗？`;
-                    document.getElementById('delete-confirm-modal').classList.remove('hidden');
-                }
-
-                // 关闭删除确认弹窗
-                function closeDeleteConfirm() {
-                    document.getElementById('delete-confirm-modal').classList.add('hidden');
-                    currentDeleteProductId = null;
-                }
-
-                // 确认删除
-                function confirmDelete() {
-                    if (currentDeleteProductId) {
-                        // 发起删除请求
-                        window.wrappedFetch(`/api/v1/rd/products/${currentDeleteProductId}`, {
-                            method: 'DELETE'
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            if (data.success) {
-                                showNotification('删除成功');
-                                closeDeleteConfirm();
-                                loadProducts(); // 刷新列表
-                            } else {
-                                showNotification('删除失败: ' + (data.message || '未知错误'));
-                                closeDeleteConfirm();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('删除产品失败:', error);
-                            showNotification('删除失败: 网络错误');
-                            closeDeleteConfirm();
-                        });
-                    }
-                }
-
-                // 保存产品
-                async function saveProduct() {
-                    try {
-                        // 采集表单数据
-                        const productData = {
-                            productId: currentProductId,
-                            name: document.getElementById('name').value,
-                            sku: document.getElementById('sku').value,
-                            price: parseFloat(document.getElementById('price').value),
-                            stock: 0, // 默认�?
-                            userId: 1, // 默认�?
-                            supplierId: document.getElementById('supplier_id').value ? parseInt(document.getElementById('supplier_id').value) : null,
-                            baseUnit: document.getElementById('base_unit').value,
-                            purchaseUnit: document.getElementById('purchase_unit').value,
-                            salesUnit: document.getElementById('sales_unit').value,
-                            category: document.getElementById('category').value,
-                            warningStock: parseInt(document.getElementById('warning_stock').value) || 0,
-                            description: document.getElementById('description').value
-                        };
-                        const unitConversions = currentProductUnits;
-
-                        const productWithUnitsDTO = {
-                            product: productData,
-                            unitConversions: unitConversions
-                        };
-
-                        // 发起保存请求
-                        const response = await window.wrappedFetch('/api/v1/rd/products/save', {
-                            method: 'POST',
-                            body: JSON.stringify(productWithUnitsDTO)
-                        });
-                        
-                        // 检查响应状态码
-                        if (response.status === 401) {
-                            showNotification("登录过期，请重新登录", "error");
-                            // 跳转到登录页�?                            window.location.href = '../../login.html';
-                            return;
-                        } else if (response.status === 500) {
-                            showNotification("服务器配置错�?, "error");
-                            return;
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if(data.success) {
-                            showNotification("保存成功");
-                            closeProductDetail(); // 仅在成功时关�?                            loadProducts();
-                        } else {
-                            showNotification(data.message, "error");
-                        }
-                    } catch (error) {
-                        console.error("保存失败", error);
-                        showNotification('保存失败: ' + error.message, "error");
-                    }
-                }
-
-                // 其他辅助函数
-                function switchTab(tab) {
-                    const tabs = {
-                        dashboard: '../dashboard/dashboard.html',
-                        biz: '../SmartOps/SmartOps.html',
-                        crm: '../crm/crm.html',
-                        supply: 'product-center.html',
-                        supplier: '../supply-chain/supply-chain.html'
-                    };
-
-                    if (tabs[tab]) {
-                        window.location.href = tabs[tab];
-                    }
-                }
-
-                function openProductSelectModal() {
-                    document.getElementById('product-select-modal').classList.remove('hidden');
-                }
-
-                function closeProductSelectModal() {
-                    document.getElementById('product-select-modal').classList.add('hidden');
-                }
-
-                function requestNewProductAnalysis(productName) {
-                    document.getElementById('analysisTargetName').textContent = `研讨目标: ${productName}`;
-                    document.getElementById('product-select-modal').classList.add('hidden');
-                    document.getElementById('new-product-report-modal').classList.remove('hidden');
-                }
-
-                function closeNewProductReport() {
-                    document.getElementById('new-product-report-modal').classList.add('hidden');
-                }
-
-                function openUnitModal() {
-                    const unitModal = document.getElementById('unit-modal');
-                    const unitConversionList = document.getElementById('unitConversionList');
-                    
-                    // 清空现有内容
-                    unitConversionList.innerHTML = '';
-                    
-                    // 如果没有单位换算记录，添加一条默认记�?                    if (currentProductUnits.length === 0) {
-                        addUnitConversionRow();
-                    } else {
-                        // 显示现有单位换算记录
-                        currentProductUnits.forEach((unit, index) => {
-                            addUnitConversionRow(unit, index);
-                        });
-                    }
-                    
-                    unitModal.classList.remove('hidden');
-                }
-
-                function closeUnitModal() {
-                    document.getElementById('unit-modal').classList.add('hidden');
-                }
-
-                // 添加单位换算�?                function addUnitConversionRow(unitData = null, index = null) {
-                    const unitConversionList = document.getElementById('unitConversionList');
-                    const rowIndex = index !== null ? index : unitConversionList.children.length;
-                    
-                    // 创建新的单位换算�?                    const row = document.createElement('div');
-                    row.className = 'flex items-center gap-4';
-                    row.dataset.index = rowIndex;
-                    
-                    // 设置默认�?                    const unitName = unitData ? unitData.unitName : '';
-                    const ratio = unitData ? unitData.ratio : 1.0;
-                    const isDefault = unitData ? unitData.isDefault : false;
-                    
-                    row.innerHTML = `
-                        <div class="flex-1">
-                            <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">单位名称</label>
-                            <input type="text" value="${unitName}" class="form-input text-center font-bold unit-name-input">
-                        </div>
-                        <div class="pt-4 text-slate-300">=</div>
-                        <div class="flex-1">
-                            <label class="text-[9px] font-black text-slate-400 uppercase block mb-1">换算比率</label>
-                            <input type="number" step="0.1" value="${ratio}" class="form-input text-center text-brand-600 font-black ratio-input">
-                        </div>
-                        <div class="pt-4 flex items-center">
-                            <input type="checkbox" ${isDefault ? 'checked' : ''} class="is-default-input h-4 w-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500">
-                            <span class="ml-1 text-xs font-bold">默认</span>
-                        </div>
-                        <div class="pt-1">
-                            <button onclick="removeUnitConversionRow(${rowIndex})" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                                <i class="ph ph-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                    
-                    unitConversionList.appendChild(row);
-                }
-
-                // 移除单位换算�?                function removeUnitConversionRow(index) {
-                    const unitConversionList = document.getElementById('unitConversionList');
-                    const row = document.querySelector(`[data-index="${index}"]`);
-                    
-                    if (row) {
-                        row.remove();
-                        
-                        // 更新剩余行的索引
-                        const rows = unitConversionList.children;
-                        for (let i = 0; i < rows.length; i++) {
-                            rows[i].dataset.index = i;
-                            // 更新移除按钮的索�?                            const removeBtn = rows[i].querySelector('button');
-                            if (removeBtn) {
-                                removeBtn.onclick = () => removeUnitConversionRow(i);
-                            }
-                        }
-                    }
-                }
-
-                // 保存单位换算配置
-                function saveUnitConversions() {
-                    const unitConversionList = document.getElementById('unitConversionList');
-                    const rows = unitConversionList.children;
-                    const unitConversions = [];
-                    
-                    // 采集所有单位换算记�?                    for (let i = 0; i < rows.length; i++) {
-                        const row = rows[i];
-                        const unitNameInput = row.querySelector('.unit-name-input');
-                        const ratioInput = row.querySelector('.ratio-input');
-                        const isDefaultInput = row.querySelector('.is-default-input');
-                        
-                        if (unitNameInput && ratioInput && isDefaultInput) {
-                            const unitName = unitNameInput.value.trim();
-                            const ratio = parseFloat(ratioInput.value);
-                            const isDefault = isDefaultInput.checked;
-                            
-                            if (unitName) {
-                                unitConversions.push({
-                                    unitName: unitName,
-                                    ratio: ratio,
-                                    isDefault: isDefault
-                                });
-                            }
-                        }
-                    }
-                    
-                    // 更新当前产品单位
-                    currentProductUnits = unitConversions;
-                    
-                    // 关闭弹窗
-                    closeUnitModal();
-                    
-                    // 显示保存成功提示
-                    showNotification('单位换算已保�?);
-                    
-                    // 更新默认入库单位和默认销售单位的下拉�?                    updateUnitSelects();
-                }
-                
-                // 更新单位选择下拉�?                function updateUnitSelects() {
-                    const baseUnit = document.getElementById('base_unit').value;
-                    const purchaseUnitSelect = document.getElementById('purchase_unit');
-                    const salesUnitSelect = document.getElementById('sales_unit');
-                    
-                    // 保存当前选中的�?                    const currentPurchaseUnit = purchaseUnitSelect.value;
-                    const currentSalesUnit = salesUnitSelect.value;
-                    
-                    // 清空现有选项
-                    purchaseUnitSelect.innerHTML = '';
-                    salesUnitSelect.innerHTML = '';
-                    
-                    // 添加基本单位选项
-                    const baseOption = document.createElement('option');
-                    baseOption.value = baseUnit;
-                    baseOption.textContent = `${baseUnit} (基本单位)`;
-                    purchaseUnitSelect.appendChild(baseOption.cloneNode(true));
-                    salesUnitSelect.appendChild(baseOption);
-                    
-                    // 添加自定义单位选项
-                    currentProductUnits.forEach(unit => {
-                        const option = document.createElement('option');
-                        option.value = unit.unitName;
-                        option.textContent = `${unit.unitName} (1${unit.unitName}=${unit.ratio}${baseUnit})`;
-                        purchaseUnitSelect.appendChild(option.cloneNode(true));
-                        salesUnitSelect.appendChild(option);
-                    });
-                    
-                    // 恢复选中的�?                    if (currentPurchaseUnit) {
-                        // 检查选项是否存在，如果不存在则使用基本单�?                        let optionExists = false;
-                        for (let i = 0; i < purchaseUnitSelect.options.length; i++) {
-                            if (purchaseUnitSelect.options[i].value === currentPurchaseUnit) {
-                                optionExists = true;
-                                break;
-                            }
-                        }
-                        if (optionExists) {
-                            purchaseUnitSelect.value = currentPurchaseUnit;
-                        } else {
-                            purchaseUnitSelect.value = baseUnit;
-                        }
-                    }
-                    if (currentSalesUnit) {
-                        // 检查选项是否存在，如果不存在则使用基本单�?                        let optionExists = false;
-                        for (let i = 0; i < salesUnitSelect.options.length; i++) {
-                            if (salesUnitSelect.options[i].value === currentSalesUnit) {
-                                optionExists = true;
-                                break;
-                            }
-                        }
-                        if (optionExists) {
-                            salesUnitSelect.value = currentSalesUnit;
-                        } else {
-                            salesUnitSelect.value = baseUnit;
-                        }
-                    }
-                }
-
-                // ================= 公共函数 =================
-                
-                /**
-                 * 处理API响应
-                 * @param {Response} response - API响应对象
-                 * @returns {Promise<Object>} 解析后的响应数据
-                 */
-                async function handleApiResponse(response) {
-                    // 检查响应状态码
-                    if (response.status === 401) {
-                        showNotification("登录过期，请重新登录", "error");
-                        // 跳转到登录页�?                        window.location.href = '../../login.html';
-                        return null;
-                    } else if (response.status === 500) {
-                        showNotification("服务器配置错�?, "error");
-                        return null;
-                    }
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    if (!data.success) {
-                        throw new Error(data.message || '操作失败');
-                    }
-
-                    return data;
-                }
-
-                // ================= 高级配置相关 =================
-                
-                /**
-                 * 切换高级配置抽屉
-                 * @param {string} type - 抽屉类型
-                 */
-                function toggleAdvanced(type) {
-                    const drawer = document.getElementById(`drawer-${type}`);
-                    const icon = document.getElementById(`icon-${type}`);
-                    
-                    if (drawer.classList.contains('open')) {
-                        drawer.classList.remove('open');
-                        icon.classList.remove('ph-caret-up');
-                        icon.classList.add('ph-caret-down');
-                    } else {
-                        drawer.classList.add('open');
-                        icon.classList.remove('ph-caret-down');
-                        icon.classList.add('ph-caret-up');
-                    }
-                }
-
-                // ================= 仓库管理相关 =================
-                
-                /**
-                 * 打开仓库管理抽屉
-                 */
-                function openWarehouseDrawer() {
-                    document.getElementById('warehouse-drawer').classList.remove('hidden');
-                    loadWarehouses();
-                }
-
-                /**
-                 * 关闭仓库管理抽屉
-                 */
-                function closeWarehouseDrawer() {
-                    document.getElementById('warehouse-drawer').classList.add('hidden');
-                }
-
-                /**
-                 * 加载仓库列表
-                 */
-                async function loadWarehouses() {
-                    try {
-                        // 检查认证状态                        if (!window.checkAuth()) {
-                            return;
-                        }
-
-                        // 调用后端接口获取仓库列表
-                        const response = await window.wrappedFetch('/api/v1/warehouses', {
-                            method: 'GET'
-                        });
-
-                        const data = await handleApiResponse(response);
-                        if (!data) return;
-
-                        const warehouses = data.data;
-                        const warehouseList = document.getElementById('warehouse-list');
-                        warehouseList.innerHTML = '';
-
-                        if (!warehouses || warehouses.length === 0) {
-                            warehouseList.innerHTML = `
-                                <div class="text-center py-8">
-                                    <i class="ph ph-building text-4xl text-slate-400 mb-4"></i>
-                                    <p class="text-sm font-bold text-slate-400">暂无仓库</p>
-                                    <p class="text-xs text-slate-300 mt-2">请添加新仓库</p>
-                                </div>
-                            `;
-                            return;
-                        }
-
-                        warehouses.forEach(warehouse => {
-                            const warehouseItem = document.createElement('div');
-                            warehouseItem.className = 'bg-slate-50 rounded-xl p-4';
-                            warehouseItem.innerHTML = `
+                        <div class="space-y-3">
+                            <div class="bg-slate-50 rounded-xl p-4">
                                 <div class="flex justify-between items-start">
                                     <div>
-                                        <p class="font-bold text-slate-800">${warehouse.name}</p>
-                                        <p class="text-[10px] text-slate-400 mt-0.5">${warehouse.location}</p>
+                                        <p class="font-bold text-slate-800">主仓库</p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">深圳市宝安区福永街道</p>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="editWarehouse(${warehouse.warehouseId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
-                                            <i class="ph ph-pencil text-slate-400"></i>
-                                        </button>
-                                        <button onclick="confirmDeleteWarehouse(${warehouse.warehouseId}, '${warehouse.name}')" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
-                                            <i class="ph ph-trash text-slate-400"></i>
-                                        </button>
-                                    </div>
+                                    <button class="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+                                        <i class="ph ph-pencil text-slate-400"></i>
+                                    </button>
                                 </div>
-                            `;
-                            warehouseList.appendChild(warehouseItem);
-                        });
-                    } catch (error) {
-                        console.error('加载仓库列表异常:', error);
-                        showNotification('加载仓库列表失败: ' + error.message);
-                    }
-                }
-
-                /**
-                 * 保存仓库
-                 */
-                async function saveWarehouse() {
-                    const name = document.getElementById('new-warehouse-name').value.trim();
-                    const location = document.getElementById('new-warehouse-location').value.trim();
-
-                    if (!name) {
-                        showNotification('请输入仓库名�?, 'error');
-                        return;
-                    }
-
-                    try {
-                        // 调用后端接口保存仓库
-                        const response = await window.wrappedFetch('/api/v1/warehouses', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ name, location })
-                        });
-
-                        const data = await handleApiResponse(response);
-                        if (!data) return;
-
-                        showNotification('仓库保存成功', 'success');
-                        document.getElementById('new-warehouse-name').value = '';
-                        document.getElementById('new-warehouse-location').value = '';
-                        loadWarehouses();
-                    } catch (error) {
-                        console.error('保存仓库失败:', error);
-                        showNotification('保存仓库失败: ' + error.message, 'error');
-                    }
-                }
-
-                /**
-                 * 编辑仓库
-                 * @param {number} warehouseId - 仓库ID
-                 */
-                function editWarehouse(warehouseId) {
-                    // 这里可以添加编辑仓库的逻辑
-                    showNotification('编辑仓库功能开发中', 'info');
-                }
-
-                /**
-                 * 确认删除仓库
-                 * @param {number} warehouseId - 仓库ID
-                 * @param {string} warehouseName - 仓库名称
-                 */
-                function confirmDeleteWarehouse(warehouseId, warehouseName) {
-                    currentDeleteWarehouseId = warehouseId;
-                    document.getElementById('delete-confirm-message').textContent = `确定删除仓库 ${warehouseName} 吗？`;
-                    document.getElementById('delete-confirm-modal').classList.remove('hidden');
-                    document.getElementById('delete-confirm-action').onclick = function() {
-                        deleteWarehouse(warehouseId);
-                    };
-                }
-
-                /**
-                 * 删除仓库
-                 * @param {number} warehouseId - 仓库ID
-                 */
-                async function deleteWarehouse(warehouseId) {
-                    try {
-                        // 调用后端接口删除仓库
-                        const response = await window.wrappedFetch(`/api/v1/warehouses/${warehouseId}`, {
-                            method: 'DELETE'
-                        });
-
-                        const data = await handleApiResponse(response);
-                        if (!data) return;
-
-                        showNotification('仓库删除成功', 'success');
-                        closeDeleteConfirm();
-                        loadWarehouses();
-                    } catch (error) {
-                        console.error('删除仓库失败:', error);
-                        showNotification('删除仓库失败: ' + error.message, 'error');
-                    }
-                }
-
-                // ================= 进货建议相关 =================
-                
-                /**
-                 * 打开进货建议弹窗
-                 */
-                async function openPurchaseSuggestionModal() {
-                    try {
-                        // 检查认证状态                        if (!window.checkAuth()) {
-                            return;
-                        }
-
-                        // 调用后端接口获取全量产品
-                        const response = await window.wrappedFetch('/api/v1/rd/products', {
-                            method: 'GET'
-                        });
-
-                        const data = await handleApiResponse(response);
-                        if (!data) return;
-
-                        const allProducts = data.data;
-                        // 筛选出库存低于预警值的产品
-                        const suggestions = allProducts.filter(p => p.stock <= (p.warning_stock || 0));
-                        
-                        // 按供应商分组
-                        const groupedBySupplier = suggestions.reduce((acc, p) => {
-                            const key = p.supplierName || '未知供应商;
-                            if (!acc[key]) acc[key] = [];
-                            acc[key].push({
-                                id: p.productId,
-                                name: p.name,
-                                sku: p.sku,
-                                current: p.stock,
-                                warning: p.warning_stock,
-                                suggest: Math.max(0, p.warning_stock * 1.5 - p.stock),
-                                price: p.price
-                            });
-                            return acc;
-                        }, {});
-
-                        renderPurchaseModal(groupedBySupplier);
-                        document.getElementById('purchase-suggestion-modal').classList.remove('hidden');
-                    } catch (error) {
-                        console.error('获取产品列表异常:', error);
-                        showNotification('获取产品列表失败: ' + error.message);
-                    }
-                }
-
-                /**
-                 * 渲染进货建议弹窗
-                 * @param {Object} groupedBySupplier - 按供应商分组的进货建�?                 */
-                function renderPurchaseModal(groupedBySupplier) {
-                    const content = document.getElementById('purchase-suggestion-content');
-                    content.innerHTML = '';
-
-                    const suppliers = Object.keys(groupedBySupplier);
-
-                    if (suppliers.length === 0) {
-                        content.innerHTML = `
-                            <div class="text-center py-12">
-                                <i class="ph ph-check-circle text-4xl text-brand-500 mb-4"></i>
-                                <p class="text-sm font-bold text-slate-700">暂无进货建议</p>
-                                <p class="text-xs text-slate-400 mt-2">所有产品库存充�?/p>
                             </div>
-                        `;
-                        return;
-                    }
-
-                    suppliers.forEach(supplierName => {
-                        const products = groupedBySupplier[supplierName];
-                        const supplierTotal = products.reduce((total, product) => total + (product.suggest * product.price), 0);
-
-                        const supplierSection = document.createElement('div');
-                        supplierSection.className = 'bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden';
-
-                        supplierSection.innerHTML = `
-                            <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
-                                <h3 class="text-sm font-bold text-slate-800">${supplierName}</h3>
-                                <span class="text-xs font-bold text-brand-600">供应商总计�?${supplierTotal.toFixed(2)}</span>
+                            <div class="bg-slate-50 rounded-xl p-4">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <p class="font-bold text-slate-800">备用仓库</p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">深圳市龙岗区平湖街道</p>
+                                    </div>
+                                    <button class="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+                                        <i class="ph ph-pencil text-slate-400"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="p-4">
-                                <table class="w-full text-left border-collapse">
-                                    <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
-                                        <tr>
-                                            <th class="px-4 py-3">产品�?(SKU)</th>
-                                            <th class="px-4 py-3 text-right">缺货状�?/th>
-                                            <th class="px-4 py-3 text-right">建议采购</th>
-                                            <th class="px-4 py-3 text-right">预估小计</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="text-xs divide-y divide-slate-50">
-                                        ${products.map(product => {
-                                            const subtotal = product.suggest * product.price;
-                                            return `
-                                                <tr>
-                                                    <td class="px-4 py-3">
-                                                        <p class="font-bold text-slate-800">${product.name}</p>
-                                                        <p class="text-[10px] text-slate-400 font-mono uppercase">SKU: ${product.sku}</p>
-                                                    </td>
-                                                    <td class="px-4 py-3 text-right font-mono font-bold text-risk-high">
-                                                        ${product.current} / ${product.warning}
-                                                    </td>
-                                                    <td class="px-4 py-3 text-right">
-                                                        <div class="flex items-center justify-end gap-2">
-                                                            <button onclick="decreaseQuantity(this)" class="p-1 hover:bg-slate-100 rounded-full transition-colors">
-                                                                <i class="ph ph-minus text-slate-400"></i>
-                                                            </button>
-                                                            <input type="number" value="${product.suggest}" min="0" class="w-16 px-2 py-1 border border-slate-200 rounded-lg text-xs text-center" onchange="updateSubtotal(this)">
-                                                            <button onclick="increaseQuantity(this)" class="p-1 hover:bg-slate-100 rounded-full transition-colors">
-                                                                <i class="ph ph-plus text-slate-400"></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-4 py-3 text-right font-mono font-bold text-brand-600 subtotal">
-                                                        $${subtotal.toFixed(2)}
-                                                    </td>
-                                                </tr>
-                                            `;
-                                        }).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        `;
-
-                        content.appendChild(supplierSection);
-                    });
-                }
-
-                /**
-                 * 减少采购数量
-                 * @param {HTMLElement} button - 减少按钮
-                 */
-                function decreaseQuantity(button) {
-                    const input = button.nextElementSibling;
-                    if (parseInt(input.value) > 0) {
-                        input.value = parseInt(input.value) - 1;
-                        updateSubtotal(input);
-                    }
-                }
-
-                /**
-                 * 增加采购数量
-                 * @param {HTMLElement} button - 增加按钮
-                 */
-                function increaseQuantity(button) {
-                    const input = button.previousElementSibling;
-                    input.value = parseInt(input.value) + 1;
-                    updateSubtotal(input);
-                }
-
-                /**
-                 * 更新小计金额
-                 * @param {HTMLElement} input - 数量输入�?                 */
-                function updateSubtotal(input) {
-                    const row = input.closest('tr');
-                    const price = parseFloat(row.querySelector('.subtotal').textContent.replace('$', ''));
-                    const quantity = parseInt(input.value);
-                    const subtotal = quantity * price;
-                    row.querySelector('.subtotal').textContent = `$${subtotal.toFixed(2)}`;
-                }
-
-                /**
-                 * 关闭进货建议弹窗
-                 */
-                function closePurchaseSuggestionModal() {
-                    document.getElementById('purchase-suggestion-modal').classList.add('hidden');
-                }
-
-                /**
-                 * 保存进货�?                 */
-                function savePurchaseOrder() {
-                    // 这里可以添加保存进货单的逻辑
-                    showNotification('进货单保存功能开发中', 'info');
-                }
-            </script>
-
-    <!-- [二级弹窗] 单位换算 -->
-    <div id="unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
-        <div class="relative bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl fade-in">
-            <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 多级单位换算配置</h3>
-            <div class="space-y-6" id="unitConversionList">
-                <!-- 单位换算行将通过JavaScript动态生�?-->
-            </div>
-            <div class="flex justify-end mb-6">
-                <button onclick="addUnitConversionRow()" class="px-4 py-2 bg-brand-50 text-brand-600 rounded-xl text-xs font-bold border border-brand-100 hover:bg-brand-100 transition-colors">
-                    <i class="ph ph-plus mr-1"></i> 添加�?                </button>
-            </div>
-            <div class="flex flex-col gap-2">
-                <button onclick="saveUnitConversions()" class="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg">保存单位配置</button>
-                <button onclick="closeUnitModal()" class="w-full py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= [会员订阅中心弹窗] ================= -->
-    <div id="member-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8 modal-blur">
-        <div class="absolute inset-0" onclick="closeMemberModal()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[95vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-
-            <!-- 头部 -->
-            <div class="px-8 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#14B8A6]/30">
-                        <i class="ph ph-brain text-xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-black text-slate-800 tracking-tight">TradeMind 会员中心</h2>
-                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Subscription Protocol v1.9</p>
+                        </div>
                     </div>
                 </div>
-                <button onclick="closeMemberModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
             </div>
 
-            <!-- 主体内容：适配单屏展示 -->
-            <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-6">
-                <!-- 订阅等级对比 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- 试用版卡�?-->
-                    <div class="p-5 rounded-[2rem] border border-slate-200 bg-slate-50 relative flex flex-col justify-between">
-                        <div>
-                            <span class="absolute top-4 right-8 text-[9px] font-black text-slate-300 uppercase tracking-widest">Current Plan</span>
-                            <h4 class="text-base font-bold text-slate-600">基础试用�?/h4>
-                            <div class="mt-4 space-y-2 text-[11px] text-slate-500 border-l-2 border-slate-200 pl-3">
-                                <p class="flex items-center gap-2"><i class="ph ph-user"></i> 1�?管理员账�?/p>
-                                <p class="flex items-center gap-2"><i class="ph ph-package"></i> 100�?产品SKU限制</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-users-three"></i> 100�?客户档案上限</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-warehouse"></i> 10�?供应商配�?/p>
+            <div id="category-modal-root" class="hidden fixed inset-0 z-[140] flex items-end justify-center p-0 md:p-4 md:items-center modal-blur">
+                <div class="absolute inset-0" onclick="window.ProductModule.closeCategoryManager()"></div>
+                <div class="relative bg-white w-full max-w-md h-auto max-h-[80vh] rounded-none md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box max-md:rounded-t-[2.5rem] max-md:rounded-b-none">
+                    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                <i class="ph ph-tree-structure-bold text-xl"></i>
                             </div>
-                        </div>
-                        <div class="mt-6 text-2xl font-mono font-black text-slate-400">¥ 0</div>
-                    </div>
-
-                    <!-- 普通会员卡片：凸显 888 �?3.7�?-->
-                    <div class="p-6 rounded-[2rem] border-4 border-[#14B8A6] bg-white shadow-2xl relative overflow-hidden group flex flex-col justify-between transition-all hover:-translate-y-1">
-                        <!-- 3.7�?飘带 -->
-                        <div class="absolute -right-14 top-8 rotate-45 discount-ribbon text-white text-[11px] font-black py-2 px-16 shadow-lg uppercase tracking-tighter">
-                            首发 3.7 �?                        </div>
-
-                        <div>
-                            <p class="text-[9px] font-black text-[#14B8A6] uppercase tracking-widest mb-1">Recommended</p>
-                            <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">普通会员订�?<i class="ph ph-seal-check-fill text-[#14B8A6]"></i></h4>
-
-                            <div class="mt-4 space-y-2 text-[11px] text-slate-800 font-bold">
-                                <p class="flex items-center gap-2"><i class="ph ph-users-four text-[#14B8A6] text-base"></i> 5�?不同角色子账�?/p>
-                                <p class="flex items-center gap-2"><i class="ph ph-package text-[#14B8A6] text-base"></i> 1000�?产品数量管理</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-address-book text-[#14B8A6] text-base"></i> 1000�?客户管理权限</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-warehouse text-[#14B8A6] text-base"></i> 100�?供应商管�?/p>
-                            </div>
-                        </div>
-
-                        <div class="mt-6 pt-4 border-t border-slate-50 flex items-end justify-between">
                             <div>
-                                <p class="text-[10px] text-slate-300 line-through font-bold italic">原价 ¥2388</p>
-                                <div class="flex items-baseline gap-1">
-                                    <span class="text-5xl font-mono font-black text-[#14B8A6] tracking-tighter">¥888</span>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase">/ Year</span>
-                                </div>
+                                <h2 class="text-base font-black text-slate-800 tracking-tight">一级类别管理</h2>
+                                <p class="text-[10px] text-slate-400 font-mono tracking-widest uppercase mt-0.5">Category Manager</p>
                             </div>
-                            <button class="mb-1 px-8 py-3 bg-[#14B8A6] text-white rounded-xl font-black text-xs shadow-xl shadow-[#14B8A6]/30 hover:bg-[#0D9488] transition-all active:scale-95">立即升级</button>
+                        </div>
+                        <button onclick="window.ProductModule.closeCategoryManager()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                            <i class="ph ph-x text-xl text-slate-400"></i>
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">新增类别</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="new-category-input" placeholder="输入类别名称..." onkeypress="if(event.key === 'Enter') window.ProductModule.addCategory()" class="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 shadow-sm transition-all">
+                                <button onclick="window.ProductModule.addCategory()" class="px-5 py-3 bg-teal-500 text-white text-sm font-bold rounded-2xl hover:bg-teal-600 transition-colors shadow-lg shadow-teal-500/20">
+                                    新增
+                                </button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">现有类别</h3>
+                            <div id="category-edit-list" class="space-y-2">
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 2. 推荐官计�?(保留金色 UI) -->
-                <div class="gold-referral-card rounded-[2rem] p-5 relative overflow-hidden shadow-sm">
-                    <div class="absolute -right-8 -top-8 opacity-10 rotate-12"><i class="ph ph-medal text-[10rem] text-amber-600"></i></div>
-                    <div class="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-white/50 rounded-full flex items-center justify-center text-amber-700 shrink-0 shadow-sm"><i class="ph ph-users-plus text-2xl"></i></div>
-                            <div class="text-left">
-                                <h3 class="text-base font-black text-amber-900 flex items-center gap-2">巨猿推荐官计�?<i class="ph ph-sparkle-fill text-amber-500 text-xs"></i></h3>
-                                <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励�?/p>
-                            </div>
+            <div id="category-delete-confirm" class="hidden fixed inset-0 z-[150] flex items-center justify-center p-4 modal-blur">
+                <div class="absolute inset-0" onclick="window.ProductModule.hideDeleteConfirm()"></div>
+                <div class="relative bg-white/90 backdrop-blur-xl w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden p-8 fade-in">
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                            <i class="ph ph-trash text-3xl text-rose-500"></i>
                         </div>
-                        <div class="flex items-center gap-3 w-full md:w-auto">
-                            <div class="bg-white/70 backdrop-blur-sm px-5 py-2 rounded-xl border border-amber-300 text-center flex-1 md:flex-none">
-                                <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐�?/p>
-                                <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">TM-100001</p>
-                            </div>
-                            <button onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">
-                                <i class="ph ph-image-square-bold text-lg"></i> 生成海报
+                        <h3 class="text-lg font-black text-slate-800 mb-2">确认删除</h3>
+                        <p class="text-sm text-slate-500 mb-8">确定要删除此类别吗？此操作无法撤销。</p>
+                        <div class="flex gap-3">
+                            <button onclick="window.ProductModule.hideDeleteConfirm()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors">
+                                取消
+                            </button>
+                            <button onclick="window.ProductModule.confirmDelete()" class="flex-1 py-3 rounded-2xl bg-rose-500 text-white text-sm font-bold hover:bg-rose-600 transition-colors shadow-lg shadow-rose-500/20">
+                                确认删除
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div class="p-4 bg-slate-50 border-t border-slate-100 text-center"><p class="text-[9px] text-slate-300 font-bold uppercase tracking-widest">TradeMind Security & Billing Terminal</p></div>
         </div>
-    </div>
-
-    <!-- ================= [2. 品牌推荐海报弹窗] ================= -->
-    <div id="poster-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden p-4">
-        <!-- 遮罩 -->
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePoster()"></div>
-
-        <!-- 弹窗主体 (已移除左侧，仅保留推荐页，宽度调整为 max-w-lg) -->
-        <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-[460px] overflow-hidden relative z-10 animate-in fade-in zoom-in duration-300">
-
-            <!-- 关闭按钮 -->
-            <button onclick="closePoster()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 z-20 transition-colors">
-                <i class="ph ph-x text-2xl font-bold"></i>
-            </button>
-
-            <!-- 推荐海报区域 -->
-            <div class="w-full bg-white p-6 md:p-8 flex flex-col items-center">
-                <div class="text-center mb-6">
-                    <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">专属推荐海报</h3>
-                    <p class="text-xs text-slate-500 mt-1">分享您的专属名片，邀好友加入</p>
-                </div>
-
-                <!-- 海报快照区域 (html2canvas 将截取此�? -->
-                <div id="poster-capture-area" class="w-full p-2 bg-white rounded-[2.8rem] shadow-xl">
-                    <!-- 海报主体：内联样式确保渐变生�?-->
-                    <div class="w-full aspect-[3/4.2] rounded-[2.2rem] p-8 flex flex-col relative overflow-hidden text-white"
-                         style="background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);">
-
-                        <!-- 装饰光晕 -->
-                        <div class="absolute top-[-10%] right-[-10%] w-40 h-40 bg-white/20 rounded-full blur-[40px]"></div>
-                        <div class="absolute bottom-[20%] left-[-20%] w-32 h-32 bg-teal-300/20 rounded-full blur-[30px]"></div>
-
-                        <!-- Header -->
-                        <div class="flex items-center gap-2 mb-8 relative z-10">
-                            <div class="bg-white/20 backdrop-blur-md p-1.5 rounded-lg border border-white/30">
-                                <i class="ph ph-intersect text-white text-lg"></i>
-                            </div>
-                            <span class="text-sm font-black tracking-tighter uppercase italic">TradeMind AI</span>
-                        </div>
-
-                        <!-- Slogan -->
-                        <h4 class="text-2xl font-bold leading-tight mb-8 relative z-10">
-                            重塑商贸效率<br>
-                            <span style="color: #99f6e4;">AI 驱动经营决策</span>
-                        </h4>
-
-                        <!-- 功能列表 -->
-                        <div class="space-y-3 mb-auto relative z-10">
-                            <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">
-                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 多模态订单自动提�?                            </div>
-                            <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">
-                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 数字化供应链智能预警
-                            </div>
-                            <div class="flex items-center gap-2 text-[10px] font-medium text-white/90">
-                                <i class="ph ph-sparkle-fill text-yellow-300"></i> 全量多租户经营看�?                            </div>
-                        </div>
-
-                        <!-- 推荐码卡片区�?(毛玻璃效果内联实�? -->
-                        <div class="mt-8 p-4 rounded-[1.5rem] flex items-center justify-between relative z-10"
-                             style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2);">
-                            <div>
-                                <p class="text-[8px] text-white/60 uppercase tracking-widest mb-0.5 font-bold">我的专属推荐�?/p>
-                                <p id="poster-ref-code" class="text-xl font-bold text-white" style="font-family: 'Space Grotesk', monospace; letter-spacing: 0.05em;">TM-100001</p>
-                            </div>
-                            <div class="bg-white p-1.5 rounded-xl shadow-lg">
-                                <!-- 动态二维码 -->
-                                <img id="poster-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-TM100001" class="w-10 h-10" alt="QR">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-6 text-center">
-                    <p class="text-[11px] text-slate-400 leading-relaxed">
-                        邀请好友注册，双方立享 <span class="text-teal-600 font-bold">15�?专业�?/span> 奖励
-                    </p>
-
-                    <!-- 生成并保存海报按�?-->
-                    <button onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">
-                        <i class="ph ph-download-simple-bold text-lg group-hover:translate-y-0.5 transition-transform"></i>
-                        保存高清海报到相�?                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    </main>
 </body>
 </html>

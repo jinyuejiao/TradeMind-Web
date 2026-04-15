@@ -456,13 +456,30 @@
 
 #### 3.1.3 产品中心（Product Center）
 
-- **路径**：`/modules/product-center/product-center.html`
+- **路径**：`/modules-ui/product-center/product-center.html`
+- **前端脚本**：`/assets/js/ui-product-center.js`
 - **功能**：
-  - 产品信息管理
-  - 产品分类管理
+  - 产品信息增删改查（真实API对接）
+  - 产品分类管理（真实API对接）
+  - 仓库管理（真实API对接）
   - 库存管理
   - 单位换算配置
   - 库存预警提醒
+  - 产品列表筛选和搜索
+  - 桌面端表格和移动端卡片双布局
+- **技术实现**：
+  - 使用 `window.wrappedFetch()` 进行API请求
+  - 使用 `window.handleApiResponse()` 统一响应处理
+  - 自动JWT认证和租户隔离
+  - 完整错误处理和用户反馈
+- **后端接口**：
+  - `GET /api/v1/rd/products` - 获取产品列表
+  - `POST /api/v1/rd/products/save` - 保存产品（含单位换算）
+  - `DELETE /api/v1/rd/products/{id}` - 删除产品
+  - `GET /api/v1/rd/products/categories` - 获取分类列表
+  - `POST /api/v1/rd/products/categories/save` - 保存分类
+  - `GET /api/v1/rd/products/warehouses` - 获取仓库列表
+  - `POST /api/v1/rd/products/warehouses/save` - 保存仓库
 
 #### 3.1.4 供应链（Supply Chain）
 
