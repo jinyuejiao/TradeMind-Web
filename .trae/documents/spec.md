@@ -105,7 +105,33 @@
 | create\_time   | TIMESTAMP | -   | 是  | CURRENT\_TIMESTAMP | 创建时间     |
 | update\_time   | TIMESTAMP | -   | 是  | CURRENT\_TIMESTAMP | 更新时间     |
 
-#### 1.3.2 产品表（products）
+#### 1.3.2 仓库表（warehouse）
+
+| 字段名           | 类型        | 长度  | 可空 | 默认值                | 说明      |
+| ------------- | --------- | --- | -- | ------------------ | ------- |
+| warehouse\_id | SERIAL    | -   | 否  | -                  | 仓库ID，主键 |
+| tenant\_id    | VARCHAR   | 32  | 否  | -                  | 租户ID    |
+| name          | VARCHAR   | 100 | 否  | -                  | 仓库名称    |
+| address       | VARCHAR   | 200 | 是  | -                  | 仓库地址    |
+| create\_time  | TIMESTAMP | -   | 是  | CURRENT\_TIMESTAMP | 创建时间    |
+| update\_time  | TIMESTAMP | -   | 是  | CURRENT\_TIMESTAMP | 更新时间    |
+
+#### 1.3.3 仓库库存表（warehouse_stock）
+
+| 字段名              | 类型        | 长度   | 可空 | 默认值                | 说明       |
+| ---------------- | --------- | ---- | -- | ------------------ | -------- |
+| stock\_id        | SERIAL    | -    | 否  | -                  | 库存记录ID，主键  |
+| tenant\_id       | VARCHAR   | 32   | 否  | -                  | 租户ID      |
+| warehouse\_id    | INT       | -    | 否  | -                  | 仓库ID，外键    |
+| product\_id      | INT       | -    | 否  | -                  | 产品ID，外键    |
+| quantity         | INT       | -    | 否  | 0                  | 库存数量      |
+| warning\_stock   | INT       | -    | 是  | 0                  | 预警库存      |
+| occupied\_stock  | INT       | -    | 是  | 0                  | 占用库存      |
+| last\_update\_time | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 最后更新时间    |
+| create\_time      | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 创建时间      |
+| update\_time      | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 更新时间      |
+
+#### 1.3.4 产品表（products）
 
 | 字段名            | 类型        | 长度   | 可空   | 默认值                | 说明      |
 | -------------- | --------- | ---- | ---- | ------------------ | ------- |
@@ -113,6 +139,7 @@
 | tenant\_id     | VARCHAR   | 32   | 否    | -                  | 租户ID    |
 | user\_id       | INT       | 否    | -    | 用户ID               | <br />  |
 | supplier\_id   | INT       | 是    | NULL | 供应商ID              | <br />  |
+| warehouse\_id  | INT       | 是    | NULL | 仓库ID，外键            | <br />  |
 | name           | VARCHAR   | 100  | 否    | -                  | 产品名称    |
 | category       | VARCHAR   | 50   | 是    | -                  | 分类      |
 | description    | TEXT      | -    | 是    | -                  | 描述      |
@@ -127,6 +154,18 @@
 | purchase\_unit | VARCHAR   | 20   | 是    | -                  | 采购单位    |
 | create\_time   | TIMESTAMP | -    | 是    | CURRENT\_TIMESTAMP | 创建时间    |
 | update\_time   | TIMESTAMP | -    | 是    | CURRENT\_TIMESTAMP | 更新时间    |
+
+#### 1.3.4 产品分类表（product\_categories）
+
+| 字段名          | 类型        | 长度 | 可空 | 默认值                | 说明      |
+| ------------ | --------- | -- | -- | ------------------ | ------- |
+| category\_id | SERIAL    | -  | 否  | -                  | 分类ID，主键 |
+| tenant\_id   | VARCHAR   | 32 | 否  | -                  | 租户ID    |
+| user\_id     | INT       | 否  | -  | -                  | 用户ID    |
+| name         | VARCHAR   | 50 | 否  | -                  | 分类名称    |
+| description  | TEXT      | -  | 是  | -                  | 分类描述    |
+| create\_time | TIMESTAMP | -  | 是  | CURRENT\_TIMESTAMP | 创建时间    |
+| update\_time | TIMESTAMP | -  | 是  | CURRENT\_TIMESTAMP | 更新时间    |
 
 #### 1.3.3 单位换算表（unitConversion）
 
@@ -190,35 +229,35 @@
 
 #### 1.4.1 进货单主表（purchases）
 
-| 字段名              | 类型        | 长度   | 可空 | 默认值                | 说明       |
-| ---------------- | --------- | ---- | -- | ------------------ | -------- |
-| purchase\_id     | SERIAL    | -    | 否  | -                  | 进货单ID，主键 |
-| tenant\_id       | VARCHAR   | 32   | 否  | -                  | 租户ID     |
-| user\_id         | INT       | 否    | -  | 用户ID               | <br />   |
-| purchase\_code   | VARCHAR   | 50   | 是  | -                  | 进货单号     |
-| supplier\_id     | INT       | 否    | -  | 供应商ID              | <br />   |
-| total\_amount    | DECIMAL   | 12,2 | 否  | -                  | 总金额      |
-| paid\_amount     | DECIMAL   | 12,2 | 否  | -                  | 已付金额     |
+| 字段名              | 类型        | 长度   | 可空 | 默认值                | 说明           |
+| ---------------- | --------- | ---- | -- | ------------------ | ------------ |
+| purchase\_id     | SERIAL    | -    | 否  | -                  | 进货单ID，主键     |
+| tenant\_id       | VARCHAR   | 32   | 否  | -                  | 租户ID         |
+| user\_id         | INT       | 否    | -  | 用户ID               | <br />       |
+| purchase\_code   | VARCHAR   | 50   | 是  | -                  | 进货单号         |
+| supplier\_id     | INT       | 否    | -  | 供应商ID              | <br />       |
+| total\_amount    | DECIMAL   | 12,2 | 否  | -                  | 总金额          |
+| paid\_amount     | DECIMAL   | 12,2 | 否  | -                  | 已付金额         |
 | purchase\_status | VARCHAR   | 20   | 否  | -                  | 进货状态（字典D012） |
-| purchase\_date   | TIMESTAMP | -    | 否  | -                  | 进货日期     |
-| create\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 创建时间     |
-| update\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 更新时间     |
+| purchase\_date   | TIMESTAMP | -    | 否  | -                  | 进货日期         |
+| create\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 创建时间         |
+| update\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 更新时间         |
 
 #### 1.4.2 进货明细表（purchase\_items）
 
-| 字段名              | 类型        | 长度   | 可空 | 默认值                | 说明      |
-| ---------------- | --------- | ---- | -- | ------------------ | ------- |
-| p\_item\_id      | SERIAL    | -    | 否  | -                  | 明细ID，主键 |
-| purchase\_id     | INT       | 否    | -  | 进货单ID              | <br />  |
-| product\_id      | INT       | 否    | -  | 产品ID               | <br />  |
-| quantity         | INT       | 是    | 0  | 数量                 | <br />  |
-| unit\_price      | DECIMAL   | 10,2 | 否  | -                  | 单价      |
-| unit\_name       | VARCHAR   | 20   | 是  | -                  | 单位名称    |
-| batch\_no        | VARCHAR   | 50   | 是  | -                  | 批次号     |
+| 字段名              | 类型        | 长度   | 可空 | 默认值                | 说明         |
+| ---------------- | --------- | ---- | -- | ------------------ | ---------- |
+| p\_item\_id      | SERIAL    | -    | 否  | -                  | 明细ID，主键    |
+| purchase\_id     | INT       | 否    | -  | 进货单ID              | <br />     |
+| product\_id      | INT       | 否    | -  | 产品ID               | <br />     |
+| quantity         | INT       | 是    | 0  | 数量                 | <br />     |
+| unit\_price      | DECIMAL   | 10,2 | 否  | -                  | 单价         |
+| unit\_name       | VARCHAR   | 20   | 是  | -                  | 单位名称       |
+| batch\_no        | VARCHAR   | 50   | 是  | -                  | 批次号        |
 | purchase\_status | VARCHAR   | 20   | 否  | -                  | 状态（字典D012） |
-| purchase\_date   | TIMESTAMP | -    | 否  | -                  | 日期      |
-| create\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 创建时间    |
-| update\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 更新时间    |
+| purchase\_date   | TIMESTAMP | -    | 否  | -                  | 日期         |
+| create\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 创建时间       |
+| update\_time     | TIMESTAMP | -    | 是  | CURRENT\_TIMESTAMP | 更新时间       |
 
 ### 1.5 系统表
 
@@ -241,117 +280,117 @@
 
 ##### 1.5.2.1 字典大类列表
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D001 | NULL | D001 | 订阅类型 | 1 | 1 | 商户订阅类型 |
-| D002 | NULL | D002 | 租户状态 | 1 | 2 | 商户租户状态 |
-| D003 | NULL | D003 | 角色类型 | 1 | 3 | 用户角色类型 |
-| D004 | NULL | D004 | 用户状态 | 1 | 4 | 用户账号状态 |
-| D005 | NULL | D005 | 变动类型 | 1 | 5 | 能量点变动类型 |
-| D006 | NULL | D006 | 消费类型 | 1 | 6 | 能量点消费类型 |
-| D007 | NULL | D007 | 风险等级 | 1 | 7 | 生产风险等级 |
-| D008 | NULL | D008 | 客户来源 | 1 | 8 | 客户获取来源 |
-| D009 | NULL | D009 | 客户状态 | 1 | 9 | 客户活跃状态 |
-| D010 | NULL | D010 | 订单状态 | 1 | 10 | 订单处理状态 |
-| D011 | NULL | D011 | 商品状态 | 1 | 11 | 订单商品状态 |
-| D012 | NULL | PURCHASE_ORDER_STATUS | 进货单据状态 | 1 | 12 | 进货单据全生命周期状态枚举，包含草稿、审核、入库等状态 |
+| dict\_id | parent\_id | dict\_code              | dict\_name | dict\_level | sort | remark                      |
+| -------- | ---------- | ----------------------- | ---------- | ----------- | ---- | --------------------------- |
+| D001     | NULL       | SUBSCRIPTION\_TYPE      | 订阅类型       | 1           | 1    | 租户的订阅套餐类型                |
+| D002     | NULL       | TENANT\_STATUS          | 租户状态       | 1           | 2    | 租户全生命周期状态（从注册到流失的阶段划分） |
+| D003     | NULL       | ROLE\_TYPE              | 角色类型       | 1           | 3    | 商户子用户预设的商贸角色类型         |
+| D004     | NULL       | USER\_STATUS            | 用户状态       | 1           | 4    | 商户子用户的账号状态              |
+| D005     | NULL       | ENERGY\_CHANGE\_TYPE    | 能量变动类型     | 1           | 5    | AI 能量点余额变动的核心类型       |
+| D006     | NULL       | ENERGY\_CONSUME\_TYPE  | AI 消费类型     | 1           | 6    | AI 能量点变动的具体功能场景       |
+| D007     | NULL       | PRODUCTION\_RISK        | 生产风险等级     | 1           | 7    | 生产计划 / 新品研发的风险等级分类    |
+| D008     | NULL       | CUSTOMER\_SOURCE        | 客户来源       | 1           | 8    | 商户客户的获取渠道分类            |
+| D009     | NULL       | CUSTOMER\_STATUS        | 客户状态       | 1           | 9    | 客户全生命周期状态分类            |
+| D010     | NULL       | ORDER\_STATUS           | 订单状态       | 1           | 10   | 商贸订单全生命周期状态分类         |
+| D011     | NULL       | ITEM\_STATUS            | 商品明细状态     | 1           | 11   | 订单内单项单品的核心状态分类        |
+| D012     | NULL       | PURCHASE\_ORDER\_STATUS | 进货单据状态     | 1           | 12   | 进货单据全生命周期状态枚举，包含草稿、审核、入库等状态 |
 
 ##### 1.5.2.2 字典子项详细列表
 
 **D001 - 订阅类型**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D001_001 | D001 | TRIAL | 试用版 | 2 | 1 | 试用版本，有效期较短 |
-| D001_002 | D001 | BASIC | 基础版 | 2 | 2 | 基础功能版本 |
-| D001_003 | D001 | PREMIUM | 高级版 | 2 | 3 | 高级功能版本 |
-| D001_004 | D001 | ENTERPRISE | 企业版 | 2 | 4 | 企业级功能版本 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark     |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ---------- |
+| D001\_001 | D001       | TRIAL      | 试用版        | 2           | 1    | 试用版本，有效期较短 |
+| D001\_002 | D001       | BASIC      | 基础版        | 2           | 2    | 基础功能版本     |
+| D001\_003 | D001       | PREMIUM    | 高级版        | 2           | 3    | 高级功能版本     |
+| D001\_004 | D001       | ENTERPRISE | 企业版        | 2           | 4    | 企业级功能版本    |
 
 **D002 - 租户状态**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D002_001 | D002 | NORMAL | 正常 | 2 | 1 | 租户状态正常 |
-| D002_002 | D002 | EXPIRED | 过期 | 2 | 2 | 租户订阅已过期 |
-| D002_003 | D002 | SUSPENDED | 暂停 | 2 | 3 | 租户账号已暂停 |
-| D002_004 | D002 | TERMINATED | 终止 | 2 | 4 | 租户账号已终止 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark  |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------- |
+| D002\_001 | D002       | NORMAL     | 正常         | 2           | 1    | 租户状态正常  |
+| D002\_002 | D002       | EXPIRED    | 过期         | 2           | 2    | 租户订阅已过期 |
+| D002\_003 | D002       | SUSPENDED  | 暂停         | 2           | 3    | 租户账号已暂停 |
+| D002\_004 | D002       | TERMINATED | 终止         | 2           | 4    | 租户账号已终止 |
 
 **D003 - 角色类型**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D003_001 | D003 | ADMIN | 管理员 | 2 | 1 | 系统管理员角色 |
-| D003_002 | D003 | USER | 普通用户 | 2 | 2 | 普通用户角色 |
-| D003_003 | D003 | OPERATOR | 操作员 | 2 | 3 | 系统操作员角色 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark  |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------- |
+| D003\_001 | D003       | ADMIN      | 管理员        | 2           | 1    | 系统管理员角色 |
+| D003\_002 | D003       | USER       | 普通用户       | 2           | 2    | 普通用户角色  |
+| D003\_003 | D003       | OPERATOR   | 操作员        | 2           | 3    | 系统操作员角色 |
 
 **D004 - 用户状态**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D004_001 | D004 | NORMAL | 正常 | 2 | 1 | 用户状态正常 |
-| D004_002 | D004 | LOCKED | 锁定 | 2 | 2 | 用户账号已锁定 |
-| D004_003 | D004 | DISABLED | 禁用 | 2 | 3 | 用户账号已禁用 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark  |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------- |
+| D004\_001 | D004       | NORMAL     | 正常         | 2           | 1    | 用户状态正常  |
+| D004\_002 | D004       | LOCKED     | 锁定         | 2           | 2    | 用户账号已锁定 |
+| D004\_003 | D004       | DISABLED   | 禁用         | 2           | 3    | 用户账号已禁用 |
 
 **D005 - 变动类型**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D005_001 | D005 | RECHARGE | 充值 | 2 | 1 | 能量点充值 |
-| D005_002 | D005 | CONSUMPTION | 消费 | 2 | 2 | 能量点消费 |
-| D005_003 | D005 | GIFT | 赠送 | 2 | 3 | 能量点赠送 |
-| D005_004 | D005 | REFUND | 退款 | 2 | 4 | 能量点退款 |
+| dict\_id  | parent\_id | dict\_code  | dict\_name | dict\_level | sort | remark |
+| --------- | ---------- | ----------- | ---------- | ----------- | ---- | ------ |
+| D005\_001 | D005       | RECHARGE    | 充值         | 2           | 1    | 能量点充值  |
+| D005\_002 | D005       | CONSUMPTION | 消费         | 2           | 2    | 能量点消费  |
+| D005\_003 | D005       | GIFT        | 赠送         | 2           | 3    | 能量点赠送  |
+| D005\_004 | D005       | REFUND      | 退款         | 2           | 4    | 能量点退款  |
 
 **D006 - 消费类型**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D006_001 | D006 | AI_EXTRACTION | AI提取 | 2 | 1 | AI信息提取消费 |
-| D006_002 | D006 | AI_ANALYSIS | AI分析 | 2 | 2 | AI数据分析消费 |
-| D006_003 | D006 | AI_PREDICTION | AI预测 | 2 | 3 | AI预测分析消费 |
-| D006_004 | D006 | AI_RECOMMENDATION | AI推荐 | 2 | 4 | AI推荐服务消费 |
+| dict\_id  | parent\_id | dict\_code         | dict\_name | dict\_level | sort | remark   |
+| --------- | ---------- | ------------------ | ---------- | ----------- | ---- | -------- |
+| D006\_001 | D006       | AI\_EXTRACTION     | AI提取       | 2           | 1    | AI信息提取消费 |
+| D006\_002 | D006       | AI\_ANALYSIS       | AI分析       | 2           | 2    | AI数据分析消费 |
+| D006\_003 | D006       | AI\_PREDICTION     | AI预测       | 2           | 3    | AI预测分析消费 |
+| D006\_004 | D006       | AI\_RECOMMENDATION | AI推荐       | 2           | 4    | AI推荐服务消费 |
 
 **D007 - 风险等级**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D007_001 | D007 | LOW | 低 | 2 | 1 | 低风险等级 |
-| D007_002 | D007 | MEDIUM | 中 | 2 | 2 | 中等风险等级 |
-| D007_003 | D007 | HIGH | 高 | 2 | 3 | 高风险等级 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------ |
+| D007\_001 | D007       | LOW        | 低          | 2           | 1    | 低风险等级  |
+| D007\_002 | D007       | MEDIUM     | 中          | 2           | 2    | 中等风险等级 |
+| D007\_003 | D007       | HIGH       | 高          | 2           | 3    | 高风险等级  |
 
 **D008 - 客户来源**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D008_001 | D008 | WECHAT | 微信 | 2 | 1 | 微信渠道获取 |
-| D008_002 | D008 | ALIPAY | 支付宝 | 2 | 2 | 支付宝渠道获取 |
-| D008_003 | D008 | PHONE | 电话 | 2 | 3 | 电话渠道获取 |
-| D008_004 | D008 | OTHER | 其他 | 2 | 4 | 其他渠道获取 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark  |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------- |
+| D008\_001 | D008       | WECHAT     | 微信         | 2           | 1    | 微信渠道获取  |
+| D008\_002 | D008       | ALIPAY     | 支付宝        | 2           | 2    | 支付宝渠道获取 |
+| D008\_003 | D008       | PHONE      | 电话         | 2           | 3    | 电话渠道获取  |
+| D008\_004 | D008       | OTHER      | 其他         | 2           | 4    | 其他渠道获取  |
 
 **D009 - 客户状态**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D009_001 | D009 | ACTIVE | 活跃 | 2 | 1 | 客户状态活跃 |
-| D009_002 | D009 | SLEEPING | 沉睡 | 2 | 2 | 客户状态沉睡 |
-| D009_003 | D009 | LOST | 流失 | 2 | 3 | 客户状态流失 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------ |
+| D009\_001 | D009       | ACTIVE     | 活跃         | 2           | 1    | 客户状态活跃 |
+| D009\_002 | D009       | SLEEPING   | 沉睡         | 2           | 2    | 客户状态沉睡 |
+| D009\_003 | D009       | LOST       | 流失         | 2           | 3    | 客户状态流失 |
 
 **D010 - 订单状态**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D010_001 | D010 | PENDING | 待支付 | 2 | 1 | 订单待支付状态 |
-| D010_002 | D010 | PROCESSING | 处理中 | 2 | 2 | 订单处理中状态 |
-| D010_003 | D010 | COMPLETED | 已完成 | 2 | 3 | 订单已完成状态 |
-| D010_004 | D010 | CANCELLED | 已取消 | 2 | 4 | 订单已取消状态 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark  |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------- |
+| D010\_001 | D010       | PENDING    | 待支付        | 2           | 1    | 订单待支付状态 |
+| D010\_002 | D010       | PROCESSING | 处理中        | 2           | 2    | 订单处理中状态 |
+| D010\_003 | D010       | COMPLETED  | 已完成        | 2           | 3    | 订单已完成状态 |
+| D010\_004 | D010       | CANCELLED  | 已取消        | 2           | 4    | 订单已取消状态 |
 
 **D011 - 商品状态**
 
-| dict_id | parent_id | dict_code | dict_name | dict_level | sort | remark |
-|---------|-----------|------------|-----------|------------|------|--------|
-| D011_001 | D011 | PENDING | 待发货 | 2 | 1 | 商品待发货状态 |
-| D011_002 | D011 | SHIPPED | 已发货 | 2 | 2 | 商品已发货状态 |
-| D011_003 | D011 | DELIVERED | 已送达 | 2 | 3 | 商品已送达状态 |
-| D011_004 | D011 | RETURNED | 已退货 | 2 | 4 | 商品已退货状态 |
+| dict\_id  | parent\_id | dict\_code | dict\_name | dict\_level | sort | remark  |
+| --------- | ---------- | ---------- | ---------- | ----------- | ---- | ------- |
+| D011\_001 | D011       | PENDING    | 待发货        | 2           | 1    | 商品待发货状态 |
+| D011\_002 | D011       | SHIPPED    | 已发货        | 2           | 2    | 商品已发货状态 |
+| D011\_003 | D011       | DELIVERED  | 已送达        | 2           | 3    | 商品已送达状态 |
+| D011\_004 | D011       | RETURNED   | 已退货        | 2           | 4    | 商品已退货状态 |
 
 #### 1.5.3 AI操作记录表（ai\_operation\_records）
 
@@ -891,6 +930,13 @@ TM_Project/
 
 ***
 
-**文档版本**：v1.1\
-**最后更新**：2026-04-11\
+**文档版本**：v1.5\
+**最后更新**：2026-04-16\
 **维护者**：TradeMind开发团队
+
+**版本更新记录**：
+- v1.5 (2026-04-16)：新增仓库库存表（warehouse_stock）完整字段说明；更新数据库ER图，加入warehouse_stock表及其与warehouse、products的关系；在产品中心模块补充仓库调拨功能说明
+- v1.4 (2026-04-16)：更新字典表设计，修正12个字典大类的dict_code字段；补充D012进货单据状态的7个子项；同步更新DictionaryInitService.java中的字典初始化数据
+- v1.3 (2026-04-16)：更新表结构设计，补充仓库表（warehouse）和产品分类表（product_categories）的完整定义；更新后端接口列表，补充产品分类和仓库管理接口；更新数据库ER图，完善实体关系描述；更新前端目录结构，补充modules-ui目录说明
+- v1.2 (2026-04-15)：产品中心模块完成真实数据交互对接，产品、仓库、分类管理功能全部对接RDService API
+
