@@ -1,6 +1,7 @@
 // 模块加载函数
 function loadDashboard() {
-    fetch('/modules-ui/dashboard/dashboard.html')
+    console.log('[Cleanup] 从 /modules 加载 dashboard');
+    fetch('/modules/dashboard/dashboard.html')
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-dashboard').innerHTML = data;
@@ -11,7 +12,8 @@ function loadDashboard() {
 }
 
 function loadSmartOps() {
-    fetch('/modules-ui/SmartOps/SmartOps.html')
+    console.log('[Cleanup] 从 /modules 加载 SmartOps');
+    fetch('/modules/SmartOps/SmartOps.html')
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-biz').innerHTML = data;
@@ -22,7 +24,8 @@ function loadSmartOps() {
 }
 
 function loadCRM() {
-    fetch('/modules-ui/crm/crm.html')
+    console.log('[Cleanup] 从 /modules 加载 CRM');
+    fetch('/modules/crm/crm.html')
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-crm').innerHTML = data;
@@ -34,8 +37,8 @@ function loadCRM() {
 
 function loadProductCenter() {
     const timestamp = new Date().getTime();
-    console.log('[ui-main] 加载产品中心，时间戳:', timestamp);
-    fetch(`/modules-ui/product-center/product-center.html?t=${timestamp}`)
+    console.log('[Cleanup] 从 /modules 加载产品中心，时间戳:', timestamp);
+    fetch(`/modules/product-center/product-center.html?t=${timestamp}`)
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-supply').innerHTML = data;
@@ -52,9 +55,9 @@ function loadProductCenter() {
 }
 
 function loadSupplier() {
-    // 添加时间戳参数，强制浏览器加载最新版本的文件
     const timestamp = new Date().getTime();
-    fetch(`/modules-ui/supply-chain/supply-chain.html?t=${timestamp}`)
+    console.log('[Cleanup] 从 /modules 加载供应商，时间戳:', timestamp);
+    fetch(`/modules/supply-chain/supply-chain.html?t=${timestamp}`)
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-supplier').innerHTML = data;
@@ -671,11 +674,8 @@ function showCrmDetail(customerName) {
     document.getElementById('crm-detail-name').innerText = customerName;
 
     // 2. 针对手机端的显示切换
-    if (window.innerWidth < 768) {
-        document.getElementById('crm-list-pane').classList.add('hidden');
-        document.getElementById('crm-detail-pane').classList.remove('hidden');
-        // 自动回到顶部
-        document.getElementById('crm-detail-pane').scrollTop = 0;
+    if (window.TM_Responsive && window.TM_Responsive.isMobile()) {
+        window.TM_Responsive.showCrmDetail(customerName);
     }
 }
 
@@ -683,11 +683,8 @@ function showCrmDetail(customerName) {
  * CRM 手机端返回列表逻辑
  */
 function hideCrmDetail() {
-    if (window.innerWidth < 768) {
-        const listPane = document.getElementById('crm-list-pane');
-        const detailPane = document.getElementById('crm-detail-pane');
-        if (listPane) listPane.classList.remove('hidden');
-        if (detailPane) detailPane.classList.add('hidden');
+    if (window.TM_Responsive && window.TM_Responsive.isMobile()) {
+        window.TM_Responsive.hideCrmDetail();
     }
 }
 
