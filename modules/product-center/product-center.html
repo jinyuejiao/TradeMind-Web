@@ -52,31 +52,36 @@
             <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
         </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
-            <button onclick="window.location.href='../dashboard/dashboard.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
             </button>
-            <button onclick="window.location.href='../SmartOps/SmartOps.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
             </button>
-            <button onclick="window.location.href='../crm/crm.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
             <button class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
-            <button onclick="window.location.href='../supply-chain/supply-chain.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">
-            <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>
-            <div class="ml-3 text-left">
-                <p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>
-                <div class="flex items-center gap-1.5 mt-1">
-                    <i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>
-                    <span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>
+        <div class="border-t border-slate-800 bg-slate-900 mt-auto">
+            <div onclick="openSubscriptionModal()" class="p-4 flex items-center cursor-pointer hover:bg-slate-800 transition-all group">
+                <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>
+                <div class="ml-3 text-left flex-1">
+                    <p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>
+                        <span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>
+                    </div>
                 </div>
             </div>
+            <button onclick="logout()" class="w-full px-4 py-3 flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-all text-xs font-bold border-t border-slate-800">
+                <i class="ph ph-sign-out mr-2"></i> 退出登录
+            </button>
         </div>
     </aside>
 
@@ -101,7 +106,7 @@
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品库</h3>
                         <div class="relative w-full md:w-72">
                             <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
-                            <input type="text" id="inventorySearch" onkeyup="window.ProductModule.filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all">
+                            <input type="text" id="inventorySearch" onkeyup="window.ProductModule.filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all">
                         </div>
                         <div class="flex items-center gap-2">
                             <button onclick="window.ProductModule.openCategoryManager()" class="w-10 h-10 max-md:w-8 max-md:h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-teal-50 hover:text-teal-600 rounded-xl transition-all" title="产品类别管理">
@@ -167,21 +172,20 @@
                     </div>
 
                     <div class="overflow-x-auto no-scrollbar">
-                        <table class="w-full text-left border-collapse" id="existingProdTable">
-                            <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
-                                <tr>
-                                    <th class="px-6 py-4 col-width-mobile">产品基础信息</th>
-                                    <th class="px-6 py-4 col-hide-mobile">主销区域</th>
-                                    <th class="px-6 py-4 text-right col-hide-mobile">销售均价</th>
-                                    <th class="px-6 py-4 text-right col-hide-mobile">进货均价</th>
-                                    <th class="px-6 py-4 text-right">实时库存</th>
-                                    <th class="px-6 py-4 text-right">管理</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-xs divide-y divide-slate-50">
-                            </tbody>
-                        </table>
-                    </div>
+                    <table class="w-full text-left border-collapse" id="existingProdTable">
+                        <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4 col-width-mobile w-1/3">产品基础信息</th>
+                                <th class="px-6 py-4 text-right col-hide-mobile">销售均价</th>
+                                <th class="px-6 py-4 text-right col-hide-mobile">进货均价</th>
+                                <th class="px-6 py-4 text-right">实时库存</th>
+                                <th class="px-6 py-4 text-right">管理</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-xs divide-y divide-slate-50">
+                        </tbody>
+                    </table>
+                </div>
                 </div>
 
                 <div class="md:hidden space-y-4" id="mobile-product-cards"></div>
@@ -288,28 +292,34 @@
                         <section>
                             <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心经营信息</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" value="东北大板 (原味经典)" class="form-input"></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" value="DB-ICE-001" class="form-input font-mono"></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" value="1.50" class="form-input font-mono font-bold text-brand-600"></div>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" value="东北大板 (原味经典)" class="form-input" id="product-name-input"></div>
+                                <div class="space-y-2">
+                                    <label class="text-[11px] font-bold text-slate-500 ml-1">商品类别</label>
+                                    <select class="form-input font-bold text-slate-700" id="product-category-select">
+                                        <option value="">选择商品类别</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" value="DB-ICE-001" class="form-input font-mono" id="product-sku-input"></div>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" value="1.50" class="form-input font-mono font-bold text-brand-600" id="product-price-input"></div>
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">基本单位 (结算底数)</label>
                                     <div class="flex gap-2">
-                                        <input type="text" value="支" class="form-input flex-1" placeholder="如：支">
+                                        <input type="text" value="支" class="form-input flex-1" placeholder="如：支" id="product-base-unit-input">
                                         <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100 transition-colors whitespace-nowrap">配置单位换算</button>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">默认入库单位 (采购)</label>
-                                    <select class="form-input font-bold"><option>箱(1箱=200支)</option><option>盒(1盒=10支)</option><option>支(基本单位)</option></select>
+                                    <select class="form-input font-bold" id="product-purchase-unit-select"><option>箱(1箱=200支)</option><option>盒(1盒=10支)</option><option>支(基本单位)</option></select>
                                 </div>
                                 <div class="space-y-2">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">默认销售单位(出库)</label>
-                                    <select class="form-input font-bold text-brand-600"><option>盒(1盒=10支)</option><option>支(基本单位)</option><option>箱(1箱=200支)</option></select>
+                                    <select class="form-input font-bold text-brand-600" id="product-sales-unit-select"><option>盒(1盒=10支)</option><option>支(基本单位)</option><option>箱(1箱=200支)</option></select>
                                 </div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">当前库存总量 (基本单位)</label><input type="number" value="1200" class="form-input font-mono"></div>
+                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">当前库存总量 (基本单位)</label><input type="number" value="1200" class="form-input font-mono" id="product-stock-input"></div>
                                 <div class="space-y-2 col-span-full">
                                     <label class="text-[11px] font-bold text-slate-500 ml-1">关联主供应商</label>
-                                    <select class="form-input font-bold text-slate-700">
+                                    <select class="form-input font-bold text-slate-700" id="product-supplier-select">
                                         <option>哈尔滨红运冷链贸易中心(Rating: A)</option>
                                         <option>大连大发制冷厂</option>
                                         <option>广东恒温物流服务公司</option>
@@ -321,11 +331,27 @@
                             <button onclick="toggleAdvanced()" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
                                 <span>展开高级配置与描述信息</span><i id="advanced-icon" class="ph ph-caret-down group-hover:translate-y-0.5 transition-transform"></i>
                             </button>
-                            <div id="advanced-drawer" class="advanced-drawer">
+                            <div id="advanced-drawer" class="advanced-drawer hidden">
                                 <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存下限</label><input type="number" value="100" class="form-input border-red-100"></div>
-                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">主销区域</label><input type="text" value="华北/华东" class="form-input"></div>
-                                    <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea class="form-input h-24 no-scrollbar">经典原味，特级奶油，-18度冷链保存。2026 年新包装版本。</textarea></div>
+                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存下限</label><input type="number" value="100" class="form-input border-red-100" id="product-warning-stock-input"></div>
+                                    <div class="space-y-2 col-span-full">
+                                        <label class="text-[11px] font-bold text-slate-500 ml-1">各仓库库存信息</label>
+                                        <div class="bg-slate-50 rounded-xl p-4 space-y-3">
+                                            <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                                                <span class="text-sm font-bold text-slate-700">主仓库</span>
+                                                <span class="text-sm font-mono text-brand-600">850 Pcs</span>
+                                            </div>
+                                            <div class="flex justify-between items-center py-2 border-b border-slate-200">
+                                                <span class="text-sm font-bold text-slate-700">华东分仓库</span>
+                                                <span class="text-sm font-mono text-slate-600">200 Pcs</span>
+                                            </div>
+                                            <div class="flex justify-between items-center py-2">
+                                                <span class="text-sm font-bold text-slate-700">华南分仓库</span>
+                                                <span class="text-sm font-mono text-amber-600">150 Pcs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea class="form-input h-24 no-scrollbar" id="product-desc-textarea">经典原味，特级奶油，-18度冷链保存。2026 年新包装版本。</textarea></div>
                                 </div>
                             </div>
                         </section>

@@ -36,9 +36,8 @@ function loadCRM() {
 }
 
 function loadProductCenter() {
-    const timestamp = new Date().getTime();
-    console.log('[Cleanup] 从 /modules 加载产品中心，时间戳:', timestamp);
-    fetch(`/modules/product-center/product-center.html?t=${timestamp}`)
+    console.log('[Cleanup] 从 /modules 加载产品中心');
+    fetch('/modules/product-center/product-center.html')
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-supply').innerHTML = data;
@@ -55,9 +54,8 @@ function loadProductCenter() {
 }
 
 function loadSupplier() {
-    const timestamp = new Date().getTime();
-    console.log('[Cleanup] 从 /modules 加载供应商，时间戳:', timestamp);
-    fetch(`/modules/supply-chain/supply-chain.html?t=${timestamp}`)
+    console.log('[Cleanup] 从 /modules 加载供应商');
+    fetch('/modules/supply-chain/supply-chain.html')
         .then(response => response.text())
         .then(data => {
             document.getElementById('view-supplier').innerHTML = data;

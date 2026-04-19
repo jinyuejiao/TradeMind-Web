@@ -7,6 +7,7 @@ window.ProductModule = {
             id: apiProduct.productId || apiProduct.id,
             name: apiProduct.productName || apiProduct.name,
             sku: apiProduct.productSku || apiProduct.sku,
+            categoryId: apiProduct.categoryId,
             category1: apiProduct.category1 || apiProduct.category,
             category2: apiProduct.category2,
             supplier: apiProduct.supplierName || apiProduct.supplier,
@@ -25,6 +26,7 @@ window.ProductModule = {
 
     mapCategoryFromApi: function(apiCategory) {
         return {
+            categoryId: apiCategory.categoryId || apiCategory.id,
             name: apiCategory.categoryName || apiCategory.name,
             subcategories: apiCategory.subCategories || apiCategory.subcategories || []
         };
@@ -121,6 +123,58 @@ window.ProductModule = {
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('加载分类数据失败: ' + error.message, 'error');
             }
+        }
+    },
+
+    loadSuppliers: async function() {
+        console.log('[ProductModule] loadSuppliers 被调用 ===');
+        try {
+            if (window.checkAuth && !window.checkAuth()) {
+                console.error('[ProductModule] checkAuth failed');
+                return;
+            }
+
+            const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
+                method: 'GET'
+            });
+
+            const data = await window.handleApiResponse(response);
+            if (!data) return;
+
+            console.log('[ProductModule] 供应商数据:', data);
+            const supplierList = data.data || data;
+            
+            if (Array.isArray(supplierList)) {
+                this.suppliers = supplierList;
+                console.log('[ProductModule] 供应商数据加载完成，数量:', this.suppliers.length);
+            }
+            
+            return this.suppliers;
+        } catch (error) {
+            console.error('[ProductModule] 加载供应商数据异常:', error);
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('加载供应商数据失败: ' + error.message, 'error');
+            }
+        }
+    },
+
+    populateSupplierSelect: function(selectedSupplier) {
+        const select = document.getElementById('product-supplier-select');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">请选择关联主供应商</option>';
+        
+        if (this.suppliers && Array.isArray(this.suppliers)) {
+            this.suppliers.forEach(supplier => {
+                const option = document.createElement('option');
+                const name = supplier.supplierName || supplier.name;
+                option.value = name;
+                option.textContent = name;
+                if (selectedSupplier === name) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
         }
     },
 
@@ -453,7 +507,7 @@ window.ProductModule = {
             console.log('[ProductModule] 产品列表为空，显示空状态');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center gap-3">
                             <i class="ph ph-package text-4xl text-slate-300"></i>
                             <p class="text-slate-400 font-bold">暂无产品</p>
@@ -479,9 +533,6 @@ window.ProductModule = {
                             <p class="text-[10px] text-slate-400 font-mono product-sku-cell uppercase mt-1">SKU: ${product.sku}</p>
                         </div>
                     </div>
-                </td>
-                <td class="px-6 py-4 col-hide-mobile">
-                    <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-bold">${product.region}</span>
                 </td>
                 <td class="px-6 py-4 text-right font-mono font-bold text-slate-500 col-hide-mobile">
                     $${(product.price || 0).toFixed(2)}
@@ -694,11 +745,22 @@ window.ProductModule = {
             console.log('[ProductModule] 产品详情:', product);
             
             this.currentProduct = product;
+            
+            // 加载类别和供应商列表并填充到下拉框
+            await this.loadCategories();
+            await this.loadSuppliers();
+            this.populateCategorySelect(product.categoryId);
+            this.populateSupplierSelect(product.supplier);
+            
+            // 填充表单的初始值
+            this.populateProductForm(product);
+            
+            // 显示弹窗
             const modal = document.getElementById('product-detail-modal');
             if (modal) {
                 const titleEl = document.getElementById('detail-title');
                 const skuEl = document.getElementById('detail-sku');
-                if (titleEl) titleEl.textContent = product.name;
+                if (titleEl) titleEl.textContent = '产品详情';
                 if (skuEl) skuEl.textContent = 'SKU: ' + product.sku;
                 modal.classList.remove('hidden');
             }
@@ -708,6 +770,35 @@ window.ProductModule = {
                 window.TM_UI.showNotification('加载产品详情失败: ' + error.message, 'error');
             }
         }
+    },
+    
+    populateCategorySelect: function(selectedCategoryId) {
+        const select = document.getElementById('product-category-select');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">请选择商品类别</option>';
+        
+        this.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.categoryId;
+            option.textContent = cat.name;
+            if (selectedCategoryId === cat.categoryId) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    },
+
+    populateProductForm: function(product) {
+        const nameInput = document.getElementById('product-name-input');
+        const skuInput = document.getElementById('product-sku-input');
+        const priceInput = document.getElementById('product-price-input');
+        const stockInput = document.getElementById('product-stock-input');
+        
+        if (nameInput) nameInput.value = product.name || '';
+        if (skuInput) skuInput.value = product.sku || '';
+        if (priceInput) priceInput.value = product.price || 0;
+        if (stockInput) stockInput.value = product.stock || 0;
     },
 
     closeProductDetail: function() {
@@ -763,12 +854,48 @@ window.ProductModule = {
                 return;
             }
 
-            const response = await window.wrappedFetch('/api/v1/rd/products/save', {
-                method: 'POST',
+            // 从表单获取当前值
+            const nameInput = document.getElementById('product-name-input');
+            const skuInput = document.getElementById('product-sku-input');
+            const priceInput = document.getElementById('product-price-input');
+            const categorySelect = document.getElementById('product-category-select');
+            const supplierSelect = document.getElementById('product-supplier-select');
+            const purchaseUnitSelect = document.getElementById('product-purchase-unit-select');
+            const salesUnitSelect = document.getElementById('product-sales-unit-select');
+            const baseUnitInput = document.getElementById('product-base-unit-input');
+            const stockInput = document.getElementById('product-stock-input');
+            const warningStockInput = document.getElementById('product-warning-stock-input');
+            const descTextarea = document.getElementById('product-desc-textarea');
+
+            // 构建产品数据
+            const productData = {
+                productId: this.currentProduct.id,
+                name: nameInput ? nameInput.value : this.currentProduct.name,
+                sku: skuInput ? skuInput.value : this.currentProduct.sku,
+                categoryId: categorySelect ? categorySelect.value : this.currentProduct.categoryId,
+                price: priceInput ? parseFloat(priceInput.value) : this.currentProduct.price,
+                stock: stockInput ? parseInt(stockInput.value) : this.currentProduct.stock,
+                tenantId: window.currentTenantId
+            };
+
+            console.log('[ProductModule] 保存产品数据:', productData);
+
+            // 根据是否有 productId 决定是更新还是创建
+            let url, method;
+            if (productData.productId) {
+                url = `/api/v1/rd/products/${productData.productId}`;
+                method = 'PUT';
+            } else {
+                url = '/api/v1/rd/products';
+                method = 'POST';
+            }
+
+            const response = await window.wrappedFetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(this.currentProduct)
+                body: JSON.stringify(productData)
             });
 
             const data = await window.handleApiResponse(response);
@@ -794,7 +921,7 @@ window.ProductModule = {
         const drawer = document.getElementById('advanced-drawer');
         const icon = document.getElementById('advanced-icon');
         if (drawer && icon) {
-            drawer.classList.toggle('open');
+            drawer.classList.toggle('hidden');
             icon.classList.toggle('ph-caret-down');
             icon.classList.toggle('ph-caret-up');
         }
@@ -896,6 +1023,17 @@ window.ProductModule = {
             
             if (!nameInput || !locationInput) {
                 console.error('[ProductModule] 未找到仓库输入框');
+                return;
+            }
+
+            // 仓库名称非空校验
+            const name = nameInput.value.trim();
+            if (!name) {
+                console.error('[ProductModule] 仓库名称不能为空');
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('仓库名称不能为空！', 'error');
+                }
+                if (nameInput) nameInput.focus();
                 return;
             }
 
@@ -1075,6 +1213,8 @@ window.ProductModule = {
         }
     },
 
+    editingCategory: null,
+
     renderCategoryList: function() {
         console.log('[ProductModule] renderCategoryList 被调用 ===');
         const container = document.getElementById('category-edit-list');
@@ -1090,27 +1230,124 @@ window.ProductModule = {
             return;
         }
 
-        container.innerHTML = this.categories.map(cat => `
-            <div class="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 hover:border-teal-200 transition-colors">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-teal-100 rounded-xl flex items-center justify-center">
-                        <i class="ph ph-folder text-teal-600"></i>
+        container.innerHTML = this.categories.map((cat, idx) => {
+            const isEditing = this.editingCategory === idx;
+            if (isEditing) {
+                return `
+                    <div class="flex items-center justify-between px-4 py-3 bg-teal-50 rounded-2xl border border-teal-200 transition-colors">
+                        <div class="flex items-center gap-3 flex-1">
+                            <div class="w-8 h-8 bg-teal-500 rounded-xl flex items-center justify-center">
+                                <i class="ph ph-folder text-white"></i>
+                            </div>
+                            <input type="text" id="edit-category-${idx}" value="${cat.name}" class="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="window.ProductModule.saveCategoryEdit(${idx})" class="p-2 bg-teal-500 text-white rounded-full hover:bg-teal-600 transition-colors" title="保存">
+                                <i class="ph ph-check"></i>
+                            </button>
+                            <button onclick="window.ProductModule.cancelCategoryEdit()" class="p-2 bg-slate-200 text-slate-600 rounded-full hover:bg-slate-300 transition-colors" title="取消">
+                                <i class="ph ph-x"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div>
-                        <p class="font-bold text-slate-800 text-sm">${cat.name}</p>
-                        <p class="text-[10px] text-slate-400">${cat.subcategories.length} 个子类别</p>
+                `;
+            } else {
+                return `
+                    <div class="flex items-center justify-between px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 hover:border-teal-200 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-teal-100 rounded-xl flex items-center justify-center">
+                                <i class="ph ph-folder text-teal-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm">${cat.name}</p>
+                                <p class="text-[10px] text-slate-400">${cat.subcategories.length} 个子类别</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="window.ProductModule.startCategoryEdit(${idx})" class="p-2 hover:bg-teal-100 rounded-full transition-colors" title="编辑">
+                                <i class="ph ph-pencil text-teal-600"></i>
+                            </button>
+                            <button onclick="window.ProductModule.showDeleteConfirm('${cat.name}')" class="p-2 hover:bg-rose-100 rounded-full transition-colors" title="删除">
+                                <i class="ph ph-trash text-rose-500"></i>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button class="p-2 hover:bg-slate-200 rounded-full transition-colors" title="编辑">
-                        <i class="ph ph-pencil text-slate-400"></i>
-                    </button>
-                    <button onclick="window.ProductModule.showDeleteConfirm('${cat.name}')" class="p-2 hover:bg-rose-100 rounded-full transition-colors" title="删除">
-                        <i class="ph ph-trash text-rose-500"></i>
-                    </button>
-                </div>
-            </div>
-        `).join('');
+                `;
+            }
+        }).join('');
+    },
+
+    startCategoryEdit: function(idx) {
+        console.log('[ProductModule] startCategoryEdit 被调用, idx:', idx);
+        this.editingCategory = idx;
+        this.renderCategoryList();
+        setTimeout(() => {
+            const input = document.getElementById(`edit-category-${idx}`);
+            if (input) input.focus();
+        }, 50);
+    },
+
+    cancelCategoryEdit: function() {
+        console.log('[ProductModule] cancelCategoryEdit 被调用');
+        this.editingCategory = null;
+        this.renderCategoryList();
+    },
+
+    saveCategoryEdit: async function(idx) {
+        console.log('[ProductModule] saveCategoryEdit 被调用, idx:', idx);
+        try {
+            if (window.checkAuth && !window.checkAuth()) {
+                console.error('[ProductModule] checkAuth failed');
+                return;
+            }
+
+            const input = document.getElementById(`edit-category-${idx}`);
+            if (!input) {
+                console.error('[ProductModule] 未找到编辑输入框');
+                return;
+            }
+
+            const newName = input.value.trim();
+            if (!newName) {
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('类别名称不能为空', 'warning');
+                }
+                return;
+            }
+
+            const categoryData = {
+                categoryId: this.categories[idx].categoryId,
+                name: newName,
+                subCategories: this.categories[idx].subcategories || []
+            };
+
+            console.log('[ProductModule] 发送分类编辑数据:', categoryData);
+
+            const response = await window.wrappedFetch('/api/v1/rd/products/categories/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(categoryData)
+            });
+
+            const data = await window.handleApiResponse(response);
+            if (!data) return;
+
+            console.log('[ProductModule] 类别更新成功:', data);
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('类别已更新为 "' + newName + '"！', 'success');
+            }
+
+            this.editingCategory = null;
+            await this.loadCategories();
+            this.renderCategoryList();
+        } catch (error) {
+            console.error('[ProductModule] 更新类别异常:', error);
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('更新类别失败: ' + error.message, 'error');
+            }
+        }
     },
 
     addCategory: async function() {
@@ -1556,6 +1793,9 @@ window.confirmTransfer = function() { window.ProductModule.confirmTransfer(); };
 window.closeTransferModal = function() { window.ProductModule.closeTransferModal(); };
 window.editWarehouse = function(warehouseId) { window.ProductModule.editWarehouse(warehouseId); };
 window.openDeleteWarehouseConfirm = function(warehouseId) { window.ProductModule.openDeleteWarehouseConfirm(warehouseId); };
+window.startCategoryEdit = function(idx) { window.ProductModule.startCategoryEdit(idx); };
+window.cancelCategoryEdit = function() { window.ProductModule.cancelCategoryEdit(); };
+window.saveCategoryEdit = function(idx) { window.ProductModule.saveCategoryEdit(idx); };
 
 // 点击外部关闭下拉菜单
 document.addEventListener('click', function(e) {

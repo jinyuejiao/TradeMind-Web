@@ -1082,11 +1082,17 @@ function logout() {
     // 清除localStorage中的认证信息
     try {
         if (checkLocalStorage()) {
+            // 清除所有可能的认证相关key
             localStorage.removeItem('token');
+            localStorage.removeItem('auth_token');
             localStorage.removeItem('login_timestamp');
             localStorage.removeItem('user_info');
             localStorage.removeItem('username');
             localStorage.removeItem('currentUser');
+            // 清除sessionStorage作为额外保障
+            if (window.sessionStorage) {
+                sessionStorage.clear();
+            }
             console.log('已清空本地存储中的认证信息');
         }
     } catch (error) {
