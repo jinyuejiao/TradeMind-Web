@@ -9,6 +9,8 @@
     --gold-text: #92400e;
 }
 
+
+
 body {
     background-color: #F1F5F9;
     color: #334155;
@@ -103,7 +105,7 @@ body {
 }
 
     .btn-brand:hover {
-        filter: brightness(1.1);
+        background-color: #0D9488 !important;
     }
 
     .btn-brand:disabled {
@@ -116,6 +118,48 @@ body {
 .btn-click-effect:active {
     transform: scale(0.96);
 }
+
+/* 弹窗主操作按钮 - 品牌青色 */
+button.btn-modal-primary,
+.btn-modal-primary {
+    background-color: #14B8A6 !important;
+    color: #ffffff !important;
+    border: none !important;
+    transition: all 0.2s !important;
+}
+
+    button.btn-modal-primary:hover,
+    .btn-modal-primary:hover {
+        background-color: #0D9488 !important;
+        color: #ffffff !important;
+    }
+
+/* 弹窗次要按钮 - 灰色边框 */
+button.btn-modal-secondary,
+.btn-modal-secondary {
+    border: 1px solid #E2E8F0 !important;
+    color: #64748B !important;
+    background-color: white !important;
+    transition: all 0.2s !important;
+}
+
+    button.btn-modal-secondary:hover,
+    .btn-modal-secondary:hover {
+        background-color: #F1F5F9 !important;
+    }
+
+/* 危险操作按钮 - 红色 */
+button.btn-modal-danger,
+.btn-modal-danger {
+    background-color: #F43F5E !important;
+    color: white !important;
+    transition: all 0.2s !important;
+}
+
+    button.btn-modal-danger:hover,
+    .btn-modal-danger:hover {
+        background-color: #E11D48 !important;
+    }
 
 /* 3.7折 勋章动效 */
 .discount-ribbon {

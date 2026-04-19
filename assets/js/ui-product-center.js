@@ -34,7 +34,7 @@ window.ProductModule = {
         return {
             id: apiWarehouse.warehouseId || apiWarehouse.id,
             name: apiWarehouse.warehouseName || apiWarehouse.name,
-            location: apiWarehouse.warehouseLocation || apiWarehouse.location,
+            location: apiWarehouse.warehouseLocation || apiWarehouse.location || apiWarehouse.address,
             capacity: apiWarehouse.capacity,
             status: apiWarehouse.status
         };
@@ -178,6 +178,10 @@ window.ProductModule = {
 
     // 当前选中的产品
     currentProduct: null,
+    
+    // 仓库相关状态
+    editingWarehouseId: null,
+    warehouseToDelete: null,
 
     // ==================== 初始化函数 ====================
     init: function() {
@@ -856,11 +860,14 @@ window.ProductModule = {
                         <p class="text-[10px] text-slate-400 mt-0.5">${warehouse.location || ''}</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="window.ProductModule.openTransferModal(${warehouse.id})" class="w-10 h-10 flex items-center justify-center bg-amber-50 text-amber-500 hover:bg-amber-100 rounded-lg transition-all" title="仓库调拨">
+                        <button onclick="window.ProductModule.openTransferModal(${warehouse.id})" class="w-10 h-10 flex items-center justify-center bg-amber-50 text-amber-500 hover:bg-amber-100 rounded-lg transition-all warehouse-transfer-btn" title="仓库调拨">
                             <i class="ph-bold ph-swap"></i>
                         </button>
-                        <button class="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+                        <button onclick="window.ProductModule.editWarehouse(${warehouse.id})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors" title="编辑仓库">
                             <i class="ph ph-pencil text-slate-400"></i>
+                        </button>
+                        <button onclick="window.ProductModule.openDeleteWarehouseConfirm(${warehouse.id})" class="p-1.5 hover:bg-red-50 text-red-500 hover:bg-red-100 rounded-full transition-colors" title="删除仓库">
+                            <i class="ph-bold ph-trash"></i>
                         </button>
                     </div>
                 </div>
@@ -894,8 +901,14 @@ window.ProductModule = {
 
             const warehouseData = {
                 name: nameInput.value,
-                location: locationInput.value
+                address: locationInput.value
             };
+            
+            // 如果正在编辑，添加 warehouseId
+            if (this.editingWarehouseId) {
+                warehouseData.warehouseId = this.editingWarehouseId;
+            }
+            
             console.log('[ProductModule] 发送仓库数据:', warehouseData);
 
             const response = await window.wrappedFetch('/api/v1/rd/products/warehouses/save', {
@@ -911,16 +924,89 @@ window.ProductModule = {
 
             console.log('[ProductModule] 仓库保存成功:', data);
             if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('仓库 "' + nameInput.value + '" 已保存！', 'success');
+                const actionText = this.editingWarehouseId ? '更新' : '保存';
+                window.TM_UI.showNotification('仓库 "' + nameInput.value + '" 已' + actionText + '！', 'success');
             }
 
             nameInput.value = '';
             locationInput.value = '';
+            this.editingWarehouseId = null;
             await this.loadWarehousesAndRender();
         } catch (error) {
             console.error('[ProductModule] 保存仓库异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('保存仓库失败: ' + error.message, 'error');
+            }
+        }
+    },
+    
+    editWarehouse: function(warehouseId) {
+        console.log('[ProductModule] editWarehouse 被调用, warehouseId:', warehouseId);
+        const warehouse = this.warehouses.find(w => w.id === warehouseId);
+        if (!warehouse) {
+            console.error('[ProductModule] 未找到仓库:', warehouseId);
+            return;
+        }
+        
+        const nameInput = document.getElementById('new-warehouse-name');
+        const locationInput = document.getElementById('new-warehouse-location');
+        
+        if (nameInput) nameInput.value = warehouse.name || '';
+        if (locationInput) locationInput.value = warehouse.location || '';
+        
+        this.editingWarehouseId = warehouseId;
+        console.log('[ProductModule] 仓库信息已填充到表单');
+    },
+    
+    openDeleteWarehouseConfirm: function(warehouseId) {
+        console.log('[ProductModule] openDeleteWarehouseConfirm 被调用, warehouseId:', warehouseId);
+        this.warehouseToDelete = warehouseId;
+        
+        // 复用删除确认弹窗，修改提示文字
+        const confirmModal = document.getElementById('category-delete-confirm');
+        const titleEl = confirmModal.querySelector('h3');
+        const messageEl = confirmModal.querySelector('p');
+        
+        if (titleEl) titleEl.textContent = '确认删除仓库';
+        if (messageEl) messageEl.textContent = '确定要删除此仓库吗？此操作无法撤销。';
+        
+        if (confirmModal) {
+            confirmModal.classList.remove('hidden');
+        }
+    },
+    
+    deleteWarehouse: async function() {
+        console.log('[ProductModule] deleteWarehouse 被调用, warehouseId:', this.warehouseToDelete);
+        if (!this.warehouseToDelete) {
+            console.error('[ProductModule] 没有要删除的仓库');
+            return;
+        }
+        
+        try {
+            if (window.checkAuth && !window.checkAuth()) {
+                console.error('[ProductModule] checkAuth failed');
+                return;
+            }
+
+            const response = await window.wrappedFetch('/api/v1/rd/products/warehouses/' + this.warehouseToDelete, {
+                method: 'DELETE'
+            });
+
+            const data = await window.handleApiResponse(response);
+            if (!data) return;
+
+            console.log('[ProductModule] 仓库删除成功');
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('仓库已删除！', 'success');
+            }
+            
+            this.warehouseToDelete = null;
+            this.hideDeleteConfirm();
+            await this.loadWarehousesAndRender();
+        } catch (error) {
+            console.error('[ProductModule] 删除仓库异常:', error);
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('删除仓库失败: ' + error.message, 'error');
             }
         }
     },
@@ -1103,17 +1189,20 @@ window.ProductModule = {
     },
 
     confirmDelete: async function() {
-        console.log('[ProductModule] confirmDelete 被调用，删除类别:', this.currentDeleteCategory);
-        if (!this.currentDeleteCategory) return;
-
-        try {
-            console.log('[ProductModule] 删除类别功能待实现');
-            if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('删除功能开发中', 'info');
+        console.log('[ProductModule] confirmDelete 被调用');
+        if (this.warehouseToDelete) {
+            await this.deleteWarehouse();
+        } else if (this.currentDeleteCategory) {
+            console.log('[ProductModule] confirmDelete 删除类别:', this.currentDeleteCategory);
+            try {
+                console.log('[ProductModule] 删除类别功能待实现');
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('删除功能开发中', 'info');
+                }
+                this.hideDeleteConfirm();
+            } catch (error) {
+                console.error('[ProductModule] 删除类别异常:', error);
             }
-            this.hideDeleteConfirm();
-        } catch (error) {
-            console.error('[ProductModule] 删除类别异常:', error);
         }
     },
 
@@ -1465,6 +1554,8 @@ window.calculateRowTotal = function(rowId) { window.ProductModule.calculateRowTo
 window.calculateGrandTotal = function() { window.ProductModule.calculateGrandTotal(); };
 window.confirmTransfer = function() { window.ProductModule.confirmTransfer(); };
 window.closeTransferModal = function() { window.ProductModule.closeTransferModal(); };
+window.editWarehouse = function(warehouseId) { window.ProductModule.editWarehouse(warehouseId); };
+window.openDeleteWarehouseConfirm = function(warehouseId) { window.ProductModule.openDeleteWarehouseConfirm(warehouseId); };
 
 // 点击外部关闭下拉菜单
 document.addEventListener('click', function(e) {
