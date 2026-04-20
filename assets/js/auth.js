@@ -1,3 +1,40 @@
+// 安全检查：确保 wrappedFetch 可用
+(function ensureWrappedFetch() {
+    console.log('[Auth] 检查 wrappedFetch 是否可用...');
+    
+    // 如果 wrappedFetch 不存在，提供一个简单的后备方案
+    if (!window.wrappedFetch) {
+        console.warn('[Auth] wrappedFetch 未找到，使用后备方案');
+        
+        window.wrappedFetch = async function(url, options = {}) {
+            console.log('[Auth-Fallback] 使用后备 fetch');
+            const { skipAuth = false, ...requestOptions } = options;
+            
+            const finalUrl = url.startsWith('http') ? url : (window.TM_API_BASE + url);
+            console.log('[Auth-Fallback] 请求URL:', finalUrl);
+            
+            const headers = {
+                'Content-Type': 'application/json',
+                ...requestOptions.headers
+            };
+            
+            if (!skipAuth) {
+                const token = localStorage.getItem('token');
+                if (token && token.trim() !== '' && token !== 'null' && token !== 'undefined') {
+                    headers['Authorization'] = 'Bearer ' + token;
+                }
+            }
+            
+            return fetch(finalUrl, {
+                ...requestOptions,
+                headers
+            });
+        };
+    } else {
+        console.log('[Auth] wrappedFetch 已就绪');
+    }
+})();
+
 // 注入全局 UI 样式
 (function injectGlobalStyles() {
     console.log('TradeMindUI: 开始注入全局 CSS 样式');
@@ -2180,7 +2217,6 @@ window.TradeMindUI = {
 // 将函数暴露到全局作用域，以便其他页面使用
 window.checkAuth = checkAuth;
 window.logout = logout;
-window.wrappedFetch = wrappedFetch;
 window.getApiUrl = getApiUrl;
 window.checkLocalStorage = checkLocalStorage;
 window.showNotification = showNotification;
@@ -2308,7 +2344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     password: encryptedPassword
                 };
                 
-                const response = await wrappedFetch(url, {
+                const response = await window.wrappedFetch(url, {
                     skipAuth: true,
                     method: 'POST',
                     headers: {
@@ -2516,7 +2552,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 
                 // 发送注册请求
-                const response = await wrappedFetch(url, {
+                const response = await window.wrappedFetch(url, {
                     skipAuth: true,
                     method: 'POST',
                     headers: {
