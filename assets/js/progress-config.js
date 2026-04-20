@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadProgressConfig() {
     try {
-        const res = await fetch(`${API_BASE}/progress-config`);
+        const res = await wrappedFetch(`${API_BASE}/progress-config`);
         const result = await res.json();
         if (result.success) {
             progressConfig = result.config;
@@ -200,14 +200,14 @@ async function saveStep(e) {
     try {
         let res, result;
         if (stepId) {
-            res = await fetch(`${API_BASE}/progress-config/${stepId}`, {
+            res = await wrappedFetch(`${API_BASE}/progress-config/${stepId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
         } else {
             data.id = 'step-' + Date.now();
-            res = await fetch(`${API_BASE}/progress-config`, {
+            res = await wrappedFetch(`${API_BASE}/progress-config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -232,7 +232,7 @@ async function deleteStep(stepId) {
     if (!confirm('确定要删除此进度节点吗？')) return;
     
     try {
-        const res = await fetch(`${API_BASE}/progress-config/${stepId}`, {
+        const res = await wrappedFetch(`${API_BASE}/progress-config/${stepId}`, {
             method: 'DELETE'
         });
         
@@ -251,7 +251,7 @@ async function deleteStep(stepId) {
 
 async function saveProgressConfig() {
     try {
-        await fetch(`${API_BASE}/progress-config/reorder`, {
+        await wrappedFetch(`${API_BASE}/progress-config/reorder`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ config: progressConfig })

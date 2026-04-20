@@ -27,6 +27,7 @@
         console.log('[API-Client] ========== 开始发送请求 ==========');
         console.log('[API-Client] 原始请求URL:', url);
         console.log('[API-Client] 请求选项:', options);
+        const { skipAuth = false, ...requestOptions } = options;
         
         // 核心修复：自动识别并拼接基准路径
         const finalUrl = url.startsWith('http') ? url : (window.TM_API_BASE + url);
@@ -50,12 +51,18 @@
             
             // 自动添加Authorization头
             console.log('[API-Client] 步骤3: 构建请求头');
+            const isFormData = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData;
             const headers = {
-                'Content-Type': 'application/json',
-                ...options.headers
+                ...requestOptions.headers
             };
+            // FormData 由浏览器自动附加 boundary，不能强制写 application/json
+            if (!isFormData && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
             
-            if (token && token.trim() !== '' && token !== 'null' && token !== 'undefined') {
+            if (skipAuth) {
+                console.log('[API-Client] 跳过Authorization注入（skipAuth=true）');
+            } else if (token && token.trim() !== '' && token !== 'null' && token !== 'undefined') {
                 headers['Authorization'] = 'Bearer ' + token;
                 console.log('[API-Client] ✅ 添加了Authorization头');
                 
@@ -88,7 +95,7 @@
             // 发送请求
             console.log('[API-Client] 步骤4: 发送请求');
             const response = await fetch(finalUrl, {
-                ...options,
+                ...requestOptions,
                 headers
             });
             

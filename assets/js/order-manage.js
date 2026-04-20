@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadProgressConfig() {
     try {
-        const res = await fetch(`${API_BASE}/progress-config`);
+        const res = await wrappedFetch(`${API_BASE}/progress-config`);
         const result = await res.json();
         if (result.success) {
             progressConfig = result.config;
@@ -22,7 +22,7 @@ async function loadProgressConfig() {
 
 async function loadOrders() {
     try {
-        const res = await fetch(`${API_BASE}/orders`);
+        const res = await wrappedFetch(`${API_BASE}/orders`);
         const result = await res.json();
         if (result.success) {
             orders = result.orders || [];
@@ -283,7 +283,7 @@ function renderProgressTimeline(order, currentStatus) {
 
 async function updateOrderStatus(orderId, newStatus) {
     try {
-        const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
+        const res = await wrappedFetch(`${API_BASE}/orders/${orderId}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })

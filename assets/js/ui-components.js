@@ -152,7 +152,9 @@
          * 检查并切换布局模式
          */
         checkLayoutMode: function() {
-            const isMobile = window.innerWidth < 768;
+            const isMobile = window.TM_Responsive && typeof window.TM_Responsive.isMobile === 'function'
+                ? window.TM_Responsive.isMobile()
+                : window.innerWidth < 768;
             const newMode = isMobile ? 'mobile' : 'desktop';
             
             if (newMode !== this.currentMode) {

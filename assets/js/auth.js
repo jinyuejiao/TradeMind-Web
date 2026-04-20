@@ -1265,7 +1265,7 @@ function checkAuth() {
 }
 
 // 包装fetch函数，自动添加Authorization头并处理401响应
-function wrappedFetch(url, options = {}) {
+function legacyWrappedFetch(url, options = {}) {
     console.log('========== 开始发送请求 ==========');
     console.log('原始请求URL:', url);
     console.log('请求选项:', options);
@@ -2308,7 +2308,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     password: encryptedPassword
                 };
                 
-                const response = await fetch(url, {
+                const response = await wrappedFetch(url, {
+                    skipAuth: true,
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -2515,7 +2516,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 
                 // 发送注册请求
-                const response = await fetch(url, {
+                const response = await wrappedFetch(url, {
+                    skipAuth: true,
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

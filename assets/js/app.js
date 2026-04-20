@@ -1,4 +1,4 @@
-﻿// ============== 移动端适配模块开始 ==============
+// ============== 移动端适配模块开始 ==============
 (function() {
     console.log('TradeMind: 移动端适配模块初始化');
 
@@ -200,8 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initImageUpload();
 });
 
-// 切换视图标签
-function switchTab(tabName, event) {
+// 兼容切换视图标签（避免覆盖 ui-main.js 的主实现）
+function switchTabLegacy(tabName, event) {
     // 隐藏所有视图
     const views = document.querySelectorAll('.view-section');
     views.forEach(view => {
@@ -247,6 +247,10 @@ function switchTab(tabName, event) {
     
     // 更新页面标题
     updatePageTitle(tabName);
+}
+
+if (typeof window.switchTab !== 'function') {
+    window.switchTab = switchTabLegacy;
 }
 
 // 更新页面标题

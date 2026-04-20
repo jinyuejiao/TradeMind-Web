@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadOrders() {
     try {
-        const res = await fetch(`${API_BASE}/orders`);
+        const res = await wrappedFetch(`${API_BASE}/orders`);
         const result = await res.json();
         if (result.success) {
             orders = result.orders || [];
@@ -22,7 +22,7 @@ async function loadOrders() {
 
 async function loadCustomers() {
     try {
-        const res = await fetch(`${API_BASE}/customers`);
+        const res = await wrappedFetch(`${API_BASE}/customers`);
         const result = await res.json();
         if (result.success) {
             customers = result.customers || [];
@@ -156,13 +156,13 @@ async function saveCustomer(e) {
     try {
         let res, result;
         if (customerId) {
-            res = await fetch(`${API_BASE}/customers/${customerId}`, {
+            res = await wrappedFetch(`${API_BASE}/customers/${customerId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
         } else {
-            res = await fetch(`${API_BASE}/customers`, {
+            res = await wrappedFetch(`${API_BASE}/customers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

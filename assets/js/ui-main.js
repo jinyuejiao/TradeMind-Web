@@ -65,8 +65,52 @@ function loadSupplier() {
         });
 }
 
+const TM_NAV_CONFIG = [
+    { tab: 'dashboard', label: '工作台', icon: 'ph-squares-four' },
+    { tab: 'biz', label: '智能经营', icon: 'ph-chart-line-up' },
+    { tab: 'crm', label: '客户 CRM', icon: 'ph-users' },
+    { tab: 'supply', label: '产品中心', icon: 'ph-flask' },
+    { tab: 'supplier', label: '供应商管理', icon: 'ph-warehouse' }
+];
+
+function initNavigationFromConfig() {
+    const navButtons = document.querySelectorAll('aside .nav-btn');
+    navButtons.forEach((btn, index) => {
+        const cfg = TM_NAV_CONFIG[index];
+        if (!cfg) return;
+        btn.setAttribute('onclick', `switchTab('${cfg.tab}')`);
+        const iconEl = btn.querySelector('i');
+        const textEl = btn.querySelector('span');
+        if (iconEl) {
+            iconEl.className = `ph ${cfg.icon} text-xl mr-3`;
+        }
+        if (textEl) {
+            textEl.textContent = cfg.label;
+        }
+    });
+
+    const mobileButtons = document.querySelectorAll('.mobile-nav-btn');
+    mobileButtons.forEach((btn, index) => {
+        const cfg = TM_NAV_CONFIG[index];
+        if (!cfg) return;
+        btn.setAttribute('onclick', `switchTab('${cfg.tab}')`);
+        const iconEl = btn.querySelector('i');
+        const textEl = btn.querySelector('span');
+        if (iconEl) {
+            iconEl.className = `ph ${cfg.icon} text-xl mb-0.5`;
+        }
+        if (textEl) {
+            textEl.textContent = cfg.label;
+        }
+    });
+}
+
 // 页面加载时加载默认模块
 window.onload = function() {
+    initNavigationFromConfig();
+    if (window.TM_Responsive && typeof window.TM_Responsive.syncMobileNav === 'function') {
+        window.TM_Responsive.syncMobileNav('dashboard');
+    }
     loadDashboard();
 };
 
@@ -83,6 +127,9 @@ function switchTab(tabId) {
             btn.classList.remove('text-slate-400');
         }
     });
+    if (window.TM_Responsive && typeof window.TM_Responsive.syncMobileNav === 'function') {
+        window.TM_Responsive.syncMobileNav(tabId);
+    }
 
     const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供应商管理' };
     if (document.getElementById('page-title')) document.getElementById('page-title').innerText = titles[tabId];
@@ -235,7 +282,7 @@ function openAuditModal(name) { document.getElementById('audit-modal').classList
 function closeAuditModal() { document.getElementById('audit-modal').classList.add('hidden'); document.body.style.overflow = ''; }
 
 // 高级信息抽屉切换
-function toggleAdvanced(type) {
+function toggleAdvancedPanel(type) {
     const drawer = document.getElementById('drawer-' + type);
     const icon = document.getElementById('icon-' + type);
     drawer.classList.toggle('open');
@@ -244,11 +291,19 @@ function toggleAdvanced(type) {
 }
 
 // 单位弹窗开关
-function openUnitModal() { document.getElementById('unit-modal').classList.remove('hidden'); }
-function closeUnitModal() { document.getElementById('unit-modal').classList.add('hidden'); }
+function openUnitModal() {
+    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
+        modal.classList.remove('hidden');
+    });
+}
+function closeUnitModal() {
+    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
+        modal.classList.add('hidden');
+    });
+}
 
 // 模拟报表切换逻辑 (补全)
-function switchReport(type) {
+function legacySwitchReport(type) {
     document.querySelectorAll('.report-tab').forEach(btn => btn.classList.remove('report-active'));
     event.target.closest('.report-tab').classList.add('report-active');
     const container = document.getElementById('report-visual-container');
@@ -923,7 +978,7 @@ function savePurchaseOrder() {
     showToast('进货单已保存');
 }
 
-function showToast(message) {
+function showToastLegacy(message) {
     // 创建toast元素
     const toast = document.createElement('div');
     toast.className = 'fixed top-4 right-4 bg-slate-900 text-white px-4 py-2 rounded-lg shadow-lg z-50';
@@ -1028,7 +1083,7 @@ function openClientEditModal(mode, name) {
 
 function closeClientEditModal() { document.getElementById('client-edit-modal').classList.add('hidden'); document.body.style.overflow = ''; }
 
-function toggleAdvanced() {
+function toggleAdvancedLegacy() {
     const drawer = document.getElementById('advanced-drawer');
     const icon = document.getElementById('advanced-icon');
     drawer.classList.toggle('open');
@@ -1663,9 +1718,11 @@ window.saveProduct = function() {
     window.closeProductDetail();
 };
 
-window.toggleAdvanced = function() {
-    const drawer = document.getElementById('advanced-drawer');
-    const icon = document.getElementById('advanced-icon');
+window.toggleAdvanced = function(type) {
+    const drawerId = type ? ('drawer-' + type) : 'advanced-drawer';
+    const iconId = type ? ('icon-' + type) : 'advanced-icon';
+    const drawer = document.getElementById(drawerId);
+    const icon = document.getElementById(iconId);
     if (drawer && icon) {
         drawer.classList.toggle('open');
         icon.classList.toggle('ph-caret-down');
@@ -1674,13 +1731,15 @@ window.toggleAdvanced = function() {
 };
 
 window.openUnitModal = function() {
-    const modal = document.getElementById('unit-modal');
-    if (modal) modal.classList.remove('hidden');
+    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
+        modal.classList.remove('hidden');
+    });
 };
 
 window.closeUnitModal = function() {
-    const modal = document.getElementById('unit-modal');
-    if (modal) modal.classList.add('hidden');
+    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
+        modal.classList.add('hidden');
+    });
 };
 
 window.openWarehouseDrawer = function() {
@@ -1866,13 +1925,11 @@ document.addEventListener('click', function(e) {
 });
 function closeProductDetail() { document.getElementById('product-detail-modal').classList.add('hidden'); document.body.style.overflow = ''; }
 
-// 高级配置折叠切换
-function toggleAdvanced() {
-    const drawer = document.getElementById('advanced-drawer');
-    const icon = document.getElementById('advanced-icon');
-    drawer.classList.toggle('open');
-    icon.classList.toggle('ph-caret-up');
-    icon.classList.toggle('ph-caret-down');
+// 高级配置折叠切换（统一入口）
+function toggleAdvanced(type) {
+    if (typeof window.toggleAdvanced === 'function') {
+        window.toggleAdvanced(type);
+    }
 }
 
 // --- 供应商管理交互逻辑 ---

@@ -93,7 +93,7 @@ async function uploadImage() {
     formData.append('image', selectedFile);
 
     try {
-        const response = await fetch(`${API_BASE}/api/v1/ai/upload`, {
+        const response = await wrappedFetch(`${API_BASE}/api/v1/ai/upload`, {
             method: 'POST',
             body: formData
         });
@@ -329,7 +329,7 @@ async function confirmAndSave() {
     try {
         const customerInfo = analyzedData.customer_info ? (Array.isArray(analyzedData.customer_info) ? analyzedData.customer_info[0] : analyzedData.customer_info) : null;
         if (customerInfo && customerInfo.nickname) {
-            const customerRes = await fetch(`${API_BASE}/api/v1/crm/customers`, {
+            const customerRes = await wrappedFetch(`${API_BASE}/api/v1/crm/customers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -347,7 +347,7 @@ async function confirmAndSave() {
             }
         }
 
-        const orderRes = await fetch(`${API_BASE}/api/v1/rd/orders`, {
+        const orderRes = await wrappedFetch(`${API_BASE}/api/v1/rd/orders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -362,7 +362,7 @@ async function confirmAndSave() {
         if (orderResult.order) {
             const productInfo = analyzedData.product_info ? (Array.isArray(analyzedData.product_info) ? analyzedData.product_info[0] : analyzedData.product_info) : null;
             if (productInfo && productInfo.stock_impact === '需扣减库存') {
-                await fetch(`${API_BASE}/api/v1/rd/inventory/deduct`, {
+                await wrappedFetch(`${API_BASE}/api/v1/rd/inventory/deduct`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -374,7 +374,7 @@ async function confirmAndSave() {
             }
 
             if (productInfo && productInfo.supplier_action === '需向对应供应商下单') {
-                await fetch(`${API_BASE}/api/v1/supp/supplier-orders`, {
+                await wrappedFetch(`${API_BASE}/api/v1/supp/supplier-orders`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
