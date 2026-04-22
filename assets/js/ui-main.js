@@ -244,7 +244,7 @@ function loadSmartOps() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r12',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r20',
         '智能经营'
     );
 }
@@ -261,7 +261,7 @@ function loadCRM() {
 
 function loadProductCenter() {
     console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
-    fetch('/modules/product-center/product-center.html')
+    fetch('/modules/product-center/product-center.html?v=20260422r19', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             // 产品中心的类别/仓库编辑依赖 #content-area 内的弹窗与抽屉 DOM，

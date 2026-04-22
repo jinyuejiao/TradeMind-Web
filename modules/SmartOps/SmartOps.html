@@ -170,69 +170,188 @@
         <!-- 内容区域 -->
         <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
 
-            <!-- ================= [2] 智能经营 BIZ ================= --> 
-            <div id="view-biz" class="view-section w-full p-4 md:p-8 space-y-6 fade-in"> 
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4"> 
-                    <h2 class="text-xl font-bold text-slate-800">智能经营中心</h2> 
-                    <button onclick="openAIAnalysis()" class="bg-brand-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-brand-500/20 flex items-center justify-center transition hover:bg-brand-700 active:scale-95"><i class="ph ph-brain mr-2 text-lg"></i> AI 预测与经营分析</button> 
-                </div> 
+            <!-- ================= [2] 智能经营 BIZ ================= -->
+            <div id="view-biz" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <h2 class="text-xl font-bold text-slate-800">智能经营中心</h2>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="openAIAnalysis()" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-colors flex items-center gap-2" title="查看AI经营决策分析报告">
+                            <i class="ph ph-brain text-base"></i>
+                            <span class="text-xs font-bold">AI经营分析</span>
+                        </button>
+                        <button onclick="openClearanceModal()" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-colors flex items-center gap-2" title="生成产品促销清理建议方案">
+                            <i class="ph ph-megaphone-simple text-base"></i>
+                            <span class="text-xs font-bold">生成促销方案</span>
+                        </button>
+                    </div>
+                </div>
 
-                <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-1"> 
-                    <button onclick="switchReport('rev')" id="tab-rev" class="report-tab report-active px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">营收报表</button> 
-                    <button onclick="switchReport('stock')" id="tab-stock" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">库存健康</button> 
-                    <button onclick="switchReport('profit')" id="tab-profit" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">销售盈利</button> 
-                    <button onclick="switchReport('finance')" id="tab-finance" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">往来账务</button> 
-                </div> 
+                <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-1">
+                    <button onclick="switchReport('rev')" id="tab-rev" class="report-tab report-active px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">营收报表</button>
+                    <button onclick="switchReport('stock')" id="tab-stock" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">库存健康</button>
+                    <button onclick="switchReport('profit')" id="tab-profit" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">销售盈利</button>
+                    <button onclick="switchReport('finance')" id="tab-finance" class="report-tab px-5 py-2 border border-slate-200 bg-white rounded-full text-xs font-bold transition-all whitespace-nowrap">往来账务</button>
+                </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> 
-                    <!-- 左侧报表：50% 宽度 --> 
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col h-full min-h-[400px]"> 
-                        <div class="flex justify-between items-center mb-10"> 
-                            <h3 id="report-display-title" class="text-sm font-bold text-slate-800">营收走势 (近6个月)</h3> 
-                            <div id="report-legend" class="flex gap-4 text-[10px] font-bold text-slate-400"> 
-                                <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> 营收额</span> 
-                            </div> 
-                        </div> 
-                        <div id="report-visual-container" class="flex-1 flex items-end justify-around px-4 md:px-12 gap-1 overflow-hidden"> 
-                            <div class="bar-item-slim h-[40%] bg-slate-100"></div> 
-                            <div class="bar-item-slim h-[55%] bg-slate-100"></div> 
-                            <div class="bar-item-slim h-[45%] bg-slate-100"></div> 
-                            <div class="bar-item-slim h-[70%] bg-brand-100"></div> 
-                            <div class="bar-item-slim h-[85%]"></div> 
-                            <div class="bar-item-slim h-[92%]"></div> 
-                        </div> 
-                        <div id="report-label-container" class="grid grid-cols-6 mt-6 text-[10px] text-slate-400 text-center font-mono font-bold pt-4 border-t border-slate-50"> 
-                            <span>AUG</span><span>SEP</span><span>OCT</span><span>NOV</span><span>DEC</span><span class="text-brand-600">JAN</span> 
-                        </div> 
-                    </div> 
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col min-h-[420px]">
+                    <div class="flex justify-between items-center mb-10">
+                        <h3 id="report-display-title" class="text-sm font-bold text-slate-800">营收走势 (近6个月)</h3>
+                        <div id="report-legend" class="flex gap-4 text-[10px] font-bold text-slate-400">
+                            <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> 营收额</span>
+                        </div>
+                    </div>
+                    <div id="report-visual-container" class="flex-1 flex items-end justify-around px-4 md:px-12 gap-1 overflow-hidden">
+                        <div class="bar-item-slim h-[40%] bg-slate-100"></div>
+                        <div class="bar-item-slim h-[55%] bg-slate-100"></div>
+                        <div class="bar-item-slim h-[45%] bg-slate-100"></div>
+                        <div class="bar-item-slim h-[70%] bg-brand-100"></div>
+                        <div class="bar-item-slim h-[85%]"></div>
+                        <div class="bar-item-slim h-[92%]"></div>
+                    </div>
+                    <div id="report-label-container" class="grid grid-cols-6 mt-6 text-[10px] text-slate-400 text-center font-mono font-bold pt-4 border-t border-slate-50">
+                        <span>AUG</span><span>SEP</span><span>OCT</span><span>NOV</span><span>DEC</span><span class="text-brand-600">JAN</span>
+                    </div>
+                </div>
 
-                    <!-- 右侧监控：50% 宽度 --> 
-                    <div class="flex flex-col gap-6"> 
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6"> 
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-chart-line text-brand-500"></i> 核心效率监控</h3> 
-                            <div class="space-y-8"> 
-                                <div> 
-                                    <div class="flex justify-between text-xs mb-1.5 font-bold"><span>库存周转率</span><span class="text-brand-600">4.2</span></div> 
-                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="w-[82%] bg-brand-500 h-full"></div></div> 
-                                </div> 
-                                <div> 
-                                    <div class="flex justify-between text-xs mb-1.5 font-bold"><span>回款周期</span><span class="text-risk-high">45天</span></div> 
-                                    <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div class="w-[60%] bg-risk-high h-full animate-pulse"></div></div> 
-                                </div> 
-                            </div> 
-                        </div> 
-                        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:p-6 h-fit flex-1 flex flex-col justify-center"> 
-                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 text-left w-full">AI 积压处理方案</h3> 
-                            <div class="p-6 bg-brand-50/50 rounded border border-dashed border-brand-200 text-center w-full"> 
-                                <p class="text-sm font-bold text-slate-700">金色镂空灯库存清理</p> 
-                                <p class="text-xs text-slate-500 mt-1 mb-3 leading-relaxed">SKU 在库超 150 天。AI建议：执行东南亚区域清仓计划。</p> 
-                                <button class="bg-brand-600 text-white text-xs px-6 py-2 rounded shadow-md font-bold">生成销售方案</button> 
-                            </div> 
-                        </div> 
-                    </div> 
-                </div> 
-            </div> 
-            <!-- ================= [2] 所有弹窗模块 (核心修复点：确保在页面底部) ================= --> 
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="ph ph-wallet text-brand-600"></i>
+                                <h3 class="text-sm font-bold text-slate-800">收付款账户管理</h3>
+                            </div>
+                            <button onclick="window.openBizAccountModal()" class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors flex items-center justify-center" title="新增账户">
+                                <i class="ph ph-plus"></i>
+                            </button>
+                        </div>
+                        <ul id="biz-account-list" class="p-4 space-y-2"></ul>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2"><i class="ph ph-chart-line text-brand-500"></i> 核心效率监控</h3>
+                        <div class="space-y-7">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1.5 font-bold"><span>库存周转率</span><span id="eff-inventory-value" class="text-brand-600">4.2</span></div>
+                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div id="eff-inventory-bar" class="w-[82%] bg-brand-500 h-full"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1.5 font-bold"><span>回款周期</span><span id="eff-payment-value" class="text-risk-high">45天</span></div>
+                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div id="eff-payment-bar" class="w-[60%] bg-risk-high h-full animate-pulse"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ================= [2] 所有弹窗模块 (核心修复点：确保在页面底部) ================= -->
+            <div id="biz-account-modal" class="hidden fixed inset-0 z-[130] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountModal()"></div>
+                <div class="relative bg-white w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden text-left">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h4 id="biz-account-modal-title" class="text-sm font-black text-slate-800 tracking-tight">新增首付款账户</h4>
+                        <button onclick="window.closeBizAccountModal()" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                            <i class="ph ph-x text-lg text-slate-400"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 md:p-7 space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">账户类型</label>
+                                <select id="biz-account-type" class="form-input">
+                                    <option>支付宝账户</option>
+                                    <option>微信账户</option>
+                                    <option>银行卡账户</option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">账户名称</label>
+                                <input id="biz-account-name" type="text" class="form-input" placeholder="如：主收款账户">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">账户号</label>
+                                <input id="biz-account-no" type="text" class="form-input font-mono" placeholder="请输入账号/卡号">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">归属主体</label>
+                                <input id="biz-account-holder" type="text" class="form-input" placeholder="请输入商户主体名称">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <label class="flex items-center justify-between px-4 py-3 border border-slate-200 rounded-xl bg-slate-50">
+                                <span class="text-xs font-bold text-slate-700">设为默认收款账户</span>
+                                <input id="biz-account-default-receive" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20">
+                            </label>
+                            <label class="flex items-center justify-between px-4 py-3 border border-slate-200 rounded-xl bg-slate-50">
+                                <span class="text-xs font-bold text-slate-700">设为默认付款账户</span>
+                                <input id="biz-account-default-pay" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20">
+                            </label>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-slate-100 bg-white flex gap-3">
+                        <button onclick="window.closeBizAccountModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
+                        <button onclick="window.saveBizAccount()" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-colors">保存账户</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="biz-account-delete-modal" class="hidden fixed inset-0 z-[131] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountDeleteModal()"></div>
+                <div class="relative bg-white w-full max-w-sm rounded-[1.6rem] shadow-2xl p-6 text-center">
+                    <div class="w-12 h-12 mx-auto rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-3">
+                        <i class="ph ph-warning-circle text-2xl"></i>
+                    </div>
+                    <h4 class="text-sm font-black text-slate-800">确认删除该账户？</h4>
+                    <p class="text-xs text-slate-400 mt-2 leading-relaxed">删除后将无法用于首付款收付款流程，请谨慎操作。</p>
+                    <div class="mt-5 flex gap-3">
+                        <button onclick="window.closeBizAccountDeleteModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
+                        <button onclick="window.deleteBizAccount()" class="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-xs font-black hover:bg-rose-600 transition-colors">确认删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="biz-account-detail-modal" class="hidden fixed inset-0 z-[132] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountDetailModal()"></div>
+                <div class="relative bg-white w-full max-w-md rounded-[1.8rem] shadow-2xl overflow-hidden text-left">
+                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                        <h4 class="text-sm font-black text-slate-800">账户详情</h4>
+                        <button onclick="window.closeBizAccountDetailModal()" class="p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                            <i class="ph ph-x text-lg text-slate-400"></i>
+                        </button>
+                    </div>
+                    <div class="p-5 space-y-4 text-xs">
+                        <div><p class="text-slate-400 mb-1">账户名称</p><p id="biz-detail-name" class="text-slate-800 font-bold"></p></div>
+                        <div><p class="text-slate-400 mb-1">账户类型</p><p id="biz-detail-type" class="text-slate-700"></p></div>
+                        <div><p class="text-slate-400 mb-1">账户号</p><p id="biz-detail-no" class="text-slate-700 font-mono"></p></div>
+                        <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
+                        <div class="flex gap-2 pt-1">
+                            <span id="biz-detail-default-receive" class="hidden px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 text-[10px] font-bold">默认收款</span>
+                            <span id="biz-detail-default-pay" class="hidden px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">默认付款</span>
+                        </div>
+                    </div>
+                    <div class="px-5 py-4 border-t border-slate-100 bg-white flex gap-2">
+                        <button onclick="window.closeBizAccountDetailModal()" class="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
+                        <button onclick="window.openBizAccountModal(window.bizAccountDetailId); window.closeBizAccountDetailModal();" class="flex-1 py-2 rounded-xl bg-brand-600 text-white text-xs font-black">编辑</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="clearance-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeClearanceModal()"></div>
+                <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+                    <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-4"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white"><i class="ph ph-lightning-bold text-xl"></i></div><h2 class="text-sm font-black text-slate-800 uppercase tracking-widest italic">AI Inventory Clearance Plan</h2></div>
+                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-10 no-scrollbar space-y-12 text-left">
+                        <section>
+                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
+                            <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">"监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理！"</div>
+                        </section>
+                    </div>
+                    <div class="p-6 border-t border-slate-100 bg-white"><button onclick="closeClearanceModal()" class="w-full py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                </div>
+            </div>
+
             <!-- AI 预测报告弹窗 --> 
             <div id="ai-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8"> 
                 <!-- 遮罩 --> 
@@ -372,19 +491,21 @@
         // API 调用函数
         async function fetchReportData(endpoint) {
             try {
-                const response = await fetch(`http://localhost:8089/api/v1/im/report/${endpoint}`, {
-                    headers: {
-                        'X-Tenant-Id': 'test-tenant',
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (window.checkAuth && !window.checkAuth()) {
+                    return endpoint === 'accounts' || endpoint === 'efficiency' ? {} : [];
                 }
-                return await response.json();
+                const response = await window.wrappedFetch(`/api/v1/im/report/${endpoint}`, {
+                    method: 'GET'
+                });
+                const result = await window.handleApiResponse(response);
+                const data = result && result.data !== undefined ? result.data : result;
+                if (data === null || data === undefined) {
+                    return endpoint === 'accounts' || endpoint === 'efficiency' ? {} : [];
+                }
+                return data;
             } catch (error) {
                 console.error('Error fetching report data:', error);
-                return [];
+                return endpoint === 'accounts' || endpoint === 'efficiency' ? {} : [];
             }
         }
 
@@ -421,13 +542,14 @@
                     const revenueData = await fetchReportData('revenue');
                     
                     // 生成柱状图
+                    const maxRevenue = Math.max(...revenueData.map(item => Number(item.amount) || 0), 1);
                     let chartHTML = `
                                         <!-- 1. Y轴刻度区域 -->
                                         <div class="flex flex-col justify-between mb-8 pb-1 axis-text shrink-0 text-right w-10 pr-3 border-r border-slate-100">
-                                            <span>${Math.max(...revenueData.map(item => item.amount)).toFixed(0)}</span>
-                                            <span>${(Math.max(...revenueData.map(item => item.amount)) * 0.75).toFixed(0)}</span>
-                                            <span>${(Math.max(...revenueData.map(item => item.amount)) * 0.5).toFixed(0)}</span>
-                                            <span>${(Math.max(...revenueData.map(item => item.amount)) * 0.25).toFixed(0)}</span>
+                                            <span>${maxRevenue.toFixed(0)}</span>
+                                            <span>${(maxRevenue * 0.75).toFixed(0)}</span>
+                                            <span>${(maxRevenue * 0.5).toFixed(0)}</span>
+                                            <span>${(maxRevenue * 0.25).toFixed(0)}</span>
                                             <span class="text-slate-300">0</span>
                                         </div>
 
@@ -446,9 +568,10 @@
                                     `;
 
                     // 添加数据柱
-                    const maxAmount = Math.max(...revenueData.map(item => item.amount), 1);
+                    const maxAmount = Math.max(...revenueData.map(item => Number(item.amount) || 0), 1);
                     revenueData.forEach((item, index) => {
-                        const height = (item.amount / maxAmount) * 100;
+                        const amount = Number(item.amount) || 0;
+                        const height = (amount / maxAmount) * 100;
                         const date = new Date(item.date);
                         const month = (date.getMonth() + 1).toString().padStart(2, '0');
                         const day = date.getDate().toString().padStart(2, '0');
@@ -679,18 +802,200 @@
                 const inventoryTurnover = efficiencyData.inventory_turnover || 0;
                 const paymentCycle = efficiencyData.payment_cycle || 0;
 
-                // 更新库存周转率
-                document.querySelector('.text-brand-600').textContent = inventoryTurnover.toFixed(1);
-                document.querySelector('.bg-brand-500').style.width = `${Math.min(inventoryTurnover * 20, 100)}%`;
+                const inventoryValueEl = document.getElementById('eff-inventory-value');
+                const inventoryBarEl = document.getElementById('eff-inventory-bar');
+                const paymentValueEl = document.getElementById('eff-payment-value');
+                const paymentBarEl = document.getElementById('eff-payment-bar');
 
-                // 更新回款周期
-                const paymentCycleElement = document.querySelectorAll('.text-risk-high')[0];
-                paymentCycleElement.textContent = paymentCycle.toFixed(0) + '天';
-                document.querySelectorAll('.bg-risk-high')[0].style.width = `${Math.min(paymentCycle / 60 * 100, 100)}%`;
+                if (inventoryValueEl) {
+                    inventoryValueEl.textContent = Number(inventoryTurnover).toFixed(1);
+                }
+                if (inventoryBarEl) {
+                    inventoryBarEl.style.width = `${Math.min(Number(inventoryTurnover) * 20, 100)}%`;
+                }
+                if (paymentValueEl) {
+                    paymentValueEl.textContent = Number(paymentCycle).toFixed(0) + '天';
+                }
+                if (paymentBarEl) {
+                    paymentBarEl.style.width = `${Math.min((Number(paymentCycle) / 60) * 100, 100)}%`;
+                }
             } catch (error) {
                 console.error('Error loading efficiency data:', error);
             }
         }
+
+        // ====== 账户管理 ======
+        window.bizAccounts = [];
+        window.bizEditingAccountId = null;
+        window.bizDeletingAccountId = null;
+        window.bizAccountDetailId = null;
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function loadBizAccounts() {
+            try {
+                const response = await window.wrappedFetch('/api/v1/im/accounts', { method: 'GET' });
+                const result = await window.handleApiResponse(response);
+                const data = result && result.data !== undefined ? result.data : result;
+                window.bizAccounts = Array.isArray(data) ? data : [];
+                renderBizAccounts();
+            } catch (error) {
+                console.error('加载账户失败:', error);
+                window.bizAccounts = [];
+                renderBizAccounts();
+            }
+        }
+
+        function renderBizAccounts() {
+            const container = document.getElementById('biz-account-list');
+            if (!container) return;
+            if (!window.bizAccounts || window.bizAccounts.length === 0) {
+                container.innerHTML = `
+                    <li class="py-10 text-center">
+                        <i class="ph ph-wallet text-3xl text-slate-300"></i>
+                        <p class="mt-2 text-xs text-slate-400">暂无账户，点击右上角 + 新增</p>
+                    </li>
+                `;
+                return;
+            }
+
+            container.innerHTML = window.bizAccounts.map(item => {
+                const name = escapeHtml(item.accountName);
+                const type = escapeHtml(item.accountType);
+                const no = escapeHtml(item.accountNo);
+                const holder = escapeHtml(item.accountHolder || '-');
+                const isDefaultReceive = item.isDefaultReceive === true;
+                const isDefaultPay = item.isDefaultPay === true;
+                return `
+                    <li class="group rounded-xl border border-slate-100 hover:border-brand-200 bg-white px-4 py-3 transition-colors">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-slate-800 truncate">${name}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${type} · ${no}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">主体：${holder}</p>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                ${isDefaultReceive ? '<span class="px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 text-[10px] font-bold">默认收款</span>' : ''}
+                                ${isDefaultPay ? '<span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">默认付款</span>' : ''}
+                                <button onclick="window.openBizAccountDetail(${item.accountId})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="查看"><i class="ph ph-eye"></i></button>
+                                <button onclick="window.openBizAccountModal(${item.accountId})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="编辑"><i class="ph ph-pencil-simple"></i></button>
+                                <button onclick="window.openBizAccountDeleteModal(${item.accountId})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="删除"><i class="ph ph-trash"></i></button>
+                            </div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        window.openBizAccountModal = function(accountId) {
+            const modal = document.getElementById('biz-account-modal');
+            const title = document.getElementById('biz-account-modal-title');
+            if (!modal) return;
+
+            window.bizEditingAccountId = accountId || null;
+            const current = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
+            document.getElementById('biz-account-type').value = current ? (current.accountType || '支付宝账户') : '支付宝账户';
+            document.getElementById('biz-account-name').value = current ? (current.accountName || '') : '';
+            document.getElementById('biz-account-no').value = current ? (current.accountNo || '') : '';
+            document.getElementById('biz-account-holder').value = current ? (current.accountHolder || '') : '';
+            document.getElementById('biz-account-default-receive').checked = !!(current && current.isDefaultReceive);
+            document.getElementById('biz-account-default-pay').checked = !!(current && current.isDefaultPay);
+            if (title) {
+                title.textContent = current ? '编辑账户信息' : '新增首付款账户';
+            }
+            modal.classList.remove('hidden');
+        };
+
+        window.closeBizAccountModal = function() {
+            const modal = document.getElementById('biz-account-modal');
+            if (modal) modal.classList.add('hidden');
+            window.bizEditingAccountId = null;
+        };
+
+        window.saveBizAccount = async function() {
+            try {
+                const payload = {
+                    accountId: window.bizEditingAccountId || null,
+                    accountType: document.getElementById('biz-account-type').value,
+                    accountName: document.getElementById('biz-account-name').value.trim(),
+                    accountNo: document.getElementById('biz-account-no').value.trim(),
+                    accountHolder: document.getElementById('biz-account-holder').value.trim(),
+                    isDefaultReceive: document.getElementById('biz-account-default-receive').checked,
+                    isDefaultPay: document.getElementById('biz-account-default-pay').checked
+                };
+
+                if (!payload.accountName || !payload.accountNo) {
+                    alert('账户名称和账户号不能为空');
+                    return;
+                }
+
+                const response = await window.wrappedFetch('/api/v1/im/accounts/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                await window.handleApiResponse(response);
+                window.closeBizAccountModal();
+                await loadBizAccounts();
+            } catch (error) {
+                console.error('保存账户失败:', error);
+                alert('保存账户失败：' + error.message);
+            }
+        };
+
+        window.openBizAccountDeleteModal = function(accountId) {
+            window.bizDeletingAccountId = accountId;
+            const modal = document.getElementById('biz-account-delete-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeBizAccountDeleteModal = function() {
+            window.bizDeletingAccountId = null;
+            const modal = document.getElementById('biz-account-delete-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.deleteBizAccount = async function() {
+            if (!window.bizDeletingAccountId) return;
+            try {
+                const response = await window.wrappedFetch('/api/v1/im/accounts/' + window.bizDeletingAccountId, {
+                    method: 'DELETE'
+                });
+                await window.handleApiResponse(response);
+                window.closeBizAccountDeleteModal();
+                await loadBizAccounts();
+            } catch (error) {
+                console.error('删除账户失败:', error);
+                alert('删除账户失败：' + error.message);
+            }
+        };
+
+        window.openBizAccountDetail = function(accountId) {
+            const item = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
+            if (!item) return;
+            window.bizAccountDetailId = accountId;
+            document.getElementById('biz-detail-name').textContent = item.accountName || '-';
+            document.getElementById('biz-detail-type').textContent = item.accountType || '-';
+            document.getElementById('biz-detail-no').textContent = item.accountNo || '-';
+            document.getElementById('biz-detail-holder').textContent = item.accountHolder || '-';
+            document.getElementById('biz-detail-default-receive').classList.toggle('hidden', !item.isDefaultReceive);
+            document.getElementById('biz-detail-default-pay').classList.toggle('hidden', !item.isDefaultPay);
+            const modal = document.getElementById('biz-account-detail-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeBizAccountDetailModal = function() {
+            const modal = document.getElementById('biz-account-detail-modal');
+            if (modal) modal.classList.add('hidden');
+            window.bizAccountDetailId = null;
+        };
 
         // 打开AI分析弹窗
         function openAIAnalysis() {
@@ -702,9 +1007,23 @@
             document.getElementById('ai-modal').classList.add('hidden');
         }
 
+        function openClearanceModal() {
+            document.getElementById('clearance-modal').classList.remove('hidden');
+        }
+
+        function closeClearanceModal() {
+            document.getElementById('clearance-modal').classList.add('hidden');
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            // 注入公共 UI 组件
-            if (window.injectCommonUI) {
+            // 注入公共 UI 组件（嵌入模式下不注入，避免重复壳层）
+            var isEmbedded = false;
+            try {
+                isEmbedded = (window.self !== window.top) || (new URLSearchParams(location.search).get('embed') === '1');
+            } catch (e) {
+                isEmbedded = true;
+            }
+            if (!isEmbedded && window.injectCommonUI) {
                 window.injectCommonUI();
             }
 
@@ -727,6 +1046,8 @@
             
             // 加载效率监控数据
             loadEfficiencyData();
+            // 加载账户管理数据
+            loadBizAccounts();
             
             // 默认显示营收报表
             switchReport('rev');

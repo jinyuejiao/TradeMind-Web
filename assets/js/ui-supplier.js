@@ -215,6 +215,27 @@ window.SupplierModule = {
         return y + '.' + m + '.' + day;
     },
 
+    showToast: function(message) {
+        var toast = document.getElementById('tm-fade-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'tm-fade-toast';
+            toast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-emerald-500/95 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-xl pointer-events-none';
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.45s ease';
+            document.body.appendChild(toast);
+        }
+
+        toast.textContent = message || '操作成功';
+        toast.style.opacity = '1';
+        if (this.toastTimer) {
+            clearTimeout(this.toastTimer);
+        }
+        this.toastTimer = setTimeout(function() {
+            toast.style.opacity = '0';
+        }, 1400);
+    },
+
     renderPagination: function(type, page, totalPages, total) {
         var disablePrevClass = page <= 1 ? 'opacity-40 cursor-not-allowed' : '';
         var disableNextClass = page >= totalPages ? 'opacity-40 cursor-not-allowed' : '';
@@ -447,7 +468,7 @@ window.SupplierModule = {
                     await this.loadAllSuppliers();
                     await this.loadSuppliers(this.supplierCurrentPage);
                     this.renderSuppliers();
-                    alert('保存成功');
+                    this.showToast('保存成功');
                 } else {
                     alert('保存失败: ' + (result.message || '未知错误'));
                 }

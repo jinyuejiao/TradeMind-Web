@@ -8,6 +8,7 @@ window.ProductModule = {
             name: apiProduct.productName || apiProduct.name,
             sku: apiProduct.productSku || apiProduct.sku,
             categoryId: apiProduct.categoryId,
+            supplierId: apiProduct.supplierId,
             category1: apiProduct.category1 || apiProduct.category,
             category2: apiProduct.category2,
             supplier: apiProduct.supplierName || apiProduct.supplier,
@@ -136,7 +137,7 @@ window.ProductModule = {
                 return;
             }
 
-            const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
+            const response = await window.wrappedFetch('/api/v1/supp/suppliers?all=true', {
                 method: 'GET'
             });
 
@@ -144,7 +145,8 @@ window.ProductModule = {
             if (!data) return;
 
             console.log('[ProductModule] 供应商数据:', data);
-            const supplierList = data.data || data;
+            const supplierRaw = data.data || data;
+            const supplierList = Array.isArray(supplierRaw) ? supplierRaw : (supplierRaw.records || []);
             
             if (Array.isArray(supplierList)) {
                 this.suppliers = supplierList;
@@ -170,9 +172,10 @@ window.ProductModule = {
             this.suppliers.forEach(supplier => {
                 const option = document.createElement('option');
                 const name = supplier.supplierName || supplier.name;
-                option.value = name;
+                const supplierId = supplier.supplierId || supplier.id;
+                option.value = supplierId != null ? String(supplierId) : '';
                 option.textContent = name;
-                if (selectedSupplier === name) {
+                if (String(selectedSupplier) === String(option.value) || selectedSupplier === name) {
                     option.selected = true;
                 }
                 select.appendChild(option);
@@ -211,8 +214,14 @@ window.ProductModule = {
         }
     },
 
+    PAGE_SIZE: 20,
+
     // 产品数据模型
     products: [],
+    filteredProducts: [],
+    productCurrentPage: 1,
+    productTotal: 0,
+    productTotalPages: 1,
 
     // 筛选状态
     filterState: {
@@ -224,7 +233,7 @@ window.ProductModule = {
     },
 
     // 供应商列表
-    suppliers: ['全部'],
+    suppliers: [],
 
     // 库存状态
     stockStatuses: ['全部', '充足', '预警', '缺货'],
@@ -240,16 +249,23 @@ window.ProductModule = {
     warehouseToDelete: null,
 
     // ==================== 初始化函数 ====================
-    init: function() {
+    init: async function() {
         console.log('[ProductModule] 初始化... 时间:', new Date().toISOString());
+        await Promise.all([
+            this.loadCategories(),
+            this.loadSuppliers()
+        ]);
         this.initFilterOptions();
-        this.loadProducts();
+        await this.loadProducts();
         console.log('[ProductModule] 初始化完成');
     },
 
     // ==================== 下拉菜单功能 ====================
-    toggleDropdown: function(dropdownId) {
+    toggleDropdown: function(dropdownId, evt) {
         console.log('[ProductModule] toggleDropdown 被调用，参数:', dropdownId);
+        if (evt && evt.stopPropagation) {
+            evt.stopPropagation();
+        }
         const dropdown = document.getElementById(dropdownId);
         if (!dropdown) {
             console.error('[ProductModule] 未找到下拉容器:', dropdownId);
@@ -273,8 +289,8 @@ window.ProductModule = {
             }
         });
         
-        // 切换当前下拉框
         const isHidden = dropdown.classList.contains('hidden');
+        // 切换当前下拉框
         dropdown.classList.toggle('hidden');
         
         // 更新箭头图标
@@ -294,10 +310,14 @@ window.ProductModule = {
                 }
             }
         }
-        
-        // 阻止事件冒泡，防止触发 document 的关闭点击
-        if (event) {
-            event.stopPropagation();
+
+        // 打开后异步刷新数据，避免因 await 阻塞导致被全局 click 监听提前关闭
+        if (isHidden) {
+            if (dropdownId === 'category-dropdown') {
+                this.loadCategories().then(() => this.initCategoryOptions());
+            } else if (dropdownId === 'supplier-dropdown') {
+                this.loadSuppliers().then(() => this.initSupplierOptions());
+            }
         }
     },
 
@@ -473,11 +493,12 @@ window.ProductModule = {
         }
         
         console.log('[ProductModule] 筛选后产品数量:', filtered.length, '时间:', new Date().toISOString());
-        this.renderProducts(filtered);
+        this.renderProducts(filtered, { resetPage: true });
     },
 
     // ==================== 渲染功能 ====================
-    renderProducts: function(productList) {
+    renderProducts: function(productList, options) {
+        const opts = options || {};
         console.log('[ProductModule] renderProducts 被调用，产品数量:', productList ? productList.length : 'null/undefined', '时间:', new Date().toISOString());
         if (!productList) {
             console.error('[ProductModule] productList为null或undefined');
@@ -487,12 +508,83 @@ window.ProductModule = {
         console.log('[ProductModule] 产品列表内容:', productList);
         const sortedProducts = [...productList].sort((a, b) => b.salesVolume - a.salesVolume);
         console.log('[ProductModule] 排序后的产品列表:', sortedProducts);
-        
+        this.filteredProducts = sortedProducts;
+        this.productTotal = sortedProducts.length;
+        this.productTotalPages = Math.max(1, Math.ceil(this.productTotal / this.PAGE_SIZE));
+        if (opts.resetPage !== false) {
+            this.productCurrentPage = 1;
+        } else {
+            this.productCurrentPage = Math.min(Math.max(1, this.productCurrentPage), this.productTotalPages);
+        }
+
+        const paged = this.paginateData(sortedProducts, this.productCurrentPage, this.PAGE_SIZE);
+        const pageProducts = paged.records;
+
         console.log('[ProductModule] 准备调用renderDesktopTable');
-        this.renderDesktopTable(sortedProducts);
+        this.renderDesktopTable(pageProducts);
         console.log('[ProductModule] 准备调用renderMobileCards');
-        this.renderMobileCards(sortedProducts);
+        this.renderMobileCards(pageProducts);
+        this.renderPaginationBar({
+            containerId: 'product-pagination',
+            page: this.productCurrentPage,
+            totalPages: this.productTotalPages,
+            total: this.productTotal,
+            pageSize: this.PAGE_SIZE,
+            onPrev: 'window.ProductModule.setProductPage(' + (this.productCurrentPage - 1) + ')',
+            onNext: 'window.ProductModule.setProductPage(' + (this.productCurrentPage + 1) + ')'
+        });
         console.log('[ProductModule] renderProducts完成');
+    },
+
+    paginateData: function(list, page, pageSize) {
+        const safePageSize = Math.max(1, Number(pageSize) || 20);
+        const total = Array.isArray(list) ? list.length : 0;
+        const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+        const current = Math.min(Math.max(1, Number(page) || 1), totalPages);
+        const start = (current - 1) * safePageSize;
+        const end = start + safePageSize;
+        return {
+            records: (list || []).slice(start, end),
+            total: total,
+            page: current,
+            totalPages: totalPages
+        };
+    },
+
+    renderPaginationBar: function(config) {
+        const container = document.getElementById(config.containerId);
+        if (!container) return;
+
+        const page = Number(config.page) || 1;
+        const totalPages = Math.max(1, Number(config.totalPages) || 1);
+        const total = Number(config.total) || 0;
+        const pageSize = Number(config.pageSize) || 20;
+        const disablePrev = page <= 1;
+        const disableNext = page >= totalPages;
+
+        if (total === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
+                <div class="text-xs text-slate-400">共 ${total} 条，当前第 ${page}/${totalPages} 页，每页最多 ${pageSize} 条</div>
+                <div class="flex items-center gap-2">
+                    <button onclick="${config.onPrev}" ${disablePrev ? 'disabled' : ''} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disablePrev ? 'opacity-40 cursor-not-allowed' : ''}">上一页</button>
+                    <button onclick="${config.onNext}" ${disableNext ? 'disabled' : ''} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disableNext ? 'opacity-40 cursor-not-allowed' : ''}">下一页</button>
+                </div>
+            </div>
+        `;
+    },
+
+    setProductPage: function(page) {
+        const target = Number(page) || 1;
+        if (target < 1 || target > this.productTotalPages) {
+            return;
+        }
+        this.productCurrentPage = target;
+        this.renderProducts(this.filteredProducts || this.products || [], { resetPage: false });
     },
 
     renderDesktopTable: function(productList) {
@@ -693,10 +785,18 @@ window.ProductModule = {
         console.log('[ProductModule] initSupplierOptions 被调用 ===');
         const container = document.getElementById('supplier-options');
         if (!container) return;
+
+        const supplierNames = ['全部'];
+        (this.suppliers || []).forEach(supplier => {
+            const name = supplier.supplierName || supplier.name;
+            if (name && !supplierNames.includes(name)) {
+                supplierNames.push(name);
+            }
+        });
         
-        container.innerHTML = this.suppliers.map(supplier => `
-            <button onclick="window.ProductModule.selectSupplier('${supplier}')" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0">
-                ${supplier}
+        container.innerHTML = supplierNames.map(name => `
+            <button onclick='window.ProductModule.selectSupplier(${JSON.stringify(name)})' class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0">
+                ${name}
             </button>
         `).join('');
     },
@@ -752,7 +852,7 @@ window.ProductModule = {
             await this.loadCategories();
             await this.loadSuppliers();
             this.populateCategorySelect(product.categoryId);
-            this.populateSupplierSelect(product.supplier);
+            this.populateSupplierSelect(product.supplierId || product.supplier);
             
             // 填充表单的初始值
             this.populateProductForm(product);
@@ -770,6 +870,53 @@ window.ProductModule = {
             console.error('[ProductModule] 加载产品详情异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('加载产品详情失败: ' + error.message, 'error');
+            }
+        }
+    },
+
+    openCreateProductModal: async function() {
+        console.log('[ProductModule] openCreateProductModal 被调用 ===');
+        try {
+            await Promise.all([
+                this.loadCategories(),
+                this.loadSuppliers()
+            ]);
+
+            this.currentProduct = {};
+            this.populateCategorySelect(null);
+            this.populateSupplierSelect(null);
+
+            const nameInput = document.getElementById('product-name-input');
+            const skuInput = document.getElementById('product-sku-input');
+            const priceInput = document.getElementById('product-price-input');
+            const stockInput = document.getElementById('product-stock-input');
+            const warningStockInput = document.getElementById('product-warning-stock-input');
+            const baseUnitInput = document.getElementById('product-base-unit-input');
+            const descTextarea = document.getElementById('product-desc-textarea');
+            const purchaseUnitSelect = document.getElementById('product-purchase-unit-select');
+            const salesUnitSelect = document.getElementById('product-sales-unit-select');
+
+            if (nameInput) nameInput.value = '';
+            if (skuInput) skuInput.value = '';
+            if (priceInput) priceInput.value = 0;
+            if (stockInput) stockInput.value = 0;
+            if (warningStockInput) warningStockInput.value = 0;
+            if (baseUnitInput) baseUnitInput.value = '';
+            if (descTextarea) descTextarea.value = '';
+            if (purchaseUnitSelect) purchaseUnitSelect.selectedIndex = 0;
+            if (salesUnitSelect) salesUnitSelect.selectedIndex = 0;
+
+            const titleEl = document.getElementById('detail-title');
+            const skuEl = document.getElementById('detail-sku');
+            if (titleEl) titleEl.textContent = '新增产品';
+            if (skuEl) skuEl.textContent = 'SKU: NEW';
+
+            const modal = document.getElementById('product-detail-modal');
+            if (modal) modal.classList.remove('hidden');
+        } catch (error) {
+            console.error('[ProductModule] 打开新增产品弹窗失败:', error);
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('打开新增产品弹窗失败: ' + error.message, 'error');
             }
         }
     },
@@ -874,7 +1021,8 @@ window.ProductModule = {
                 productId: this.currentProduct.id,
                 name: nameInput ? nameInput.value : this.currentProduct.name,
                 sku: skuInput ? skuInput.value : this.currentProduct.sku,
-                categoryId: categorySelect ? categorySelect.value : this.currentProduct.categoryId,
+                categoryId: categorySelect && categorySelect.value ? parseInt(categorySelect.value, 10) : this.currentProduct.categoryId,
+                supplierId: supplierSelect && supplierSelect.value ? parseInt(supplierSelect.value, 10) : this.currentProduct.supplierId,
                 price: priceInput ? parseFloat(priceInput.value) : this.currentProduct.price,
                 stock: stockInput ? parseInt(stockInput.value) : this.currentProduct.stock,
                 tenantId: window.currentTenantId
@@ -1800,6 +1948,7 @@ window.initFilterOptions = function() { window.ProductModule.initFilterOptions()
 window.initProductList = function() { window.ProductModule.initProductList(); };
 window.initProductCenter = function() { window.ProductModule.init(); };
 window.openProductDetail = function(productId) { window.ProductModule.openProductDetail(productId); };
+window.openCreateProductModal = function() { window.ProductModule.openCreateProductModal(); };
 window.closeProductDetail = function() { window.ProductModule.closeProductDetail(); };
 window.confirmDeleteProduct = function(productName) { window.ProductModule.confirmDeleteProduct(productName); };
 window.saveProduct = function() { window.ProductModule.saveProduct(); };
