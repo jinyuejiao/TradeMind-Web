@@ -1139,7 +1139,7 @@ function logout() {
         console.error('清除localStorage时发生错误:', error);
     }
     // 重定向到登录页面（使用绝对路径，防止加入历史记录堆栈）
-    window.location.replace('/login.html');
+    tmSafeReplace('/login.html');
 }
 
 // 检查认证状态
@@ -1160,7 +1160,7 @@ function checkAuth() {
         console.log('❌ localStorage不可用');
         if (!isLoginPage) {
             console.log('未登录，跳转至登录页');
-            window.location.replace('/login.html');
+            tmSafeReplace('/login.html');
         }
         return false;
     }
@@ -1176,14 +1176,14 @@ function checkAuth() {
             console.log('❌ Token不存在或无效');
             if (!isLoginPage) {
                 console.log('未登录，跳转至登录页');
-                window.location.replace('/login.html');
+                tmSafeReplace('/login.html');
             }
             return false;
         }
         
         if (token && isLoginPage) {
             console.log('已登录，跳转至工作台');
-            window.location.replace(getAppEntryPath('dashboard'));
+            tmSafeReplace(getAppEntryPath('dashboard'));
             return false;
         }
         
@@ -1207,7 +1207,7 @@ function checkAuth() {
             }
             if (!isLoginPage) {
                 console.log('未登录，跳转至登录页');
-                window.location.replace('/login.html');
+                tmSafeReplace('/login.html');
             }
             return false;
         }
@@ -1228,7 +1228,7 @@ function checkAuth() {
             }
             if (!isLoginPage) {
                 console.log('未登录，跳转至登录页');
-                window.location.replace('/login.html');
+                tmSafeReplace('/login.html');
             }
             return false;
         }
@@ -1259,7 +1259,7 @@ function checkAuth() {
                 }
                 if (!isLoginPage) {
                     console.log('未登录，跳转至登录页');
-                    window.location.replace('/login.html');
+                    tmSafeReplace('/login.html');
                 }
                 return false;
             }
@@ -1276,7 +1276,7 @@ function checkAuth() {
             }
             if (!isLoginPage) {
                 console.log('未登录，跳转至登录页');
-                window.location.replace('/login.html');
+                tmSafeReplace('/login.html');
             }
             return false;
         }
@@ -1294,7 +1294,7 @@ function checkAuth() {
         // 单入口收敛：非嵌入态的模块直链统一回到 index-app.html
         if (!isLoginPage && path.includes('/modules/') && !isEmbeddedMode) {
             const tab = resolveDefaultTabFromPath(path);
-            window.location.replace(getAppEntryPath(tab));
+            tmSafeReplace(getAppEntryPath(tab));
             return false;
         }
         
@@ -1314,7 +1314,7 @@ function checkAuth() {
         }
         if (!isLoginPage) {
             console.log('未登录，跳转至登录页');
-            window.location.replace('/login.html');
+            tmSafeReplace('/login.html');
         }
         return false;
     }
@@ -1322,95 +1322,11 @@ function checkAuth() {
 
 // 包装fetch函数，自动添加Authorization头并处理401响应
 function legacyWrappedFetch(url, options = {}) {
-    console.log('========== 开始发送请求 ==========');
-    console.log('原始请求URL:', url);
-    console.log('请求选项:', options);
-    
-    // 核心修复：自动识别并拼接基准路径
-    const finalUrl = url.startsWith('http') ? url : (window.TM_API_BASE + url);
-    console.log('最终请求URL:', finalUrl);
-    
-    // 首先检查localStorage是否可用
-    console.log('步骤1: 检查localStorage是否可用');
-    if (!checkLocalStorage()) {
-        console.log('❌ localStorage不可用，执行logout');
-        logout();
-        return Promise.reject(new Error('localStorage不可用'));
+    // 兼容历史调用：统一走 api-client.js 中的 window.wrappedFetch，避免双实现分叉。
+    if (typeof window.wrappedFetch === 'function') {
+        return window.wrappedFetch(url, options);
     }
-    console.log('✅ localStorage可用');
-    
-    try {
-        console.log('步骤2: 获取token');
-        const token = localStorage.getItem('token');
-        console.log('获取到的token:', token ? '存在' : '不存在');
-        
-        // 自动添加Authorization头
-        console.log('步骤3: 构建请求头');
-        const headers = {
-            'Content-Type': 'application/json',
-            ...options.headers
-        };
-        
-        if (token && token.trim() !== '' && token !== 'null' && token !== 'undefined') {
-            headers['Authorization'] = 'Bearer ' + token;
-            console.log('✅ 添加了Authorization头:', headers['Authorization']);
-            
-            // 从localStorage中获取用户信息并添加租户ID和用户ID到请求头
-            try {
-                const userInfoStr = localStorage.getItem('user_info');
-                if (userInfoStr) {
-                    const userInfo = JSON.parse(userInfoStr);
-                    if (userInfo.tenantId) {
-                        headers['X-Tenant-Id'] = userInfo.tenantId.toString();
-                        console.log('✅ 添加了X-Tenant-Id头:', headers['X-Tenant-Id']);
-                    }
-                    if (userInfo.userId) {
-                        headers['X-User-Id'] = userInfo.userId.toString();
-                        console.log('✅ 添加了X-User-Id头:', headers['X-User-Id']);
-                    }
-                }
-            } catch (error) {
-                console.error('❌ 解析用户信息时发生错误:', error);
-            }
-        } else {
-            console.log('❌ 未添加Authorization头，因为token不存在或为空，跳转到登录页面');
-            logout();
-            return Promise.reject(new Error('token不存在或为空'));
-        }
-        console.log('最终请求头:', headers);
-        
-        // 发送请求
-        console.log('步骤4: 发送请求');
-        return fetch(finalUrl, {
-            ...options,
-            headers
-        }).then(response => {
-            console.log('步骤5: 处理响应');
-            console.log('响应状态:', response.status);
-            console.log('响应状态文本:', response.statusText);
-            
-            // 处理401响应
-            if (response.status === 401) {
-                console.log('❌ 收到401响应，执行logout');
-                // 先获取响应内容，再执行logout
-                return response.json().then(errorData => {
-                    console.log('401响应内容:', errorData);
-                    logout();
-                    throw new Error(errorData.message || '未授权');
-                }).catch(() => {
-                    logout();
-                    throw new Error('未授权');
-                });
-            }
-            console.log('✅ 响应状态正常');
-            return response;
-        });
-    } catch (error) {
-        console.error('❌ 创建请求时发生错误:', error);
-        console.error('错误堆栈:', error.stack);
-        logout();
-        return Promise.reject(error);
-    }
+    return Promise.reject(new Error('wrappedFetch 不可用'));
 }
 
 // 跳转异常检测
@@ -1435,13 +1351,13 @@ function detectRedirectLoop() {
     return false;
 }
 
-// 重写window.location.replace方法，添加跳转检测
-const originalReplace = window.location.replace;
-window.location.replace = function(url) {
+// 仅在 auth.js 内部使用安全跳转，不再重写全局 window.location.replace
+const originalReplace = window.location.replace.bind(window.location);
+function tmSafeReplace(url) {
     if (!detectRedirectLoop()) {
-        originalReplace.call(window.location, url);
+        originalReplace(url);
     }
-};
+}
 
 // 显示通知
 function showNotification(message) {
