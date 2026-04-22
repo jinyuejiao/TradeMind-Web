@@ -260,11 +260,13 @@ function loadCRM() {
 }
 
 function loadProductCenter() {
-    console.log('[TM] 加载产品中心主内容（不含底部重复弹窗 DOM）');
+    console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
     fetch('/modules/product-center/product-center.html')
         .then(function (response) { return response.text(); })
         .then(function (html) {
-            var inner = TM_extractInnerFromModuleHtml(html, '#content-area > div.w-full');
+            // 产品中心的类别/仓库编辑依赖 #content-area 内的弹窗与抽屉 DOM，
+            // 仅注入主内容会导致“编辑图标点击无反应”。
+            var inner = TM_extractInnerFromModuleHtml(html, '#content-area');
             document.getElementById('view-supply').innerHTML = inner || html;
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {

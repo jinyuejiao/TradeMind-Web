@@ -33,8 +33,10 @@ window.ProductModule = {
     },
 
     mapWarehouseFromApi: function(apiWarehouse) {
+        var rawId = apiWarehouse.warehouseId || apiWarehouse.id;
+        var normalizedId = parseInt(rawId, 10);
         return {
-            id: apiWarehouse.warehouseId || apiWarehouse.id,
+            id: Number.isNaN(normalizedId) ? rawId : normalizedId,
             name: apiWarehouse.warehouseName || apiWarehouse.name,
             location: apiWarehouse.warehouseLocation || apiWarehouse.location || apiWarehouse.address,
             capacity: apiWarehouse.capacity,
@@ -1080,7 +1082,7 @@ window.ProductModule = {
     
     editWarehouse: function(warehouseId) {
         console.log('[ProductModule] editWarehouse 被调用, warehouseId:', warehouseId);
-        const warehouse = this.warehouses.find(w => w.id === warehouseId);
+        const warehouse = this.warehouses.find(w => String(w.id) === String(warehouseId));
         if (!warehouse) {
             console.error('[ProductModule] 未找到仓库:', warehouseId);
             return;
@@ -1092,7 +1094,7 @@ window.ProductModule = {
         if (nameInput) nameInput.value = warehouse.name || '';
         if (locationInput) locationInput.value = warehouse.location || '';
         
-        this.editingWarehouseId = warehouseId;
+        this.editingWarehouseId = warehouse.id;
         console.log('[ProductModule] 仓库信息已填充到表单');
     },
     
@@ -1267,7 +1269,7 @@ window.ProductModule = {
                             <button onclick="window.ProductModule.startCategoryEdit(${idx})" class="p-2 hover:bg-teal-100 rounded-full transition-colors" title="编辑">
                                 <i class="ph ph-pencil text-teal-600"></i>
                             </button>
-                            <button onclick="window.ProductModule.showDeleteConfirm('${cat.name}')" class="p-2 hover:bg-rose-100 rounded-full transition-colors" title="删除">
+                            <button onclick="window.ProductModule.showDeleteConfirm(${idx})" class="p-2 hover:bg-rose-100 rounded-full transition-colors" title="删除">
                                 <i class="ph ph-trash text-rose-500"></i>
                             </button>
                         </div>
@@ -1407,10 +1409,24 @@ window.ProductModule = {
 
     currentDeleteCategory: null,
 
-    showDeleteConfirm: function(categoryName) {
-        console.log('[ProductModule] showDeleteConfirm 被调用，类别:', categoryName);
-        this.currentDeleteCategory = categoryName;
+    showDeleteConfirm: function(categoryIndex) {
+        var category = this.categories[categoryIndex];
+        if (!category) {
+            console.error('[ProductModule] 未找到要删除的类别，index:', categoryIndex);
+            return;
+        }
+
+        console.log('[ProductModule] showDeleteConfirm 被调用，类别:', category.name);
+        this.currentDeleteCategory = {
+            index: categoryIndex,
+            categoryId: category.categoryId,
+            name: category.name
+        };
         const modal = document.getElementById('category-delete-confirm');
+        const titleEl = modal ? modal.querySelector('h3') : null;
+        const messageEl = modal ? modal.querySelector('p') : null;
+        if (titleEl) titleEl.textContent = '确认删除类别';
+        if (messageEl) messageEl.textContent = '确定要删除类别 "' + category.name + '" 吗？此操作无法撤销。';
         if (modal) {
             modal.classList.remove('hidden');
         }
@@ -1432,13 +1448,35 @@ window.ProductModule = {
         } else if (this.currentDeleteCategory) {
             console.log('[ProductModule] confirmDelete 删除类别:', this.currentDeleteCategory);
             try {
-                console.log('[ProductModule] 删除类别功能待实现');
-                if (window.TM_UI && window.TM_UI.showNotification) {
-                    window.TM_UI.showNotification('删除功能开发中', 'info');
+                if (window.checkAuth && !window.checkAuth()) {
+                    console.error('[ProductModule] checkAuth failed');
+                    return;
                 }
+
+                const categoryId = this.currentDeleteCategory.categoryId;
+                if (!categoryId) {
+                    throw new Error('类别ID缺失，无法删除');
+                }
+
+                const response = await window.wrappedFetch('/api/v1/rd/products/categories/' + categoryId, {
+                    method: 'DELETE'
+                });
+
+                const data = await window.handleApiResponse(response);
+                if (!data) return;
+
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('类别 "' + this.currentDeleteCategory.name + '" 已删除！', 'success');
+                }
+
+                await this.loadCategories();
+                this.renderCategoryList();
                 this.hideDeleteConfirm();
             } catch (error) {
                 console.error('[ProductModule] 删除类别异常:', error);
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('删除类别失败: ' + error.message, 'error');
+                }
             }
         }
     },
