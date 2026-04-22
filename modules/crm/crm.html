@@ -34,6 +34,41 @@
             overflow: hidden;
         }
 
+        #crm-list-pane {
+            height: 100%;
+        }
+
+        #customer-list-container {
+            max-height: calc(100vh - 190px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
+        }
+
+        #customer-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #customer-list-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+
+        #customer-list-container::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        .crm-action-btn {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .18s ease;
+        }
+
+        .customer-card:hover .crm-action-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         /* --- 手机端 CRM 专用适配样式 --- */
         @media (max-width: 768px) {
             /* 详情页显示时隐藏列表页 */
@@ -47,17 +82,24 @@
         }
     </style>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css">
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' },
+                        risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' }
+                    }
+                }
+            },
             future: {
                 disableColorOpacityUtilitiesByDefault: true,
                 relativeContentPathsByDefault: true
             }
-        }
+        };
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../CSS/common.css">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <!-- 确保 auth.js 加载完成后再执行页面代码 -->
     <script src="../../assets/js/auth.js?v=20260422r13"></script>
@@ -186,138 +228,114 @@
         <!-- 内容区域 -->
         <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
 
-            <!-- ================= [3] 客户 CRM ================= --> 
-            <div id="view-crm" class="w-full h-full flex flex-col md:flex-row fade-in overflow-hidden relative"> 
-
-                <!-- 1. 客户列表侧 (在手机端作为一级页面) --> 
-                <div id="crm-list-pane" class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col h-full shrink-0"> 
-                    <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-col gap-3"> 
+            <div id="view-crm" class="w-full h-full flex flex-col md:flex-row fade-in overflow-hidden relative">
+                <div id="crm-list-pane" class="w-full md:w-80 bg-white border-r border-slate-200 flex flex-col h-full shrink-0">
+                    <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-col gap-3">
                         <div class="flex justify-between items-center">
-                            <span class="text-[11px] font-black uppercase tracking-widest text-slate-400">客户名录 (<span id="customer-count">0</span>)</span> 
-                            <button onclick="openAddCustomerModal()" class="flex items-center gap-1 px-3 py-1.5 bg-brand-500 text-white rounded-xl text-xs font-bold shadow-lg hover:bg-brand-600 transition-all active:scale-95">
+                            <span class="text-[11px] font-black uppercase tracking-widest text-slate-400">客户名录 (<span id="customer-count">0</span>)</span>
+                            <button onclick="openClientEditModal('new')" class="flex items-center gap-1 px-3 py-1.5 bg-[#14B8A6] text-white rounded-xl text-xs font-bold shadow-lg hover:bg-[#0D9488] transition-all active:scale-95">
                                 <i class="ph ph-plus-bold"></i> 新增
                             </button>
                         </div>
                         <div class="relative">
                             <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
-                            <input type="text" id="search-keyword" placeholder="搜索客户名称或手机号" class="form-input text-[11px] pl-9 h-9">
+                            <input type="text" id="crmSearchInput" placeholder="搜索姓名、电话、地区..." class="form-input text-[11px] pl-9 h-9">
                         </div>
                     </div>
-                    <div class="flex-1 overflow-y-auto no-scrollbar" id="customer-list"> 
-                        <!-- 客户列表将通过JavaScript动态生成 -->
-                        <div class="p-8 text-center text-slate-400">
-                            <i class="ph ph-users text-4xl mb-3"></i>
-                            <p class="text-sm">加载客户列表中...</p>
-                        </div>
-                    </div> 
-                </div> 
 
-                <!-- 2. 客户详情侧 (在手机端作为二级页面，默认隐藏) --> 
-                <div id="crm-detail-pane" class="hidden md:block flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 no-scrollbar"> 
-
-                    <!-- 仅在手机端显示的返回按钮 --> 
-                    <button onclick="hideCrmDetail()" class="md:hidden flex items-center text-brand-600 text-xs font-bold mb-4 bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-200 active:scale-95"> 
-                        <i class="ph ph-arrow-left mr-1.5"></i> 返回客户列表 
-                    </button> 
-
-                    <!-- 详情核心内容 --> 
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6"> 
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4"> 
-                            <div class="flex items-center text-left"> 
-                                <div class="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center text-white font-bold text-xl uppercase shrink-0 shadow-lg" id="customer-avatar">AH</div> 
-                                <div class="ml-4"> 
-                                    <h2 id="crm-detail-name" class="text-xl font-bold text-slate-900 tracking-tight">未选择客户</h2> 
-                                    <!-- 客户名称下方的标签 --> 
-                                    <div class="flex flex-wrap gap-2 mt-1 mb-1.5" id="customer-tags"> 
-                                        <!-- 标签将通过JavaScript动态生成 -->
-                                    </div> 
-                                    <p class="text-xs text-slate-500" id="customer-info">请选择一个客户查看详情</p> 
-                                </div> 
-                            </div> 
-                            <div class="flex space-x-2 w-full md:w-auto"> 
-                                <button onclick="editCustomer()" class="flex-1 md:flex-none p-3 border border-slate-200 rounded-xl text-slate-400 hover:text-brand-600 transition"><i class="ph ph-pencil-simple text-xl mx-auto"></i></button> 
-                                <button onclick="deleteCustomerConfirm()" class="flex-1 md:flex-none p-3 border border-slate-200 rounded-xl text-slate-400 hover:text-red-600 transition"><i class="ph ph-trash text-xl mx-auto"></i></button> 
-                                <button class="flex-[2] md:flex-none bg-brand-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg">发起报价单</button> 
-                            </div> 
-                        </div> 
-                    </div>
-
-                    <!-- 客户详细信息 -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
-                        <h3 class="text-sm font-bold text-slate-700 mb-4">客户信息</h3>
-                        <div class="space-y-3" id="customer-details">
-                            <!-- 详细信息将通过JavaScript动态生成 -->
-                            <div class="p-4 text-center text-slate-400">
-                                <p class="text-sm">请选择一个客户查看详情</p>
+                    <div class="relative flex-1 overflow-hidden">
+                        <div class="h-full pr-8" id="customer-list-container">
+                            <div class="p-8 text-center text-slate-400">
+                                <i class="ph ph-users text-4xl mb-3"></i>
+                                <p class="text-sm">加载客户列表中...</p>
                             </div>
                         </div>
-                    </div> 
+                        <div id="customer-alpha-rail" class="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 border border-slate-200 rounded-2xl py-2 px-1 shadow-sm"></div>
+                    </div>
+                </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20"> 
-                        <!-- 时间轴 (信息增强) --> 
-                        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-left"> 
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">交互时间轴</h3> 
-                            <div id="timeline-container" class="relative pl-6 space-y-8 max-h-[400px] overflow-y-auto"> 
-                                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div> 
-                                <!-- 时间轴内容将通过JavaScript动态生成 -->
+                <div id="crm-detail-pane" class="hidden md:block flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 no-scrollbar">
+                    <button onclick="hideCrmDetail()" class="md:hidden flex items-center text-brand-600 text-xs font-bold mb-4 bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-200 active:scale-95">
+                        <i class="ph ph-arrow-left mr-1.5"></i> 返回客户列表
+                    </button>
+
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-6">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="flex items-center text-left">
+                                <div id="customer-avatar" class="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center text-white font-bold text-xl uppercase shrink-0 shadow-lg">AH</div>
+                                <div class="ml-4">
+                                    <h2 id="crm-detail-name" class="text-xl font-bold text-slate-900 tracking-tight">未选择客户</h2>
+                                    <div class="flex flex-wrap gap-2 mt-1 mb-1.5" id="customer-tags"></div>
+                                    <p id="customer-info" class="text-xs text-slate-500">请选择一个客户查看详情</p>
+                                </div>
+                            </div>
+                            <div class="relative flex space-x-2 w-full md:w-auto">
+                                <button onclick="toggleCrmPhoneCard(event)" class="flex-1 md:flex-none p-3 border border-slate-200 rounded-xl text-slate-400 hover:text-brand-600 transition"><i class="ph ph-phone text-xl mx-auto"></i></button>
+                                <button onclick="openCrmAiModal()" class="flex-[2] md:flex-none bg-[#14B8A6] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-[#0D9488] transition flex items-center justify-center gap-1.5">
+                                    <i class="ph ph-lightbulb-filament"></i> AI营销建议
+                                </button>
+                                <div id="crm-phone-card" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[88vw] max-w-sm bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 z-[130]">
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">客户名称</p>
+                                    <p id="crm-phone-customer-name" class="mt-1 text-sm font-black text-brand-600 bg-brand-50 border border-brand-100 rounded-lg px-2.5 py-1 inline-flex">Ahmed Al-Fayed</p>
+                                    <p class="mt-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">联系电话</p>
+                                    <div class="mt-2 flex items-center justify-between gap-3">
+                                        <p id="crm-phone-number" class="text-base font-mono font-black text-slate-800 tracking-tight">+971 50 123 4567</p>
+                                        <button onclick="copyCrmPhone(event)" class="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:text-brand-600 hover:border-brand-200 transition flex items-center justify-center" title="复制号码">
+                                            <i class="ph ph-copy text-base"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pb-20">
+                        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-left">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">交互时间轴</h3>
+                            <div id="timeline-container" class="relative pl-6 space-y-8">
+                                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
                                 <div class="p-8 text-center text-slate-400">
                                     <i class="ph ph-clock text-4xl mb-3"></i>
-                                    <p class="text-sm">加载订单记录中...</p>
+                                    <p class="text-sm">请选择客户后查看交易时间轴</p>
                                 </div>
-                            </div> 
-                        </div> 
-                        <!-- AI 建议卡片 --> 
-                        <div class="bg-white rounded border border-slate-200 shadow-sm p-4 md:p-6 h-fit text-left"> 
-                            <h3 class="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">AI 营销建议</h3> 
-                            <div class="p-6 bg-brand-50/50 rounded border border-dashed border-brand-200 text-center w-full"> 
-                                <p class="text-sm font-bold text-slate-700 underline decoration-brand-200 underline-offset-4">斋月备货提前触达</p> 
-                                <p class="text-xs text-slate-500 mt-2 mb-4 leading-relaxed italic">客户去年同期采购量翻倍。建议立即通过 WhatsApp 推送"金色复古"系列 2026 新款目录并提供 5% 专属早鸟优惠。</p> 
-                                <button class="bg-brand-600 text-white text-xs px-6 py-2 rounded-lg font-bold shadow-md hover:bg-brand-700 transition">生成营销话术</button> 
-                            </div> 
-                        </div> 
-                    </div> 
-                </div> 
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 
-    <!-- 新增客户弹窗 -->
-    <div id="add-customer-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAddCustomerModal()"></div>
+    <div id="client-edit-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeClientEditModal()"></div>
         <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <i class="ph ph-user-plus text-xl"></i>
+                    <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg">
+                        <i id="client-modal-icon" class="ph ph-plus-circle text-xl"></i>
                     </div>
                     <div>
                         <h2 class="text-sm font-black text-slate-800" id="client-modal-title">新增客户档案</h2>
-                        <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">CUSTOMER REGISTRY</p>
+                        <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">Customer Registry</p>
                     </div>
                 </div>
-                <button onclick="closeAddCustomerModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <button onclick="closeClientEditModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
                     <i class="ph ph-x text-xl text-slate-400"></i>
                 </button>
             </div>
 
-            <form id="add-customer-form" class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
-                <!-- 1. 核心联系信息 -->
+            <form id="client-edit-form" class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
+                <input type="hidden" id="cust-id">
                 <section>
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                         <i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心联系信息
                     </h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label>
-                            <input type="text" id="name" class="form-input font-bold" required>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label>
-                            <input type="tel" id="phone" class="form-input font-mono" required>
-                        </div>
+                        <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label><input type="text" id="cust-name" class="form-input font-bold" required></div>
+                        <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label><input type="text" id="cust-phone" class="form-input font-mono" required></div>
                         <div class="space-y-2">
                             <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
-                            <select id="source" class="form-input font-bold text-slate-700">
+                            <select id="cust-source" class="form-input font-bold text-slate-700">
                                 <option value="WECHAT">WECHAT (微信)</option>
                                 <option value="ALIPAY">ALIPAY (支付宝)</option>
                                 <option value="PHONE">PHONE (电话)</option>
@@ -326,141 +344,32 @@
                         </div>
                         <div class="space-y-2">
                             <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
-                            <select id="cust_status" class="form-input font-bold text-brand-600">
-                                <option value="ACTIVE">活跃客户</option>
-                                <option value="INACTIVE">沉睡客户</option>
-                            </select>
+                            <select id="cust-status" class="form-input font-bold text-brand-600"></select>
                         </div>
                     </div>
                 </section>
 
-                <!-- 2. 高级隐藏信息 -->
                 <section class="pt-6 border-t border-slate-50">
-                    <button type="button" onclick="toggleAdvanced('add', event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+                    <button type="button" onclick="toggleAdvanced(event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
                         <span>展开详细地址与档案摘要</span>
-                        <i id="advanced-icon-add" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
+                        <i id="advanced-icon" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
                     </button>
-                    <div id="advanced-drawer-add" class="advanced-drawer hidden">
+                    <div id="advanced-drawer" class="advanced-drawer hidden">
                         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-2">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label>
-                                <input type="email" id="email" class="form-input">
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label>
-                                <input type="text" id="region" class="form-input">
-                            </div>
-                            <div class="space-y-2 col-span-full">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label>
-                                <textarea id="address" class="form-input h-20 no-scrollbar"></textarea>
-                            </div>
-                            <div class="space-y-2 col-span-full">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label>
-                                <textarea id="summary" class="form-input h-20 no-scrollbar"></textarea>
-                            </div>
+                            <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label><input type="email" id="cust-email" class="form-input"></div>
+                            <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label><input type="text" id="cust-region" class="form-input"></div>
+                            <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label><input type="text" id="cust-address" class="form-input"></div>
+                            <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label><textarea id="cust-summary" class="form-input h-20 no-scrollbar"></textarea></div>
                         </div>
                     </div>
                 </section>
             </form>
 
             <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-                <p class="text-[10px] text-slate-400">保存后将同步更新客户画像并自动分析采购周期</p>
+                <p class="text-[10px] text-slate-400 italic">保存后将同步更新客户画像并自动分析采购周期</p>
                 <div class="flex gap-3 w-full md:w-auto">
-                    <button onclick="closeAddCustomerModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
-                    <button type="submit" form="add-customer-form" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-teal-500 text-white text-xs font-black shadow-xl hover:bg-teal-600 active:scale-95 transition-all">保存客户档案</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 编辑客户弹窗 -->
-    <div id="edit-customer-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeEditCustomerModal()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <i class="ph ph-pencil-line text-xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-black text-slate-800" id="client-modal-title">编辑客户档案</h2>
-                        <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">CUSTOMER REGISTRY</p>
-                    </div>
-                </div>
-                <button onclick="closeEditCustomerModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                    <i class="ph ph-x text-xl text-slate-400"></i>
-                </button>
-            </div>
-
-            <form id="edit-customer-form" class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
-                <!-- 1. 核心联系信息 -->
-                <section>
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心联系信息
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <input type="hidden" id="edit-id">
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label>
-                            <input type="text" id="edit-name" class="form-input font-bold" required>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label>
-                            <input type="tel" id="edit-phone" class="form-input font-mono" required>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
-                            <select id="edit-source" class="form-input font-bold text-slate-700">
-                                <option value="WECHAT">WECHAT (微信)</option>
-                                <option value="ALIPAY">ALIPAY (支付宝)</option>
-                                <option value="PHONE">PHONE (电话)</option>
-                                <option value="OTHER">OTHER (其他)</option>
-                            </select>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
-                            <select id="edit-cust_status" class="form-input font-bold text-brand-600">
-                                <option value="ACTIVE">活跃客户</option>
-                                <option value="INACTIVE">沉睡客户</option>
-                            </select>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 2. 高级隐藏信息 -->
-                <section class="pt-6 border-t border-slate-50">
-                    <button type="button" onclick="toggleAdvanced('edit', event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
-                        <span>展开详细地址与档案摘要</span>
-                        <i id="advanced-icon-edit" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
-                    </button>
-                    <div id="advanced-drawer-edit" class="advanced-drawer hidden">
-                        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-2">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label>
-                                <input type="email" id="edit-email" class="form-input">
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label>
-                                <input type="text" id="edit-region" class="form-input">
-                            </div>
-                            <div class="space-y-2 col-span-full">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label>
-                                <textarea id="edit-address" class="form-input h-20 no-scrollbar"></textarea>
-                            </div>
-                            <div class="space-y-2 col-span-full">
-                                <label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label>
-                                <textarea id="edit-summary" class="form-input h-20 no-scrollbar"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </form>
-
-            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-                <p class="text-[10px] text-slate-400">保存后将同步更新客户画像并自动分析采购周期</p>
-                <div class="flex gap-3 w-full md:w-auto">
-                    <button onclick="closeEditCustomerModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
-                    <button type="submit" form="edit-customer-form" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-teal-500 text-white text-xs font-black shadow-xl hover:bg-teal-600 active:scale-95 transition-all">保存客户档案</button>
+                    <button onclick="closeClientEditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
+                    <button type="submit" form="client-edit-form" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-[#14B8A6] text-white text-xs font-black shadow-xl hover:bg-[#0D9488] active:scale-95 transition-all">保存客户档案</button>
                 </div>
             </div>
         </div>
@@ -488,784 +397,617 @@
         </div>
     </div>
 
+    <div id="crm-ai-modal" class="hidden fixed inset-0 z-[115] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeCrmAiModal()"></div>
+        <div class="relative bg-white w-full max-w-2xl h-full max-h-[88vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 border border-brand-100 flex items-center justify-center">
+                        <i class="ph ph-lightbulb-filament text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black text-slate-800">AI 营销建议</h3>
+                        <p class="text-[10px] text-slate-400 font-mono uppercase tracking-widest mt-0.5">Marketing Assist</p>
+                    </div>
+                </div>
+                <button onclick="closeCrmAiModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 md:p-8 space-y-5 no-scrollbar">
+                <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-4 md:p-5">
+                    <p class="text-[10px] font-black text-brand-600 uppercase tracking-widest mb-2">生成营销建议</p>
+                    <p id="crm-ai-suggestion-text" class="text-sm text-slate-700 leading-relaxed">点击下方按钮，基于客户历史交互自动生成建议。</p>
+                    <button id="crm-ai-suggestion-btn" onclick="generateCrmMarketingSuggestion()" class="mt-4 px-4 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold shadow-md hover:bg-brand-700 transition">生成营销建议</button>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">生成营销话术</p>
+                        <button id="crm-ai-script-btn" onclick="generateCrmMarketingScript()" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-brand-600 hover:border-brand-200 transition">生成话术</button>
+                    </div>
+                    <div id="crm-ai-script-loading" class="hidden mt-4 text-xs text-brand-600 font-bold flex items-center gap-2">
+                        <span class="w-3 h-3 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></span>
+                        话术生成中...
+                    </div>
+                    <div id="crm-ai-script-result" class="hidden mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">建议话术</p>
+                        <p id="crm-ai-script-text" class="text-xs text-slate-700 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-white shrink-0">
+                <button onclick="closeCrmAiModal()" class="w-full py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">完成</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // 全局变量
-        let currentCustomer = null;
-        let customerStatusOptions = [];
         const GATEWAY_URL = window.getApiUrl('gateway');
+        const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const LETTER_SECTIONS = LETTERS.concat('#');
+        const state = {
+            customers: [],
+            filteredCustomers: [],
+            statusOptions: [],
+            currentCustomer: null,
+            modalMode: 'new',
+            activeLetter: ''
+        };
 
-        // 显示不同的视图
-        function showView(viewName) {
-            // 隐藏所有视图
-            document.querySelectorAll('.view-section').forEach(view => {
-                view.style.display = 'none';
-            });
-            
-            // 显示选中的视图
-            const viewElement = document.getElementById(`view-${viewName}`);
-            if (viewElement) {
-                viewElement.style.display = 'block';
-            }
-        }
-
-        // 导航切换
         function switchTab(tabName) {
-            let url = '';
-            switch(tabName) {
-                case 'dashboard':
-                    url = '../dashboard/dashboard.html';
-                    break;
-                case 'biz':
-                    url = '../SmartOps/SmartOps.html';
-                    break;
-                case 'crm':
-                    // 显示当前页面的CRM视图
-                    showView('crm');
-                    break;
-                case 'supply':
-                    url = '../product-center/product-center.html';
-                    break;
-                case 'supplier':
-                    url = '../supply-chain/supply-chain.html';
-                    break;
-            }
-            if (url) {
-                window.location.href = url;
-            }
+            const urlMap = {
+                dashboard: '../dashboard/dashboard.html',
+                biz: '../SmartOps/SmartOps.html',
+                crm: '',
+                supply: '../product-center/product-center.html',
+                supplier: '../supply-chain/supply-chain.html'
+            };
+            const target = urlMap[tabName];
+            if (target) window.location.href = target;
         }
 
-        // 使用 auth.js 中定义的全局 wrappedFetch 函数
-
-        // 获取客户状态选项（从字典表D009）
-        async function fetchCustomerStatusOptions() {
-            const url = `${GATEWAY_URL}/api/v1/crm/dictionary/D009`;
-            
-            try {
-                const response = await wrappedFetch(url, {
-                    method: 'GET'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    customerStatusOptions = data;
-                    return data;
-                } else {
-                    console.error('获取客户状态选项失败:', response.status);
-                }
-            } catch (error) {
-                console.error('获取客户状态选项异常:', error);
-            }
-            
-            //  fallback 选项
-            return [
-                { code: 'ACTIVE', name: '活跃客户' },
-                { code: 'INACTIVE', name: '沉睡客户' }
-            ];
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
-        // 填充客户状态下拉框
-        function populateCustomerStatusSelects() {
-            const addSelect = document.getElementById('cust_status');
-            const editSelect = document.getElementById('edit-cust_status');
-            
-            if (addSelect) {
-                addSelect.innerHTML = '';
-                customerStatusOptions.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option.code;
-                    optionElement.textContent = option.name;
-                    addSelect.appendChild(optionElement);
-                });
-            }
-            
-            if (editSelect) {
-                editSelect.innerHTML = '';
-                customerStatusOptions.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option.code;
-                    optionElement.textContent = option.name;
-                    editSelect.appendChild(optionElement);
-                });
-            }
+        function normalizeCustomer(item) {
+            return {
+                id: item.id,
+                name: item.name || '未命名客户',
+                phone: item.phone || '',
+                email: item.email || '',
+                source: item.source || 'OTHER',
+                status: item.status || item.cust_status || 'ACTIVE',
+                summary: item.summary || '',
+                region: item.region || '',
+                address: item.address || '',
+                createTime: item.createTime || null
+            };
         }
 
-        // --- API 调用函数 ---
-        // 获取客户列表
-        async function fetchCustomers() {
-            const keyword = document.getElementById('search-keyword').value;
-            const url = `${GATEWAY_URL}/api/v1/crm/customers${keyword ? `?keyword=${encodeURIComponent(keyword)}` : ''}`;
-            
-            try {
-                const response = await wrappedFetch(url, {
-                    method: 'GET'
-                });
-                
-                if (response.ok) {
-                    const customers = await response.json();
-                    renderCustomerList(customers);
-                    document.getElementById('customer-count').textContent = customers.length;
-                } else {
-                    console.error('获取客户列表失败:', response.status);
-                    renderCustomerError();
-                }
-            } catch (error) {
-                console.error('获取客户列表异常:', error);
-                renderCustomerError();
-            }
-        }
-
-        // 新增客户
-        async function saveCustomer(customerData) {
-            const url = `${GATEWAY_URL}/api/v1/crm/customers`;
-            
-            try {
-                const response = await wrappedFetch(url, {
-                    method: 'POST',
-                    body: JSON.stringify(customerData)
-                });
-                
-                if (response.ok) {
-                    const newCustomer = await response.json();
-                    closeAddCustomerModal();
-                    fetchCustomers();
-                    return newCustomer;
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || '新增客户失败');
-                }
-            } catch (error) {
-                console.error('新增客户异常:', error);
-                alert(error.message);
-                return null;
-            }
-        }
-
-        // 更新客户
-        async function updateCustomer(id, customerData) {
-            const url = `${GATEWAY_URL}/api/v1/crm/customers/${id}`;
-            
-            try {
-                const response = await wrappedFetch(url, {
-                    method: 'PUT',
-                    body: JSON.stringify(customerData)
-                });
-                
-                if (response.ok) {
-                    const updatedCustomer = await response.json();
-                    closeEditCustomerModal();
-                    fetchCustomers();
-                    selectCustomer(updatedCustomer.id);
-                    return updatedCustomer;
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || '更新客户失败');
-                }
-            } catch (error) {
-                console.error('更新客户异常:', error);
-                alert(error.message);
-                return null;
-            }
-        }
-
-        // 删除客户
-        async function deleteCustomerById(id) {
-            const url = `${GATEWAY_URL}/api/v1/crm/customers/${id}`;
-            
-            try {
-                const response = await wrappedFetch(url, {
-                    method: 'DELETE'
-                });
-                
-                if (response.ok) {
-                    closeDeleteConfirmModal();
-                    fetchCustomers();
-                    currentCustomer = null;
-                    clearCustomerDetail();
-                    return true;
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || '删除客户失败');
-                }
-            } catch (error) {
-                console.error('删除客户异常:', error);
-                alert(error.message);
-                return false;
-            }
-        }
-
-        // --- 渲染函数 ---
-        // 根据状态码获取状态名称
         function getStatusName(statusCode) {
-            if (!statusCode) return '未知状态';
-            const option = customerStatusOptions.find(opt => opt.code === statusCode);
-            return option ? option.name : statusCode;
+            const option = state.statusOptions.find(function(opt) { return opt.code === statusCode; });
+            return option ? option.name : (statusCode || '未知状态');
         }
 
-        // 渲染客户列表
-        function renderCustomerList(customers) {
-            const customerListEl = document.getElementById('customer-list');
-            
-            if (customers.length === 0) {
-                customerListEl.innerHTML = `
-                    <div class="p-8 text-center text-slate-400">
-                        <i class="ph ph-users text-4xl mb-3"></i>
-                        <p class="text-sm">暂无客户数据</p>
-                    </div>
-                `;
-                return;
+        function getStatusChip(statusCode) {
+            if (statusCode === 'ACTIVE') return 'bg-brand-50 text-brand-700 border-brand-100';
+            if (statusCode === 'INACTIVE' || statusCode === 'DORMANT') return 'bg-slate-100 text-slate-600 border-slate-200';
+            return 'bg-blue-50 text-blue-700 border-blue-100';
+        }
+
+        function getSourceLabel(source) {
+            const map = { WECHAT: '微信', ALIPAY: '支付宝', PHONE: '电话', OTHER: '其他' };
+            return map[source] || source || '未知';
+        }
+
+        function getInitial(name) {
+            if (!name) return 'NA';
+            return name.trim().slice(0, 2).toUpperCase();
+        }
+
+        function getFirstLetter(name) {
+            const char = ((name || '').trim().charAt(0) || '').toUpperCase();
+            return /^[A-Z]$/.test(char) ? char : '#';
+        }
+
+        function shortText(text, limit) {
+            const src = (text || '').trim();
+            if (src.length <= limit) return src;
+            return src.slice(0, limit) + '...';
+        }
+
+        async function fetchCustomerStatusOptions() {
+            try {
+                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/dictionary/D009', { method: 'GET' });
+                if (response.ok) {
+                    const result = await response.json();
+                    state.statusOptions = Array.isArray(result) ? result : [];
+                }
+            } catch (error) {
+                console.error('加载客户状态字典失败:', error);
             }
-            
-            customerListEl.innerHTML = customers.map(customer => {
-                const status = customer.cust_status || customer.status;
-                return `
-                    <div onclick="selectCustomer(${customer.id})" class="p-4 border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer">
-                        <div class="flex justify-between font-bold text-sm text-slate-800">${customer.name} <span class="text-[10px] text-slate-400 font-normal">#${customer.id}</span></div>
-                        <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1 uppercase tracking-tighter">
-                            <span>${customer.region || '未知地区'}</span>
-                            <span class="px-1.5 py-0.5 bg-${getStatusColor(status)}-50 text-${getStatusColor(status)}-700 text-[9px] rounded">${getStatusName(status)}</span>
-                        </div>
-                    </div>
-                `;
+            if (!state.statusOptions.length) {
+                state.statusOptions = [
+                    { code: 'ACTIVE', name: '活跃客户' },
+                    { code: 'INACTIVE', name: '沉睡客户' }
+                ];
+            }
+            const select = document.getElementById('cust-status');
+            if (select) {
+                select.innerHTML = state.statusOptions.map(function(option) {
+                    return '<option value="' + escapeHtml(option.code) + '">' + escapeHtml(option.name) + '</option>';
+                }).join('');
+            }
+        }
+
+        function sortCustomersAlphabetically(list) {
+            const orderMap = {};
+            LETTER_SECTIONS.forEach(function(letter, idx) { orderMap[letter] = idx; });
+            return (list || []).slice().sort(function(a, b) {
+                const la = getFirstLetter(a.name);
+                const lb = getFirstLetter(b.name);
+                if (la !== lb) {
+                    return (orderMap[la] ?? 999) - (orderMap[lb] ?? 999);
+                }
+                return String(a.name || '').localeCompare(String(b.name || ''), 'en', { sensitivity: 'base' });
+            });
+        }
+
+        function renderAlphaRail() {
+            const rail = document.getElementById('customer-alpha-rail');
+            if (!rail) return;
+            rail.innerHTML = LETTERS.map(function(letter) {
+                const active = state.activeLetter === letter;
+                const cls = active
+                    ? 'bg-[#14B8A6] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-brand-600';
+                return '<button type="button" onclick="jumpToLetter(\'' + letter + '\')" class="block w-4 h-4 rounded text-[9px] font-bold transition ' + cls + '">' + letter + '</button>';
             }).join('');
         }
 
-        // 渲染错误状态
-        function renderCustomerError() {
-            const customerListEl = document.getElementById('customer-list');
-            customerListEl.innerHTML = `
-                <div class="p-8 text-center text-slate-400">
-                    <i class="ph ph-exclamation-circle text-4xl mb-3 text-red-500"></i>
-                    <p class="text-sm">获取客户列表失败，请检查登录状态</p>
-                    <button onclick="window.location.href='../../login.html'" class="mt-4 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold">去登录</button>
-                </div>
-            `;
+        function groupCustomers(customers) {
+            const grouped = {};
+            LETTER_SECTIONS.forEach(function(letter) { grouped[letter] = []; });
+            customers.forEach(function(customer) {
+                const letter = getFirstLetter(customer.name);
+                if (grouped[letter]) grouped[letter].push(customer);
+            });
+            return grouped;
         }
-        
 
+        function renderCustomerList() {
+            const container = document.getElementById('customer-list-container');
+            if (!container) return;
+            const customers = state.filteredCustomers;
+            document.getElementById('customer-count').textContent = String(customers.length);
 
-        // 渲染客户详情
-        function renderCustomerDetail(customer) {
-            if (!customer) {
-                clearCustomerDetail();
+            if (!customers.length) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400"><i class="ph ph-users text-4xl mb-3"></i><p class="text-sm">暂无客户数据</p></div>';
                 return;
             }
-            
-            currentCustomer = customer;
-            
-            // 更新基本信息
-            document.getElementById('crm-detail-name').textContent = customer.name;
-            document.getElementById('customer-avatar').textContent = customer.name.substring(0, 2).toUpperCase();
-            document.getElementById('customer-info').textContent = `${customer.region || '未知地区'} | ${customer.phone}`;
-            
-            // 更新标签
-            const tagsEl = document.getElementById('customer-tags');
-            const customerStatus = customer.cust_status || customer.status;
-            tagsEl.innerHTML = `
-                <span class="px-2 py-0.5 bg-${getStatusColor(customerStatus)}-50 text-${getStatusColor(customerStatus)}-700 text-[10px] font-bold border border-${getStatusColor(customerStatus)}-100 rounded">${getStatusName(customerStatus)}</span>
-                <span class="px-2 py-0.5 bg-${getSourceColor(customer.source)}-50 text-${getSourceColor(customer.source)}-700 text-[10px] font-bold border border-${getSourceColor(customer.source)}-100 rounded">${customer.source || '未知来源'}</span>
-            `;
-            
-            // 更新详细信息
-            const detailsEl = document.getElementById('customer-details');
-            detailsEl.innerHTML = `
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-xs text-slate-500">手机号</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.phone}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500">邮箱</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.email || '未设置'}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500">来源</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.source || '未知'}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-500">状态</p>
-                        <p class="text-sm font-bold text-slate-700">${getStatusName(customerStatus)}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-xs text-slate-500">地区</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.region || '未设置'}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-xs text-slate-500">地址</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.address || '未设置'}</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-xs text-slate-500">备注</p>
-                        <p class="text-sm font-bold text-slate-700">${customer.summary || '无'}</p>
-                    </div>
-                </div>
-            `;
+
+            const grouped = groupCustomers(customers);
+            const sections = LETTER_SECTIONS.map(function(letter) {
+                const list = grouped[letter];
+                if (!list || !list.length) return '';
+                const cards = list.map(function(cust) {
+                    const active = state.currentCustomer && state.currentCustomer.id === cust.id ? 'bg-slate-50' : '';
+                    return ''
+                        + '<div class="customer-card p-4 border-b border-slate-100 hover:bg-slate-50 transition-all cursor-pointer relative group ' + active + '">'
+                        + '  <div onclick="selectCustomer(' + cust.id + ')" class="pr-10">'
+                        + '    <div class="flex justify-between font-bold text-sm text-slate-800 card-name">' + escapeHtml(cust.name) + ' <span class="text-[9px] text-slate-300 font-mono">#' + escapeHtml(cust.id) + '</span></div>'
+                        + '    <p class="text-[10px] text-slate-500 mt-0.5 card-info">' + escapeHtml(cust.region || '未知地区') + ' | ' + escapeHtml(cust.phone || '-') + '</p>'
+                        + '    <div class="flex gap-1.5 mt-2">'
+                        + '      <span class="px-1.5 py-0.5 text-[9px] border rounded font-bold uppercase tracking-tighter ' + getStatusChip(cust.status) + '">' + escapeHtml(getStatusName(cust.status)) + '</span>'
+                        + '      <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] border border-slate-200 rounded font-bold uppercase tracking-tighter">' + escapeHtml(getSourceLabel(cust.source)) + '</span>'
+                        + '    </div>'
+                        + '  </div>'
+                        + '  <div class="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 crm-action-btn">'
+                        + '    <button onclick="openClientEditModal(\'edit\',' + cust.id + ')" class="p-2 bg-white shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-brand-600"><i class="ph ph-pencil-simple text-sm"></i></button>'
+                        + '    <button onclick="confirmDeleteClient(' + cust.id + ')" class="p-2 bg-white shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-risk-high"><i class="ph ph-trash text-sm"></i></button>'
+                        + '  </div>'
+                        + '</div>';
+                }).join('');
+                return '<div id="letter-' + letter + '"><div class="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 bg-slate-50 border-y border-slate-100">' + letter + '</div>' + cards + '</div>';
+            }).join('');
+            container.innerHTML = sections || '<div class="p-8 text-center text-slate-400"><p class="text-sm">暂无字母匹配数据</p></div>';
         }
 
-        // 清空客户详情
-        function clearCustomerDetail() {
-            document.getElementById('crm-detail-name').textContent = '未选择客户';
-            document.getElementById('customer-avatar').textContent = 'AH';
-            document.getElementById('customer-info').textContent = '请选择一个客户查看详情';
-            document.getElementById('customer-tags').innerHTML = '';
-            document.getElementById('customer-details').innerHTML = `
-                <div class="p-4 text-center text-slate-400">
-                    <p class="text-sm">请选择一个客户查看详情</p>
-                </div>
-            `;
-            document.getElementById('timeline-container').innerHTML = `
-                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
-                <div class="p-8 text-center text-slate-400">
-                    <i class="ph ph-clock text-4xl mb-3"></i>
-                    <p class="text-sm">加载订单记录中...</p>
-                </div>
-            `;
-        }
-
-        // --- 弹窗操作函数 ---
-        // 打开新增客户弹窗
-        async function openAddCustomerModal() {
-            const form = document.getElementById('add-customer-form');
-            if (form) {
-                form.reset();
-            }
-            
-            // 获取并填充客户状态选项
-            await fetchCustomerStatusOptions();
-            populateCustomerStatusSelects();
-            
-            document.getElementById('add-customer-modal').classList.remove('hidden');
-        }
-
-        // 关闭新增客户弹窗
-        function closeAddCustomerModal() {
-            document.getElementById('add-customer-modal').classList.add('hidden');
-        }
-
-        // 打开编辑客户弹窗
-        async function editCustomer() {
-            if (!currentCustomer) {
-                alert('请先选择一个客户');
-                return;
-            }
-            
-            // 获取并填充客户状态选项
-            await fetchCustomerStatusOptions();
-            populateCustomerStatusSelects();
-            
-            // 填充表单数据
-            document.getElementById('edit-id').value = currentCustomer.id;
-            document.getElementById('edit-name').value = currentCustomer.name;
-            document.getElementById('edit-phone').value = currentCustomer.phone;
-            document.getElementById('edit-email').value = currentCustomer.email || '';
-            document.getElementById('edit-source').value = currentCustomer.source || '';
-            document.getElementById('edit-cust_status').value = currentCustomer.cust_status || currentCustomer.status || '';
-            document.getElementById('edit-region').value = currentCustomer.region || '';
-            document.getElementById('edit-address').value = currentCustomer.address || '';
-            document.getElementById('edit-summary').value = currentCustomer.summary || '';
-            
-            document.getElementById('edit-customer-modal').classList.remove('hidden');
-        }
-
-        // 关闭编辑客户弹窗
-        function closeEditCustomerModal() {
-            document.getElementById('edit-customer-modal').classList.add('hidden');
-        }
-
-        // 折叠交互功能
-        function toggleAdvanced(type, e) {
-            if (e) {
-                e.preventDefault();
-            }
-            const drawer = document.getElementById(`advanced-drawer-${type}`);
-            const icon = document.getElementById(`advanced-icon-${type}`);
-            if (drawer) {
-                drawer.classList.toggle('hidden');
-                if (icon) {
-                    icon.classList.toggle('ph-caret-down');
-                    icon.classList.toggle('ph-caret-up');
-                }
-            }
-        }
-
-        // 打开删除确认框
-        function deleteCustomerConfirm() {
-            if (!currentCustomer) {
-                alert('请先选择一个客户');
-                return;
-            }
-            document.getElementById('delete-confirm-message').textContent = `确定删除客户 ${currentCustomer.name} 吗？`;
-            document.getElementById('delete-confirm-modal').classList.remove('hidden');
-        }
-
-        // 关闭删除确认框
-        function closeDeleteConfirmModal() {
-            document.getElementById('delete-confirm-modal').classList.add('hidden');
-        }
-
-
-
-        // --- 事件处理函数 ---
-        // 选择客户
-        async function selectCustomer(custId) {
-            const url = `${GATEWAY_URL}/api/v1/crm/customers/${custId}`;
-            
-            try {
-                const response = await wrappedFetch(url, {
-                    method: 'GET'
-                });
-                
-                if (response.ok) {
-                    const customer = await response.json();
-                    showCrmDetail(customer);
-                    // 加载客户订单，渲染时间轴
-                    loadCustomerOrders(custId);
-                } else {
-                    console.error('获取客户详情失败:', response.status);
-                    alert('获取客户详情失败');
-                }
-            } catch (error) {
-                console.error('获取客户详情异常:', error);
-                alert('获取客户详情异常');
-            }
-        }
-
-        // 显示客户详情
-        function showCrmDetail(customer) {
-            renderCustomerDetail(customer);
-
-            // 视图切换逻辑 (针对移动端和PC端的不同处理)
-            const listPane = document.getElementById('crm-list-pane');
-            const detailPane = document.getElementById('crm-detail-pane');
-            const viewCrm = document.getElementById('view-crm');
-
-            if (window.innerWidth < 768) { 
-                // 手机端：隐藏列表，显示详情 (全屏切换效果)
-                listPane.classList.add('hidden');
-                detailPane.classList.remove('hidden');
-                // 添加crm-detail-active类到父容器，以触发媒体查询中的样式规则
-                viewCrm.classList.add('crm-detail-active');
+        function applyFilter() {
+            const keyword = (document.getElementById('crmSearchInput').value || '').trim().toLowerCase();
+            if (!keyword) {
+                state.filteredCustomers = state.customers.slice();
             } else {
-                // PC端：列表常驻，仅刷新详情数据
-                detailPane.classList.remove('hidden');
-                // 显式确保父容器保持双栏布局
-                viewCrm.style.display = 'flex';
+                state.filteredCustomers = state.customers.filter(function(cust) {
+                    return [cust.name, cust.phone, cust.region].some(function(field) {
+                        return String(field || '').toLowerCase().indexOf(keyword) !== -1;
+                    });
+                });
+            }
+            renderCustomerList();
+        }
+
+        async function loadCustomers() {
+            const keyword = (document.getElementById('crmSearchInput').value || '').trim();
+            const url = GATEWAY_URL + '/api/v1/crm/customers' + (keyword ? ('?keyword=' + encodeURIComponent(keyword)) : '');
+            try {
+                const response = await wrappedFetch(url, { method: 'GET' });
+                if (!response.ok) throw new Error('获取客户列表失败: ' + response.status);
+                const result = await response.json();
+                state.customers = sortCustomersAlphabetically((Array.isArray(result) ? result : []).map(normalizeCustomer));
+                state.filteredCustomers = state.customers.slice();
+                renderCustomerList();
+                if (!state.currentCustomer && state.filteredCustomers.length) {
+                    selectCustomer(state.filteredCustomers[0].id);
+                } else if (!state.filteredCustomers.length) {
+                    clearCustomerDetail();
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('customer-list-container').innerHTML =
+                    '<div class="p-8 text-center text-slate-400"><i class="ph ph-exclamation-circle text-4xl mb-3 text-red-500"></i><p class="text-sm">客户加载失败，请稍后重试</p></div>';
             }
         }
 
-        // 加载客户订单，渲染时间轴
-        async function loadCustomerOrders(custId) {
-            const url = `/api/v1/rd/orders/customer/${custId}`;
-            
+        async function selectCustomer(customerId) {
             try {
-                const response = await wrappedFetch(url, {
-                    method: 'GET'
-                });
-                
-                if (response.ok) {
-                    const orders = await response.json();
-                    // 检查响应结构，确保数据在正确的位置
-                    const orderData = orders.data || orders || [];
-                    renderTimeline(orderData);
-                } else {
-                    console.error('获取客户订单失败:', response.status);
-                    renderTimeline([]);
+                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/customers/' + customerId, { method: 'GET' });
+                if (!response.ok) throw new Error('获取客户详情失败');
+                const detail = normalizeCustomer(await response.json());
+                state.currentCustomer = detail;
+                state.activeLetter = getFirstLetter(detail.name);
+                if (state.activeLetter === '#') {
+                    state.activeLetter = '';
                 }
+                renderCustomerDetail(detail);
+                renderAlphaRail();
+                await loadCustomerTimeline(detail.id);
+                if (window.innerWidth < 768) {
+                    document.getElementById('crm-list-pane').classList.add('hidden');
+                    document.getElementById('crm-detail-pane').classList.remove('hidden');
+                    document.getElementById('view-crm').classList.add('crm-detail-active');
+                }
+                renderCustomerList();
             } catch (error) {
-                console.error('获取客户订单异常:', error);
-                // 即使出现错误，也渲染空的时间轴，避免界面错误
+                console.error(error);
+                alert('获取客户详情失败');
+            }
+        }
+
+        function renderCustomerDetail(customer) {
+            document.getElementById('crm-detail-name').textContent = customer.name;
+            document.getElementById('customer-avatar').textContent = getInitial(customer.name);
+            document.getElementById('customer-info').textContent = (customer.region || '未知地区') + ' | ' + (customer.phone || '-');
+            document.getElementById('customer-tags').innerHTML =
+                '<span class="px-2 py-0.5 text-[10px] font-bold border rounded ' + getStatusChip(customer.status) + '">' + escapeHtml(getStatusName(customer.status)) + '</span>' +
+                '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] border border-slate-200 rounded">' + escapeHtml(getSourceLabel(customer.source)) + '</span>';
+        }
+
+        async function loadCustomerTimeline(custId) {
+            const container = document.getElementById('timeline-container');
+            container.innerHTML = '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div><div class="p-8 text-center text-slate-400"><i class="ph ph-clock text-4xl mb-3"></i><p class="text-sm">加载订单记录中...</p></div>';
+            try {
+                const orderResp = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/orders/customer/' + custId, { method: 'GET' });
+                if (!orderResp.ok) throw new Error('加载订单失败');
+                const orderResult = await orderResp.json();
+                const orders = Array.isArray(orderResult.data) ? orderResult.data.slice() : [];
+                orders.sort(function(a, b) {
+                    return new Date(b.createTime || 0).getTime() - new Date(a.createTime || 0).getTime();
+                });
+                const enriched = await Promise.all(orders.map(async function(order) {
+                    try {
+                        const itemResp = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/orders/' + order.orderId + '/items', { method: 'GET' });
+                        if (!itemResp.ok) return { order: order, items: [] };
+                        const itemResult = await itemResp.json();
+                        return { order: order, items: Array.isArray(itemResult.data) ? itemResult.data : [] };
+                    } catch (e) {
+                        return { order: order, items: [] };
+                    }
+                }));
+                renderTimeline(enriched);
+            } catch (error) {
+                console.error(error);
                 renderTimeline([]);
             }
         }
 
-        // 渲染时间轴
-        function renderTimeline(orders) {
-            const timelineEl = document.getElementById('timeline-container');
-            if (!timelineEl) return;
-            
-            if (!orders || orders.length === 0) {
-                timelineEl.innerHTML = `
-                    <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
-                    <div class="text-center text-slate-400 py-8">
-                        <p class="text-sm">暂无订单记录</p>
-                    </div>
-                `;
+        function renderTimeline(records) {
+            const container = document.getElementById('timeline-container');
+            if (!records.length) {
+                container.innerHTML = '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div><div class="text-center text-slate-400 py-8"><p class="text-sm">暂无交易记录</p></div>';
                 return;
             }
-            
-            timelineEl.innerHTML = `
-                <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
-                ${orders.map(order => {
-                    const date = new Date(order.createTime);
-                    const formattedDate = `${date.getMonth() + 1}-${date.getDate()}`;
-                    return `
-                        <div class="relative">
-                            <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm"></span>
-                            <div class="flex justify-between items-start mb-1">
-                                <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">${formattedDate}</p>
-                                <span class="text-[9px] bg-brand-50 text-brand-600 px-1.5 rounded uppercase font-bold tracking-widest">订单</span>
-                            </div>
-                            <p class="text-xs font-bold text-slate-800 tracking-tight">创建订单</p>
-                            <p class="text-xs text-slate-500 mt-1">单号: ${order.orderCode}</p>
-                            <p class="text-xs font-bold text-brand-600 mt-1">¥${order.totalAmount}</p>
-                        </div>
-                    `;
-                }).join('')}
-            `;
+
+            const body = records.map(function(record, index) {
+                const order = record.order || {};
+                const items = record.items || [];
+                const dt = order.createTime ? new Date(order.createTime) : null;
+                const timeText = dt && !isNaN(dt.getTime()) ? dt.toLocaleString() : '未知时间';
+                const itemText = items.length
+                    ? items.map(function(item) { return '产品#' + item.productId + 'x' + item.quantity; }).join('、')
+                    : ('订单号 ' + (order.orderCode || '-'));
+                const typeText = (order.orderStatus || '订单').toUpperCase();
+                return ''
+                    + '<div class="relative' + (index > 4 ? ' opacity-80' : '') + '">'
+                    + '  <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm"></span>'
+                    + '  <div class="flex justify-between items-start mb-1">'
+                    + '    <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">' + escapeHtml(timeText) + '</p>'
+                    + '    <span class="text-[9px] bg-brand-50 text-brand-600 px-1.5 rounded uppercase font-bold tracking-widest">' + escapeHtml(typeText) + '</span>'
+                    + '  </div>'
+                    + '  <p class="text-xs font-bold text-slate-800 tracking-tight">' + escapeHtml(shortText(itemText, 16)) + '</p>'
+                    + '  <p class="text-xs text-brand-600 font-bold mt-1">订单金额: ¥' + escapeHtml(order.totalAmount || 0) + '</p>'
+                    + '</div>';
+            }).join('');
+            container.innerHTML = '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>' + body;
         }
 
-        // 切换高级信息抽屉
-        function toggleAdvanced(type) {
-            const drawer = document.getElementById(`advanced-drawer-${type}`);
-            const icon = document.getElementById(`advanced-icon-${type}`);
-            if (drawer && icon) {
-                if (drawer.style.display === 'none' || drawer.style.display === '') {
-                    drawer.style.display = 'block';
-                    icon.classList.remove('ph-caret-down');
-                    icon.classList.add('ph-caret-up');
-                } else {
-                    drawer.style.display = 'none';
-                    icon.classList.remove('ph-caret-up');
-                    icon.classList.add('ph-caret-down');
-                }
-            }
+        function clearCustomerDetail() {
+            state.currentCustomer = null;
+            document.getElementById('crm-detail-name').textContent = '未选择客户';
+            document.getElementById('customer-avatar').textContent = 'AH';
+            document.getElementById('customer-info').textContent = '请选择一个客户查看详情';
+            document.getElementById('customer-tags').innerHTML = '';
+            document.getElementById('timeline-container').innerHTML =
+                '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div><div class="p-8 text-center text-slate-400"><i class="ph ph-clock text-4xl mb-3"></i><p class="text-sm">请选择客户后查看交易时间轴</p></div>';
         }
 
-        // 隐藏客户详情 (仅手机端有效，返回列表)
         function hideCrmDetail() {
-            const listPane = document.getElementById('crm-list-pane');
-            const detailPane = document.getElementById('crm-detail-pane');
-            const viewCrm = document.getElementById('view-crm');
-
-            // 手机端：隐藏详情，恢复列表
-            detailPane.classList.add('hidden');
-            listPane.classList.remove('hidden');
-            // 移除crm-detail-active类，恢复到初始状态
-            viewCrm.classList.remove('crm-detail-active');
+            document.getElementById('crm-detail-pane').classList.add('hidden');
+            document.getElementById('crm-list-pane').classList.remove('hidden');
+            document.getElementById('view-crm').classList.remove('crm-detail-active');
         }
 
-        // 删除客户
-        function deleteCustomer() {
-            if (currentCustomer) {
-                deleteCustomerById(currentCustomer.id);
+        function jumpToLetter(letter) {
+            state.activeLetter = letter;
+            renderAlphaRail();
+            const target = document.getElementById('letter-' + letter);
+            if (!target) return;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const first = state.filteredCustomers.find(function(item) { return getFirstLetter(item.name) === letter; });
+            if (first && (!state.currentCustomer || state.currentCustomer.id !== first.id)) {
+                selectCustomer(first.id);
             }
         }
 
-        // --- 表单提交处理 ---
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('========== DOMContentLoaded 事件触发，开始页面初始化 ==========');
-            
-            // 等待认证状态检查完成
-            async function initPage() {
-                console.log('开始初始化页面，认证状态:', authStatus);
-                
-                // 检查认证状态
-                if (!authStatus) {
-                    console.log('❌ 认证状态检查失败，尝试重新检查');
-                    // 重新检查认证状态
-                    try {
-                        if (typeof window.checkAuth === 'function') {
-                            console.log('尝试重新检查认证状态');
-                            authStatus = window.checkAuth();
-                            console.log('重新检查认证状态结果:', authStatus);
-                        }
-                    } catch (error) {
-                        console.error('重新检查认证状态时发生错误:', error);
-                    }
-                    
-                    if (!authStatus) {
-                        console.log('❌ 认证状态检查最终失败，跳转到登录页面');
-                        // 跳转到登录页面
-                        window.location.href = '../../login.html';
-                        return;
-                    }
-                }
-                
-                console.log('✅ 认证状态检查通过，开始初始化页面内容');
-                
-                // 加载用户信息
-                loadUserInfo();
-                
-                // 加载客户状态选项
-                console.log('步骤1.5: 加载客户状态选项');
-                try {
-                    await fetchCustomerStatusOptions();
-                    populateCustomerStatusSelects();
-                    console.log('✅ 客户状态选项加载完成');
-                } catch (error) {
-                    console.error('❌ 加载客户状态选项时发生错误:', error);
-                }
-                
-                // 检查 token 是否存在
-                console.log('步骤2: 检查 token 是否存在');
-                try {
-                    const token = localStorage.getItem('token');
-                    console.log('获取到的 token:', token ? '存在' : '不存在');
-                    if (!token) {
-                        console.log('❌ token 不存在，跳转到登录页面');
-                        window.location.href = '../../login.html';
-                        return;
-                    }
-                    console.log('✅ token 存在');
-                } catch (error) {
-                    console.error('检查 token 时发生错误:', error);
-                    window.location.href = '../../login.html';
-                    return;
-                }
-                
-                // 默认显示CRM视图
-                console.log('步骤2: 显示CRM视图');
-                showView('crm');
-                
-                // 延迟加载客户列表，确保认证状态完全就绪
-                console.log('步骤3: 延迟加载客户列表');
-                setTimeout(async function() {
-                    console.log('开始加载客户列表');
-                    try {
-                        await fetchCustomers();
-                        console.log('✅ 客户列表加载完成');
-                    } catch (error) {
-                        console.error('❌ 加载客户列表时发生错误:', error);
-                    }
-                }, 100);
-                
-                // 搜索功能
-                console.log('步骤4: 初始化搜索功能');
-                const searchInput = document.getElementById('search-keyword');
-                searchInput.addEventListener('input', debounce(fetchCustomers, 300));
-                
-                // 新增客户表单提交
-                console.log('步骤5: 初始化表单提交事件');
-                if (document.getElementById('add-customer-form')) {
-                    document.getElementById('add-customer-form').addEventListener('submit', async function(e) {
-                        e.preventDefault();
-                        
-                        const customerData = {
-                            name: document.getElementById('name').value,
-                            phone: document.getElementById('phone').value,
-                            email: document.getElementById('email').value,
-                            source: document.getElementById('source').value,
-                            status: document.getElementById('cust_status').value,
-                            region: document.getElementById('region').value,
-                            address: document.getElementById('address').value,
-                            summary: document.getElementById('summary').value
-                        };
-                        
-                        await saveCustomer(customerData);
-                    });
-                }
-                
-                // 编辑客户表单提交
-                if (document.getElementById('edit-customer-form')) {
-                    document.getElementById('edit-customer-form').addEventListener('submit', async function(e) {
-                        e.preventDefault();
-                        
-                        const customerId = document.getElementById('edit-id').value;
-                        const customerData = {
-                            name: document.getElementById('edit-name').value,
-                            phone: document.getElementById('edit-phone').value,
-                            email: document.getElementById('edit-email').value,
-                            source: document.getElementById('edit-source').value,
-                            status: document.getElementById('edit-cust_status').value,
-                            region: document.getElementById('edit-region').value,
-                            address: document.getElementById('edit-address').value,
-                            summary: document.getElementById('edit-summary').value
-                        };
-                        
-                        await updateCustomer(customerId, customerData);
-                    });
-                }
-                
-                console.log('✅ 页面初始化完成');
-            }
-            
-            // 如果认证状态已经检查过，直接初始化页面
-            if (authChecked) {
-                console.log('认证状态已检查，直接初始化页面');
-                initPage();
+        function openClientEditModal(mode, customerId) {
+            state.modalMode = mode;
+            const form = document.getElementById('client-edit-form');
+            form.reset();
+            document.getElementById('advanced-drawer').classList.add('hidden');
+            document.getElementById('advanced-icon').classList.remove('ph-caret-up');
+            document.getElementById('advanced-icon').classList.add('ph-caret-down');
+            if (mode === 'edit') {
+                const customer = state.customers.find(function(item) { return item.id === customerId; }) || state.currentCustomer;
+                if (!customer) return;
+                document.getElementById('client-modal-title').textContent = '编辑客户档案';
+                document.getElementById('client-modal-icon').className = 'ph ph-pencil-simple text-xl';
+                document.getElementById('cust-id').value = customer.id;
+                document.getElementById('cust-name').value = customer.name || '';
+                document.getElementById('cust-phone').value = customer.phone || '';
+                document.getElementById('cust-email').value = customer.email || '';
+                document.getElementById('cust-source').value = customer.source || 'OTHER';
+                document.getElementById('cust-status').value = customer.status || 'ACTIVE';
+                document.getElementById('cust-region').value = customer.region || '';
+                document.getElementById('cust-address').value = customer.address || '';
+                document.getElementById('cust-summary').value = customer.summary || '';
             } else {
-                // 否则，等待一段时间后再检查
-                console.log('认证状态未检查，等待后再检查');
-                setTimeout(function() {
-                    preCheckAuth();
-                    initPage();
-                }, 500);
+                document.getElementById('client-modal-title').textContent = '新增客户档案';
+                document.getElementById('client-modal-icon').className = 'ph ph-plus-circle text-xl';
+                document.getElementById('cust-status').value = 'ACTIVE';
             }
-        });
+            document.getElementById('client-edit-modal').classList.remove('hidden');
+        }
 
-        // --- 工具函数 ---
-        // 防抖函数
-        function debounce(func, wait) {
-            let timeout;
+        function closeClientEditModal() {
+            document.getElementById('client-edit-modal').classList.add('hidden');
+        }
+
+        async function saveClient(event) {
+            if (event) event.preventDefault();
+            const payload = {
+                name: document.getElementById('cust-name').value.trim(),
+                phone: document.getElementById('cust-phone').value.trim(),
+                email: document.getElementById('cust-email').value.trim(),
+                source: document.getElementById('cust-source').value,
+                status: document.getElementById('cust-status').value,
+                region: document.getElementById('cust-region').value.trim(),
+                address: document.getElementById('cust-address').value.trim(),
+                summary: document.getElementById('cust-summary').value.trim()
+            };
+            if (!payload.name || !payload.phone) {
+                alert('客户姓名和联系电话不能为空');
+                return;
+            }
+
+            try {
+                if (state.modalMode === 'edit') {
+                    const id = document.getElementById('cust-id').value;
+                    const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/customers/' + id, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const err = await response.json().catch(function() { return {}; });
+                        throw new Error(err.error || '更新客户失败');
+                    }
+                } else {
+                    const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/customers', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const err = await response.json().catch(function() { return {}; });
+                        throw new Error(err.error || '新增客户失败');
+                    }
+                }
+                closeClientEditModal();
+                await loadCustomers();
+            } catch (error) {
+                console.error(error);
+                alert(error.message || '保存失败');
+            }
+        }
+
+        function confirmDeleteClient(customerId) {
+            const customer = state.customers.find(function(item) { return item.id === customerId; }) || state.currentCustomer;
+            if (!customer) return;
+            state.currentCustomer = customer;
+            document.getElementById('delete-confirm-message').textContent = '确定删除客户 ' + customer.name + ' 吗？';
+            document.getElementById('delete-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+        }
+
+        async function deleteCustomer() {
+            if (!state.currentCustomer || !state.currentCustomer.id) {
+                closeDeleteConfirmModal();
+                return;
+            }
+            try {
+                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/customers/' + state.currentCustomer.id, {
+                    method: 'DELETE'
+                });
+                const result = await response.json().catch(function() { return {}; });
+                if (!response.ok || result.success === false) {
+                    throw new Error(result.message || '删除客户失败');
+                }
+                closeDeleteConfirmModal();
+                clearCustomerDetail();
+                await loadCustomers();
+            } catch (error) {
+                console.error(error);
+                alert(error.message || '删除失败');
+            }
+        }
+
+        function toggleAdvanced(event) {
+            if (event) event.preventDefault();
+            const drawer = document.getElementById('advanced-drawer');
+            const icon = document.getElementById('advanced-icon');
+            drawer.classList.toggle('hidden');
+            icon.classList.toggle('ph-caret-down');
+            icon.classList.toggle('ph-caret-up');
+        }
+
+        function toggleCrmPhoneCard(event) {
+            if (event) event.stopPropagation();
+            if (!state.currentCustomer) {
+                alert('请先选择客户');
+                return;
+            }
+            const card = document.getElementById('crm-phone-card');
+            if (!card) return;
+            document.getElementById('crm-phone-customer-name').textContent = state.currentCustomer.name || '-';
+            document.getElementById('crm-phone-number').textContent = state.currentCustomer.phone || '-';
+            card.classList.toggle('hidden');
+        }
+
+        function hideCrmPhoneCard() {
+            const card = document.getElementById('crm-phone-card');
+            if (!card) return;
+            card.classList.add('hidden');
+        }
+
+        function copyCrmPhone(event) {
+            if (event) event.stopPropagation();
+            const phoneText = document.getElementById('crm-phone-number');
+            if (!phoneText) return;
+            const phone = phoneText.innerText || '';
+            navigator.clipboard.writeText(phone).then(function() {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('电话号码已复制');
+                }
+            }).catch(function() {
+                alert('复制失败，请手动复制');
+            });
+        }
+
+        function openCrmAiModal() {
+            const modal = document.getElementById('crm-ai-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeCrmAiModal() {
+            const modal = document.getElementById('crm-ai-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function generateCrmMarketingSuggestion() {
+            const target = document.getElementById('crm-ai-suggestion-text');
+            if (!target) return;
+            if (!state.currentCustomer) {
+                target.textContent = '请先选择客户，再生成营销建议。';
+                return;
+            }
+            target.textContent = '建议针对 ' + state.currentCustomer.name + ' 推送最近热销产品组合，并提供限时折扣。';
+        }
+
+        function generateCrmMarketingScript() {
+            const loading = document.getElementById('crm-ai-script-loading');
+            const box = document.getElementById('crm-ai-script-result');
+            const text = document.getElementById('crm-ai-script-text');
+            if (!loading || !box || !text) return;
+            loading.classList.remove('hidden');
+            box.classList.add('hidden');
+            setTimeout(function() {
+                loading.classList.add('hidden');
+                box.classList.remove('hidden');
+                text.textContent = state.currentCustomer
+                    ? ('您好 ' + state.currentCustomer.name + '，这边为您准备了本周新品清单和阶梯优惠，是否安排 10 分钟沟通？')
+                    : '请先选择客户，再生成营销话术。';
+            }, 600);
+        }
+
+        function debounce(fn, wait) {
+            let timer = null;
             return function() {
-                const context = this;
                 const args = arguments;
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(context, args), wait);
+                clearTimeout(timer);
+                timer = setTimeout(function() { fn.apply(null, args); }, wait);
             };
         }
 
-        // 获取状态对应的颜色
-        function getStatusColor(status) {
-            switch (status) {
-                case 'ACTIVE': return 'blue';
-                case 'INACTIVE': return 'gray';
-                case 'POTENTIAL': return 'green';
-                default: return 'slate';
-            }
-        }
-
-        // 获取来源对应的颜色
-        function getSourceColor(source) {
-            switch (source) {
-                case 'WECHAT': return 'green';
-                case 'ALIBABA': return 'orange';
-                case 'GOOGLE': return 'blue';
-                case 'REFERRAL': return 'purple';
-                default: return 'slate';
-            }
-        }
-
-        // 初始化检查 (防止PC端刷新后详情页空白)
-        window.addEventListener('resize', () => {
-            const listPane = document.getElementById('crm-list-pane');
-            const detailPane = document.getElementById('crm-detail-pane');
-            const viewCrm = document.getElementById('view-crm');
-            
-            // 如果拉伸到 PC 宽屏，强制显示双栏
+        function applyResponsiveLayout() {
             if (window.innerWidth >= 768) {
-                listPane.classList.remove('hidden');
-                detailPane.classList.remove('hidden'); 
-                // 移除crm-detail-active类，恢复到PC端的双栏布局
-                viewCrm.classList.remove('crm-detail-active');
-                // 确保父容器的flex布局正确
-                viewCrm.style.display = 'flex';
-            } else {
-                // 缩回到手机屏，默认只显示列表
-                // (除非当前正在看详情，这里简单处理为回列表)
-                if (!detailPane.classList.contains('hidden')) {
-                     listPane.classList.add('hidden');
-                     // 添加crm-detail-active类，触发手机端的全屏详情布局
-                     viewCrm.classList.add('crm-detail-active');
-                } else {
-                     detailPane.classList.add('hidden');
-                     // 移除crm-detail-active类，恢复到手机端的列表布局
-                     viewCrm.classList.remove('crm-detail-active');
-                }
+                document.getElementById('crm-list-pane').classList.remove('hidden');
+                document.getElementById('crm-detail-pane').classList.remove('hidden');
+                document.getElementById('view-crm').classList.remove('crm-detail-active');
+            } else if (!state.currentCustomer) {
+                document.getElementById('crm-detail-pane').classList.add('hidden');
+                document.getElementById('crm-list-pane').classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                if (typeof window.loadUserInfo === 'function') window.loadUserInfo();
+                await fetchCustomerStatusOptions();
+                renderAlphaRail();
+                await loadCustomers();
+                document.addEventListener('click', function(event) {
+                    const card = document.getElementById('crm-phone-card');
+                    if (!card || card.classList.contains('hidden')) return;
+                    if (!card.contains(event.target)) {
+                        hideCrmPhoneCard();
+                    }
+                });
+                const searchInput = document.getElementById('crmSearchInput');
+                searchInput.addEventListener('input', debounce(loadCustomers, 300));
+                document.getElementById('client-edit-form').addEventListener('submit', saveClient);
+                applyResponsiveLayout();
+            } catch (error) {
+                console.error('CRM 初始化失败:', error);
             }
         });
 
-        // 确保在页面加载时，根据屏幕尺寸正确显示或隐藏客户详情面板
-        window.addEventListener('load', function() {
-            if (window.innerWidth < 768) {
-                // 在手机端，默认隐藏客户详情面板
-                document.getElementById('crm-detail-pane').classList.add('hidden');
-            } else {
-                // 在桌面端，默认显示客户详情面板
-                document.getElementById('crm-detail-pane').classList.remove('hidden');
-                // 桌面端保持列表+详情双栏
-                document.getElementById('view-crm').style.display = 'flex';
-            }
-        });
+        window.addEventListener('resize', applyResponsiveLayout);
     </script>
 
 </body>
