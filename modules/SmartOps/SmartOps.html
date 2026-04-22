@@ -2,8 +2,27 @@
 <html lang="zh-CN">
 <head>
     <script src="../../assets/js/env-config.js"></script>
+    <script src="../../assets/js/api-client.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        (function () {
+            try {
+                var isEmbedded = (window.self !== window.top) || (new URLSearchParams(location.search).get('embed') === '1');
+                if (isEmbedded) {
+                    document.documentElement.classList.add('tm-embedded');
+                }
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
+    <style>
+        html.tm-embedded aside,
+        html.tm-embedded header,
+        html.tm-embedded .tm-compliance-footer {
+            display: none !important;
+        }
+        html.tm-embedded #content-area { padding-bottom: 0 !important; }
+    </style>
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
@@ -56,7 +75,7 @@
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css"></script>
+    <link rel="stylesheet" href="../CSS/common.css">
     <script>
         tailwind.config = {
             theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
@@ -68,7 +87,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="../../assets/js/auth.js"></script>
+    <script src="../../assets/js/auth.js?v=20260422r11"></script>
     <script>
         // 打开会员订阅弹窗
         // 使用 auth.js 中定义的全局函数
@@ -79,8 +98,14 @@
 
         // 页面加载时加载用户信息
         document.addEventListener('DOMContentLoaded', function() {
-            // 注入公共 UI 组件
-            if (window.injectCommonUI) {
+            var isEmbedded = false;
+            try {
+                isEmbedded = (window.self !== window.top) || (new URLSearchParams(location.search).get('embed') === '1');
+            } catch (e) {
+                isEmbedded = true;
+            }
+            // 嵌入模式下不再注入公共壳层 UI，避免重复导航/header/footer
+            if (!isEmbedded && window.injectCommonUI) {
                 window.injectCommonUI();
             }
         });

@@ -108,7 +108,7 @@
         logout: function() {
             console.log('[TradeMindApp] 执行登出');
             localStorage.clear();
-            window.location.href = '../../login.html';
+            window.location.href = '/login.html';
         },
 
         /**
@@ -197,18 +197,12 @@
          */
         switchTab: function(tab) {
             console.log('[TM_UI] 切换标签:', tab);
-            
-            const tabs = {
-                dashboard: '../dashboard/dashboard.html',
-                biz: '../SmartOps/SmartOps.html',
-                crm: '../crm/crm.html',
-                supply: 'product-center.html',
-                supplier: '../supply-chain/supply-chain.html'
-            };
-
-            if (tabs[tab]) {
-                window.location.href = tabs[tab];
+            if (typeof window.switchTab === 'function') {
+                window.switchTab(tab);
+                return;
             }
+
+            window.location.href = '/index-app.html#tab=' + encodeURIComponent(tab || 'dashboard');
         },
 
         /**

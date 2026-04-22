@@ -147,7 +147,7 @@
                 window.TM_UI.showNotification('登录过期，请重新登录', 'error');
             }
             // 跳转到登录页面
-            window.location.href = '../../login.html';
+            window.location.href = '/login.html';
             return null;
         } else if (response.status === 500) {
             if (window.TM_UI && window.TM_UI.showNotification) {

@@ -1,7 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <script src="../../assets/js/env-config.js"></script>
+    <script src="../../assets/js/api-client.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
@@ -306,12 +307,11 @@
                             <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar" id="pending-orders-list">
-                            <div onclick="openAuditModal('Ahmed Al-Fayed')" class="p-4 border border-slate-100 rounded-xl hover:border-brand-500 transition-all cursor-pointer bg-slate-50/50 group">
-                                <div class="flex justify-between items-start mb-2">
-                                    <div class="flex items-center gap-2"><i class="ph ph-microphone-stage text-brand-500"></i><p class="text-xs font-bold text-slate-800">Ahmed Al-Fayed</p></div>
-                                    <span class="text-[9px] text-slate-400 font-mono tracking-tighter">10:42 AM</span>
+                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                                <div class="text-center">
+                                    <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
+                                    <p>加载待确认单据中...</p>
                                 </div>
-                                <div class="text-[11px] text-slate-500 italic truncate">“已提取订单：金色镂空灯等 2 项商品...”</div>
                             </div>
                         </div>
                     </div>
@@ -1976,3 +1976,5 @@
     </script>
 </body>
 </html>
+
+

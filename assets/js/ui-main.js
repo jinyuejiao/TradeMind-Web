@@ -1,68 +1,291 @@
-// 模块加载函数
-function loadDashboard() {
-    console.log('[Cleanup] 从 /modules 加载 dashboard');
-    fetch('/modules/dashboard/dashboard.html')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('view-dashboard').innerHTML = data;
+/**
+ * 从完整模块 HTML 中截取指定节点的 innerHTML，避免把整页侧栏/壳层再次注入单页壳导致重复导航。
+ */
+function TM_extractInnerFromModuleHtml(htmlString, selector) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        const node = doc.querySelector(selector);
+        if (!node) {
+            console.warn('[TM] 未找到片段选择器:', selector);
+            return '';
+        }
+        return node.innerHTML;
+    } catch (e) {
+        console.error('[TM] 解析模块 HTML 失败:', selector, e);
+        return '';
+    }
+}
+
+/**
+ * 统一挂载 iframe 模块并在加载后强制裁剪子页面壳层。
+ * 这样即使子页面 embed 脚本未按预期执行，也不会出现重复导航栏。
+ */
+function TM_mountEmbeddedFrame(host, frameKey, src, title) {
+    if (!host) return;
+    function revealFrame(frame) {
+        if (!frame) return;
+        frame.style.visibility = 'visible';
+        frame.style.opacity = '1';
+    }
+
+    function cleanupFrame(frame) {
+        try {
+            var doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+            if (!doc) return;
+
+            if (doc.documentElement) doc.documentElement.classList.add('tm-embedded');
+            if (doc.body) doc.body.classList.add('tm-embedded');
+
+            // 保留 DOM 结构，仅隐藏壳层节点，避免子页面脚本因节点缺失而中断。
+            var shells = doc.querySelectorAll('aside, header, .tm-compliance-footer');
+            shells.forEach(function (el) {
+                el.style.setProperty('display', 'none', 'important');
+            });
+
+            var main = doc.querySelector('main');
+            if (main) {
+                main.style.setProperty('width', '100%', 'important');
+                main.style.setProperty('max-width', '100%', 'important');
+                main.style.setProperty('min-width', '0', 'important');
+                // 不强改 display/flex，避免破坏模块原生布局（尤其 CRM 左右双栏）
+            }
+
+            var content = doc.getElementById('content-area');
+            if (content) {
+                content.style.setProperty('padding-bottom', '0', 'important');
+            }
+        } catch (e) {
+            console.warn('[TM] iframe 壳层裁剪失败:', frameKey, e);
+        }
+    }
+
+    var existed = host.querySelector('iframe[data-tm-embed="' + frameKey + '"]');
+    if (existed) {
+        cleanupFrame(existed);
+        revealFrame(existed);
+        return;
+    }
+
+    host.innerHTML =
+        '<iframe data-tm-embed="' + frameKey + '" class="tm-module-frame" src="' + src + '" title="' + (title || frameKey) + '"></iframe>';
+
+    var frame = host.querySelector('iframe[data-tm-embed="' + frameKey + '"]');
+    if (!frame) return;
+    frame.style.visibility = 'hidden';
+    frame.style.opacity = '0';
+    frame.style.transition = 'opacity .12s ease';
+
+    frame.addEventListener('load', function () {
+        cleanupFrame(frame);
+        // 某些模块会在 load 后异步注入公共壳层，延迟再清一次
+        setTimeout(function () {
+            cleanupFrame(frame);
+            revealFrame(frame);
+        }, 120);
+    });
+
+    // 兜底：个别浏览器/缓存场景下 load 回调可能延迟或丢失，避免一直空白。
+    setTimeout(function () {
+        cleanupFrame(frame);
+        revealFrame(frame);
+    }, 1500);
+}
+
+/**
+ * 工作台「待确认单据」：AIService GET /api/v1/ai/records 直接返回数组，字段为 camelCase（见 AIController#getRecords）。
+ */
+function TM_refreshDashboardPendingOrders() {
+    const pendingOrdersList = document.getElementById('pending-orders-list');
+    if (!pendingOrdersList) {
+        return;
+    }
+    if (!window.wrappedFetch) {
+        console.warn('[TM] wrappedFetch 不可用，跳过待确认单据加载');
+        return;
+    }
+
+    pendingOrdersList.innerHTML = `
+        <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+            <div class="text-center">
+                <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
+                <p>加载待确认单据中...</p>
+            </div>
+        </div>
+    `;
+
+    window.wrappedFetch('/api/v1/ai/records', { method: 'GET' })
+        .then(async function (response) {
+            const ct = response.headers.get('content-type') || '';
+            if (ct.indexOf('application/json') === -1) {
+                const text = await response.text();
+                throw new Error('非 JSON 响应: ' + text.substring(0, 120));
+            }
+            return response.json();
         })
-        .catch(error => {
+        .then(function (data) {
+            const list = Array.isArray(data) ? data : (data && data.data ? data.data : null);
+            if (!Array.isArray(list)) {
+                console.error('[TM] 待确认单据接口返回格式异常:', data);
+                pendingOrdersList.innerHTML = `
+                    <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                        <div class="text-center">
+                            <i class="ph ph-x-circle text-xl mb-2"></i>
+                            <p>数据格式异常，请稍后重试</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            function pickCustomerName(record) {
+                if (record.customerName && record.customerName !== '解析中...' && record.customerName !== '未知客户') {
+                    return record.customerName;
+                }
+                const raw = record.aiResult || record.ai_result;
+                if (!raw) return '未知客户';
+                try {
+                    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (obj.new_customer_info && obj.new_customer_info.name) return obj.new_customer_info.name;
+                    if (obj.customer_data && obj.customer_data.name) return obj.customer_data.name;
+                } catch (e) { /* ignore */ }
+                return '未知客户';
+            }
+
+            const filtered = list
+                .filter(function (r) { return r.status === 'SUCCESS' || r.status === 'EXTRACTING'; })
+                .sort(function (a, b) {
+                    const ta = new Date(a.createTime || a.created_at || 0).getTime();
+                    const tb = new Date(b.createTime || b.created_at || 0).getTime();
+                    return tb - ta;
+                })
+                .slice(0, 20);
+
+            if (filtered.length === 0) {
+                pendingOrdersList.innerHTML = `
+                    <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                        <div class="text-center">
+                            <i class="ph ph-check-circle text-xl mb-2"></i>
+                            <p>暂无待确认单据</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            function escapeHtml(s) {
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            pendingOrdersList.innerHTML = filtered.map(function (record) {
+                const rawId = record.id != null ? String(record.id) : '';
+                const ridSafe = /^\d+$/.test(rawId) ? rawId : '';
+                const customerName = escapeHtml(pickCustomerName(record));
+                const t = record.createTime || record.created_at;
+                const recognitionTime = t ? new Date(t).toLocaleString('zh-CN') : '';
+                const st = record.status;
+                const badgeClass = st === 'SUCCESS' ? 'text-brand-600' : 'text-orange-500';
+                const badgeText = st === 'SUCCESS' ? '已提取' : '提取中';
+                let itemCount = 0;
+                try {
+                    const ar = record.aiResult || record.ai_result;
+                    const parsed = typeof ar === 'string' ? JSON.parse(ar) : ar;
+                    if (parsed && Array.isArray(parsed.new_products_found)) itemCount = parsed.new_products_found.length;
+                } catch (e) { /* ignore */ }
+
+                return (
+                    '<div onclick="openAuditModal(\'' + ridSafe + '\')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">' +
+                    '<div>' +
+                    '<p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">客户：' + customerName + '</p>' +
+                    '<div class="flex items-center gap-2 mt-1">' +
+                    '<span class="text-[9px] text-slate-400 uppercase tracking-tighter">' + recognitionTime + '</span>' +
+                    '<span class="w-1 h-1 bg-slate-200 rounded-full"></span>' +
+                    '<span class="text-[9px] ' + badgeClass + ' font-bold">' + badgeText + '</span>' +
+                    '</div></div>' +
+                    '<div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">' + itemCount + '</div>' +
+                    '</div>'
+                );
+            }).join('');
+        })
+        .catch(function (error) {
+            console.error('[TM] 加载待确认单据失败:', error);
+            pendingOrdersList.innerHTML = `
+                <div class="flex items-center justify-center h-full text-slate-400 text-sm">
+                    <div class="text-center">
+                        <i class="ph ph-x-circle text-xl mb-2"></i>
+                        <p>加载失败，请稍后重试</p>
+                    </div>
+                </div>
+            `;
+        });
+}
+
+// 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
+function loadDashboard() {
+    console.log('[TM] 加载 dashboard 内容片段');
+    fetch('/modules/dashboard/dashboard.html')
+        .then(function (response) { return response.text(); })
+        .then(function (html) {
+            const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
+            document.getElementById('view-dashboard').innerHTML = inner || html;
+            TM_refreshDashboardPendingOrders();
+        })
+        .catch(function (error) {
             console.error('Error loading dashboard:', error);
         });
 }
 
 function loadSmartOps() {
-    console.log('[Cleanup] 从 /modules 加载 SmartOps');
-    fetch('/modules/SmartOps/SmartOps.html')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('view-biz').innerHTML = data;
-        })
-        .catch(error => {
-            console.error('Error loading SmartOps:', error);
-        });
+    console.log('[TM] 以 iframe(embed) 加载 SmartOps');
+    TM_mountEmbeddedFrame(
+        document.getElementById('view-biz'),
+        'biz',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r12',
+        '智能经营'
+    );
 }
 
 function loadCRM() {
-    console.log('[Cleanup] 从 /modules 加载 CRM');
-    fetch('/modules/crm/crm.html')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('view-crm').innerHTML = data;
-        })
-        .catch(error => {
-            console.error('Error loading CRM:', error);
-        });
+    console.log('[TM] 以 iframe(embed) 加载 CRM');
+    TM_mountEmbeddedFrame(
+        document.getElementById('view-crm'),
+        'crm',
+        '/modules/crm/crm.html?embed=1&v=20260422r12',
+        'CRM'
+    );
 }
 
 function loadProductCenter() {
-    console.log('[Cleanup] 从 /modules 加载产品中心');
+    console.log('[TM] 加载产品中心主内容（不含底部重复弹窗 DOM）');
     fetch('/modules/product-center/product-center.html')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('view-supply').innerHTML = data;
-            setTimeout(() => {
+        .then(function (response) { return response.text(); })
+        .then(function (html) {
+            var inner = TM_extractInnerFromModuleHtml(html, '#content-area > div.w-full');
+            document.getElementById('view-supply').innerHTML = inner || html;
+            setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
-                    console.log('[ui-main] 检测到产品中心，正在初始化...');
+                    console.log('[ui-main] 初始化 ProductModule');
                     window.ProductModule.init();
                 }
             }, 100);
         })
-        .catch(error => {
+        .catch(function (error) {
             console.error('[ui-main] 加载产品中心错误:', error);
         });
 }
 
 function loadSupplier() {
-    console.log('[Cleanup] 从 /modules 加载供应商');
-    fetch('/modules/supply-chain/supply-chain.html')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('view-supplier').innerHTML = data;
-        })
-        .catch(error => {
-            console.error('Error loading supplier:', error);
-        });
+    console.log('[TM] 以 iframe(embed) 加载供应链/供应商');
+    TM_mountEmbeddedFrame(
+        document.getElementById('view-supplier'),
+        'supplier',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260422r12',
+        '供应商'
+    );
 }
 
 const TM_NAV_CONFIG = [
@@ -105,16 +328,30 @@ function initNavigationFromConfig() {
     });
 }
 
+function getInitialTabFromHash() {
+    const rawHash = window.location.hash || '';
+    const match = rawHash.match(/tab=([^&]+)/);
+    const tab = match ? decodeURIComponent(match[1]) : '';
+    const allowedTabs = ['dashboard', 'biz', 'crm', 'supply', 'supplier'];
+    return allowedTabs.includes(tab) ? tab : 'dashboard';
+}
+
 // 页面加载时加载默认模块
 window.onload = function() {
     initNavigationFromConfig();
-    if (window.TM_Responsive && typeof window.TM_Responsive.syncMobileNav === 'function') {
-        window.TM_Responsive.syncMobileNav('dashboard');
-    }
-    loadDashboard();
+    switchTab(getInitialTabFromHash());
 };
 
 function switchTab(tabId) {
+    const validTabs = ['dashboard', 'biz', 'crm', 'supply', 'supplier'];
+    if (!validTabs.includes(tabId)) {
+        tabId = 'dashboard';
+    }
+
+    if (tabId === 'crm') {
+        hideCrmDetail();
+    }
+
     document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
@@ -134,6 +371,7 @@ function switchTab(tabId) {
     const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供应商管理' };
     if (document.getElementById('page-title')) document.getElementById('page-title').innerText = titles[tabId];
     document.getElementById('content-area').scrollTop = 0;
+    window.history.replaceState(null, '', '#tab=' + encodeURIComponent(tabId));
 
     // 加载对应模块
     if (tabId === 'dashboard') loadDashboard();
@@ -740,20 +978,6 @@ function hideCrmDetail() {
         window.TM_Responsive.hideCrmDetail();
     }
 }
-
-/**
- * 优化原有的 Tab 切换逻辑
- * 确保每次切换回 CRM 标签时，在手机端默认显示列表
- */
-const originalSwitchTab = window.switchTab;
-window.switchTab = function(tabId) {
-    if (tabId === 'crm') {
-        hideCrmDetail(); // 重置视图
-    }
-    if (typeof originalSwitchTab === 'function') {
-        originalSwitchTab(tabId);
-    }
-};
 
 function switchCustomerDetail(name, info) {
     const detailName = document.getElementById('crm-detail-name');

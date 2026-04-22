@@ -249,9 +249,7 @@ function switchTabLegacy(tabName, event) {
     updatePageTitle(tabName);
 }
 
-if (typeof window.switchTab !== 'function') {
-    window.switchTab = switchTabLegacy;
-}
+window.switchTabLegacy = switchTabLegacy;
 
 // 更新页面标题
 function updatePageTitle(tabName) {

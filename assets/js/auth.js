@@ -1086,18 +1086,21 @@ function getLoginPath() {
 
 // 获取工作台页面路径
 function getDashboardPath() {
-    // 返回相对于当前页面的正确路径
-    const currentPath = window.location.pathname;
-    // 计算需要向上返回的层级数
-    const pathParts = currentPath.split('/').filter(part => part !== '');
-    const backLevels = pathParts.length > 0 ? pathParts.length - 1 : 0;
-    // 构建返回工作台页面的路径
-    let dashboardPath = '';
-    for (let i = 0; i < backLevels; i++) {
-        dashboardPath += '../';
-    }
-    dashboardPath += 'modules/dashboard/dashboard.html';
-    return dashboardPath;
+    return '/index-app.html';
+}
+
+function resolveDefaultTabFromPath(pathname) {
+    const path = pathname || '';
+    if (path.includes('/modules/SmartOps/')) return 'biz';
+    if (path.includes('/modules/crm/')) return 'crm';
+    if (path.includes('/modules/supply-chain/')) return 'supplier';
+    if (path.includes('/modules/product-center/')) return 'supply';
+    return 'dashboard';
+}
+
+function getAppEntryPath(tabName) {
+    const tab = tabName || 'dashboard';
+    return '/index-app.html#tab=' + encodeURIComponent(tab);
 }
 
 // 检查localStorage是否可用
@@ -1180,7 +1183,7 @@ function checkAuth() {
         
         if (token && isLoginPage) {
             console.log('已登录，跳转至工作台');
-            window.location.replace('/modules/dashboard/dashboard.html');
+            window.location.replace(getAppEntryPath('dashboard'));
             return false;
         }
         
@@ -1278,6 +1281,22 @@ function checkAuth() {
             return false;
         }
         console.log('✅ Token未过期');
+
+        // 嵌入态（iframe 或 ?embed=1）下，保留模块页面本身，避免被重定向到 index-app 导致空白/嵌套。
+        let isEmbeddedMode = false;
+        try {
+            isEmbeddedMode = (window.self !== window.top) || (new URLSearchParams(window.location.search).get('embed') === '1');
+        } catch (e) {
+            // 无法访问 top 时默认为嵌入态
+            isEmbeddedMode = true;
+        }
+
+        // 单入口收敛：非嵌入态的模块直链统一回到 index-app.html
+        if (!isLoginPage && path.includes('/modules/') && !isEmbeddedMode) {
+            const tab = resolveDefaultTabFromPath(path);
+            window.location.replace(getAppEntryPath(tab));
+            return false;
+        }
         
         console.log('✅ 认证状态检查通过');
         console.log('========== 认证状态检查完成 ==========');
@@ -1711,23 +1730,23 @@ window.injectCommonUI = function() {
                 console.log('TradeMindUI.injectCommonUI: 注入移动端底部导航');
                 const mobileNav = `
                     <nav class="tm-mobile-nav">
-                        <a href="/modules/dashboard/dashboard.html" class="tm-nav-item active">
+                        <a href="/index-app.html#tab=dashboard" class="tm-nav-item active">
                             <i class="ph-bold ph-squares-four"></i>
                             <span>工作台</span>
                         </a>
-                        <a href="/modules/SmartOps/SmartOps.html" class="tm-nav-item">
+                        <a href="/index-app.html#tab=biz" class="tm-nav-item">
                             <i class="ph-bold ph-chart-line-up"></i>
                             <span>智能经营</span>
                         </a>
-                        <a href="/modules/crm/crm.html" class="tm-nav-item">
+                        <a href="/index-app.html#tab=crm" class="tm-nav-item">
                             <i class="ph-bold ph-users"></i>
                             <span>客户</span>
                         </a>
-                        <a href="/modules/product-center/product-center.html" class="tm-nav-item">
+                        <a href="/index-app.html#tab=supply" class="tm-nav-item">
                             <i class="ph-bold ph-flask"></i>
                             <span>产品中心</span>
                         </a>
-                        <a href="/modules/supply-chain/supply-chain.html" class="tm-nav-item">
+                        <a href="/index-app.html#tab=supplier" class="tm-nav-item">
                             <i class="ph-bold ph-warehouse"></i>
                             <span>供应商</span>
                         </a>
@@ -2377,8 +2396,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             localStorage.setItem('currentUser', JSON.stringify(data.user || {}));
                         }
                         
-                        // 跳转到工作台界面（使用绝对路径）
-                        window.location.href = '/modules/dashboard/dashboard.html';
+                        // 统一跳转到单入口应用
+                        window.location.href = getAppEntryPath('dashboard');
                     } else {
                         showModal('登录失败：缺少token', true);
                     }
@@ -2394,8 +2413,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             localStorage.setItem('currentUser', JSON.stringify(data.data.user || {}));
                         }
                         
-                        // 跳转到工作台界面（使用绝对路径）
-                        window.location.href = '/modules/dashboard/dashboard.html';
+                        // 统一跳转到单入口应用
+                        window.location.href = getAppEntryPath('dashboard');
                     } else {
                         showModal('登录失败：缺少token', true);
                     }
