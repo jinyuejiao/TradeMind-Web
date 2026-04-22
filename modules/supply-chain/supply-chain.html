@@ -23,113 +23,26 @@
         }
         html.tm-embedded #content-area { padding-bottom: 0 !important; }
     </style>
-    <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
+    <title>TradeMind 商贸智脑 - 供应商管理</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
-
-    <style>
-        body {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* 视图切换按钮的基础样式 */
-        .view-toggle-btn {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* 激活（选中）时的样式：对应截图中的绿色高亮效果 */
-        .view-toggle-btn.active {
-            background-color: #14B8A6 !important;
-            color: #ffffff !important;
-            box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3) !important;
-        }
-
-        /* 保存按钮样式 */
-        .btn-save-primary {
-            background-color: #0F172A !important;
-            color: white !important;
-            font-weight: 700 !important;
-            font-size: 12px !important;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-            .btn-save-primary:hover {
-                filter: brightness(1.1);
-            }
-
-            .btn-save-primary:active {
-                transform: scale(0.98);
-            }
-
-        /* 新增按钮样式 */
-        .btn-add-supplier {
-            background-color: #14B8A6 !important;
-            color: white !important;
-            padding: 10px 16px !important;
-            border-radius: 12px !important;
-            font-weight: 700 !important;
-            transition: all 0.2s;
-            flex-shrink: 0;
-        }
-
-            .btn-add-supplier:hover {
-                background-color: #0D9488 !important;
-            }
-
-            .btn-add-supplier:active {
-                transform: scale(0.95);
-            }
-
-        /* --- 手机端专用适配样式 --- */
-        @media (max-width: 768px) {
-            /* 手机端表单布局 */
-            .purchase-form-grid {
-                grid-template-columns: 1fr !important;
-            }
-        }
-    </style>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../CSS/common.css">
-    <script>
-        tailwind.config = {
-            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
-            future: {
-                disableColorOpacityUtilitiesByDefault: true,
-                relativeContentPathsByDefault: true
-            }
-        }
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/auth.js?v=20260422r13"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script>
-        // 页面加载时注入公共 UI 组件
-        document.addEventListener('DOMContentLoaded', function() {
-            var isEmbedded = false;
-            try {
-                isEmbedded = (window.self !== window.top) || (new URLSearchParams(location.search).get('embed') === '1');
-            } catch (e) {
-                isEmbedded = true;
-            }
-            // 嵌入模式下不再注入公共壳层 UI，避免重复导航/header/footer
-            if (!isEmbedded && window.injectCommonUI) {
-                window.injectCommonUI();
-            }
-        });
-    </script>
+    <script src="../../assets/js/ui-supplier.js?v=20260422r16"></script>
+    <style>
+        body { display: flex; height: 100vh; overflow: hidden; }
+        .view-toggle-btn { transition: all 0.2s ease; }
+        .view-toggle-btn.active {
+            background-color: #14B8A6 !important;
+            color: #fff !important;
+            box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+        }
+    </style>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
-
-    <!-- 1. 侧边导航栏 -->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
-        <!-- Logo 区域 -->
         <div class="h-16 flex items-center px-6 border-b border-slate-800">
             <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center mr-3 text-white shadow-lg shadow-[#14B8A6]/20">
                 <i class="ph ph-brain text-xl"></i>
@@ -137,196 +50,109 @@
             <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
         </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
-            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
-            </button>
-            <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
-            </button>
-            <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
-            </button>
-            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
-            </button>
-            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-white bg-slate-800 rounded-lg transition-all active-nav border-l-4 border-[#14B8A6]">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
-            </button>
+            <button onclick="switchTab('dashboard')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-squares-four text-xl mr-3"></i><span class="text-sm font-medium">工作台</span></button>
+            <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-chart-line-up text-xl mr-3"></i><span class="text-sm font-medium">智能经营</span></button>
+            <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-users text-xl mr-3"></i><span class="text-sm font-medium">客户 CRM</span></button>
+            <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-flask text-xl mr-3"></i><span class="text-sm font-medium">产品中心</span></button>
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-white bg-slate-800 rounded-lg transition-all active-nav border-l-4 border-[#14B8A6]"><i class="ph ph-warehouse text-xl mr-3"></i><span class="text-sm font-medium">供应商管理</span></button>
         </nav>
-        <!-- 用户信息区域 -->
-        <div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">
-            <div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>
-            <div class="ml-3 text-left">
-                <p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>
-                <div class="flex items-center gap-1.5 mt-1">
-                    <i class="ph ph-crown text-[#14B8A6] text-[10px]"></i>
-                    <span class="text-[#14B8A6] text-[10px] font-bold">试用版本</span>
-                </div>
-            </div>
-        </div>
     </aside>
 
-    <!-- 2. 主工作区 -->
     <main class="flex-1 flex flex-col min-w-0 relative h-full">
-        <!-- Header -->
         <header class="hidden md:flex h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
-            <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
-            <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
+            <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索供应商、进货单..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
             <div class="flex items-center space-x-3 md:space-x-5">
                 <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
                     <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
-                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">供应链管理</span>
+                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">供应商管理</span>
                 </div>
-                <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
             </div>
         </header>
 
-        <!-- 内容区域 -->
         <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0">
-
-            <!-- ================= [1] 供应商管理 SUPPLIER ================= -->
-            <div id="view-overview" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
-
-                <!-- 顶部视图切换药丸 -->
+            <div class="w-full p-4 md:p-8 space-y-6 fade-in">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex bg-white p-1 rounded-xl border border-slate-200 w-fit">
-                        <button onclick="switchSupplierView('list')" id="btn-sup-list" class="view-toggle-btn active px-5 py-1.5 rounded-lg text-xs font-bold">进货单据明细</button>
-                        <button onclick="switchSupplierView('map')" id="btn-sup-map" class="view-toggle-btn px-5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600">风险地图看板</button>
+                        <button onclick="switchSupplierMainView('list')" id="supplier-tab-btn-list" class="view-toggle-btn active px-5 py-1.5 rounded-lg text-xs font-bold">进货单据明细</button>
+                        <button onclick="switchSupplierMainView('supplier')" id="supplier-tab-btn-supplier" class="view-toggle-btn px-5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-600">供应商编辑</button>
                     </div>
-
-                    <!-- 仅在列表模式下显示的统计卡 -->
                     <div id="sup-stat-chips" class="flex gap-3 overflow-x-auto no-scrollbar">
-                        <div class="px-3 py-1.5 bg-white rounded-lg border border-slate-200 text-[10px] font-bold"><span class="text-slate-400 uppercase">本月进货:</span> <span class="text-slate-800 ml-1">$128,400</span></div>
-                        <div class="px-3 py-1.5 bg-white rounded-lg border border-slate-200 text-[10px] font-bold"><span class="text-slate-400 uppercase">待收货:</span> <span class="text-orange-500 ml-1">3 笔</span></div>
+                        <div class="px-3 py-1.5 bg-white rounded-lg border border-slate-200 text-[10px] font-bold"><span class="text-slate-400 uppercase">本月进货:</span> <span class="text-slate-800 ml-1">实时统计</span></div>
+                        <div class="px-3 py-1.5 bg-white rounded-lg border border-slate-200 text-[10px] font-bold"><span class="text-slate-400 uppercase">待处理:</span> <span class="text-orange-500 ml-1">动态计算</span></div>
                     </div>
                 </div>
 
-                <!-- 场景 A: 风险地图 (原有核心功能) -->
-                <div id="sup-map-view" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[500px] lg:h-auto overflow-hidden">
-                        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">供应商地理风控地图</h3>
-                            <div class="flex gap-4 text-[9px] font-black uppercase">
-                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-brand-500 rounded-full"></span> 稳健</span>
-                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-red-500 rounded-full"></span> 预警</span>
-                            </div>
-                        </div>
-                        <div class="flex-1 bg-slate-50 relative flex items-center justify-center overflow-hidden">
-                            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#14B8A6 1.5px, transparent 1.5px); background-size: 30px 30px;"></div>
-                            <i class="ph ph-globe-hemisphere-east text-9xl text-slate-200"></i>
-                            <!-- 模拟深圳/东莞点 -->
-                            <div class="absolute top-1/3 left-1/3 p-2 bg-white rounded-xl shadow-xl border border-slate-100 animate-bounce cursor-pointer">
-                                <p class="text-[9px] font-bold">深圳照明 (A+)</p><div class="w-2.5 h-2.5 bg-brand-500 rounded-full mx-auto mt-1"></div>
-                            </div>
-                            <div class="absolute bottom-1/3 right-1/4 p-2 bg-white rounded-xl shadow-xl border border-risk-high/30 cursor-pointer">
-                                <p class="text-[9px] font-bold text-risk-high">东莞包材 (延期)</p><div class="w-2.5 h-2.5 bg-risk-high rounded-full mx-auto mt-1 animate-ping"></div>
-                            </div>
-                        </div>
+                <div id="supplier-tab-list" class="supplier-tab-content space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单据明细</h3>
+                        <button onclick="openPurchaseModal()" class="bg-[#14B8A6] hover:bg-[#0D9488] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors">
+                            <i class="ph ph-plus"></i> 新增进货单
+                        </button>
                     </div>
-                    <!-- 评分卡 (右侧) -->
-                    <div class="lg:col-span-1 bg-white rounded border border-slate-200 shadow-sm p-6 overflow-y-auto h-auto lg:h-auto">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">绩效评分卡</h3>
-                        <div class="space-y-4">
-                            <!-- Supplier 1 -->
-                            <div class="border border-slate-100 rounded p-3">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="text-sm font-bold text-slate-700">深圳照明科技</span>
-                                    <span class="text-xs font-mono font-bold text-green-600">A+</span>
-                                </div>
-                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
-                                    <div class="w-[95%] bg-green-500 h-full"></div>
-                                </div>
-                                <p class="text-[10px] text-slate-400">准时交付率: 98%</p>
-                            </div>
-                            <!-- Supplier 2 -->
-                            <div class="border border-red-100 bg-red-50/10 rounded p-3">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="text-sm font-bold text-slate-700">东莞包装制品</span>
-                                    <span class="text-xs font-mono font-bold text-red-600">C-</span>
-                                </div>
-                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
-                                    <div class="w-[60%] bg-red-500 h-full animate-pulse"></div>
-                                </div>
-                                <p class="text-[10px] text-red-400 font-bold">警告: 原料短缺风险</p>
-                            </div>
-                            <!-- Supplier 3 -->
-                            <div class="border border-orange-100 bg-orange-50/10 rounded p-3">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="text-sm font-bold text-slate-700">广州电子元件</span>
-                                    <span class="text-xs font-mono font-bold text-orange-600">B</span>
-                                </div>
-                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-1">
-                                    <div class="w-[75%] bg-orange-500 h-full"></div>
-                                </div>
-                                <p class="text-[10px] text-orange-400">注意: 价格波动较大</p>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="orders-list" class="space-y-3"></div>
                 </div>
 
-                <!-- 场景 B: 进货单据列表 (默认显示) -->
-                <div id="sup-list-view" class="fade-in space-y-4">
-                    <!-- 单据列表卡片 -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单据明细</h3>
-                            <button onclick="openNewPurchaseModal()" class="text-xs text-brand-600 font-bold flex items-center gap-1.5 hover:underline">
-                                <i class="ph ph-plus-circle text-sm"></i> 新增进货单
-                            </button>
-                        </div>
-                        <div class="p-4">
-                            <div class="space-y-3">
-                            </div>
-                        </div>
+                <div id="supplier-tab-supplier" class="supplier-tab-content hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">供应商管理</h3>
+                        <button onclick="openSupplierModal()" class="bg-[#14B8A6] hover:bg-[#0D9488] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors">
+                            <i class="ph ph-plus"></i> 新增供应商
+                        </button>
                     </div>
+                    <div id="suppliers-list" class="space-y-3"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- 新增进货单弹窗 -->
-    <div id="new-purchase-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeNewPurchaseModal()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2">新增进货单</h2>
-                <button onclick="closeNewPurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+    <div id="supplier-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeSupplierModal()"></div>
+        <div class="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl fade-in text-left">
+            <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-user-circle text-brand-500"></i><span id="supplier-modal-title">供应商编辑</span></h3>
+            <div class="space-y-6">
+                <div><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">供应商名称</label><input type="text" id="supplier-name" class="form-input w-full" placeholder="请输入供应商名称"></div>
+                <div><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">联系人</label><input type="text" id="supplier-contact" class="form-input w-full" placeholder="请输入联系人姓名"></div>
+                <div><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">电话</label><input type="tel" id="supplier-phone" class="form-input w-full" placeholder="请输入联系电话"></div>
+                <div><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">评分(0-5)</label><input type="number" id="supplier-rating" class="form-input w-full" step="0.1" min="0" max="5" placeholder="4.5"></div>
+                <div><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">地址</label><textarea id="supplier-address" class="form-input w-full resize-none" rows="3" placeholder="请输入地址"></textarea></div>
             </div>
+            <div class="flex gap-4 mt-8">
+                <button onclick="closeSupplierModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors">取消</button>
+                <button onclick="saveSupplier()" class="flex-1 py-3 rounded-xl bg-[#14B8A6] text-white text-xs font-bold shadow-lg hover:bg-[#0D9488] transition-colors">保存</button>
+            </div>
+        </div>
+    </div>
 
+    <div id="purchase-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePurchaseModal()"></div>
+        <div class="relative bg-white w-full max-w-5xl h-full max-h-[92vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <h2 class="text-sm font-black text-slate-800" id="purchase-modal-title">新增进货单</h2>
+                <button onclick="closePurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
             <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
-                <!-- 基础信息 -->
-                <div class="purchase-form-grid grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div class="md:col-span-5 space-y-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">供应商</label>
-                        <div class="flex gap-2 items-center">
-                            <select id="new-purchase-supplier" class="form-input flex-1">
-                                <option value="">--- 请选择供应商 ---</option>
-                            </select>
-                            <button onclick="openNewSupplierModal()" class="btn-add-supplier flex items-center justify-center">
-                                <i class="ph ph-plus text-lg"></i>
-                            </button>
-                        </div>
+                        <select id="purchase-supplier" class="form-input"><option value="">--- 请选择供应商 ---</option></select>
                     </div>
                     <div class="md:col-span-3 space-y-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">进货状态</label>
-                        <select id="new-purchase-status" class="form-input">
-                            <option value="">--- 请选择状态 ---</option>
-                        </select>
+                        <select id="purchase-status" class="form-input"><option value="">--- 请选择状态 ---</option></select>
                     </div>
                     <div class="md:col-span-4 space-y-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">进货日期</label>
-                        <input type="date" id="new-purchase-date" class="form-input">
+                        <input type="date" id="purchase-date" class="form-input">
                     </div>
                 </div>
 
-                <!-- 商品列表 -->
                 <div class="space-y-4">
                     <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
                         <span>进货商品明细</span>
-                        <button onclick="addPurchaseItemRow()" class="text-brand-600 hover:underline">+ 添加商品行</button>
+                        <button onclick="addPurchaseItem()" class="text-brand-600 hover:underline">+ 添加商品行</button>
                     </h3>
                     <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                        <table class="w-full text-xs" id="new-purchase-items-table">
+                        <table class="w-full text-xs" id="purchase-items-table">
                             <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
                                 <tr>
                                     <th class="px-4 py-3 text-left">产品</th>
@@ -335,831 +161,50 @@
                                     <th class="px-4 py-3 text-center w-24">单位</th>
                                     <th class="px-4 py-3 text-center w-28">批次号</th>
                                     <th class="px-4 py-3 text-right">小计</th>
+                                    <th class="px-4 py-3 text-center w-14">删除</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr>
-                                    <td class="px-4 py-3">
-                                        <select class="form-input product-select" onchange="onProductSelect(this)">
-                                            <option value="">--- 选择产品 ---</option>
-                                        </select>
-                                    </td>
-                                    <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="1" min="1" oninput="calculatePurchaseTotal()"></td>
-                                    <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="calculatePurchaseTotal()"></td>
-                                    <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-                                    <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号" onfocus="if(this.value==='批次号')this.value=''"></td>
-                                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="purchase-items-tbody" class="divide-y divide-slate-100"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- 自动更新的总金额展示区 -->
                 <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
                     <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
-                    <div>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">进货单总计</p>
-                        <p class="text-[9px] text-slate-500 mt-1 italic">请核对商品明细</p>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-3xl font-black font-mono text-brand-500" id="new-purchase-grand-total">¥0.00</span>
-                    </div>
+                    <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">进货单总计</p><p class="text-[9px] text-slate-500 mt-1 italic">系统自动计算</p></div>
+                    <div class="text-right"><span class="text-3xl font-black font-mono text-brand-500" id="purchase-grand-total">¥0.00</span></div>
                 </div>
             </div>
-
             <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">
-                <button onclick="closeNewPurchaseModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
-                <button onclick="saveNewPurchase()" class="flex-[2] py-3 rounded-2xl btn-save-primary shadow-xl flex items-center justify-center gap-2">
-                    <i class="ph ph-floppy-disk"></i>
-                    保存进货单据
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 新增供应商弹窗 -->
-    <div id="new-supplier-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeNewSupplierModal()"></div>
-        <div class="relative bg-white w-full max-w-lg h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2">新增供应商</h2>
-                <button onclick="closeNewSupplierModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar space-y-6">
-                <div class="space-y-4">
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">供应商名称</label>
-                        <input type="text" id="new-supplier-name" class="form-input font-bold text-slate-700" placeholder="请输入供应商名称">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">联系人</label>
-                        <input type="text" id="new-supplier-contact" class="form-input font-bold text-slate-700" placeholder="请输入联系人">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">联系电话</label>
-                        <input type="text" id="new-supplier-phone" class="form-input font-bold text-slate-700" placeholder="请输入联系电话">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">地址</label>
-                        <textarea id="new-supplier-address" class="form-input font-bold text-slate-700 resize-none" rows="3" placeholder="请输入地址"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">
-                <button onclick="closeNewSupplierModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
-                <button onclick="saveNewSupplier()" class="flex-[2] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl active:scale-95 transition-all">保存供应商</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 进货详情弹窗 -->
-    <div id="purchase-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
-        <!-- 遮罩 -->
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePurchaseDetail()"></div>
-        <!-- 弹窗主体 -->
-        <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10">
-            <!-- 弹窗头部 -->
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="ph ph-clipboard-text text-brand-600"></i> 进货单详情
-                </h3>
-                <button onclick="closePurchaseDetail()" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                    <i class="ph ph-x text-xl text-slate-400"></i>
-                </button>
-            </div>
-            <!-- 弹窗内容 -->
-            <div class="flex-1 overflow-y-auto p-6">
-                <!-- 订单基本信息 -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">订单编号</p>
-                        <p class="text-sm font-bold text-slate-800" id="detail-purchase-id">PO-2026-001</p>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">供应商</p>
-                        <p class="text-sm font-bold text-slate-800">深圳照明科技</p>
-                    </div>
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">下单日期</p>
-                        <p class="text-sm font-bold text-slate-800">2026-01-10</p>
-                    </div>
-                </div>
-                <!-- 商品列表 -->
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
-                    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">商品明细</h4>
-                    </div>
-                    <div class="p-4">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b border-slate-200">
-                                    <th class="text-left py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">商品名称</th>
-                                    <th class="text-center py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">数量</th>
-                                    <th class="text-right py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">单价</th>
-                                    <th class="text-right py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">金额</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="border-b border-slate-200">
-                                    <td class="px-6 py-4 text-sm">LED 灯泡</td>
-                                    <td class="px-6 py-4 text-center text-sm">1000</td>
-                                    <td class="px-6 py-4 text-right font-mono text-sm">$2.00</td>
-                                    <td class="px-6 py-4 text-right font-mono font-black text-slate-900">$2,000.00</td>
-                                </tr>
-                                <tr class="border-b border-slate-200">
-                                    <td class="px-6 py-4 text-sm">LED 灯管</td>
-                                    <td class="px-6 py-4 text-center text-sm">500</td>
-                                    <td class="px-6 py-4 text-right font-mono text-sm">$0.60</td>
-                                    <td class="px-6 py-4 text-right font-mono font-black text-slate-900">$300.00</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <!-- 物流信息 -->
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
-                    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">物流信息</h4>
-                    </div>
-                    <div class="p-4 space-y-3">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-slate-600">物流公司</span>
-                            <span class="text-sm font-bold text-slate-800">顺丰速运</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-slate-600">运单编号</span>
-                            <span class="text-sm font-mono font-bold text-slate-800">SF1234567890</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-slate-600">预计到达时间</span>
-                            <span class="text-sm font-bold text-slate-800">2026-01-15</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm text-slate-600">当前状态</span>
-                            <span class="text-sm font-bold text-green-600">已送达</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden flex justify-between items-center">
-                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-circle-dollar text-8xl"></i></div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">进货单总计 (Total Cost)</p>
-                    <p class="text-2xl font-mono font-black text-brand-500">$12,500.00</p>
-                </div>
-            </div>
-            <div class="p-5 border-t border-slate-100 bg-white flex gap-4 shrink-0">
-                <button onclick="closePurchaseDetail()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors">返回管理界面</button>
-                <button class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"><i class="ph ph-printer"></i> 打印入库单</button>
+                <button onclick="closePurchaseModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-400">取消</button>
+                <button onclick="savePurchase()" class="flex-[2] py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl active:scale-95 transition-all">保存进货单据</button>
             </div>
         </div>
     </div>
 
     <script>
-        let currentPurchase = null;
-        let purchaseStatusDict = [];
-        let suppliers = [];
+        function switchTab(tabName) {
+            var tab = tabName || 'supplier';
+            window.location.href = '/index-app.html#tab=' + encodeURIComponent(tab);
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
-            loadPurchaseStatusDict();
-            loadSuppliers();
-            loadPurchases();
+            var isEmbedded = false;
+            try {
+                isEmbedded = (window.self !== window.top) || (new URLSearchParams(location.search).get('embed') === '1');
+            } catch (e) {
+                isEmbedded = true;
+            }
+            if (!isEmbedded && window.injectCommonUI) {
+                window.injectCommonUI();
+            }
+            if (window.SupplierModule && window.SupplierModule.init) {
+                window.SupplierModule.init();
+            }
+            if (typeof window.switchSupplierMainView === 'function') {
+                window.switchSupplierMainView('list');
+            }
         });
-
-        function switchTab(tabName) {
-            let url = '';
-            switch(tabName) {
-                case 'dashboard':
-                    url = '../dashboard/dashboard.html';
-                    break;
-                case 'biz':
-                    url = '../SmartOps/SmartOps.html';
-                    break;
-                case 'crm':
-                    url = '../crm/crm.html';
-                    break;
-                case 'supply':
-                    url = '../product-center/product-center.html';
-                    break;
-                case 'supplier':
-                    url = '../supply-chain/supply-chain.html';
-                    break;
-            }
-            if (url) {
-                window.location.href = url;
-            }
-        }
-
-        function switchSupplierView(viewType) {
-            if (viewType === 'map') {
-                document.getElementById('sup-map-view').classList.remove('hidden');
-                document.getElementById('sup-list-view').classList.add('hidden');
-                document.getElementById('sup-stat-chips').classList.add('hidden');
-                document.getElementById('btn-sup-map').classList.add('active');
-                document.getElementById('btn-sup-map').classList.remove('text-slate-400');
-                document.getElementById('btn-sup-list').classList.remove('active');
-                document.getElementById('btn-sup-list').classList.add('text-slate-400');
-            } else if (viewType === 'list') {
-                document.getElementById('sup-map-view').classList.add('hidden');
-                document.getElementById('sup-list-view').classList.remove('hidden');
-                document.getElementById('sup-stat-chips').classList.remove('hidden');
-                document.getElementById('btn-sup-list').classList.add('active');
-                document.getElementById('btn-sup-list').classList.remove('text-slate-400');
-                document.getElementById('btn-sup-map').classList.remove('active');
-                document.getElementById('btn-sup-map').classList.add('text-slate-400');
-            }
-        }
-
-        async function loadPurchaseStatusDict() {
-            try {
-                const response = await window.wrappedFetch('/api/v1/supp/dictionaries/D012', {
-                    method: 'GET'
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        purchaseStatusDict = result.data;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading status dictionary:', error);
-            }
-        }
-
-        async function loadSuppliers() {
-            try {
-                const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
-                    method: 'GET'
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        suppliers = result.data;
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading suppliers:', error);
-            }
-        }
-
-        function getStatusStyle(status) {
-            let statusClass = '';
-            let statusText = status || '未知';
-            
-            const dictItem = purchaseStatusDict.find(d => d.dictCode === status || d.dictName === status);
-            if (dictItem) {
-                statusText = dictItem.dictName;
-            }
-            
-            switch(status) {
-                case '草稿':
-                case 'DRAFT':
-                    statusClass = 'bg-gray-50 text-gray-600 border border-gray-200';
-                    break;
-                case '待审核':
-                case 'PENDING_REVIEW':
-                    statusClass = 'bg-yellow-50 text-yellow-600 border border-yellow-200';
-                    break;
-                case '审核通过':
-                case 'APPROVED':
-                    statusClass = 'bg-blue-50 text-blue-600 border border-blue-200';
-                    break;
-                case '部分入库':
-                case 'PARTIAL_INBOUND':
-                    statusClass = 'bg-orange-50 text-orange-600 border border-orange-200';
-                    break;
-                case '全部入库':
-                case 'FULL_INBOUND':
-                    statusClass = 'bg-teal-50 text-teal-600 border border-teal-200';
-                    break;
-                case '审核驳回':
-                case 'REJECTED':
-                    statusClass = 'bg-red-50 text-red-600 border border-red-200';
-                    break;
-                case '已作废':
-                case 'VOIDED':
-                    statusClass = 'bg-slate-100 text-slate-500 border border-slate-300';
-                    break;
-                default:
-                    statusClass = 'bg-gray-50 text-gray-600 border border-gray-200';
-            }
-            
-            return { class: statusClass, text: statusText };
-        }
-
-        async function loadPurchases() {
-            try {
-                const response = await window.wrappedFetch('/api/v1/supp/purchases', {
-                    method: 'GET'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load purchases');
-                }
-                
-                const result = await response.json();
-                if (result.success && result.data) {
-                    renderPurchaseList(result.data);
-                }
-            } catch (error) {
-                console.error('Error loading purchases:', error);
-            }
-        }
-
-        function renderPurchaseList(purchases) {
-            const container = document.querySelector('#sup-list-view .space-y-3');
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            purchases.forEach(purchase => {
-                const statusStyle = getStatusStyle(purchase.purchaseStatus);
-                const supplierName = purchase.supplierName || '未知供应商';
-                
-                const div = document.createElement('div');
-                div.className = 'border border-slate-100 rounded-xl p-4 hover:border-brand-500 transition-all cursor-pointer';
-                div.onclick = () => openPurchaseDetail(purchase);
-                
-                div.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <p class="text-sm font-bold text-slate-800">${purchase.purchaseCode || 'PO-' + purchase.purchaseId}</p>
-                            <p class="text-[10px] text-slate-400">${supplierName} | ${purchase.purchaseDate || ''}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm font-mono font-bold text-slate-900">¥${(purchase.totalAmount || 0).toFixed(2)}</p>
-                            <span class="text-[10px] ${statusStyle.class} px-2 py-0.5 rounded-full font-bold">${statusStyle.text}</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center text-[10px] text-slate-500">
-                        <span>${purchase.items ? purchase.items.length + ' 项商品' : ''}</span>
-                        <div class="flex gap-2">
-                            <button onclick="event.stopPropagation(); deletePurchase(${purchase.purchaseId}, '${purchase.purchaseStatus}')" class="text-red-500 hover:text-red-700">
-                                <i class="ph ph-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                container.appendChild(div);
-            });
-        }
-
-        async function openPurchaseDetail(purchase) {
-            currentPurchase = purchase;
-            
-            try {
-                const response = await window.wrappedFetch(`/api/v1/supp/purchases/${purchase.purchaseId}/items`, {
-                    method: 'GET'
-                });
-                
-                let items = [];
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        items = result.data;
-                    }
-                }
-                
-                renderPurchaseDetailModal(purchase, items);
-                document.getElementById('purchase-detail-modal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-            } catch (error) {
-                console.error('Error loading purchase items:', error);
-            }
-        }
-
-        function renderPurchaseDetailModal(purchase, items) {
-            const statusStyle = getStatusStyle(purchase.purchaseStatus);
-            
-            document.getElementById('detail-purchase-id').textContent = purchase.purchaseCode || 'PO-' + purchase.purchaseId;
-            
-            const itemsContainer = document.querySelector('#purchase-detail-modal tbody');
-            if (itemsContainer) {
-                itemsContainer.innerHTML = '';
-                
-                items.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = 'border-b border-slate-200';
-                    tr.innerHTML = `
-                        <td class="px-6 py-4 text-sm">${item.productName || ''}</td>
-                        <td class="px-6 py-4 text-center text-sm">${item.quantity || 0}</td>
-                        <td class="px-6 py-4 text-right font-mono text-sm">¥${(item.unitPrice || 0).toFixed(2)}</td>
-                        <td class="px-6 py-4 text-right font-mono font-black text-slate-900">¥${(item.subtotal || 0).toFixed(2)}</td>
-                    `;
-                    itemsContainer.appendChild(tr);
-                });
-            }
-            
-            const totalElement = document.querySelector('#purchase-detail-modal .text-2xl');
-            if (totalElement) {
-                totalElement.textContent = '¥' + (purchase.totalAmount || 0).toFixed(2);
-            }
-        }
-
-        function closePurchaseDetail() {
-            document.getElementById('purchase-detail-modal').classList.add('hidden');
-            document.body.style.overflow = '';
-            currentPurchase = null;
-        }
-
-        function deletePurchase(purchaseId, currentStatus) {
-            let message = '确定要删除这个进货单吗？';
-            if (currentStatus === '已入库') {
-                message = '删除已入库单据将同步扣减实时库存，是否继续？';
-            }
-            
-            if (confirm(message)) {
-                performDeletePurchase(purchaseId);
-            }
-        }
-
-        async function performDeletePurchase(purchaseId) {
-            try {
-                const response = await window.wrappedFetch(`/api/v1/supp/purchases/${purchaseId}`, {
-                    method: 'DELETE'
-                });
-                
-                if (response.ok) {
-                    alert('删除成功');
-                    loadPurchases();
-                } else {
-                    alert('删除失败');
-                }
-            } catch (error) {
-                console.error('Error deleting purchase:', error);
-                alert('删除失败');
-            }
-        }
-
-        let products = [];
-
-        function openNewPurchaseModal() {
-            document.getElementById('new-purchase-modal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('new-purchase-date').value = today;
-            
-            loadSuppliersToDropdown();
-            loadPurchaseStatusDict();
-            loadProductsToDropdown();
-            calculatePurchaseTotal();
-        }
-
-        function closeNewPurchaseModal() {
-            document.getElementById('new-purchase-modal').classList.add('hidden');
-            document.body.style.overflow = '';
-            resetNewPurchaseModal();
-        }
-
-        function resetNewPurchaseModal() {
-            document.getElementById('new-purchase-supplier').value = '';
-            document.getElementById('new-purchase-status').value = '';
-            const tbody = document.querySelector('#new-purchase-items-table tbody');
-            tbody.innerHTML = `
-                <tr>
-                    <td class="px-4 py-3">
-                        <select class="form-input product-select" onchange="onProductSelect(this)">
-                            <option value="">--- 选择产品 ---</option>
-                        </select>
-                    </td>
-                    <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="1" min="1" oninput="calculatePurchaseTotal()"></td>
-                    <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="calculatePurchaseTotal()"></td>
-                    <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-                    <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号" onfocus="if(this.value==='批次号')this.value=''"></td>
-                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
-                </tr>
-            `;
-            document.getElementById('new-purchase-grand-total').textContent = '¥0.00';
-        }
-
-        async function loadPurchaseStatusDict() {
-            try {
-                const response = await window.wrappedFetch('/api/v1/supp/dictionaries/D012', { method: 'GET' });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        const select = document.getElementById('new-purchase-status');
-                        select.innerHTML = '<option value="">--- 请选择状态 ---</option>';
-                        result.data.forEach(item => {
-                            const option = document.createElement('option');
-                            option.value = item.dictCode;
-                            option.textContent = item.dictName;
-                            select.appendChild(option);
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading purchase status dictionary:', error);
-            }
-        }
-
-        async function loadSuppliersToDropdown() {
-            try {
-                const response = await window.wrappedFetch('/api/v1/supp/suppliers', { method: 'GET' });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        const select = document.getElementById('new-purchase-supplier');
-                        select.innerHTML = '<option value="">--- 请选择供应商 ---</option>';
-                        result.data.forEach(supplier => {
-                            const option = document.createElement('option');
-                            option.value = supplier.supplierId;
-                            option.textContent = supplier.supplierName || supplier.name;
-                            select.appendChild(option);
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading suppliers:', error);
-            }
-        }
-
-        async function loadProductsToDropdown() {
-            try {
-                const response = await window.wrappedFetch('/api/v1/rd/products', { method: 'GET' });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        products = result.data;
-                        const selects = document.querySelectorAll('#new-purchase-items-table .product-select');
-                        selects.forEach(select => {
-                            const currentValue = select.value;
-                            select.innerHTML = '<option value="">--- 选择产品 ---</option>';
-                            products.forEach(product => {
-                                const option = document.createElement('option');
-                                option.value = product.productId;
-                                option.textContent = product.productName || product.name;
-                                option.dataset.unit = product.purchaseUnit || product.unit || '';
-                                option.dataset.price = product.purchasePrice || product.price || 0;
-                                select.appendChild(option);
-                            });
-                            if (currentValue) {
-                                select.value = currentValue;
-                            }
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading products:', error);
-            }
-        }
-
-        async function onProductSelect(selectElement) {
-            const row = selectElement.closest('tr');
-            const productId = selectElement.value;
-            const unitSelect = row.querySelector('.unit-select');
-            
-            if (!productId) {
-                unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
-                row.querySelector('.price-input').value = 0;
-                calculatePurchaseTotal();
-                return;
-            }
-            
-            try {
-                const response = await window.wrappedFetch(`/api/v1/rd/products/${productId}`, { method: 'GET' });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        const product = result.data;
-                        
-                        row.querySelector('.price-input').value = product.purchasePrice || product.price || 0;
-                        
-                        unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
-                        
-                        if (product.unitConversions && product.unitConversions.length > 0) {
-                            product.unitConversions.forEach(uc => {
-                                const option = document.createElement('option');
-                                option.value = uc.unitName;
-                                option.textContent = uc.unitName;
-                                unitSelect.appendChild(option);
-                            });
-                        }
-                        
-                        if (product.purchaseUnit) {
-                            unitSelect.value = product.purchaseUnit;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading product details:', error);
-            }
-            
-            calculatePurchaseTotal();
-        }
-
-        function addPurchaseItemRow() {
-            const tbody = document.querySelector('#new-purchase-items-table tbody');
-            const firstRow = tbody.querySelector('tr');
-            const newRow = firstRow.cloneNode(true);
-            
-            newRow.querySelectorAll('input').forEach(input => {
-                if (input.classList.contains('qty-input')) {
-                    input.value = 1;
-                } else if (input.classList.contains('price-input')) {
-                    input.value = 0;
-                } else {
-                    input.value = '';
-                }
-            });
-            
-            const unitSelect = newRow.querySelector('.unit-select');
-            unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
-            
-            newRow.querySelector('.row-total').textContent = '¥0.00';
-            
-            const productSelect = newRow.querySelector('.product-select');
-            productSelect.value = '';
-            productSelect.addEventListener('change', function() {
-                onProductSelect(this);
-            });
-            
-            newRow.querySelectorAll('.qty-input, .price-input').forEach(input => {
-                input.addEventListener('input', calculatePurchaseTotal);
-            });
-            
-            tbody.appendChild(newRow);
-            loadProductsToDropdown();
-        }
-
-        function calculatePurchaseTotal() {
-            let grandTotal = 0;
-            const rows = document.querySelectorAll('#new-purchase-items-table tbody tr');
-            
-            rows.forEach(row => {
-                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                const subtotal = qty * price;
-                row.querySelector('.row-total').textContent = `¥${subtotal.toFixed(2)}`;
-                grandTotal += subtotal;
-            });
-            
-            document.getElementById('new-purchase-grand-total').textContent = `¥${grandTotal.toFixed(2)}`;
-        }
-
-        async function saveNewPurchase() {
-            const supplierId = document.getElementById('new-purchase-supplier').value;
-            const purchaseStatus = document.getElementById('new-purchase-status').value;
-            const purchaseDate = document.getElementById('new-purchase-date').value;
-            
-            if (!supplierId) {
-                alert('请选择供应商');
-                return;
-            }
-            if (!purchaseStatus) {
-                alert('请选择进货状态');
-                return;
-            }
-            if (!purchaseDate) {
-                alert('请选择进货日期');
-                return;
-            }
-            
-            const items = [];
-            const rows = document.querySelectorAll('#new-purchase-items-table tbody tr');
-            let hasItems = false;
-            
-            rows.forEach(row => {
-                const productSelect = row.querySelector('.product-select');
-                const productId = productSelect.value;
-                if (productId) {
-                    hasItems = true;
-                    const qty = parseInt(row.querySelector('.qty-input').value) || 0;
-                    const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                    const unitName = row.querySelector('.unit-select').value || '';
-                    const batchNo = row.querySelector('.batch-input').value || '';
-                    
-                    if (qty > 0 && price > 0) {
-                        items.push({
-                            productId: productId,
-                            quantity: qty,
-                            unitPrice: price,
-                            unitName: unitName,
-                            batchNo: batchNo
-                        });
-                    }
-                }
-            });
-            
-            if (!hasItems || items.length === 0) {
-                alert('请至少添加一个商品');
-                return;
-            }
-            
-            try {
-                const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-                
-                const purchaseData = {
-                    supplierId: parseInt(supplierId),
-                    purchaseDate: purchaseDate,
-                    totalAmount: totalAmount,
-                    purchaseStatus: purchaseStatus,
-                    items: items
-                };
-                
-                const response = await window.wrappedFetch('/api/v1/supp/purchases', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(purchaseData)
-                });
-                
-                if (response.ok) {
-                    let message = '进货单据已成功保存';
-                    if (purchaseStatus === '已入库') {
-                        message += '\n\n相关产品库存已由系统自动更新';
-                    }
-                    alert(message);
-                    closeNewPurchaseModal();
-                    loadPurchases();
-                } else {
-                    alert('保存失败，请重试');
-                }
-            } catch (error) {
-                console.error('Error saving purchase:', error);
-                alert('保存失败，请重试');
-            }
-        }
-
-        let newSupplierId = null;
-
-        function openNewSupplierModal() {
-            document.getElementById('new-supplier-modal').classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            resetNewSupplierModal();
-        }
-
-        function closeNewSupplierModal() {
-            document.getElementById('new-supplier-modal').classList.add('hidden');
-            document.body.style.overflow = '';
-            resetNewSupplierModal();
-        }
-
-        function resetNewSupplierModal() {
-            document.getElementById('new-supplier-name').value = '';
-            document.getElementById('new-supplier-contact').value = '';
-            document.getElementById('new-supplier-phone').value = '';
-            document.getElementById('new-supplier-address').value = '';
-            newSupplierId = null;
-        }
-
-        async function saveNewSupplier() {
-            const name = document.getElementById('new-supplier-name').value;
-            const contact = document.getElementById('new-supplier-contact').value;
-            const phone = document.getElementById('new-supplier-phone').value;
-            const address = document.getElementById('new-supplier-address').value;
-
-            if (!name) {
-                alert('请输入供应商名称');
-                return;
-            }
-
-            try {
-                const supplierData = {
-                    name: name,
-                    contact: contact,
-                    phone: phone,
-                    address: address,
-                    status: 1
-                };
-
-                const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(supplierData)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        newSupplierId = result.data.supplierId;
-                        alert('供应商保存成功');
-                        closeNewSupplierModal();
-                        
-                        await loadSuppliersToDropdown();
-                        
-                        if (newSupplierId) {
-                            document.getElementById('new-purchase-supplier').value = newSupplierId;
-                        }
-                    } else {
-                        alert('保存失败，请重试');
-                    }
-                } else {
-                    alert('保存失败，请重试');
-                }
-            } catch (error) {
-                console.error('Error saving supplier:', error);
-                alert('保存失败，请重试');
-            }
-        }
     </script>
 </body>
 </html>

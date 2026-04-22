@@ -7,29 +7,48 @@ function switchSupplierMainView(viewType) {
     
     // 更新按钮样式
     document.querySelectorAll('[id^="supplier-tab-btn-"]').forEach(btn => {
-        btn.classList.remove('bg-[#14B8A6]', 'text-white');
-        btn.classList.add('text-slate-600');
+        btn.classList.remove('active', 'text-white', 'text-slate-600');
+        btn.classList.add('text-slate-400');
     });
     const activeBtn = document.getElementById('supplier-tab-btn-' + viewType);
     if (activeBtn) {
-        activeBtn.classList.add('bg-[#14B8A6]', 'text-white');
-        activeBtn.classList.remove('text-slate-600');
+        activeBtn.classList.add('active', 'text-white');
+        activeBtn.classList.remove('text-slate-400');
+    }
+
+    const chips = document.getElementById('sup-stat-chips');
+    if (chips) {
+        if (viewType === 'list') {
+            chips.classList.remove('hidden');
+        } else {
+            chips.classList.add('hidden');
+        }
     }
 }
+window.switchSupplierView = switchSupplierMainView;
 
 window.SupplierModule = {
+    PAGE_SIZE: 20,
     states: [],
     suppliers: [],
+    allSuppliers: [],
     purchases: [],
     products: [],
     currentSupplier: null,
     currentPurchase: null,
+    supplierCurrentPage: 1,
+    purchaseCurrentPage: 1,
+    supplierTotal: 0,
+    supplierTotalPages: 1,
+    purchaseTotal: 0,
+    purchaseTotalPages: 1,
 
     init: async function() {
         console.log('SupplierModule initialized');
         await Promise.all([
             this.loadStatuses(),
             this.loadSuppliers(),
+            this.loadAllSuppliers(),
             this.loadPurchases(),
             this.loadProducts()
         ]);
@@ -54,15 +73,26 @@ window.SupplierModule = {
         }
     },
 
-    loadSuppliers: async function() {
+    loadSuppliers: async function(pageNo) {
         try {
-            const response = await window.wrappedFetch('/api/v1/supp/suppliers', {
+            var targetPage = pageNo || this.supplierCurrentPage || 1;
+            const response = await window.wrappedFetch('/api/v1/supp/suppliers?pageNo=' + encodeURIComponent(targetPage) + '&pageSize=' + this.PAGE_SIZE, {
                 method: 'GET'
             });
             if (response.ok) {
                 const result = await response.json();
                 if (result.success && result.data) {
-                    this.suppliers = result.data;
+                    if (Array.isArray(result.data)) {
+                        this.suppliers = result.data;
+                        this.supplierTotal = result.data.length;
+                        this.supplierCurrentPage = 1;
+                        this.supplierTotalPages = Math.max(1, Math.ceil(this.supplierTotal / this.PAGE_SIZE));
+                    } else {
+                        this.suppliers = result.data.records || [];
+                        this.supplierTotal = Number(result.data.total || 0);
+                        this.supplierCurrentPage = Number(result.data.pageNo || targetPage || 1);
+                        this.supplierTotalPages = Number(result.data.totalPages || 1);
+                    }
                 }
             }
         } catch (error) {
@@ -70,15 +100,42 @@ window.SupplierModule = {
         }
     },
 
-    loadPurchases: async function() {
+    loadAllSuppliers: async function() {
         try {
-            const response = await window.wrappedFetch('/api/v1/supp/purchases', {
+            const response = await window.wrappedFetch('/api/v1/supp/suppliers?all=true', {
+                method: 'GET'
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    this.allSuppliers = result.data;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading all suppliers:', error);
+        }
+    },
+
+    loadPurchases: async function(pageNo) {
+        try {
+            var targetPage = pageNo || this.purchaseCurrentPage || 1;
+            const response = await window.wrappedFetch('/api/v1/supp/purchases?pageNo=' + encodeURIComponent(targetPage) + '&pageSize=' + this.PAGE_SIZE, {
                 method: 'GET'
             });
             if (response.ok) {
                 const result = await response.json();
                 if (result.success && result.data) {
-                    this.purchases = result.data;
+                    if (Array.isArray(result.data)) {
+                        this.purchases = result.data;
+                        this.purchaseTotal = result.data.length;
+                        this.purchaseCurrentPage = 1;
+                        this.purchaseTotalPages = Math.max(1, Math.ceil(this.purchaseTotal / this.PAGE_SIZE));
+                    } else {
+                        this.purchases = result.data.records || [];
+                        this.purchaseTotal = Number(result.data.total || 0);
+                        this.purchaseCurrentPage = Number(result.data.pageNo || targetPage || 1);
+                        this.purchaseTotalPages = Number(result.data.totalPages || 1);
+                    }
                 }
             }
         } catch (error) {
@@ -129,13 +186,77 @@ window.SupplierModule = {
         return `<span class="text-xs px-3 py-1 rounded-full font-bold border ${color}">${statusName}</span>`;
     },
 
+    getRatingBadge: function(rating) {
+        var value = parseFloat(rating);
+        if (Number.isNaN(value)) {
+            return '<span class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-full font-bold text-[10px]">-</span>';
+        }
+        if (value >= 4.5) {
+            return '<span class="px-2 py-0.5 bg-green-50 text-green-600 rounded-full font-bold text-[10px]">A+</span>';
+        }
+        if (value >= 3.8) {
+            return '<span class="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-full font-bold text-[10px]">A</span>';
+        }
+        if (value >= 3.0) {
+            return '<span class="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full font-bold text-[10px]">B</span>';
+        }
+        return '<span class="px-2 py-0.5 bg-red-50 text-red-600 rounded-full font-bold text-[10px]">C</span>';
+    },
+
+    formatDate: function(dateStr) {
+        if (!dateStr) return '-';
+        var d = new Date(dateStr);
+        if (Number.isNaN(d.getTime())) {
+            return String(dateStr).replace(/-/g, '.').slice(0, 10);
+        }
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '.' + m + '.' + day;
+    },
+
+    renderPagination: function(type, page, totalPages, total) {
+        var disablePrevClass = page <= 1 ? 'opacity-40 cursor-not-allowed' : '';
+        var disableNextClass = page >= totalPages ? 'opacity-40 cursor-not-allowed' : '';
+        var disablePrevAttr = page <= 1 ? 'disabled' : '';
+        var disableNextAttr = page >= totalPages ? 'disabled' : '';
+        var prevAction = type === 'supplier'
+            ? 'onclick="SupplierModule.setSupplierPage(' + (page - 1) + ')"'
+            : 'onclick="SupplierModule.setPurchasePage(' + (page - 1) + ')"';
+        var nextAction = type === 'supplier'
+            ? 'onclick="SupplierModule.setSupplierPage(' + (page + 1) + ')"'
+            : 'onclick="SupplierModule.setPurchasePage(' + (page + 1) + ')"';
+
+        return `
+            <div class="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
+                <div class="text-xs text-slate-400">共 ${total} 条，当前第 ${page}/${totalPages} 页，每页最多 ${this.PAGE_SIZE} 条</div>
+                <div class="flex items-center gap-2">
+                    <button ${prevAction} ${disablePrevAttr} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disablePrevClass}">上一页</button>
+                    <button ${nextAction} ${disableNextAttr} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disableNextClass}">下一页</button>
+                </div>
+            </div>
+        `;
+    },
+
+    setSupplierPage: async function(page) {
+        this.supplierCurrentPage = page;
+        await this.loadSuppliers(page);
+        this.renderSuppliers();
+    },
+
+    setPurchasePage: async function(page) {
+        this.purchaseCurrentPage = page;
+        await this.loadPurchases(page);
+        this.renderPurchases();
+    },
+
     renderSuppliers: function() {
         const container = document.getElementById('suppliers-list');
         if (!container) return;
 
         if (this.suppliers.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-12">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm text-center py-16">
                     <i class="ph ph-truck text-4xl text-slate-300 mb-4"></i>
                     <p class="text-slate-400">暂无供应商</p>
                 </div>
@@ -143,22 +264,45 @@ window.SupplierModule = {
             return;
         }
 
-        container.innerHTML = this.suppliers.map(supplier => `
-            <div class="border border-slate-200 rounded-[2.5rem] p-5 hover:border-[#14B8A6] transition-all cursor-pointer bg-white" onclick="editSupplier(${supplier.supplierId})">
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <h4 class="font-bold text-slate-800 text-lg">${supplier.name || '未命名'}</h4>
-                        <p class="text-sm text-slate-500 mt-1">${supplier.contact || '-'} · ${supplier.phone || '-'}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="event.stopPropagation(); deleteSupplier(${supplier.supplierId})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all">
-                            <i class="ph-bold ph-trash text-lg"></i>
-                        </button>
-                    </div>
+        var rows = this.suppliers || [];
+        var total = this.supplierTotal || rows.length;
+        var totalPages = this.supplierTotalPages || 1;
+        var page = this.supplierCurrentPage || 1;
+
+        container.innerHTML = `
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto no-scrollbar">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4">供应商名称</th>
+                                <th class="px-6 py-4">联系人</th>
+                                <th class="px-6 py-4">电话</th>
+                                <th class="px-6 py-4">评分</th>
+                                <th class="px-6 py-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50 text-slate-700">
+                            ${rows.map((supplier) => `
+                                <tr class="hover:bg-slate-50/80 transition-all">
+                                    <td class="px-6 py-4 font-bold text-slate-800">${supplier.name || supplier.supplierName || '未命名'}</td>
+                                    <td class="px-6 py-4">${supplier.contact || '-'}</td>
+                                    <td class="px-6 py-4 font-mono">${supplier.phone || '-'}</td>
+                                    <td class="px-6 py-4">${this.getRatingBadge(supplier.rating)}</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <div class="flex justify-end gap-2">
+                                            <button onclick="editSupplier(${supplier.supplierId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-pencil text-slate-400"></i></button>
+                                            <button onclick="deleteSupplier(${supplier.supplierId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-trash text-slate-400 hover:text-red-500"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
-                ${supplier.address ? `<p class="text-sm text-slate-400"><i class="ph ph-map-pin mr-1"></i>${supplier.address}</p>` : ''}
+                ${this.renderPagination('supplier', page, totalPages, total)}
             </div>
-        `).join('');
+        `;
     },
 
     renderPurchases: function() {
@@ -167,7 +311,7 @@ window.SupplierModule = {
 
         if (this.purchases.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-12">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm text-center py-16">
                     <i class="ph ph-file-text text-4xl text-slate-300 mb-4"></i>
                     <p class="text-slate-400">暂无进货单</p>
                 </div>
@@ -175,31 +319,57 @@ window.SupplierModule = {
             return;
         }
 
-        container.innerHTML = this.purchases.map(purchase => {
-            const supplier = this.suppliers.find(s => s.supplierId === purchase.supplierId);
-            const supplierName = supplier ? supplier.name : '未知供应商';
-            
-            return `
-                <div class="border border-slate-200 rounded-[2.5rem] p-5 hover:border-[#14B8A6] transition-all cursor-pointer bg-white" onclick="editPurchase(${purchase.purchaseId})">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <h4 class="font-bold text-slate-800 text-lg">${purchase.purchaseCode || 'PO-' + purchase.purchaseId}</h4>
-                            <p class="text-sm text-slate-500 mt-1">${supplierName} · ${purchase.purchaseDate || '-'}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-mono font-bold text-slate-800 text-lg">¥${(purchase.totalAmount || 0).toFixed(2)}</p>
-                            <div class="mt-2">${this.getStatusBadge(purchase.purchaseStatus)}</div>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-xs text-slate-400">${purchase.items ? purchase.items.length + ' 项商品' : ''}</span>
-                        <button onclick="event.stopPropagation(); deletePurchase(${purchase.purchaseId})" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all">
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </div>
+        var rows = this.purchases || [];
+        var total = this.purchaseTotal || rows.length;
+        var totalPages = this.purchaseTotalPages || 1;
+        var page = this.purchaseCurrentPage || 1;
+
+        container.innerHTML = `
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto no-scrollbar">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest border-b border-slate-100">
+                            <tr>
+                                <th class="px-6 py-4">进货日期</th>
+                                <th class="px-6 py-4">单据编号 / 来源</th>
+                                <th class="px-6 py-4">供应商名称</th>
+                                <th class="px-6 py-4 text-right col-hide-mobile">进货总额</th>
+                                <th class="px-6 py-4 text-center">状态</th>
+                                <th class="px-6 py-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50 text-slate-700">
+                            ${rows.map((purchase) => {
+                                var supplier = this.suppliers.find((s) => String(s.supplierId) === String(purchase.supplierId));
+                                if (!supplier) {
+                                    supplier = this.allSuppliers.find((s) => String(s.supplierId) === String(purchase.supplierId));
+                                }
+                                var supplierName = purchase.supplierName || (supplier ? (supplier.name || supplier.supplierName) : '未知供应商');
+                                return `
+                                    <tr class="hover:bg-slate-50/80 transition-all cursor-pointer group" onclick="editPurchase(${purchase.purchaseId})">
+                                        <td class="px-6 py-4 font-mono text-slate-400">${this.formatDate(purchase.purchaseDate)}</td>
+                                        <td class="px-6 py-4">
+                                            <p class="font-bold text-slate-800">${purchase.purchaseCode || ('PUR-' + purchase.purchaseId)}</p>
+                                            <p class="text-[9px] text-slate-300 font-medium">提取源：系统录入</p>
+                                        </td>
+                                        <td class="px-6 py-4"><span class="font-bold text-brand-600">${supplierName || '-'}</span></td>
+                                        <td class="px-6 py-4 text-right font-mono font-bold col-hide-mobile">¥${(purchase.totalAmount || 0).toFixed(2)}</td>
+                                        <td class="px-6 py-4 text-center">${this.getStatusBadge(purchase.purchaseStatus)}</td>
+                                        <td class="px-6 py-4 text-right">
+                                            <div class="flex justify-end gap-2">
+                                                <button onclick="event.stopPropagation(); editPurchase(${purchase.purchaseId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-pencil text-slate-400"></i></button>
+                                                <button onclick="event.stopPropagation(); deletePurchase(${purchase.purchaseId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-trash text-slate-400 hover:text-red-500"></i></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
                 </div>
-            `;
-        }).join('');
+                ${this.renderPagination('purchase', page, totalPages, total)}
+            </div>
+        `;
     },
 
     openSupplierModal: function() {
@@ -209,6 +379,7 @@ window.SupplierModule = {
         document.getElementById('supplier-contact').value = '';
         document.getElementById('supplier-phone').value = '';
         document.getElementById('supplier-address').value = '';
+        document.getElementById('supplier-rating').value = '4.5';
         document.getElementById('supplier-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     },
@@ -229,6 +400,7 @@ window.SupplierModule = {
         document.getElementById('supplier-contact').value = supplier.contact || '';
         document.getElementById('supplier-phone').value = supplier.phone || '';
         document.getElementById('supplier-address').value = supplier.address || '';
+        document.getElementById('supplier-rating').value = String(supplier.rating || '4.5');
         document.getElementById('supplier-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     },
@@ -238,6 +410,8 @@ window.SupplierModule = {
         const contact = document.getElementById('supplier-contact').value.trim();
         const phone = document.getElementById('supplier-phone').value.trim();
         const address = document.getElementById('supplier-address').value.trim();
+        const ratingInput = document.getElementById('supplier-rating').value.trim();
+        const rating = ratingInput ? parseFloat(ratingInput) : 0;
 
         if (!name) {
             alert('请输入供应商名称');
@@ -249,7 +423,9 @@ window.SupplierModule = {
                 name,
                 contact,
                 phone,
-                address
+                address,
+                rating,
+                status: 1
             };
 
             if (this.currentSupplier) {
@@ -268,7 +444,8 @@ window.SupplierModule = {
                 const result = await response.json();
                 if (result.success) {
                     this.closeSupplierModal();
-                    await this.loadSuppliers();
+                    await this.loadAllSuppliers();
+                    await this.loadSuppliers(this.supplierCurrentPage);
                     this.renderSuppliers();
                     alert('保存成功');
                 } else {
@@ -294,7 +471,11 @@ window.SupplierModule = {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
-                    await this.loadSuppliers();
+                    await this.loadAllSuppliers();
+                    await this.loadSuppliers(this.supplierCurrentPage);
+                    if (this.suppliers.length === 0 && this.supplierCurrentPage > 1) {
+                        await this.loadSuppliers(this.supplierCurrentPage - 1);
+                    }
                     this.renderSuppliers();
                     alert('删除成功');
                 } else {
@@ -368,7 +549,8 @@ window.SupplierModule = {
     populateSuppliersSelect: function() {
         const select = document.getElementById('purchase-supplier');
         select.innerHTML = '<option value="">--- 请选择供应商 ---</option>';
-        this.suppliers.forEach(supplier => {
+        const source = (this.allSuppliers && this.allSuppliers.length > 0) ? this.allSuppliers : this.suppliers;
+        source.forEach(supplier => {
             const option = document.createElement('option');
             option.value = supplier.supplierId;
             option.textContent = supplier.name || '未命名';
@@ -617,7 +799,7 @@ window.SupplierModule = {
                 const result = await response.json();
                 if (result.success) {
                     this.closePurchaseModal();
-                    await this.loadPurchases();
+                    await this.loadPurchases(this.purchaseCurrentPage);
                     this.renderPurchases();
                     alert('保存成功');
                 } else {
@@ -643,7 +825,10 @@ window.SupplierModule = {
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
-                    await this.loadPurchases();
+                    await this.loadPurchases(this.purchaseCurrentPage);
+                    if (this.purchases.length === 0 && this.purchaseCurrentPage > 1) {
+                        await this.loadPurchases(this.purchaseCurrentPage - 1);
+                    }
                     this.renderPurchases();
                     alert('删除成功');
                 } else {
@@ -670,14 +855,6 @@ window.removePurchaseItem = function(btn) { window.SupplierModule.removePurchase
 window.onProductSelect = function(el) { window.SupplierModule.onProductSelect(el); };
 window.calculatePurchaseTotal = function() { window.SupplierModule.calculatePurchaseTotal(); };
 window.editSupplier = function(supplierId) { window.SupplierModule.editSupplier(supplierId); };
-window.deleteSupplier = function(supplierId) { 
-    if (confirm('确定要删除这个供应商吗？')) { 
-        window.SupplierModule.deleteSupplier(supplierId); 
-    } 
-};
+window.deleteSupplier = function(supplierId) { window.SupplierModule.deleteSupplier(supplierId); };
 window.editPurchase = function(purchaseId) { window.SupplierModule.editPurchase(purchaseId); };
-window.deletePurchase = function(purchaseId) { 
-    if (confirm('确定要删除这个进货单吗？')) { 
-        window.SupplierModule.deletePurchase(purchaseId); 
-    } 
-};
+window.deletePurchase = function(purchaseId) { window.SupplierModule.deletePurchase(purchaseId); };

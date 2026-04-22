@@ -285,7 +285,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260422r12',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260422r16',
         '供应商'
     );
 }
