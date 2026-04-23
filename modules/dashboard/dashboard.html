@@ -1101,6 +1101,19 @@
             });
         }
 
+        // 提单后轮询刷新待确认单据（覆盖异步处理延迟）
+        function schedulePendingOrdersRefresh(maxRetries = 3, intervalMs = 2000) {
+            let attempt = 0;
+            const refreshOnce = () => {
+                loadPendingOrders();
+                attempt++;
+                if (attempt < maxRetries) {
+                    setTimeout(refreshOnce, intervalMs);
+                }
+            };
+            setTimeout(refreshOnce, 600);
+        }
+
         // 打开审核弹窗
         function openAuditModal(recordId) {
             // 这里可以添加根据 recordId 获取详细信息的逻辑
@@ -1603,9 +1616,6 @@
                 // 显示通知
                 showToast('已提交AI订单提取，正在识别中...');
                 
-                // 刷新待确认单据列表
-                loadPendingOrders();
-                
                 // 调用 AI 服务
                 const response = await window.wrappedFetch('/api/v1/ai/execute', {
                     method: 'POST',
@@ -1620,16 +1630,22 @@
                         }
                     })
                 });
-                
                 if (response.ok) {
-                    const result = await response.json();
-                    // 打开审核弹窗
-                    openAuditModal(result.id);
+                    await response.json();
+                    // 不弹审核窗口，直接刷新待确认单据
+                    schedulePendingOrdersRefresh(3, 2000);
                 } else {
-                    throw new Error('AI 服务调用失败');
+                    let errorBody = '';
+                    try {
+                        errorBody = await response.text();
+                    } catch (e) {
+                        errorBody = '[无法读取响应体]';
+                    }
+                    console.error('[AI-ORDER][VOICE] /ai/execute 调用失败', { status: response.status, body: errorBody });
+                    throw new Error('AI 服务调用失败，状态码: ' + response.status);
                 }
             } catch (error) {
-                console.error('处理语音失败:', error);
+                console.error('[AI-ORDER][VOICE] 处理语音失败:', error);
                 showToast('处理语音失败，请重试');
                 closeVoiceModal();
             }
@@ -1858,9 +1874,6 @@
                 // 显示通知
                 showToast('已提交AI订单提取，正在识别中...');
                 
-                // 刷新待确认单据列表
-                loadPendingOrders();
-                
                 // 调用 AI 服务
                 const response = await window.wrappedFetch('/api/v1/ai/execute', {
                     method: 'POST',
@@ -1875,16 +1888,22 @@
                         }
                     })
                 });
-                
                 if (response.ok) {
-                    const result = await response.json();
-                    // 打开审核弹窗
-                    openAuditModal(result.id);
+                    await response.json();
+                    // 不弹审核窗口，直接刷新待确认单据
+                    schedulePendingOrdersRefresh(3, 2000);
                 } else {
-                    throw new Error('AI 服务调用失败');
+                    let errorBody = '';
+                    try {
+                        errorBody = await response.text();
+                    } catch (e) {
+                        errorBody = '[无法读取响应体]';
+                    }
+                    console.error('[AI-ORDER][IMAGE] /ai/execute 调用失败', { status: response.status, body: errorBody });
+                    throw new Error('AI 服务调用失败，状态码: ' + response.status);
                 }
             } catch (error) {
-                console.error('处理图片失败:', error);
+                console.error('[AI-ORDER][IMAGE] 处理图片失败:', error);
                 showToast('处理图片失败，请重试');
             }
         }
@@ -1904,9 +1923,6 @@
                 const originalText = text;
                 textInput.value = '';
                 showToast('已提交AI订单提取，正在识别中...');
-                
-                // 刷新待确认单据列表
-                loadPendingOrders();
                 
                 // 处理文本数据
                 await processTextWithAIService(originalText);
@@ -1933,17 +1949,23 @@
                         }
                     })
                 });
-                
                 if (response.ok) {
-                    const result = await response.json();
-                    showToast('文本解析成功');
-                    // 打开审核弹窗
-                    openAuditModal(result.id);
+                    await response.json();
+                    showToast('文本已提交，正在识别中...');
+                    // 不弹审核窗口，直接刷新待确认单据
+                    schedulePendingOrdersRefresh(3, 2000);
                 } else {
-                    throw new Error('AI 服务调用失败');
+                    let errorBody = '';
+                    try {
+                        errorBody = await response.text();
+                    } catch (e) {
+                        errorBody = '[无法读取响应体]';
+                    }
+                    console.error('[AI-ORDER][TEXT] /ai/execute 调用失败', { status: response.status, body: errorBody });
+                    throw new Error('AI 服务调用失败，状态码: ' + response.status);
                 }
             } catch (error) {
-                console.error('处理文本失败:', error);
+                console.error('[AI-ORDER][TEXT] 处理文本失败:', error);
                 showToast('处理文本失败，请重试');
             }
         }

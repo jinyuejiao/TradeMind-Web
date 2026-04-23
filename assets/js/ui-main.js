@@ -18,6 +18,38 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
 }
 
 /**
+ * 注入模块内联/外链脚本。用于被抽取片段模式加载的模块（如 dashboard），
+ * 避免仅 innerHTML 注入导致脚本不执行。
+ */
+function TM_injectModuleScripts(htmlString, moduleKey) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        const scripts = doc.querySelectorAll('script');
+        if (!scripts || scripts.length === 0) return;
+
+        // 清理上一轮同模块脚本，避免重复绑定和状态污染
+        document.querySelectorAll('script[data-tm-module="' + moduleKey + '"]').forEach(function (el) {
+            el.remove();
+        });
+
+        scripts.forEach(function (srcScript) {
+            const script = document.createElement('script');
+            script.setAttribute('data-tm-module', moduleKey);
+            if (srcScript.src) {
+                script.src = srcScript.src;
+                script.async = false;
+            } else {
+                script.textContent = srcScript.textContent || '';
+            }
+            document.body.appendChild(script);
+        });
+    } catch (e) {
+        console.error('[TM] 注入模块脚本失败:', moduleKey, e);
+    }
+}
+
+/**
  * 统一挂载 iframe 模块并在加载后强制裁剪子页面壳层。
  * 这样即使子页面 embed 脚本未按预期执行，也不会出现重复导航栏。
  */
@@ -227,11 +259,13 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html')
+    fetch('/modules/dashboard/dashboard.html?v=20260423r01', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
             document.getElementById('view-dashboard').innerHTML = inner || html;
+            TM_injectModuleScripts(html, 'dashboard');
+            TM_restoreShellNavigationGlobals();
             TM_refreshDashboardPendingOrders();
         })
         .catch(function (error) {
@@ -244,7 +278,7 @@ function loadSmartOps() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r20',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r24',
         '智能经营'
     );
 }
@@ -382,6 +416,27 @@ function switchTab(tabId) {
     else if (tabId === 'supply') loadProductCenter();
     else if (tabId === 'supplier') loadSupplier();
 }
+
+const TM_SHELL_NAV_FN_NAMES = ['switchTab', 'loadDashboard', 'loadSmartOps', 'loadCRM', 'loadProductCenter', 'loadSupplier'];
+const TM_SHELL_NAV_FN_SNAPSHOT = {};
+
+function TM_captureShellNavigationGlobals() {
+    TM_SHELL_NAV_FN_NAMES.forEach(function (name) {
+        if (typeof window[name] === 'function') {
+            TM_SHELL_NAV_FN_SNAPSHOT[name] = window[name];
+        }
+    });
+}
+
+function TM_restoreShellNavigationGlobals() {
+    TM_SHELL_NAV_FN_NAMES.forEach(function (name) {
+        if (typeof TM_SHELL_NAV_FN_SNAPSHOT[name] === 'function') {
+            window[name] = TM_SHELL_NAV_FN_SNAPSHOT[name];
+        }
+    });
+}
+
+TM_captureShellNavigationGlobals();
 
 function openAIAnalysis() { document.getElementById('ai-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 function closeAIAnalysis() { document.getElementById('ai-modal').classList.add('hidden'); document.body.style.overflow = ''; }

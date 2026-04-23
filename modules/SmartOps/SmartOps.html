@@ -72,19 +72,41 @@
             justify-content: center;
             z-index: 5;
         }
+
+        /* 收付款账户：操作按钮悬停高亮（不依赖 Tailwind brand 展开是否生效） */
+        .tm-biz-acct-action {
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .tm-biz-acct-action:hover {
+            background-color: #CCFBF1;
+            color: #0D9488;
+            border-color: #99F6E4;
+            box-shadow: 0 1px 2px rgba(20, 184, 166, 0.15);
+        }
+
+        #biz-account-modal input[type="checkbox"] {
+            accent-color: #14B8A6;
+        }
     </style>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css">
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' }, risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' } } },
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' },
+                        risk: { high: '#F43F5E', medium: '#F59E0B', safe: '#10B981' }
+                    }
+                }
+            },
             future: {
                 disableColorOpacityUtilitiesByDefault: true,
                 relativeContentPathsByDefault: true
             }
-        }
+        };
     </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../CSS/common.css">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="../../assets/js/auth.js?v=20260422r13"></script>
@@ -217,26 +239,26 @@
                     <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <i class="ph ph-wallet text-brand-600"></i>
+                                <i class="ph ph-wallet text-[#14B8A6] text-lg"></i>
                                 <h3 class="text-sm font-bold text-slate-800">收付款账户管理</h3>
                             </div>
-                            <button onclick="window.openBizAccountModal()" class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors flex items-center justify-center" title="新增账户">
-                                <i class="ph ph-plus"></i>
+                            <button onclick="window.openBizAccountModal()" class="w-8 h-8 rounded-lg border border-[#99F6E4] bg-[#CCFBF1] text-[#0D9488] hover:bg-[#99F6E4] transition-colors flex items-center justify-center shadow-sm" title="新增账户">
+                                <i class="ph ph-plus font-bold"></i>
                             </button>
                         </div>
                         <ul id="biz-account-list" class="p-4 space-y-2"></ul>
                     </div>
 
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2"><i class="ph ph-chart-line text-brand-500"></i> 核心效率监控</h3>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2"><i class="ph ph-chart-line text-[#14B8A6] text-base"></i> 核心效率监控</h3>
                         <div class="space-y-7">
                             <div>
-                                <div class="flex justify-between text-xs mb-1.5 font-bold"><span>库存周转率</span><span id="eff-inventory-value" class="text-brand-600">4.2</span></div>
-                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div id="eff-inventory-bar" class="w-[82%] bg-brand-500 h-full"></div></div>
+                                <div class="flex justify-between text-xs mb-1.5 font-bold"><span>库存周转率</span><span id="eff-inventory-value" class="text-[#0D9488]">4.2</span></div>
+                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div id="eff-inventory-bar" class="w-[82%] bg-[#14B8A6] h-full rounded-full"></div></div>
                             </div>
                             <div>
-                                <div class="flex justify-between text-xs mb-1.5 font-bold"><span>回款周期</span><span id="eff-payment-value" class="text-risk-high">45天</span></div>
-                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div id="eff-payment-bar" class="w-[60%] bg-risk-high h-full animate-pulse"></div></div>
+                                <div class="flex justify-between text-xs mb-1.5 font-bold"><span>回款周期</span><span id="eff-payment-value" class="text-[#F43F5E]">45天</span></div>
+                                <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"><div id="eff-payment-bar" class="w-[60%] bg-[#F43F5E] h-full rounded-full animate-pulse"></div></div>
                             </div>
                         </div>
                     </div>
@@ -279,17 +301,17 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <label class="flex items-center justify-between px-4 py-3 border border-slate-200 rounded-xl bg-slate-50">
                                 <span class="text-xs font-bold text-slate-700">设为默认收款账户</span>
-                                <input id="biz-account-default-receive" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20">
+                                <input id="biz-account-default-receive" type="checkbox" class="w-4 h-4 rounded border-slate-300">
                             </label>
                             <label class="flex items-center justify-between px-4 py-3 border border-slate-200 rounded-xl bg-slate-50">
                                 <span class="text-xs font-bold text-slate-700">设为默认付款账户</span>
-                                <input id="biz-account-default-pay" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500/20">
+                                <input id="biz-account-default-pay" type="checkbox" class="w-4 h-4 rounded border-slate-300">
                             </label>
                         </div>
                     </div>
                     <div class="px-6 py-4 border-t border-slate-100 bg-white flex gap-3">
                         <button onclick="window.closeBizAccountModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
-                        <button onclick="window.saveBizAccount()" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-colors">保存账户</button>
+                        <button onclick="window.saveBizAccount()" class="flex-1 py-2.5 rounded-xl bg-[#14B8A6] text-white text-xs font-black shadow-lg shadow-[#14B8A6]/25 hover:bg-[#0D9488] transition-colors">保存账户</button>
                     </div>
                 </div>
             </div>
@@ -319,18 +341,23 @@
                         </button>
                     </div>
                     <div class="p-5 space-y-4 text-xs">
-                        <div><p class="text-slate-400 mb-1">账户名称</p><p id="biz-detail-name" class="text-slate-800 font-bold"></p></div>
-                        <div><p class="text-slate-400 mb-1">账户类型</p><p id="biz-detail-type" class="text-slate-700"></p></div>
-                        <div><p class="text-slate-400 mb-1">账户号</p><p id="biz-detail-no" class="text-slate-700 font-mono"></p></div>
-                        <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
-                        <div class="flex gap-2 pt-1">
-                            <span id="biz-detail-default-receive" class="hidden px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 text-[10px] font-bold">默认收款</span>
-                            <span id="biz-detail-default-pay" class="hidden px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">默认付款</span>
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">账户名称</p>
+                            <p id="biz-detail-name" class="text-base font-black text-slate-900 tracking-tight"></p>
+                            <div class="flex flex-wrap gap-2 mt-2">
+                                <span id="biz-detail-default-receive" class="hidden inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#F0FDFA] text-[#0D9488] border border-[#CCFBF1]">默认收款</span>
+                                <span id="biz-detail-default-pay" class="hidden inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">默认付款</span>
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-100 space-y-3">
+                            <div><p class="text-slate-400 mb-1">账户类型</p><p id="biz-detail-type" class="text-slate-700"></p></div>
+                            <div><p class="text-slate-400 mb-1">账户号</p><p id="biz-detail-no" class="text-slate-700 font-mono"></p></div>
+                            <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
                         </div>
                     </div>
                     <div class="px-5 py-4 border-t border-slate-100 bg-white flex gap-2">
-                        <button onclick="window.closeBizAccountDetailModal()" class="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
-                        <button onclick="window.openBizAccountModal(window.bizAccountDetailId); window.closeBizAccountDetailModal();" class="flex-1 py-2 rounded-xl bg-brand-600 text-white text-xs font-black">编辑</button>
+                        <button onclick="window.closeBizAccountDetailModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
+                        <button onclick="window.openBizAccountModal(window.bizAccountDetailId); window.closeBizAccountDetailModal();" class="flex-1 py-2.5 rounded-xl bg-[#14B8A6] text-white text-xs font-black hover:bg-[#0D9488] transition-colors shadow-sm">编辑</button>
                     </div>
                 </div>
             </div>
@@ -772,10 +799,10 @@
                                             <div class="w-full"></div>
                                         </div>
 
-                                        <!-- 应收账款 -->
+                                        <!-- 应收账款（品牌青，对应收付款能力展示） -->
                                         <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[${receivableHeight}%] bg-green-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
-                                            <span class="axis-text mt-3 text-center">应收账款</span>
+                                            <div class="w-10 md:w-12 h-[${receivableHeight}%] rounded-t-lg shadow-sm hover:shadow-lg transition-all" style="background-color:#14B8A6"></div>
+                                            <span class="axis-text mt-3 text-center text-[#0D9488] font-bold">应收账款</span>
                                         </div>
 
                                         <!-- 应付账款 -->
@@ -868,25 +895,24 @@
 
             container.innerHTML = window.bizAccounts.map(item => {
                 const name = escapeHtml(item.accountName);
-                const type = escapeHtml(item.accountType);
-                const no = escapeHtml(item.accountNo);
                 const holder = escapeHtml(item.accountHolder || '-');
                 const isDefaultReceive = item.isDefaultReceive === true;
                 const isDefaultPay = item.isDefaultPay === true;
                 return `
-                    <li class="group rounded-xl border border-slate-100 hover:border-brand-200 bg-white px-4 py-3 transition-colors">
-                        <div class="flex items-center justify-between gap-3">
-                            <div class="min-w-0">
+                    <li class="group rounded-xl border border-slate-100 hover:border-[#99F6E4] bg-white px-4 py-3 transition-colors">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-sm font-bold text-slate-800 truncate">${name}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">${type} · ${no}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">主体：${holder}</p>
+                                <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                    ${isDefaultReceive ? '<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-[#F0FDFA] text-[#0D9488] border border-[#CCFBF1] text-[10px] font-bold">默认收款</span>' : ''}
+                                    ${isDefaultPay ? '<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px] font-bold">默认付款</span>' : ''}
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1.5">主体：${holder}</p>
                             </div>
                             <div class="flex items-center gap-1 shrink-0">
-                                ${isDefaultReceive ? '<span class="px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 text-[10px] font-bold">默认收款</span>' : ''}
-                                ${isDefaultPay ? '<span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">默认付款</span>' : ''}
-                                <button onclick="window.openBizAccountDetail(${item.accountId})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="查看"><i class="ph ph-eye"></i></button>
-                                <button onclick="window.openBizAccountModal(${item.accountId})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="编辑"><i class="ph ph-pencil-simple"></i></button>
-                                <button onclick="window.openBizAccountDeleteModal(${item.accountId})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="删除"><i class="ph ph-trash"></i></button>
+                                <button type="button" onclick="event.stopPropagation(); window.openBizAccountDetail(${item.accountId})" class="tm-biz-acct-action w-8 h-8 rounded-lg border border-transparent text-slate-400" title="查看"><i class="ph ph-eye text-sm"></i></button>
+                                <button type="button" onclick="event.stopPropagation(); window.openBizAccountModal(${item.accountId})" class="tm-biz-acct-action w-8 h-8 rounded-lg border border-transparent text-slate-400" title="编辑"><i class="ph ph-pencil-simple text-sm"></i></button>
+                                <button type="button" onclick="event.stopPropagation(); window.openBizAccountDeleteModal(${item.accountId})" class="w-8 h-8 rounded-lg border border-transparent text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors" title="删除"><i class="ph ph-trash text-sm"></i></button>
                             </div>
                         </div>
                     </li>
