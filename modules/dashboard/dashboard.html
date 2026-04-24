@@ -450,7 +450,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-2">
                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">客户名称</label>
-                            <select id="order-customer" class="form-input font-bold text-slate-800">
+                            <select id="order-customer" onchange="handleAuditCustomerSelectChange(this)" class="form-input font-bold text-slate-800">
                                 <option value="">-- 请选择客户 --</option>
                             </select>
                         </div>
@@ -505,11 +505,6 @@
                             <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存</label><input type="number" id="product-warning-stock" value="100" class="form-input"></div>
                             <div class="space-y-2 md:col-span-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea id="product-description" class="form-input h-24 no-scrollbar"></textarea></div>
                         </div>
-                    </div>
-                    <!-- 按钮区域 -->
-                    <div class="flex gap-4 mt-6">
-                        <button onclick="saveNewProduct()" class="flex-1 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建产品信息</button>
-                        <button onclick="skipNewProduct()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
                     </div>
                 </div>
 
@@ -568,11 +563,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- 按钮区域 -->
-                    <div class="flex gap-4 mt-6">
-                        <button onclick="saveNewCustomer()" class="flex-1 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建客户信息</button>
-                        <button onclick="skipNewCustomer()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增客户</button>
-                    </div>
                 </div>
             </div>
 
@@ -580,8 +570,18 @@
             <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
                 <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
                 <div class="flex gap-3 w-full md:w-auto">
-                    <button onclick="closeAuditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">存为草稿</button>
-                    <button onclick="confirmOrder()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+                    <div id="audit-footer-order-actions" class="contents">
+                        <button onclick="closeAuditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">存为草稿</button>
+                        <button onclick="confirmOrder()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+                    </div>
+                    <div id="audit-footer-product-actions" class="hidden contents">
+                        <button onclick="skipNewProduct()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
+                        <button onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建产品信息</button>
+                    </div>
+                    <div id="audit-footer-customer-actions" class="hidden contents">
+                        <button onclick="skipNewCustomer()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增客户</button>
+                        <button onclick="saveNewCustomer()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建客户信息</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -903,6 +903,113 @@
 
 
 
+        const auditState = {
+            currentRecordId: null,
+            aiEnvelope: null,
+            aiStructured: null
+        };
+        let pendingRecordsCache = [];
+        let customerLookupByName = {};
+        let productLookupByName = {};
+
+        function safeJsonParse(text, fallback) {
+            try {
+                if (text == null || text === '') return fallback;
+                return typeof text === 'string' ? JSON.parse(text) : text;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        function parseAiEnvelope(rawAiResult) {
+            const raw = safeJsonParse(rawAiResult, {});
+            // 兼容两类结构：
+            // 1) AIResponseData包裹结构：{result:"{...}", ...}
+            // 2) 直接结构化JSON：{customer_data, order_data, ...}
+            if (raw && raw.customer_data && raw.order_data) {
+                return { envelope: { result: JSON.stringify(raw) }, data: raw };
+            }
+            const data = raw && raw.result ? safeJsonParse(raw.result, {}) : {};
+            if (data && data.customer_data && data.order_data) {
+                return { envelope: raw || {}, data: data };
+            }
+            return { envelope: raw || {}, data: {} };
+        }
+
+        function getStructuredCustomerName(aiData) {
+            const customerData = aiData && aiData.customer_data ? aiData.customer_data : {};
+            const newCustomers = Array.isArray(aiData && aiData.new_customers_found) ? aiData.new_customers_found : [];
+            const firstNewCustomer = newCustomers[0] || null;
+            // 优先级：无新增客户 => 用customer_data；有新增客户 => 用new_customers_found
+            if (newCustomers.length === 0 && customerData.matched_customer_name) return customerData.matched_customer_name;
+            if (firstNewCustomer && firstNewCustomer.name) return firstNewCustomer.name;
+            return '未知客户';
+        }
+
+        function hasNewCustomers(aiData) {
+            return Array.isArray(aiData && aiData.new_customers_found) && aiData.new_customers_found.length > 0;
+        }
+
+        function hasNewProducts(aiData) {
+            return Array.isArray(aiData && aiData.new_products_found) && aiData.new_products_found.length > 0;
+        }
+
+        function normalizeDateInput(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return '';
+            return d.toISOString().slice(0, 10);
+        }
+
+        function getTodayDateInput() {
+            return new Date().toISOString().slice(0, 10);
+        }
+
+        function getCustomerId(customer) {
+            return customer && (customer.cust_id || customer.custId || customer.id);
+        }
+
+        function getCustomerName(customer) {
+            return customer && (customer.name || customer.customerName || customer.customer_name || '');
+        }
+
+        function getProductId(product) {
+            return product && (product.productId || product.product_id || product.id);
+        }
+
+        function getProductName(product) {
+            return product && (product.name || product.productName || product.product_name || '');
+        }
+
+        function getProductSku(product) {
+            return product && (product.sku || product.productSku || product.product_sku || '');
+        }
+
+        function setInputValueIfExists(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.value = value == null ? '' : value;
+        }
+
+        function buildUpdatedAiEnvelope() {
+            const envelope = auditState.aiEnvelope || {};
+            const data = auditState.aiStructured || {};
+            const next = { ...envelope, result: JSON.stringify(data) };
+            if (data.customer_data) next.customerInfo = JSON.stringify(data.customer_data);
+            if (data.order_data) next.orderInfo = JSON.stringify(data.order_data);
+            if (Array.isArray(data.new_products_found)) next.productInfo = JSON.stringify(data.new_products_found);
+            return next;
+        }
+
+        async function persistAuditResult() {
+            if (!auditState.currentRecordId || !auditState.aiStructured) return;
+            const payload = { aiResult: JSON.stringify(buildUpdatedAiEnvelope()) };
+            await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId + '/result', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+
         // 加载产品列表
         function loadProductList() {
             window.wrappedFetch('/api/v1/rd/products', {
@@ -922,6 +1029,14 @@
             .then(data => {
                 if (data && data.success && Array.isArray(data.data)) {
                     window.productList = data.data;
+                    productLookupByName = {};
+                    window.productList.forEach(product => {
+                        const pid = getProductId(product);
+                        const pname = (getProductName(product) || '').trim();
+                        const psku = (getProductSku(product) || '').trim();
+                        if (!pid || !pname) return;
+                        productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku };
+                    });
                 }
             })
             .catch(error => {
@@ -954,18 +1069,24 @@
                 return response.json();
             })
             .then(data => {
-                // 清空现有选项
-                customerSelect.innerHTML = '<option value="">-- 请选择客户 --</option>';
-                
-                // 添加客户选项
-                if (data && Array.isArray(data)) {
-                    data.forEach(customer => {
-                        const option = document.createElement('option');
-                        option.value = customer.cust_id;
-                        option.textContent = customer.name;
-                        customerSelect.appendChild(option);
-                    });
+                const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+                customerLookupByName = {};
+                if (customerSelect) {
+                    customerSelect.innerHTML = '<option value="">-- 请选择客户 --</option>';
                 }
+                list.forEach(customer => {
+                    const cid = getCustomerId(customer);
+                    const cname = (getCustomerName(customer) || '').trim();
+                    if (!cid || !cname) return;
+                    customerLookupByName[cname] = { id: Number(cid), name: cname };
+                    if (customerSelect) {
+                        const option = document.createElement('option');
+                        option.value = String(cid);
+                        option.textContent = cname;
+                        option.setAttribute('data-name', cname);
+                        customerSelect.appendChild(option);
+                    }
+                });
             })
             .catch(error => {
                 console.error('加载客户列表失败:', error);
@@ -1035,21 +1156,21 @@
                 }
                 
                 // 过滤状态为 SUCCESS 或 EXTRACTING 的记录，并按时间倒序排序
-                const filteredRecords = data.filter(record => 
+                const filteredRecords = data.filter(record =>
                     record.status === 'SUCCESS' || record.status === 'EXTRACTING'
-                ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20);
+                ).sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0)).slice(0, 20);
+                pendingRecordsCache = filteredRecords;
 
                 // 渲染待确认单据列表
                 if (filteredRecords.length > 0) {
                     pendingOrdersList.innerHTML = filteredRecords.map(record => {
-                        // 从 AI 结果中提取客户姓名
-                        let customerName = '未知客户';
-                        if (record.ai_result && record.ai_result.new_customer_info && record.ai_result.new_customer_info.name) {
-                            customerName = record.ai_result.new_customer_info.name;
-                        }
+                        const parsed = parseAiEnvelope(record.aiResult || record.ai_result || '');
+                        const customerName = getStructuredCustomerName(parsed.data);
+                        const orderItems = (parsed.data && parsed.data.order_data && Array.isArray(parsed.data.order_data.items))
+                            ? parsed.data.order_data.items : [];
 
                         // 格式化识别时间
-                        const recognitionTime = new Date(record.created_at).toLocaleString('zh-CN');
+                        const recognitionTime = record.createTime ? new Date(record.createTime).toLocaleString('zh-CN') : '--';
 
                         return `
                             <div onclick="openAuditModal('${record.id}')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
@@ -1062,7 +1183,7 @@
                                     </div>
                                 </div>
                                 <div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">
-                                    ${record.ai_result && record.ai_result.new_products_found ? record.ai_result.new_products_found.length : 0}
+                                    ${orderItems.length}
                                 </div>
                             </div>
                         `;
@@ -1115,54 +1236,238 @@
         }
 
         // 打开审核弹窗
-        function openAuditModal(recordId) {
-            // 这里可以添加根据 recordId 获取详细信息的逻辑
-            document.getElementById('audit-modal').classList.remove('hidden');
-            
-            // 生成订单明细中的产品选择下拉框
+        async function openAuditModal(recordId) {
+            let record = pendingRecordsCache.find(item => String(item.id) === String(recordId));
+            if (!record && Array.isArray(window.__TM_PENDING_RECORDS)) {
+                record = window.__TM_PENDING_RECORDS.find(item => String(item.id) === String(recordId));
+            }
+            if (!record) {
+                try {
+                    const response = await window.wrappedFetch('/api/v1/ai/records', { method: 'GET' });
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        pendingRecordsCache = data;
+                        window.__TM_PENDING_RECORDS = data;
+                        record = data.find(item => String(item.id) === String(recordId));
+                    }
+                } catch (e) {
+                    console.error('回源查询待确认单据失败:', e);
+                }
+            }
+            if (!record) {
+                alert('未找到待确认单据，请刷新重试');
+                return;
+            }
+            const parsed = parseAiEnvelope(record.aiResult || record.ai_result || '');
+            auditState.currentRecordId = record.id;
+            auditState.aiEnvelope = parsed.envelope;
+            auditState.aiStructured = parsed.data;
+
+            const orderData = auditState.aiStructured.order_data || {};
+            const customerData = auditState.aiStructured.customer_data || {};
+            const newCustomers = Array.isArray(auditState.aiStructured.new_customers_found) ? auditState.aiStructured.new_customers_found : [];
+            const newProducts = Array.isArray(auditState.aiStructured.new_products_found) ? auditState.aiStructured.new_products_found : [];
+            const aiCustomerName = getStructuredCustomerName(auditState.aiStructured);
+
+            const titleEl = document.querySelector('#audit-modal h2 span');
+            if (titleEl) titleEl.textContent = 'ID: ' + (record.id || '--');
+
+            // 客户下拉框：直接选中AI匹配客户，仍可切换全量客户
+            const customerSelect = document.getElementById('order-customer');
+            if (customerSelect) {
+                const matchedCustomerId = customerData.matched_customer_id ? Number(customerData.matched_customer_id) : 0;
+                const matchedCustomerName = (customerData.matched_customer_name || aiCustomerName || '').trim();
+                if (matchedCustomerId && customerSelect.querySelector('option[value="' + matchedCustomerId + '"]')) {
+                    customerSelect.value = String(matchedCustomerId);
+                } else if (matchedCustomerName) {
+                    let placeholder = customerSelect.querySelector('option[value="matched-customer-placeholder"]');
+                    if (!placeholder) {
+                        placeholder = document.createElement('option');
+                        placeholder.value = 'matched-customer-placeholder';
+                        customerSelect.insertBefore(placeholder, customerSelect.firstChild);
+                    }
+                    placeholder.textContent = matchedCustomerName;
+                    placeholder.setAttribute('data-name', matchedCustomerName);
+                    customerSelect.value = 'matched-customer-placeholder';
+                } else {
+                    customerSelect.value = '';
+                }
+            }
+            setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || getTodayDateInput());
+
+            // 预填新增客户tab
+            const firstNewCustomer = newCustomers[0] || {};
+            setInputValueIfExists('customer-name', firstNewCustomer.name || '');
+            setInputValueIfExists('customer-phone', firstNewCustomer.phone || '');
+            setInputValueIfExists('customer-region', firstNewCustomer.region || '');
+            setInputValueIfExists('customer-address', firstNewCustomer.address || '');
+            setInputValueIfExists('customer-summary', firstNewCustomer.summary || '');
+
+            // 预填新增产品tab
+            const firstNewProduct = newProducts[0] || {};
+            setInputValueIfExists('product-name', firstNewProduct.name || '');
+            setInputValueIfExists('product-sku', firstNewProduct.sku || '');
+            setInputValueIfExists('product-price', firstNewProduct.price || '');
+            setInputValueIfExists('product-description', firstNewProduct.description || '');
+
+            const auditModal = document.getElementById('audit-modal');
+            if (!auditModal) {
+                alert('核对弹窗尚未加载完成，请刷新页面后重试');
+                return;
+            }
+            auditModal.classList.remove('hidden');
             generateProductSelects();
+
+            // 按需显示tab
+            const customerTabBtn = document.getElementById('tab-customer');
+            const productTabBtn = document.getElementById('tab-product');
+            if (customerTabBtn) customerTabBtn.style.display = hasNewCustomers(auditState.aiStructured) ? '' : 'none';
+            if (productTabBtn) productTabBtn.style.display = hasNewProducts(auditState.aiStructured) ? '' : 'none';
+            switchAuditTab('order');
         }
+        window.__TM_DASHBOARD_OPEN_AUDIT = openAuditModal;
 
         // 生成产品选择下拉框
         function generateProductSelects() {
             const orderItemsBody = document.getElementById('order-items-body');
             // 清空现有内容
+            if (!orderItemsBody) return;
             orderItemsBody.innerHTML = '';
-            
-            // 示例产品数据
-            const sampleItems = [
-                { name: '金色镂空户外灯', quantity: 500, price: 12.5 },
-                { name: '智能感应氛围底座', quantity: 120, price: 12.0 }
-            ];
-            
-            sampleItems.forEach((item, index) => {
+
+            const orderData = (auditState.aiStructured && auditState.aiStructured.order_data) ? auditState.aiStructured.order_data : {};
+            const items = Array.isArray(orderData.items) ? orderData.items : [];
+
+            items.forEach((item, index) => {
+                const displayMatchedName = (item.matched_product_name || '').trim();
+                const productNameValue = (displayMatchedName || item.product_name_raw || '').trim();
+                const matchedProductId = item.matched_product_id ? Number(item.matched_product_id) : 0;
+                const selectOptions = (window.productList || []).map(product => {
+                    const pid = getProductId(product);
+                    const pname = getProductName(product);
+                    const psku = getProductSku(product);
+                    if (!pid || !pname) return '';
+                    return `<option value="${pid}" data-name="${pname}" data-sku="${psku}">${pname}${psku ? ' (' + psku + ')' : ''}</option>`;
+                }).join('');
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td class="px-5 py-4">
-                        <select class="form-input product-select" data-index="${index}">
+                        <select class="form-input product-select" data-index="${index}" onchange="handleAuditProductSelectChange(this)">
                             <option value="">-- 选择产品 --</option>
-                            ${window.productList ? window.productList.map(product => 
-                                `<option value="${product.productId}">${product.name} (${product.sku})</option>`
-                            ).join('') : ''}
+                            ${selectOptions}
                         </select>
                     </td>
                     <td class="px-5 py-4 text-center">
-                        <input type="number" value="${item.quantity}" min="1" class="form-input w-20 text-center">
+                        <input type="number" value="${item.quantity || 1}" min="1" class="form-input w-20 text-center">
                     </td>
                     <td class="px-5 py-4 text-right">
-                        <input type="number" value="${item.price}" step="0.01" class="form-input w-24 text-right price-input">
+                        <input type="number" value="${item.price_at_time || 0}" step="0.01" class="form-input w-24 text-right price-input">
                     </td>
                     <td class="px-5 py-4 text-right font-mono font-bold text-slate-900">
-                        $${(item.quantity * item.price).toFixed(2)}
+                        ${(Number(item.total_amount || 0)).toFixed(2)}
                     </td>
                 `;
                 orderItemsBody.appendChild(row);
+                const select = row.querySelector('.product-select');
+                if (select) {
+                    if (matchedProductId && select.querySelector('option[value="' + matchedProductId + '"]')) {
+                        select.value = String(matchedProductId);
+                    } else if (productNameValue) {
+                        const options = Array.from(select.options);
+                        const byName = options.find(opt => (opt.getAttribute('data-name') || '').trim() === productNameValue);
+                        if (byName) {
+                            select.value = byName.value;
+                        } else {
+                            const placeholder = document.createElement('option');
+                            placeholder.value = 'matched-product-placeholder-' + index;
+                            placeholder.textContent = productNameValue;
+                            placeholder.setAttribute('data-name', productNameValue);
+                            placeholder.selected = true;
+                            select.insertBefore(placeholder, select.firstChild);
+                        }
+                    }
+                    handleAuditProductSelectChange(select);
+                }
             });
+
+            const customerSelect = document.getElementById('order-customer');
+            const customerData = (auditState.aiStructured && auditState.aiStructured.customer_data) ? auditState.aiStructured.customer_data : {};
+            const newCustomer = Array.isArray(auditState.aiStructured && auditState.aiStructured.new_customers_found)
+                ? auditState.aiStructured.new_customers_found[0] : null;
+            if (customerSelect) {
+                if (customerData.matched_customer_name) {
+                    const matchedId = customerData.matched_customer_id ? String(customerData.matched_customer_id) : '';
+                    if (matchedId && customerSelect.querySelector('option[value="' + matchedId + '"]')) {
+                        customerSelect.value = matchedId;
+                    } else {
+                        let placeholder = customerSelect.querySelector('option[value="matched-customer-placeholder"]');
+                        if (!placeholder) {
+                            placeholder = document.createElement('option');
+                            placeholder.value = 'matched-customer-placeholder';
+                            customerSelect.insertBefore(placeholder, customerSelect.firstChild);
+                        }
+                        placeholder.textContent = customerData.matched_customer_name;
+                        placeholder.setAttribute('data-name', customerData.matched_customer_name);
+                        customerSelect.value = 'matched-customer-placeholder';
+                    }
+                } else if (newCustomer && newCustomer.name) {
+                    let placeholder = customerSelect.querySelector('option[value="new-customer-placeholder"]');
+                    if (!placeholder) {
+                        placeholder = document.createElement('option');
+                        placeholder.value = 'new-customer-placeholder';
+                        customerSelect.insertBefore(placeholder, customerSelect.firstChild);
+                    }
+                    placeholder.textContent = newCustomer.name;
+                    placeholder.setAttribute('data-name', newCustomer.name);
+                    customerSelect.value = 'new-customer-placeholder';
+                }
+                handleAuditCustomerSelectChange(customerSelect);
+            }
+
+            const totalAmount = Number(orderData.total_amount || 0);
+            const totalAmountEl = document.getElementById('order-total-amount');
+            if (totalAmountEl) {
+                totalAmountEl.textContent = totalAmount.toFixed(2);
+            }
+            // 确保预计交货日期有默认值（当天）
+            const dateInput = document.getElementById('order-delivery-date');
+            if (dateInput && !dateInput.value) {
+                dateInput.value = getTodayDateInput();
+            }
+        }
+
+        function handleAuditProductSelectChange(selectEl) {
+            const row = selectEl.closest('tr');
+            if (!row || !auditState.aiStructured || !auditState.aiStructured.order_data || !Array.isArray(auditState.aiStructured.order_data.items)) return;
+            const index = Number(selectEl.dataset.index);
+            const item = auditState.aiStructured.order_data.items[index];
+            if (!item) return;
+            const selectedValue = selectEl.value || '';
+            item.matched_product_id = /^\d+$/.test(selectedValue) ? Number(selectedValue) : 0;
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            const selectedName = selectedOption ? ((selectedOption.getAttribute('data-name') || selectedOption.textContent || '').trim()) : '';
+            const selectedSku = selectedOption ? ((selectedOption.getAttribute('data-sku') || '').trim()) : '';
+            item.matched_product_name = selectedName;
+            item.product_name_raw = selectedName;
+            if (selectedSku) item.sku = selectedSku;
+        }
+
+        function handleAuditCustomerSelectChange(selectEl) {
+            if (!auditState.aiStructured) return;
+            if (!auditState.aiStructured.customer_data) auditState.aiStructured.customer_data = {};
+            const selectedValue = selectEl.value || '';
+            auditState.aiStructured.customer_data.matched_customer_id = /^\d+$/.test(selectedValue) ? Number(selectedValue) : 0;
+            const selectedOption = selectEl.options[selectEl.selectedIndex];
+            auditState.aiStructured.customer_data.matched_customer_name = selectedOption
+                ? ((selectedOption.getAttribute('data-name') || selectedOption.textContent || '').trim())
+                : '';
         }
 
         // 关闭审核弹窗
         function closeAuditModal() {
             document.getElementById('audit-modal').classList.add('hidden');
+            auditState.currentRecordId = null;
+            auditState.aiEnvelope = null;
+            auditState.aiStructured = null;
         }
 
         // 切换审核标签页
@@ -1179,15 +1484,41 @@
 
             // 显示选中的标签页内容
             if (tabName === 'product') {
-                document.getElementById('confirm-product-tab').classList.remove('hidden');
+                const pane = document.getElementById('confirm-product-tab');
+                if (pane) pane.classList.remove('hidden');
             } else if (tabName === 'customer') {
-                document.getElementById('confirm-customer-tab').classList.remove('hidden');
+                const pane = document.getElementById('confirm-customer-tab');
+                if (pane) pane.classList.remove('hidden');
             } else {
-                document.getElementById(`pane-${tabName}`).classList.remove('hidden');
+                const pane = document.getElementById(`pane-${tabName}`);
+                if (pane) pane.classList.remove('hidden');
             }
 
             // 添加选中标签按钮的活动状态
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+            const tabBtn = document.getElementById(`tab-${tabName}`);
+            if (tabBtn) tabBtn.classList.add('active');
+            updateAuditFooterActions(tabName);
+        }
+
+        function updateAuditFooterActions(tabName) {
+            const orderActions = document.getElementById('audit-footer-order-actions');
+            const productActions = document.getElementById('audit-footer-product-actions');
+            const customerActions = document.getElementById('audit-footer-customer-actions');
+            if (!orderActions || !productActions || !customerActions) return;
+
+            orderActions.classList.add('hidden');
+            productActions.classList.add('hidden');
+            customerActions.classList.add('hidden');
+
+            if (tabName === 'product' && hasNewProducts(auditState.aiStructured)) {
+                productActions.classList.remove('hidden');
+                return;
+            }
+            if (tabName === 'customer' && hasNewCustomers(auditState.aiStructured)) {
+                customerActions.classList.remove('hidden');
+                return;
+            }
+            orderActions.classList.remove('hidden');
         }
 
         // 切换高级配置抽屉
@@ -1215,14 +1546,35 @@
 
         // 保存新产品信息
         async function saveNewProduct() {
+            const name = (document.getElementById('product-name').value || '').trim();
+            const sku = (document.getElementById('product-sku').value || '').trim();
+            const price = Number(document.getElementById('product-price').value || 0);
+            const baseUnit = (document.getElementById('product-base-unit').value || '').trim();
+            const warningStock = parseInt(document.getElementById('product-warning-stock').value || '0', 10);
+            const categoryRaw = document.getElementById('product-category') ? document.getElementById('product-category').value : '';
+            const categoryId = /^\d+$/.test(String(categoryRaw || '').trim()) ? Number(categoryRaw) : null;
+
+            if (!name) {
+                alert('请输入产品名称');
+                return;
+            }
+            if (!sku) {
+                alert('请输入SKU编码');
+                return;
+            }
+
             const productData = {
-                name: document.getElementById('product-name').value,
-                sku: document.getElementById('product-sku').value,
-                price: parseFloat(document.getElementById('product-price').value),
-                base_unit: document.getElementById('product-base-unit').value,
-                category: document.getElementById('product-category').value,
-                warning_stock: parseInt(document.getElementById('product-warning-stock').value),
-                description: document.getElementById('product-description').value
+                product: {
+                    name: name,
+                    sku: sku,
+                    price: Number.isFinite(price) ? price : 0,
+                    stock: Number.isFinite(warningStock) ? warningStock : 0,
+                    baseUnit: baseUnit || null,
+                    categoryId: categoryId,
+                    warningStock: Number.isFinite(warningStock) ? warningStock : 0,
+                    description: document.getElementById('product-description').value
+                },
+                unitConversions: []
             };
 
             try {
@@ -1233,27 +1585,42 @@
                     },
                     body: JSON.stringify(productData)
                 });
-
-                if (response.ok) {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") === -1) {
-                        const text = await response.text();
-                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                const raw = await response.text();
+                const result = safeJsonParse(raw) || {};
+                const ok = response.ok && (result.success !== false);
+                if (ok) {
+                    const payload = result && result.data ? result.data : result;
+                    const productId = payload && (payload.productId || payload.product_id || payload.id) ? (payload.productId || payload.product_id || payload.id) : null;
+                    const productName = payload && (payload.name || payload.productName) ? (payload.name || payload.productName) : name;
+                    const productSku = payload && payload.sku ? payload.sku : sku;
+                    if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items) && productId) {
+                        auditState.aiStructured.order_data.items.forEach(item => {
+                            if (!item.matched_product_id || Number(item.matched_product_id) === 0) {
+                                item.matched_product_id = Number(productId);
+                                item.matched_product_name = productName;
+                                item.product_name_raw = productName;
+                                if (productSku) item.sku = productSku;
+                            }
+                        });
                     }
-                    const result = await response.json();
-                    alert('产品创建成功！');
-                    // 隐藏产品 Tab 页
+                    if (window.productList) {
+                        window.productList.unshift({
+                            productId: Number(productId),
+                            name: productName,
+                            sku: productSku
+                        });
+                    }
+                    auditState.aiStructured.new_products_found = [];
+                    await persistAuditResult();
                     document.getElementById('confirm-product-tab').classList.add('hidden');
-                    // 将生成的 product_id 传给订单页签
-                    // 这里可以添加逻辑来更新订单页签中的产品选择
+                    const tabBtn = document.getElementById('tab-product');
+                    if (tabBtn) tabBtn.style.display = 'none';
+                    switchAuditTab('order');
+                    generateProductSelects();
+                    showToast('新增产品成功，已关联到待确认单据');
                 } else {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") === -1) {
-                        const text = await response.text();
-                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
-                    }
-                    const error = await response.json();
-                    alert('产品创建失败: ' + error.message);
+                    const message = (result && (result.message || result.msg || result.error)) || ('HTTP ' + response.status);
+                    alert('产品创建失败: ' + message);
                 }
             } catch (error) {
                 console.error('保存产品失败:', error);
@@ -1269,9 +1636,15 @@
         }
 
         // 跳过新产品创建
-        function skipNewProduct() {
-            // 隐藏产品 Tab 页
+        async function skipNewProduct() {
+            if (auditState.aiStructured) {
+                auditState.aiStructured.new_products_found = [];
+                await persistAuditResult();
+            }
             document.getElementById('confirm-product-tab').classList.add('hidden');
+            const tabBtn = document.getElementById('tab-product');
+            if (tabBtn) tabBtn.style.display = 'none';
+            switchAuditTab('order');
         }
 
         // 保存新客户信息
@@ -1281,8 +1654,10 @@
                 phone: document.getElementById('customer-phone').value,
                 email: document.getElementById('customer-email').value,
                 source: document.getElementById('customer-source').value,
+                custStatus: document.getElementById('customer-status').value,
                 region: document.getElementById('customer-region').value,
-                address: document.getElementById('customer-address').value
+                address: document.getElementById('customer-address').value,
+                summary: document.getElementById('customer-summary').value
             };
 
             try {
@@ -1293,34 +1668,38 @@
                     },
                     body: JSON.stringify(customerData)
                 });
-
-                if (response.ok) {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") === -1) {
-                        const text = await response.text();
-                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                const raw = await response.text();
+                const result = safeJsonParse(raw) || {};
+                const ok = response.ok && (result.success !== false);
+                if (ok) {
+                    const payload = result && result.data ? result.data : result;
+                    const custId = payload && (payload.id || payload.custId || payload.cust_id) ? (payload.id || payload.custId || payload.cust_id) : null;
+                    if (auditState.aiStructured && auditState.aiStructured.customer_data && custId) {
+                        auditState.aiStructured.customer_data.matched_customer_id = Number(custId);
+                        auditState.aiStructured.customer_data.matched_customer_name = customerData.name || '';
                     }
-                    const result = await response.json();
-                    alert('客户创建成功！');
-                    // 隐藏客户 Tab 页
+                    auditState.aiStructured.new_customers_found = [];
+                    await persistAuditResult();
                     document.getElementById('confirm-customer-tab').classList.add('hidden');
-                    // 将生成的 cust_id 传给订单页签
-                    const custId = result.cust_id;
                     const customerSelect = document.getElementById('order-customer');
-                    // 添加新客户到下拉列表并选中
-                    const option = document.createElement('option');
-                    option.value = custId;
-                    option.textContent = customerData.name;
-                    option.selected = true;
-                    customerSelect.appendChild(option);
-                } else {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") === -1) {
-                        const text = await response.text();
-                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    if (custId && customerData.name) {
+                        customerLookupByName[customerData.name] = { id: Number(custId), name: customerData.name };
+                        if (customerSelect) {
+                            const option = document.createElement('option');
+                            option.value = String(custId);
+                            option.textContent = customerData.name;
+                            option.setAttribute('data-name', customerData.name);
+                            customerSelect.appendChild(option);
+                            customerSelect.value = String(custId);
+                        }
                     }
-                    const error = await response.json();
-                    alert('客户创建失败: ' + error.message);
+                    const tabBtn = document.getElementById('tab-customer');
+                    if (tabBtn) tabBtn.style.display = 'none';
+                    switchAuditTab('order');
+                    showToast('新增客户成功，已关联到待确认单据');
+                } else {
+                    const message = (result && (result.message || result.msg || result.error)) || ('HTTP ' + response.status);
+                    alert('客户创建失败: ' + message);
                 }
             } catch (error) {
                 console.error('保存客户失败:', error);
@@ -1336,15 +1715,21 @@
         }
 
         // 跳过新客户创建
-        function skipNewCustomer() {
-            // 隐藏客户 Tab 页
+        async function skipNewCustomer() {
+            if (auditState.aiStructured) {
+                auditState.aiStructured.new_customers_found = [];
+                await persistAuditResult();
+            }
             document.getElementById('confirm-customer-tab').classList.add('hidden');
+            const tabBtn = document.getElementById('tab-customer');
+            if (tabBtn) tabBtn.style.display = 'none';
+            switchAuditTab('order');
         }
 
         // 确认订单并下单
         async function confirmOrder() {
             const custId = document.getElementById('order-customer').value;
-            const deliveryDate = document.getElementById('order-delivery-date').value;
+            const deliveryDate = document.getElementById('order-delivery-date').value || getTodayDateInput();
             
             // 检查客户 ID 是否为空
             if (!custId) {
@@ -1358,20 +1743,21 @@
             let hasEmptyProductId = false;
 
             rows.forEach(row => {
-                const productSelect = row.querySelector('select');
+                const productSelect = row.querySelector('.product-select');
                 const quantityInput = row.querySelector('input[type="number"]');
                 const priceInput = row.querySelector('input[type="number"].price-input');
                 
-                const productId = productSelect.value;
+                const productId = productSelect ? productSelect.value : '';
                 if (!productId) {
                     hasEmptyProductId = true;
                 }
                 
                 items.push({
-                    product_id: productId,
-                    quantity: parseInt(quantityInput.value),
-                    price_at_time: parseFloat(priceInput.value),
-                    total_amount: parseFloat(priceInput.value) * parseInt(quantityInput.value)
+                    productId: Number(productId),
+                    quantity: parseInt(quantityInput.value || '0', 10),
+                    totalAmount: parseFloat(priceInput.value || '0') * parseInt(quantityInput.value || '0', 10),
+                    itemStatus: 'PENDING',
+                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null
                 });
             });
 
@@ -1382,13 +1768,16 @@
             }
 
             // 计算订单总金额
-            const totalAmount = items.reduce((sum, item) => sum + item.total_amount, 0);
+            const totalAmount = items.reduce((sum, item) => sum + item.totalAmount, 0);
 
             const orderData = {
-                cust_id: custId,
-                delivery_date: deliveryDate,
-                total_amount: totalAmount,
-                order_items: items
+                order: {
+                    custId: Number(custId),
+                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null,
+                    totalAmount: totalAmount,
+                    orderStatus: 'PROCESSING'
+                },
+                orderItems: items
             };
 
             try {
@@ -1401,24 +1790,18 @@
                 });
 
                 if (response.ok) {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") === -1) {
-                        const text = await response.text();
-                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    await response.json();
+                    // 删除已确认的待确认单据
+                    if (auditState.currentRecordId) {
+                        await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId, { method: 'DELETE' });
                     }
-                    const result = await response.json();
-                    alert('订单确认成功！库存已实时扣减');
+                    showToast('订单确认成功，已转正式订单');
                     closeAuditModal();
                     // 重新加载待确认单据列表
                     loadPendingOrders();
                 } else {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") === -1) {
-                        const text = await response.text();
-                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
-                    }
                     const error = await response.json();
-                    alert('订单确认失败: ' + error.message);
+                    alert('订单确认失败: ' + (error.message || '未知错误'));
                 }
             } catch (error) {
                 console.error('确认订单失败:', error);

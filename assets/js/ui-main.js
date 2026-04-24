@@ -18,6 +18,30 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
 }
 
 /**
+ * 将 dashboard 模块里的弹窗节点同步到壳层页面，避免继续使用 index-app 里的旧弹窗DOM。
+ */
+function TM_syncDashboardOverlays(htmlString) {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        const overlayIds = ['audit-modal', 'order-detail-modal', 'manual-order-modal', 'unit-modal', 'voice-modal', 'photo-modal', 'toast'];
+        overlayIds.forEach(function (id) {
+            const nextNode = doc.getElementById(id);
+            if (!nextNode) return;
+            const current = document.getElementById(id);
+            const cloned = nextNode.cloneNode(true);
+            if (current && current.parentNode) {
+                current.parentNode.replaceChild(cloned, current);
+            } else {
+                document.body.appendChild(cloned);
+            }
+        });
+    } catch (e) {
+        console.warn('[TM] 同步 dashboard 弹窗节点失败:', e);
+    }
+}
+
+/**
  * 注入模块内联/外链脚本。用于被抽取片段模式加载的模块（如 dashboard），
  * 避免仅 innerHTML 注入导致脚本不执行。
  */
@@ -192,6 +216,7 @@ function TM_refreshDashboardPendingOrders() {
                     return tb - ta;
                 })
                 .slice(0, 20);
+            window.__TM_PENDING_RECORDS = filtered;
 
             if (filtered.length === 0) {
                 pendingOrdersList.innerHTML = `
@@ -259,11 +284,12 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260423r01', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260424r09', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
             document.getElementById('view-dashboard').innerHTML = inner || html;
+            TM_syncDashboardOverlays(html);
             TM_injectModuleScripts(html, 'dashboard');
             TM_restoreShellNavigationGlobals();
             TM_refreshDashboardPendingOrders();
@@ -573,7 +599,15 @@ function closeOrderDetail() {
 }
 
 // 弹窗开关
-function openAuditModal(name) { document.getElementById('audit-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+function openAuditModal(name) {
+    // 优先路由到 dashboard 模块的真实审核逻辑（含AI结果填充）
+    if (typeof window.__TM_DASHBOARD_OPEN_AUDIT === 'function') {
+        return window.__TM_DASHBOARD_OPEN_AUDIT(name);
+    }
+    var modal = document.getElementById('audit-modal');
+    if (modal) modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
 function closeAuditModal() { document.getElementById('audit-modal').classList.add('hidden'); document.body.style.overflow = ''; }
 
 // 高级信息抽屉切换

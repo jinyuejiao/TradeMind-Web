@@ -1932,53 +1932,115 @@ window.injectCommonUI = function() {
 };
 
 // 加载用户信息
+function getRoleDisplayName(roleValue) {
+    const role = String(roleValue || '').toUpperCase();
+    if (role === 'ADMIN') return '管理员';
+    if (role === 'MANAGER') return '经理';
+    if (role === 'BOSS') return '老板';
+    if (role === 'OPERATOR') return '操作员';
+    if (role === 'STAFF') return '员工';
+    return roleValue || '用户';
+}
+
+let tmRoleTypeDictMap = null;
+async function getRoleTypeDictMap() {
+    if (tmRoleTypeDictMap) return tmRoleTypeDictMap;
+    tmRoleTypeDictMap = {};
+    try {
+        const gatewayUrl = typeof getApiUrl === 'function' ? getApiUrl('gateway') : '';
+        const url = (gatewayUrl || '') + '/api/v1/crm/dictionary/D002';
+        const response = await window.wrappedFetch(url, { method: 'GET' });
+        if (!response.ok) return tmRoleTypeDictMap;
+        const result = await response.json();
+        const list = Array.isArray(result) ? result : (Array.isArray(result && result.data) ? result.data : []);
+        list.forEach(function(item) {
+            const key = String(item.code || item.dictCode || item.dictcode || item.value || item.dictValue || item.dictvalue || '').trim().toUpperCase();
+            const label = String(item.dictname || item.dictName || item.name || item.label || '').trim();
+            if (key && label) tmRoleTypeDictMap[key] = label;
+        });
+    } catch (error) {
+        console.warn('加载角色字典 D002 失败，使用默认角色映射:', error);
+    }
+    return tmRoleTypeDictMap;
+}
+
+function parseTokenPayload(token) {
+    try {
+        const tokenParts = String(token || '').split('.');
+        if (tokenParts.length !== 3) return {};
+        return JSON.parse(atob(tokenParts[1])) || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function getStoredUserInfo() {
+    try {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        if (currentUser && Object.keys(currentUser).length) return currentUser;
+    } catch (e) {}
+    try {
+        const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+        if (userInfo && Object.keys(userInfo).length) return userInfo;
+    } catch (e) {}
+    return {};
+}
+
+async function resolveAndApplyUserContext() {
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    const payload = parseTokenPayload(token);
+    const user = getStoredUserInfo();
+
+    // 用户名展示优先使用登录账号字段（如 jin_tmp），而不是 realname
+    const userName = user.userName || user.username || localStorage.getItem('username') || payload.userName || payload.username || user.realName || user.realname || payload.realName || payload.realname || '用户';
+    const roleType = user.roleType || user.roletype || payload.roleType || payload.roletype || payload.role || 'USER';
+    const userId = user.userId || user.id || payload.userId || '100001';
+    const referralCode = 'TM-' + String(userId).padStart(6, '0');
+
+    const roleMap = await getRoleTypeDictMap();
+    const roleLabel = roleMap[String(roleType || '').toUpperCase()] || getRoleDisplayName(roleType);
+
+    if (document.getElementById('sidebar-user-name')) {
+        document.getElementById('sidebar-user-name').textContent = userName + '（' + roleLabel + '）';
+    }
+    if (document.getElementById('sidebar-user-avatar')) {
+        document.getElementById('sidebar-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+    }
+    if (document.getElementById('sidebar-user-role')) {
+        document.getElementById('sidebar-user-role').textContent = '';
+    }
+
+    if (document.getElementById('user-name')) {
+        document.getElementById('user-name').textContent = userName + ' (' + roleLabel + ')';
+    }
+    if (document.getElementById('user-avatar')) {
+        document.getElementById('user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+    }
+    if (document.getElementById('mobile-user-avatar')) {
+        document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
+    }
+
+    if (document.getElementById('referral-code')) {
+        document.getElementById('referral-code').textContent = referralCode;
+    }
+    if (document.getElementById('poster-ref-code')) {
+        document.getElementById('poster-ref-code').textContent = referralCode;
+    }
+    if (document.getElementById('qrcode-img')) {
+        const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://trademind.ai/reg?ref=' + referralCode.replace('-', '');
+        document.getElementById('qrcode-img').src = qrCodeUrl;
+    }
+    if (document.getElementById('poster-qr')) {
+        const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-' + referralCode.replace('-', '');
+        document.getElementById('poster-qr').src = qrCodeUrl;
+    }
+}
+
 function loadUserInfo() {
     try {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-        if (token) {
-            // 解析JWT token
-            const tokenParts = token.split('.');
-            if (tokenParts.length === 3) {
-                const payload = JSON.parse(atob(tokenParts[1]));
-                const userName = payload.userName || payload.username || '用户';
-                const role = payload.roleType || payload.role || 'USER';
-                const userId = payload.userId || '100001';
-
-                // 生成推荐码
-                const referralCode = 'TM-' + String(userId).padStart(6, '0');
-
-                // 更新界面元素
-                if (document.getElementById('sidebar-user-name')) {
-                    document.getElementById('sidebar-user-name').textContent = userName + ' (' + (role === 'ADMIN' ? '管理员' : '操作员') + ')';
-                }
-                if (document.getElementById('sidebar-user-avatar')) {
-                    document.getElementById('sidebar-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
-                }
-                if (document.getElementById('mobile-user-avatar')) {
-                    document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
-                }
-                if (document.getElementById('referral-code')) {
-                    document.getElementById('referral-code').textContent = referralCode;
-                }
-                if (document.getElementById('poster-ref-code')) {
-                    document.getElementById('poster-ref-code').textContent = referralCode;
-                }
-                if (document.getElementById('poster-qr')) {
-                    document.getElementById('poster-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-${referralCode}`;
-                }
-
-                // 更新二维码
-                if (document.getElementById('qrcode-img')) {
-                    const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://trademind.ai/reg?ref=' + referralCode.replace('-', '');
-                    document.getElementById('qrcode-img').src = qrCodeUrl;
-                }
-
-                // 更新海报上的推荐码
-                if (document.getElementById('poster-ref-code')) {
-                    document.getElementById('poster-ref-code').textContent = referralCode;
-                }
-            }
-        }
+        resolveAndApplyUserContext().catch(function(error) {
+            console.error('加载用户信息失败:', error);
+        });
     } catch (error) {
         console.error('加载用户信息失败:', error);
     }
@@ -2175,59 +2237,9 @@ window.syncUserContext = function() {
             return;
         }
         
-        // 从localStorage获取Token
-        const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-        if (token) {
-            // 解析JWT token
-            const tokenParts = token.split('.');
-            if (tokenParts.length === 3) {
-                const payload = JSON.parse(atob(tokenParts[1]));
-                const userName = payload.userName || payload.username || '用户';
-                const role = payload.roleType || payload.role || 'USER';
-                const userId = payload.userId || '100001';
-                
-                // 生成推荐码
-                const referralCode = 'TM-' + String(userId).padStart(6, '0');
-                
-                // 自动寻找页面中ID为sidebar-user-name和sidebar-user-role的元素并赋值
-                if (document.getElementById('sidebar-user-name')) {
-                    document.getElementById('sidebar-user-name').textContent = userName + ' (' + (role === 'ADMIN' ? '管理员' : '操作员') + ')';
-                }
-                if (document.getElementById('sidebar-user-avatar')) {
-                    document.getElementById('sidebar-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
-                }
-                if (document.getElementById('sidebar-user-role')) {
-                    document.getElementById('sidebar-user-role').textContent = role === 'ADMIN' ? '管理员' : '操作员';
-                }
-                
-                // 同时更新其他可能的用户信息元素
-                if (document.getElementById('user-name')) {
-                    document.getElementById('user-name').textContent = userName + ' (' + (role === 'ADMIN' ? '管理员' : '操作员') + ')';
-                }
-                if (document.getElementById('user-avatar')) {
-                    document.getElementById('user-avatar').textContent = userName.substring(0, 2).toUpperCase();
-                }
-                if (document.getElementById('mobile-user-avatar')) {
-                    document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
-                }
-                
-                // 更新弹窗内的推荐码和用户名
-                if (document.getElementById('referral-code')) {
-                    document.getElementById('referral-code').textContent = referralCode;
-                }
-                if (document.getElementById('poster-ref-code')) {
-                    document.getElementById('poster-ref-code').textContent = referralCode;
-                }
-                if (document.getElementById('qrcode-img')) {
-                    const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://trademind.ai/reg?ref=' + referralCode.replace('-', '');
-                    document.getElementById('qrcode-img').src = qrCodeUrl;
-                }
-                if (document.getElementById('poster-qr')) {
-                    const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-' + referralCode.replace('-', '');
-                    document.getElementById('poster-qr').src = qrCodeUrl;
-                }
-            }
-        }
+        resolveAndApplyUserContext().catch(function(error) {
+            console.error('同步用户上下文失败:', error);
+        });
     } catch (error) {
         console.error('加载用户信息失败:', error);
     }
