@@ -264,16 +264,16 @@
             <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
                 <div class="flex flex-col md:flex-row md:items-end justify-between">
                     <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, Jin.</h1>
-                        <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold">3个风险点</span>，<span class="text-brand-600 font-bold">5个待识别单据</span>。</p>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, <span id="dashboard-greeting-name">用户</span>.</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold"><span id="dashboard-risk-count">0</span>个风险点</span>，<span class="text-brand-600 font-bold"><span id="dashboard-pending-recognition-count">0</span>个待识别单据</span>。</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">今日营收</p><div class="mt-2 font-mono font-bold text-slate-800">$12,400</div></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">单据提取</p><div class="mt-2 font-mono font-bold text-slate-800">5</div></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-risk-high"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">库存预警</p><div class="mt-2 font-mono font-bold text-slate-800">3</div></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div class="mt-2 font-mono font-bold text-slate-800">4.2</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">今日营收</p><div id="dashboard-today-revenue" class="mt-2 font-mono font-bold text-slate-800">¥0.00</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">单据提取</p><div id="dashboard-extracted-count" class="mt-2 font-mono font-bold text-slate-800">0</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-risk-high"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">库存预警</p><div id="dashboard-stock-warning-count" class="mt-2 font-mono font-bold text-slate-800">0</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div id="dashboard-turnover-rate" class="mt-2 font-mono font-bold text-slate-800">0.00</div></div>
                 </div>
 
                 <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in">
@@ -885,6 +885,8 @@
             loadOrderStatusDict();
             // 加载进行中业务单据
             loadInProgressOrders();
+            // 加载顶部概览数据
+            loadDashboardOverviewStats();
         }
 
         // 页面加载完成后执行（兼容动态注入场景）
@@ -908,6 +910,109 @@
         let productLookupById = {};
         let orderStatusDictMap = {};
         let inProgressOrdersCache = [];
+
+        function parseTokenPayloadSafe(token) {
+            try {
+                const tokenParts = String(token || '').split('.');
+                if (tokenParts.length !== 3) return {};
+                return JSON.parse(atob(tokenParts[1])) || {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function getDashboardUserName() {
+            try {
+                const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                const userInfo = JSON.parse(localStorage.getItem('user_info') || '{}');
+                const payload = parseTokenPayloadSafe(localStorage.getItem('auth_token') || localStorage.getItem('token'));
+                return (
+                    currentUser.userName || currentUser.username ||
+                    userInfo.userName || userInfo.username ||
+                    localStorage.getItem('username') ||
+                    payload.userName || payload.username ||
+                    currentUser.realName || currentUser.realname ||
+                    userInfo.realName || userInfo.realname ||
+                    payload.realName || payload.realname ||
+                    '用户'
+                );
+            } catch (e) {
+                return '用户';
+            }
+        }
+
+        function isToday(dateValue) {
+            if (!dateValue) return false;
+            const date = new Date(dateValue);
+            if (Number.isNaN(date.getTime())) return false;
+            const now = new Date();
+            return date.getFullYear() === now.getFullYear()
+                && date.getMonth() === now.getMonth()
+                && date.getDate() === now.getDate();
+        }
+
+        function setTextById(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+        }
+
+        function formatCurrencyCny(value) {
+            const amount = Number(value || 0);
+            return '¥' + amount.toLocaleString('zh-CN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        async function loadDashboardOverviewStats() {
+            setTextById('dashboard-greeting-name', getDashboardUserName());
+            try {
+                const [recordsResp, ordersResp, productsResp, efficiencyResp] = await Promise.allSettled([
+                    window.wrappedFetch('/api/v1/ai/records', { method: 'GET', headers: { 'Content-Type': 'application/json' } }),
+                    window.wrappedFetch('/api/v1/rd/orders', { method: 'GET', headers: { 'Content-Type': 'application/json' } }),
+                    window.wrappedFetch('/api/v1/rd/products', { method: 'GET', headers: { 'Content-Type': 'application/json' } }),
+                    window.wrappedFetch('/api/v1/im/report/efficiency', { method: 'GET', headers: { 'Content-Type': 'application/json' } })
+                ]);
+
+                const records = recordsResp.status === 'fulfilled' ? await recordsResp.value.json() : [];
+                const ordersWrap = ordersResp.status === 'fulfilled' ? await ordersResp.value.json() : {};
+                const productsWrap = productsResp.status === 'fulfilled' ? await productsResp.value.json() : {};
+                const efficiency = efficiencyResp.status === 'fulfilled' ? await efficiencyResp.value.json() : {};
+
+                const aiRecords = Array.isArray(records) ? records : [];
+                const orders = ordersWrap && Array.isArray(ordersWrap.data) ? ordersWrap.data : [];
+                const products = productsWrap && Array.isArray(productsWrap.data) ? productsWrap.data : [];
+
+                const pendingRecognitionCount = aiRecords.filter(item => String(item.status || '').toUpperCase() === 'EXTRACTING').length;
+                const extractedTodayCount = aiRecords.filter(item => {
+                    const status = String(item.status || '').toUpperCase();
+                    return (status === 'SUCCESS' || status === 'EXTRACTING') && isToday(item.createTime);
+                }).length;
+
+                const riskCount = products.filter(item => {
+                    const stock = Number(item.stock || 0);
+                    const warningStock = Number(item.warningStock || item.warning_stock || 0);
+                    return warningStock > 0 && stock <= warningStock;
+                }).length;
+
+                const todayRevenue = orders.reduce((sum, item) => {
+                    const status = String(item.orderStatus || '').toUpperCase();
+                    if (!isToday(item.createTime) || status === 'CANCELLED' || status === 'CANCELED') return sum;
+                    return sum + Number(item.totalAmount || 0);
+                }, 0);
+
+                const turnoverRaw = Number((efficiency && (efficiency.inventory_turnover || efficiency.inventoryTurnover)) || 0);
+
+                setTextById('dashboard-risk-count', String(riskCount));
+                setTextById('dashboard-pending-recognition-count', String(pendingRecognitionCount));
+                setTextById('dashboard-today-revenue', formatCurrencyCny(todayRevenue));
+                setTextById('dashboard-extracted-count', String(extractedTodayCount));
+                setTextById('dashboard-stock-warning-count', String(riskCount));
+                setTextById('dashboard-turnover-rate', turnoverRaw.toFixed(2));
+            } catch (error) {
+                console.warn('加载工作台概览指标失败:', error);
+            }
+        }
 
         function safeJsonParse(text, fallback) {
             try {
