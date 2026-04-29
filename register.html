@@ -23,7 +23,8 @@
         body { font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-50 min-h-screen flex flex-col">
+    <main class="flex-1 w-full flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
         <div class="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-8">
             <div class="flex items-center justify-center mb-4">
@@ -161,7 +162,10 @@
             </div>
         </div>
     </div>
-    
+    </main>
+    <footer class="w-full text-center text-slate-500 text-xs pb-6 px-4 leading-6">
+        <p>© 2026 杭州巨猿科技有限公司 | <a class="hover:text-teal-600 underline decoration-slate-200 underline-offset-4" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2026010267号-1</a></p>
+    </footer>
     <script src="./assets/js/auth.js?v=20260422r13"></script>
     <script>
         // 页面加载时注入公共 UI 组件

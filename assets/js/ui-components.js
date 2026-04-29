@@ -50,15 +50,6 @@
         },
 
         /**
-         * 备案 Footer 组件模板
-         */
-        complianceFooter: `
-            <div id="tm-compliance-footer" class="fixed bottom-0 left-0 right-0 bg-slate-50 border-t border-slate-200 py-2 px-4 text-center text-[10px] text-slate-400 z-40">
-                <p>© 2024 杭州巨猿科技有限公司 | 浙ICP备XXXXXXXX号</p>
-            </div>
-        `,
-
-        /**
          * 手机底部导航栏组件模板
          * @param {object} options - 选项
          */
@@ -231,14 +222,6 @@
                 );
             }
             
-            // 注入备案 Footer
-            if (!document.getElementById('tm-compliance-footer')) {
-                console.log('[UI-Components] 注入备案 Footer');
-                document.body.insertAdjacentHTML(
-                    'beforeend',
-                    window.TradeMindApp.components.complianceFooter
-                );
-            }
         }
     };
 
@@ -292,12 +275,6 @@
          */
         window.TM_UI.injectCommonUI = function() {
             console.log('[UI-Components] 注入公共 UI 组件');
-            
-            // 防止重复注入
-            if (document.getElementById('tm-compliance-footer')) {
-                console.log('[UI-Components] Footer 已存在，跳过注入');
-                return;
-            }
             
             // 设置页面标题
             document.title = '杭州巨猿科技有限公司 - TradeMind商贸智脑';

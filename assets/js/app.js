@@ -165,6 +165,16 @@
     // 6. 初始化
     function init() {
         console.log('TradeMind: 开始初始化移动端适配');
+        const hasBuiltInMobileNav = !!document.querySelector('.mobile-nav-btn');
+        if (hasBuiltInMobileNav) {
+            console.log('TradeMind: 检测到内置移动端导航，跳过动态注入逻辑');
+            window.TradeMindMobile = {
+                init,
+                isMobile,
+                handleResize
+            };
+            return;
+        }
         
         injectMobileStyles();
         injectMobileNav();
