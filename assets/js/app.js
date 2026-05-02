@@ -2,36 +2,41 @@
 (function() {
     console.log('TradeMind: 移动端适配模块初始化');
 
-    // 1. 注入移动端适配样式
+    /** 主壳页（index-app）已由 HTML 底栏 + common.css 接管；仅补充弹窗与横向溢出，不做双导航、不固定顶栏 */
+    function injectAppShellAssistStyles() {
+        if (document.getElementById('tm-app-shell-assist-css')) return;
+        const styles = document.createElement('style');
+        styles.id = 'tm-app-shell-assist-css';
+        styles.textContent = `
+            @media (max-width: 767px) {
+                body { overflow-x: hidden !important; }
+                .modal-content-box {
+                    max-height: 100dvh !important;
+                }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+
+    // 1. 注入移动端适配样式（独立模块页 + 动态注入 #mobile-nav 的遗留布局）
     function injectMobileStyles() {
         const styles = document.createElement('style');
         styles.textContent = `
-            /* 移动端适配核心样式 */
-            
-            /* 确保body在移动端有正确的padding */
             @media (max-width: 767px) {
                 body {
                     padding-bottom: 5rem !important;
                     overflow-x: hidden !important;
                 }
-                
-                /* 隐藏PC端侧边栏 */
                 #main-sidebar {
                     display: none !important;
                 }
-                
-                /* 确保内容区域不被导航栏遮挡 */
                 #content-area {
                     padding-top: 1rem;
                     padding-bottom: 6rem !important;
                 }
-                
-                /* 内容区域额外的安全padding */
                 .view-section {
                     padding-bottom: 1rem !important;
                 }
-                
-                /* 确保顶部导航正确显示 */
                 header {
                     position: fixed !important;
                     top: 0;
@@ -39,44 +44,31 @@
                     right: 0;
                     z-index: 40 !important;
                 }
-                
-                /* 主内容区调整 */
                 main {
                     padding-top: 3.5rem !important;
                 }
-                
-                /* 移动端底部导航栏样式 */
                 #mobile-nav {
                     display: flex !important;
                 }
-                
-                /* 移动端导航项激活状态 */
                 #mobile-nav button[data-tab].active {
                     color: #14B8A6 !important;
                 }
-                
                 #mobile-nav button[data-tab].active i {
                     color: #14B8A6 !important;
                 }
-                
-                /* 确保弹窗在移动端正确显示 */
                 .modal-content-box {
                     height: 100vh !important;
                     max-height: 100vh !important;
                     border-radius: 0 !important;
                 }
             }
-            
-            /* PC端样式 - 确保移动端元素隐藏 */
             @media (min-width: 768px) {
                 #mobile-nav {
                     display: none !important;
                 }
-                
                 body {
                     padding-bottom: 0 !important;
                 }
-                
                 main {
                     padding-top: 0 !important;
                 }
@@ -131,16 +123,26 @@
         return window.innerWidth < 768;
     }
 
-    // 4. 更新移动端导航栏激活状态
+    // 4. 更新移动端导航栏激活状态（#mobile-nav 与 .mobile-nav-btn 主壳底栏）
     window.updateMobileNavActive = function(tabName) {
-        const navButtons = document.querySelectorAll('#mobile-nav button[data-tab]');
-        navButtons.forEach(btn => {
+        document.querySelectorAll('#mobile-nav button[data-tab]').forEach(btn => {
             if (btn.getAttribute('data-tab') === tabName) {
                 btn.classList.add('active', 'text-brand-500');
                 btn.classList.remove('text-slate-400');
             } else {
                 btn.classList.remove('active', 'text-brand-500');
                 btn.classList.add('text-slate-400');
+            }
+        });
+        document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+            const t = btn.getAttribute('data-tab');
+            const on = t === tabName;
+            if (on) {
+                btn.classList.remove('text-slate-400');
+                btn.classList.add('text-brand-600', 'active-nav');
+            } else {
+                btn.classList.add('text-slate-400');
+                btn.classList.remove('text-brand-600', 'active-nav');
             }
         });
     };
@@ -167,7 +169,16 @@
         console.log('TradeMind: 开始初始化移动端适配');
         const hasBuiltInMobileNav = !!document.querySelector('.mobile-nav-btn');
         if (hasBuiltInMobileNav) {
-            console.log('TradeMind: 检测到内置移动端导航，跳过动态注入逻辑');
+            console.log('TradeMind: 内置底栏（方案 A）：不注入第二套 #mobile-nav');
+            injectAppShellAssistStyles();
+            if (typeof window.TM_syncAppShellMetrics === 'function') {
+                window.TM_syncAppShellMetrics();
+            }
+            window.addEventListener('resize', handleResize);
+            handleResize();
+            if (window.updateMobileNavActive) {
+                window.updateMobileNavActive('dashboard');
+            }
             window.TradeMindMobile = {
                 init,
                 isMobile,
@@ -175,16 +186,16 @@
             };
             return;
         }
-        
+
         injectMobileStyles();
         injectMobileNav();
         window.addEventListener('resize', handleResize);
         handleResize();
-        
+
         if (window.updateMobileNavActive) {
             window.updateMobileNavActive('dashboard');
         }
-        
+
         console.log('TradeMind: 移动端适配初始化完成');
     }
 

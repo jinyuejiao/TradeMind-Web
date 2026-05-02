@@ -83,6 +83,12 @@
                 </div>
                 
                 <div class="space-y-2">
+                    <label class="block text-sm font-bold text-slate-700">短信验证码 <span class="text-red-500">*</span></label>
+                    <input type="text" id="regSmsCode" name="smsCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" class="w-full px-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请先点击发送验证码，再填写收到的验证码">
+                    <p class="text-xs text-slate-500">未开启阿里云短信时，可填写任意数字完成流程（以服务端配置为准）。</p>
+                </div>
+                
+                <div class="space-y-2">
                     <label class="block text-sm font-bold text-slate-700">公司名称 <span class="text-slate-400 text-xs font-normal">(选填)</span></label>
                     <div class="relative">
                         <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">

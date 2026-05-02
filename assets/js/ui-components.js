@@ -75,23 +75,23 @@
             
             return `
                 <div class="tm-mobile-nav">
-                    <a href="../dashboard/dashboard.html" class="tm-nav-item ${activeDashboard}">
+                    <a href="/index-app.html#tab=dashboard" class="tm-nav-item ${activeDashboard}">
                         <i class="ph ph-squares-four"></i>
                         <span>工作台</span>
                     </a>
-                    <a href="../SmartOps/SmartOps.html" class="tm-nav-item ${activeBiz}">
+                    <a href="/index-app.html#tab=biz" class="tm-nav-item ${activeBiz}">
                         <i class="ph ph-chart-line-up"></i>
                         <span>智能经营</span>
                     </a>
-                    <a href="../crm/crm.html" class="tm-nav-item ${activeCrm}">
+                    <a href="/index-app.html#tab=crm" class="tm-nav-item ${activeCrm}">
                         <i class="ph ph-users"></i>
                         <span>客户CRM</span>
                     </a>
-                    <a href="product-center.html" class="tm-nav-item ${activeSupply}">
+                    <a href="/index-app.html#tab=supply" class="tm-nav-item ${activeSupply}">
                         <i class="ph ph-package"></i>
                         <span>产品中心</span>
                     </a>
-                    <a href="../supply-chain/supply-chain.html" class="tm-nav-item ${activeSupplier}">
+                    <a href="/index-app.html#tab=supplier" class="tm-nav-item ${activeSupplier}">
                         <i class="ph ph-truck"></i>
                         <span>供应链</span>
                     </a>

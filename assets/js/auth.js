@@ -1575,8 +1575,12 @@ window.injectCommonUI = function() {
             // 给 body 添加移动端类名
             document.body.classList.add('tm-mobile-active');
             console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active 类');
+
+            /** index-app 等主壳页已内置顶栏与 .mobile-nav-btn 底栏（方案 A），禁止再注入 tm-mobile-header / tm-mobile-nav */
+            const isAppShellPage = !!document.getElementById('tm-app-tabbar');
             
             // 移动端布局适配
+            if (!isAppShellPage) {
             const sidebar = document.querySelector('aside');
             if (sidebar) {
                 console.log('TradeMindUI.injectCommonUI: 找到侧边栏，准备隐藏');
@@ -1686,6 +1690,9 @@ window.injectCommonUI = function() {
                     console.log('TradeMindUI.injectCommonUI: 已高亮导航项:', href);
                 }
             });
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 主壳页面 (tm-app-tabbar) 已含内置导航，跳过注入式顶栏/底栏与侧栏覆盖');
+            }
         } else {
             console.log('TradeMindUI.injectCommonUI: 检测到桌面设备，跳过移动端适配');
         }
@@ -2156,11 +2163,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 验证码发送逻辑
+    // 验证码发送逻辑（TenantService + 阿里云 Dysms SendSms）
+    let registerSmsToken = null;
     const sendCodeBtn = document.getElementById('sendCodeBtn');
     if (sendCodeBtn) {
         let countdown = 0;
-        sendCodeBtn.addEventListener('click', function() {
+        sendCodeBtn.addEventListener('click', async function() {
             const phone = document.getElementById('regPhone').value;
             const phoneRegex = /^1[3-9]\d{9}$/;
             
@@ -2174,16 +2182,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // 模拟发送验证码
-            if (countdown === 0) {
+            if (countdown !== 0) {
+                return;
+            }
+
+            try {
+                const gatewayUrl = getApiUrl('gateway');
+                const url = gatewayUrl + '/api/v1/tenant/send-code';
+                const response = await window.wrappedFetch(url, {
+                    skipAuth: true,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                let data;
+                try {
+                    data = await response.json();
+                } catch (pe) {
+                    showModal('发送失败：响应解析错误', true);
+                    return;
+                }
+                if (!response.ok || !data.success) {
+                    showModal(data.message || '发送验证码失败', true);
+                    return;
+                }
+                registerSmsToken = data.smsToken || null;
                 countdown = 60;
                 sendCodeBtn.disabled = true;
                 sendCodeBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                
                 const timer = setInterval(function() {
                     countdown--;
                     sendCodeBtn.textContent = countdown + '秒后重发';
-                    
                     if (countdown <= 0) {
                         clearInterval(timer);
                         sendCodeBtn.disabled = false;
@@ -2191,8 +2220,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         sendCodeBtn.textContent = '发送验证码';
                     }
                 }, 1000);
-                
-                showModal('验证码已发送（模拟）', false);
+                showModal(data.mock ? '验证码流程已就绪（当前为未开启短信网关或开发模式）' : '验证码已发送，请查收短信', false);
+            } catch (err) {
+                console.error('发送验证码失败:', err);
+                showModal('发送验证码失败：网络错误', true);
             }
         });
     }
@@ -2245,10 +2276,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
             const inviteCode = document.getElementById('inviteCode').value || '';
+            const smsCodeEl = document.getElementById('regSmsCode');
+            const smsCode = smsCodeEl ? smsCodeEl.value.trim() : '';
             
             // 验证必填字段
             if (!username || !email || !phone || !password || !confirmPassword) {
                 showModal('请填写所有必填字段', true);
+                return;
+            }
+            if (!smsCode) {
+                showModal('请填写短信验证码（需先点击发送验证码）', true);
                 return;
             }
             
@@ -2293,7 +2330,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     tenantName: company, // 公司名称
                     tenantCode: creditCode, // 社会信用代码
                     password: encryptedPassword,
-                    inviteCode: inviteCode
+                    inviteCode: inviteCode,
+                    smsToken: registerSmsToken || '',
+                    smsCode: smsCode
                 };
                 
                 // 发送注册请求

@@ -133,8 +133,12 @@ window.TM_Responsive = {
         document.querySelectorAll('.mobile-nav-btn').forEach((btn) => {
             btn.classList.remove('text-brand-600', 'active-nav');
             btn.classList.add('text-slate-400');
-            const onclick = btn.getAttribute('onclick') || '';
-            if (onclick.includes(`'${tabId}'`) || onclick.includes(`"${tabId}"`)) {
+            const dataTab = btn.getAttribute('data-tab');
+            const oc = btn.getAttribute('onclick') || '';
+            const on =
+                dataTab === tabId ||
+                new RegExp('switchTab\\(\\s*[\'"]' + String(tabId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\'"]\\s*\\)').test(oc);
+            if (on) {
                 btn.classList.remove('text-slate-400');
                 btn.classList.add('text-brand-600', 'active-nav');
             }

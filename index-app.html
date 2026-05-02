@@ -9,7 +9,7 @@
     <script src="/assets/js/api-client.js"></script>
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
-    <link rel="stylesheet" href="/assets/css/ui-mobile.css">
+    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260501r1">
     <link rel="stylesheet" href="/modules/CSS/common.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,19 +24,8 @@
     <script src="/assets/js/main-app.js"></script>
     <script src="/MobileAdapt/TM_Responsive.js"></script>
     <script src="/assets/js/ui-components.js"></script>
-    <script src="/assets/js/ui-main.js?v=20260425r40"></script>
+    <script src="/assets/js/ui-main.js?v=20260501r4"></script>
     <script src="/assets/js/ui-product-center.js?v=20260422r20"></script>
-    <style>
-        #view-biz iframe.tm-module-frame,
-        #view-crm iframe.tm-module-frame,
-        #view-supplier iframe.tm-module-frame {
-            width: 100%;
-            height: calc(100vh - 4rem);
-            min-height: 420px;
-            border: 0;
-            background: #f8fafc;
-        }
-    </style>
     <script>
         console.log('=== 页面脚本标签加载检查');
         console.log('window.toggleDropdown 是否存在:', typeof window.toggleDropdown);
@@ -286,7 +275,7 @@
         </header>
 
         <!-- 内容区域 -->
-        <div id="content-area" class="flex-1 overflow-y-auto bg-slate-50 no-scrollbar pb-24 md:pb-0 flex flex-col">
+        <div id="content-area" class="tm-app-content-area flex-1 overflow-y-auto bg-slate-50 no-scrollbar flex flex-col">
 
             <!-- ================= [1] 工作台 DASHBOARD (核心操作区) ================= -->
             <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
@@ -328,7 +317,7 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- 待核对单据 (Pending) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[450px]">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none">
                         <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-orange-500"></i> 待确认单据 (AI 草稿)</h3>
                             <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
@@ -344,7 +333,7 @@
                     </div>
 
                     <!-- 进行中业务单据 (扩展部分) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[480px]">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[45vh] max-h-[480px] md:h-[480px] md:max-h-none">
                         <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-truck text-blue-500 font-bold"></i> 进行中业务单据</h3>
                             <div class="flex items-center gap-2">
@@ -1060,33 +1049,33 @@
     </main>
 
     <!-- 3. 手机端导航 (已补全供应商管理) -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 py-2 flex justify-between items-end z-40 shadow-2xl pb-safe">
+    <nav id="tm-app-tabbar" class="tm-app-tabbar md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 py-2 flex justify-between items-end shadow-2xl pb-safe">
         <!-- 1. 工作台 -->
-        <button onclick="switchTab('dashboard')" class="mobile-nav-btn flex flex-col items-center text-brand-600 flex-1 py-1 transition-all">
+        <button type="button" data-tab="dashboard" class="mobile-nav-btn flex flex-col items-center text-brand-600 flex-1 py-1 transition-all">
             <i class="ph ph-squares-four text-xl mb-0.5"></i>
             <span class="text-[9px] font-bold tracking-tighter">工作台</span>
         </button>
 
         <!-- 2. 经营 -->
-        <button onclick="switchTab('biz')" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
+        <button type="button" data-tab="biz" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
             <i class="ph ph-chart-line-up text-xl mb-0.5"></i>
             <span class="text-[9px] font-bold tracking-tighter">经营</span>
         </button>
 
         <!-- 3. 客户 -->
-        <button onclick="switchTab('crm')" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
+        <button type="button" data-tab="crm" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
             <i class="ph ph-users text-xl mb-0.5"></i>
             <span class="text-[9px] font-bold tracking-tighter">客户</span>
         </button>
 
         <!-- 4. 产研 -->
-        <button onclick="switchTab('supply')" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
+        <button type="button" data-tab="supply" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
             <i class="ph ph-flask text-xl mb-0.5"></i>
             <span class="text-[9px] font-bold tracking-tighter">产研</span>
         </button>
 
         <!-- 5. 供应 (新增补全项) -->
-        <button onclick="switchTab('supplier')" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
+        <button type="button" data-tab="supplier" class="mobile-nav-btn flex flex-col items-center text-slate-400 flex-1 py-1 transition-all">
             <i class="ph ph-warehouse text-xl mb-0.5"></i>
             <span class="text-[9px] font-bold tracking-tighter">供应</span>
         </button>

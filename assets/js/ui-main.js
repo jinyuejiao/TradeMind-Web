@@ -42,34 +42,94 @@ function TM_syncDashboardOverlays(htmlString) {
 }
 
 /**
- * 注入模块内联/外链脚本。用于被抽取片段模式加载的模块（如 dashboard），
- * 避免仅 innerHTML 注入导致脚本不执行。
+ * 注入 dashboard 模块脚本（仅用于 index-app 抽取 #view-dashboard 片段模式）。
+ * 不得再把 dashboard.html 中的 auth/app/tailwind 等整页脚本插入主壳：会污染全局、错误解析相对路径，
+ * 且 TM_restoreShellNavigationGlobals 若早于异步脚本执行则无法恢复 switchTab，导致跳转到 /dashboard/dashboard.html 等 404。
  */
 function TM_injectModuleScripts(htmlString, moduleKey) {
+    if (moduleKey !== 'dashboard') {
+        return;
+    }
     try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         const scripts = doc.querySelectorAll('script');
-        if (!scripts || scripts.length === 0) return;
+        if (!scripts || scripts.length === 0) {
+            return;
+        }
 
-        // 清理上一轮同模块脚本，避免重复绑定和状态污染
-        document.querySelectorAll('script[data-tm-module="' + moduleKey + '"]').forEach(function (el) {
+        document.querySelectorAll('script[data-tm-module="dashboard"]').forEach(function (el) {
             el.remove();
         });
 
+        const baseForResolve = window.location.origin + '/modules/dashboard/dashboard.html';
+        const queue = [];
+
         scripts.forEach(function (srcScript) {
-            const script = document.createElement('script');
-            script.setAttribute('data-tm-module', moduleKey);
-            if (srcScript.src) {
-                script.src = srcScript.src;
-                script.async = false;
-            } else {
-                script.textContent = srcScript.textContent || '';
+            const srcAttr = srcScript.getAttribute('src');
+            if (srcAttr) {
+                if (/\b(env-config|api-client|auth\.js|app\.js)\b/i.test(srcAttr)) {
+                    return;
+                }
+                if (/tailwindcss\.com|phosphor-icons|html2canvas/.test(srcAttr)) {
+                    return;
+                }
+                if (/aliyun-oss/.test(srcAttr)) {
+                    if (typeof window.OSS !== 'undefined') {
+                        return;
+                    }
+                    queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
+                }
+                return;
             }
-            document.body.appendChild(script);
+            const text = (srcScript.textContent || '').trim();
+            if (!text) {
+                return;
+            }
+            if (/tailwind\.config\s*=/.test(text)) {
+                return;
+            }
+            if (/injectCommonUI/.test(text) && text.length < 600) {
+                return;
+            }
+            queue.push({ kind: 'inline', text: srcScript.textContent || '' });
         });
+
+        function runStep(index) {
+            if (index >= queue.length) {
+                TM_restoreShellNavigationGlobals();
+                TM_refreshDashboardPendingOrders();
+                return;
+            }
+            const item = queue[index];
+            const script = document.createElement('script');
+            script.setAttribute('data-tm-module', 'dashboard');
+            if (item.kind === 'ext') {
+                script.src = item.src;
+                script.async = false;
+                script.onload = function () {
+                    runStep(index + 1);
+                };
+                script.onerror = function () {
+                    console.warn('[TM] dashboard 依赖脚本加载失败:', item.src);
+                    runStep(index + 1);
+                };
+                document.body.appendChild(script);
+            } else {
+                try {
+                    script.textContent = item.text;
+                    document.body.appendChild(script);
+                } catch (err) {
+                    console.error('[TM] dashboard 内联脚本执行异常:', err);
+                }
+                runStep(index + 1);
+            }
+        }
+
+        runStep(0);
     } catch (e) {
         console.error('[TM] 注入模块脚本失败:', moduleKey, e);
+        TM_restoreShellNavigationGlobals();
     }
 }
 
@@ -291,8 +351,6 @@ function loadDashboard() {
             document.getElementById('view-dashboard').innerHTML = inner || html;
             TM_syncDashboardOverlays(html);
             TM_injectModuleScripts(html, 'dashboard');
-            TM_restoreShellNavigationGlobals();
-            TM_refreshDashboardPendingOrders();
         })
         .catch(function (error) {
             console.error('Error loading dashboard:', error);
@@ -363,6 +421,7 @@ function initNavigationFromConfig() {
     navButtons.forEach((btn, index) => {
         const cfg = TM_NAV_CONFIG[index];
         if (!cfg) return;
+        btn.setAttribute('data-tab', cfg.tab);
         btn.setAttribute('onclick', `switchTab('${cfg.tab}')`);
         const iconEl = btn.querySelector('i');
         const textEl = btn.querySelector('span');
@@ -378,7 +437,9 @@ function initNavigationFromConfig() {
     mobileButtons.forEach((btn, index) => {
         const cfg = TM_NAV_CONFIG[index];
         if (!cfg) return;
-        btn.setAttribute('onclick', `switchTab('${cfg.tab}')`);
+        btn.setAttribute('data-tab', cfg.tab);
+        btn.setAttribute('type', 'button');
+        btn.removeAttribute('onclick');
         const iconEl = btn.querySelector('i');
         const textEl = btn.querySelector('span');
         if (iconEl) {
@@ -390,6 +451,86 @@ function initNavigationFromConfig() {
     });
 }
 
+/** 判断导航按钮是否对应当前 tab（避免 supply / supplier 被 includes 误匹配） */
+function TM_navBtnMatchesTab(btn, tabId) {
+    const dataTab = btn.getAttribute('data-tab');
+    if (dataTab === tabId) {
+        return true;
+    }
+    const oc = btn.getAttribute('onclick') || '';
+    return new RegExp('switchTab\\(\\s*[\'"]' + tabId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\'"]\\s*\\)').test(oc);
+}
+
+function TM_bindAppShellTabbar() {
+    const bar = document.getElementById('tm-app-tabbar');
+    if (!bar || bar.dataset.tmBound === '1') {
+        return;
+    }
+    bar.dataset.tmBound = '1';
+
+    let lastTabSwitchAt = 0;
+    let suppressClickUntil = 0;
+    function runShellTab(tab) {
+        if (!tab) {
+            return;
+        }
+        const now = Date.now();
+        if (now - lastTabSwitchAt < 280) {
+            return;
+        }
+        lastTabSwitchAt = now;
+        const fn = typeof window.TM_shellSwitchTab === 'function' ? window.TM_shellSwitchTab : window.switchTab;
+        if (typeof fn === 'function') {
+            fn(tab);
+        }
+    }
+
+    function targetButton(e) {
+        const t = e.target;
+        if (!t || !t.closest) {
+            return null;
+        }
+        const btn = t.closest('.mobile-nav-btn');
+        if (!btn || !bar.contains(btn)) {
+            return null;
+        }
+        return btn;
+    }
+
+    bar.addEventListener('click', function (e) {
+        if (Date.now() < suppressClickUntil) {
+            return;
+        }
+        const btn = targetButton(e);
+        if (!btn) {
+            return;
+        }
+        const tab = btn.getAttribute('data-tab');
+        if (!tab) {
+            return;
+        }
+        runShellTab(tab);
+    });
+
+    bar.addEventListener(
+        'touchend',
+        function (e) {
+            const btn = targetButton(e);
+            if (!btn) {
+                return;
+            }
+            const tab = btn.getAttribute('data-tab');
+            if (!tab) {
+                return;
+            }
+            e.preventDefault();
+            suppressClickUntil = Date.now() + 450;
+            runShellTab(tab);
+        },
+        { passive: false }
+    );
+}
+
 function getInitialTabFromHash() {
     const rawHash = window.location.hash || '';
     const match = rawHash.match(/tab=([^&]+)/);
@@ -398,11 +539,53 @@ function getInitialTabFromHash() {
     return allowedTabs.includes(tab) ? tab : 'dashboard';
 }
 
-// 页面加载时加载默认模块
-window.onload = function() {
+/**
+ * index-app 主壳：按实测绘制底栏高度写入 --tm-tabbar-h，供 iframe 与内容区留白对齐（方案 A：仅 HTML 底栏）。
+ */
+function TM_syncAppShellMetrics() {
+    var tabbar = document.getElementById('tm-app-tabbar');
+    if (!tabbar) {
+        return;
+    }
+    function apply() {
+        var root = document.documentElement;
+        if (window.innerWidth >= 768) {
+            root.style.setProperty('--tm-tabbar-h', '0px');
+            return;
+        }
+        var h = Math.ceil(tabbar.getBoundingClientRect().height);
+        if (h > 0) {
+            root.style.setProperty('--tm-tabbar-h', h + 'px');
+        }
+    }
+    apply();
+    if (!window.__tmShellMetricsBound) {
+        window.__tmShellMetricsBound = true;
+        window.addEventListener('resize', function () {
+            clearTimeout(window.__tmShellResizeTimer);
+            window.__tmShellResizeTimer = setTimeout(apply, 100);
+        });
+    }
+    requestAnimationFrame(apply);
+}
+
+window.TM_syncAppShellMetrics = TM_syncAppShellMetrics;
+
+function TM_bootIndexAppShell() {
     initNavigationFromConfig();
+    TM_bindAppShellTabbar();
+    TM_syncAppShellMetrics();
     switchTab(getInitialTabFromHash());
-};
+}
+
+// 尽早绑定底栏（不依赖 window.onload，避免大图/外链拖慢后长时间点不动）
+document.addEventListener('DOMContentLoaded', function () {
+    TM_bindAppShellTabbar();
+});
+
+window.addEventListener('load', function () {
+    TM_bootIndexAppShell();
+});
 
 function switchTab(tabId) {
     const validTabs = ['dashboard', 'biz', 'crm', 'supply', 'supplier'];
@@ -421,7 +604,13 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-btn, .mobile-nav-btn').forEach(btn => {
         btn.classList.remove('active-nav', 'bg-slate-800', 'text-brand-500', 'text-brand-600');
         btn.classList.add('text-slate-400');
-        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabId)) {
+        if (!TM_navBtnMatchesTab(btn, tabId)) {
+            return;
+        }
+        if (btn.classList.contains('mobile-nav-btn')) {
+            btn.classList.remove('text-slate-400');
+            btn.classList.add('text-brand-600', 'active-nav');
+        } else {
             btn.classList.add('bg-slate-800', 'text-brand-500', 'text-brand-600', 'active-nav');
             btn.classList.remove('text-slate-400');
         }
@@ -443,6 +632,8 @@ function switchTab(tabId) {
     else if (tabId === 'supplier') loadSupplier();
 }
 
+window.TM_shellSwitchTab = switchTab;
+
 const TM_SHELL_NAV_FN_NAMES = ['switchTab', 'loadDashboard', 'loadSmartOps', 'loadCRM', 'loadProductCenter', 'loadSupplier'];
 const TM_SHELL_NAV_FN_SNAPSHOT = {};
 
@@ -455,7 +646,13 @@ function TM_captureShellNavigationGlobals() {
 }
 
 function TM_restoreShellNavigationGlobals() {
+    if (typeof window.TM_shellSwitchTab === 'function') {
+        window.switchTab = window.TM_shellSwitchTab;
+    }
     TM_SHELL_NAV_FN_NAMES.forEach(function (name) {
+        if (name === 'switchTab') {
+            return;
+        }
         if (typeof TM_SHELL_NAV_FN_SNAPSHOT[name] === 'function') {
             window[name] = TM_SHELL_NAV_FN_SNAPSHOT[name];
         }

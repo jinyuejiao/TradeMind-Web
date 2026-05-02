@@ -9,6 +9,64 @@
     --gold-light: #fef3c7;
     --gold-dark: #fbbf24;
     --gold-text: #92400e;
+
+    /* index-app 主壳：与 JS innerWidth < 768 对齐（移动端 max-width: 767px） */
+    --tm-safe-t: env(safe-area-inset-top, 0px);
+    --tm-safe-b: env(safe-area-inset-bottom, 0px);
+    --tm-header-h: 4rem;
+    --tm-tabbar-h: 0px;
+    --tm-iframe-min-h: 420px;
+}
+
+@media (max-width: 767px) {
+    :root {
+        --tm-header-h: 3.5rem;
+        --tm-tabbar-h: 4.5rem;
+    }
+
+    .tm-app-content-area {
+        padding-bottom: calc(var(--tm-tabbar-h) + var(--tm-safe-b) + 0.25rem) !important;
+    }
+}
+
+@media (min-width: 768px) {
+    :root {
+        --tm-header-h: 4rem;
+        --tm-tabbar-h: 0px;
+    }
+
+    .tm-app-content-area {
+        padding-bottom: 0;
+    }
+}
+
+/* 主壳内嵌 iframe：可视高度 = 动态视口 - 顶栏 - 底栏（底栏高度可由 JS 写入 --tm-tabbar-h 覆盖） */
+#view-biz iframe.tm-module-frame,
+#view-crm iframe.tm-module-frame,
+#view-supplier iframe.tm-module-frame {
+    width: 100%;
+    height: calc(100dvh - var(--tm-header-h) - var(--tm-tabbar-h));
+    min-height: var(--tm-iframe-min-h);
+    border: 0;
+    background: #f8fafc;
+}
+
+@supports not (height: 100dvh) {
+
+    #view-biz iframe.tm-module-frame,
+    #view-crm iframe.tm-module-frame,
+    #view-supplier iframe.tm-module-frame {
+        height: calc(100vh - var(--tm-header-h) - var(--tm-tabbar-h));
+    }
+}
+
+/* 主壳底栏：保证可点、在 iframe 之上且低于弹窗层（z-[100]+） */
+#tm-app-tabbar {
+    z-index: 95;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 body {
