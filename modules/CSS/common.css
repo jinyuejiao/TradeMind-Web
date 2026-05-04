@@ -69,6 +69,13 @@
     transform: translateZ(0);
 }
 
+/* 与 UI 工程一致：小屏必须显示底栏（防止其它全局样式误伤 Tailwind md:hidden） */
+@media (max-width: 767px) {
+    #tm-app-tabbar.tm-app-tabbar {
+        display: flex !important;
+    }
+}
+
 body {
     background-color: #F1F5F9;
     color: #334155;

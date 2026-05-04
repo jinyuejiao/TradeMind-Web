@@ -11,7 +11,7 @@
 
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
-    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260501r1">
+    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260503r2">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,7 +28,7 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/assets/js/main-app.js"></script>
     <script src="/assets/js/ui-components.js"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260422r20"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260503r3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('[product-center] 页面加载完成');
@@ -104,9 +104,9 @@
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
                     <div class="px-6 py-4 border-b border-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/30">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">现有产品库</h3>
-                        <div class="relative w-full md:w-64 lg:w-72">
-                            <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
-                            <input type="text" id="inventorySearch" onkeyup="window.ProductModule.filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-brand-500 shadow-sm transition-all">
+                        <div class="flex w-full md:w-64 lg:w-72 min-w-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500/20 transition-all">
+                            <i class="ph ph-magnifying-glass shrink-0 text-slate-400 text-base pointer-events-none" aria-hidden="true"></i>
+                            <input type="text" id="inventorySearch" onkeyup="window.ProductModule.filterInventoryTable()" placeholder="快速搜索名称或 SKU..." class="min-w-0 flex-1 border-0 bg-transparent p-0 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0">
                         </div>
                         <div class="flex items-center gap-2 flex-wrap md:flex-nowrap w-full md:w-auto justify-end">
                             <button onclick="window.ProductModule.openCategoryManager()" class="w-10 h-10 max-md:w-8 max-md:h-8 shrink-0 flex items-center justify-center bg-slate-50 text-slate-400 hover:bg-teal-50 hover:text-teal-600 rounded-xl transition-all" title="产品类别管理">
@@ -124,10 +124,10 @@
                     <div class="px-6 py-4 border-b border-slate-50 flex items-center justify-between gap-3 bg-white">
                         <div class="flex items-center gap-3 flex-nowrap overflow-x-auto md:overflow-visible no-scrollbar min-w-0 pr-1">
                             <div class="relative" id="category-filter">
-                                <button onclick="window.ProductModule.toggleDropdown('category-dropdown', event)" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
+                                <button type="button" onclick="window.ProductModule.toggleDropdown('category-dropdown', event)" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
                                     <i class="ph ph-tree-structure text-teal-500"></i>
                                     <span id="category-label">产品类别</span>
-                                    <i class="ph ph-caret-down text-xs"></i>
+                                    <i class="ph ph-caret-down text-xs filter-caret-icon"></i>
                                 </button>
                                 <div id="category-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
                                     <div class="p-2">
@@ -138,10 +138,10 @@
                             </div>
 
                             <div class="relative" id="supplier-filter">
-                                <button onclick="window.ProductModule.toggleDropdown('supplier-dropdown', event)" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
+                                <button type="button" onclick="window.ProductModule.toggleDropdown('supplier-dropdown', event)" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
                                     <i class="ph ph-users text-teal-500"></i>
                                     <span id="supplier-label">供应商</span>
-                                    <i class="ph ph-caret-down text-xs"></i>
+                                    <i class="ph ph-caret-down text-xs filter-caret-icon"></i>
                                 </button>
                                 <div id="supplier-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
                                     <div class="p-2">
@@ -152,10 +152,10 @@
                             </div>
 
                             <div class="relative" id="stock-filter">
-                                <button onclick="window.ProductModule.toggleDropdown('stock-dropdown', event)" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
+                                <button type="button" onclick="window.ProductModule.toggleDropdown('stock-dropdown', event)" class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all">
                                     <i class="ph ph-box text-teal-500"></i>
                                     <span id="stock-label">库存情况</span>
-                                    <i class="ph ph-caret-down text-xs"></i>
+                                    <i class="ph ph-caret-down text-xs filter-caret-icon"></i>
                                 </button>
                                 <div id="stock-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
                                     <div class="p-2">
@@ -405,28 +405,25 @@
                                 <i class="ph ph-receipt text-xl"></i>
                             </div>
                             <div>
-                                <h2 class="text-sm font-black text-slate-800 tracking-widest">进货建议</h2>
-                                <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5">Purchase Suggestion</p>
+                                <h2 class="text-sm font-black text-slate-800 tracking-widest">生成进货单据</h2>
+                                <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5">缺货 SKU · 按供应商与进货周期汇总</p>
                             </div>
                         </div>
-                        <button onclick="closePurchaseSuggestionModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                        <button type="button" onclick="closePurchaseSuggestionModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
                             <i class="ph ph-x text-xl text-slate-400"></i>
                         </button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8" id="purchase-suggestion-content">
                         <div class="text-center py-12">
                             <i class="ph ph-hourglass-simple text-4xl text-slate-300 mb-4"></i>
-                            <p class="text-sm text-slate-400">正在生成进货建议...</p>
+                            <p class="text-sm text-slate-400">正在生成进货单据…</p>
                         </div>
                     </div>
                     <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 max-sm:fixed max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:bg-white/90 max-sm:backdrop-blur">
-                        <p class="text-[10px] text-slate-400 italic">基于当前库存预警值自动计算</p>
+                        <p class="text-[10px] text-slate-400 italic max-md:text-center">按供应商分组；单组可「生成进货单」或「删除本组」。生成后单据进入供应商管理，状态为待审核。</p>
                         <div class="flex gap-3 w-full md:w-auto">
-                            <button onclick="closePurchaseSuggestionModal()" class="flex-1 md:flex-none px-8 py-3 btn-modal-secondary rounded-2xl text-xs font-bold transition">
-                                取消返回
-                            </button>
-                            <button onclick="savePurchaseOrder()" class="flex-[2] md:flex-none px-12 py-3 btn-modal-primary rounded-2xl text-xs font-black shadow-xl shadow-brand-500/30 transition active:scale-95 flex items-center justify-center gap-2">
-                                <i class="ph ph-floppy-disk-back"></i> 保存进货单
+                            <button type="button" onclick="closePurchaseSuggestionModal()" class="flex-1 md:flex-none px-10 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-lg hover:bg-slate-800 transition">
+                                完成
                             </button>
                         </div>
                     </div>

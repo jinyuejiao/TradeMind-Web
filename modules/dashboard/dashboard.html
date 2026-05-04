@@ -3,6 +3,7 @@
 <head>
     <script src="../../assets/js/env-config.js"></script>
     <script src="../../assets/js/api-client.js"></script>
+    <script src="../../assets/js/ai-order-extract-parse.js?v=20260504r2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
@@ -1023,28 +1024,74 @@
             }
         }
 
+        function stripMarkdownJsonFence(text) {
+            if (text == null || typeof text !== 'string') return text;
+            let t = String(text).trim();
+            if (!t.startsWith('```')) return t;
+            const nl = t.indexOf('\n');
+            if (nl > 0) {
+                t = t.slice(nl + 1);
+            } else {
+                t = t.replace(/^```(?:json)?\s*/i, '');
+            }
+            const end = t.lastIndexOf('```');
+            if (end >= 0) {
+                t = t.slice(0, end);
+            }
+            return t.trim();
+        }
+
         function parseAiEnvelope(rawAiResult) {
+            if (typeof window.TM_parseOrderExtractStructured === 'function') {
+                return window.TM_parseOrderExtractStructured(rawAiResult);
+            }
             const raw = safeJsonParse(rawAiResult, {});
-            // 兼容两类结构：
-            // 1) AIResponseData包裹结构：{result:"{...}", ...}
-            // 2) 直接结构化JSON：{customer_data, order_data, ...}
-            if (raw && raw.customer_data && raw.order_data) {
-                return { envelope: { result: JSON.stringify(raw) }, data: raw };
+            let envelope = raw;
+            if (raw && raw.data && typeof raw.data === 'object' && raw.result == null && raw.customer_data == null) {
+                envelope = raw.data;
             }
-            const data = raw && raw.result ? safeJsonParse(raw.result, {}) : {};
+            if (envelope && envelope.customer_data && envelope.order_data) {
+                return { envelope: envelope, data: envelope };
+            }
+            let inner = envelope && envelope.result != null ? envelope.result : '';
+            let innerStr = typeof inner === 'string' ? stripMarkdownJsonFence(inner) : '';
+            let data = innerStr ? safeJsonParse(innerStr, {}) : (inner && typeof inner === 'object' ? inner : {});
+            if (typeof data === 'string') {
+                data = safeJsonParse(stripMarkdownJsonFence(data), {});
+            }
+            const ci = envelope.customerInfo != null ? envelope.customerInfo : envelope.customer_info;
+            const oi = envelope.orderInfo != null ? envelope.orderInfo : envelope.order_info;
+            if (ci) {
+                const c = typeof ci === 'string' ? safeJsonParse(ci, null) : ci;
+                if (c && typeof c === 'object') data.customer_data = Object.assign({}, data.customer_data || {}, c);
+            }
+            if (oi) {
+                const o = typeof oi === 'string' ? safeJsonParse(oi, null) : oi;
+                if (o && typeof o === 'object') {
+                    data.order_data = Object.assign({}, data.order_data || {}, o);
+                    if (Array.isArray(o.items)) data.order_data.items = o.items;
+                }
+            }
+            const details = envelope.details && typeof envelope.details === 'object' ? envelope.details : {};
+            const nc = details.newCustomersFound != null ? details.newCustomersFound : details.new_customers_found;
+            if (Array.isArray(nc) && nc.length > 0) data.new_customers_found = nc;
+            const np = details.newProductsFound != null ? details.newProductsFound : details.new_products_found;
+            if (Array.isArray(np) && np.length > 0 && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
+                data.new_products_found = np;
+            }
             if (data && data.customer_data && data.order_data) {
-                return { envelope: raw || {}, data: data };
+                return { envelope: envelope || {}, data: data };
             }
-            return { envelope: raw || {}, data: {} };
+            return { envelope: envelope || {}, data: {} };
         }
 
         function getStructuredCustomerName(aiData) {
             const customerData = aiData && aiData.customer_data ? aiData.customer_data : {};
             const newCustomers = Array.isArray(aiData && aiData.new_customers_found) ? aiData.new_customers_found : [];
             const firstNewCustomer = newCustomers[0] || null;
-            // 优先级：无新增客户 => 用customer_data；有新增客户 => 用new_customers_found
-            if (newCustomers.length === 0 && customerData.matched_customer_name) return customerData.matched_customer_name;
-            if (firstNewCustomer && firstNewCustomer.name) return firstNewCustomer.name;
+            const matchedName = (customerData.matched_customer_name || '').trim();
+            if (matchedName) return matchedName;
+            if (firstNewCustomer && firstNewCustomer.name) return String(firstNewCustomer.name).trim();
             return '未知客户';
         }
 
@@ -1529,7 +1576,7 @@
                     customerSelect.value = '';
                 }
             }
-            setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || getTodayDateInput());
+            setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || '');
 
             // 预填新增客户tab
             const firstNewCustomer = newCustomers[0] || {};
@@ -1663,11 +1710,6 @@
             const totalAmountEl = document.getElementById('order-total-amount');
             if (totalAmountEl) {
                 totalAmountEl.textContent = totalAmount.toFixed(2);
-            }
-            // 确保预计交货日期有默认值（当天）
-            const dateInput = document.getElementById('order-delivery-date');
-            if (dateInput && !dateInput.value) {
-                dateInput.value = getTodayDateInput();
             }
         }
 
@@ -2355,7 +2397,8 @@
                         const preview = document.getElementById('image-preview');
                         const previewArea = document.getElementById('photo-preview-area');
                         const submitBtn = document.getElementById('photo-submit-btn');
-                        
+                        window.selectedImageFile = file;
+                        window.capturedImageBlob = null;
                         preview.src = e.target.result;
                         previewArea.classList.remove('hidden');
                         submitBtn.disabled = false;
@@ -2466,8 +2509,8 @@
                         previewArea.classList.remove('hidden');
                         submitBtn.disabled = false;
                         
-                        // 存储 blob 以便提交
                         window.capturedImageBlob = blob;
+                        window.selectedImageFile = null;
                     }
                 }, 'image/jpeg', 0.8);
             }
@@ -2486,6 +2529,7 @@
             previewArea.classList.add('hidden');
             submitBtn.disabled = true;
             window.capturedImageBlob = null;
+            window.selectedImageFile = null;
         }
 
         // 提交照片
@@ -2499,15 +2543,23 @@
                 
                 let blob;
                 if (window.capturedImageBlob) {
-                    // 使用从摄像头捕获的 blob
                     blob = window.capturedImageBlob;
+                } else if (window.selectedImageFile) {
+                    blob = window.selectedImageFile;
                 } else {
-                    // 从预览中获取图片数据
                     const imageUrl = preview.src;
-                    const response = await window.wrappedFetch(imageUrl, {
-                        method: 'GET'
-                    });
-                    blob = await response.blob();
+                    if (!imageUrl) {
+                        showToast('请先选择照片');
+                        return;
+                    }
+                    // data:/blob: 不得走 wrappedFetch（会被拼成 API 根路径 + data URL，请求失败且 catch 会触发登出）
+                    if (imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')) {
+                        const res = await fetch(imageUrl);
+                        blob = await res.blob();
+                    } else {
+                        const response = await window.wrappedFetch(imageUrl, { method: 'GET' });
+                        blob = await response.blob();
+                    }
                 }
                 
                 // 处理图片数据

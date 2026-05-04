@@ -34,6 +34,7 @@ window.SupplierModule = {
     allSuppliers: [],
     purchases: [],
     products: [],
+    accounts: [],
     currentSupplier: null,
     currentPurchase: null,
     supplierCurrentPage: 1,
@@ -50,11 +51,21 @@ window.SupplierModule = {
             this.loadSuppliers(),
             this.loadAllSuppliers(),
             this.loadPurchases(),
-            this.loadProducts()
+            this.loadProducts(),
+            this.loadAccounts()
         ]);
         this.renderSuppliers();
         this.renderPurchases();
         this.initDateInput();
+        if (!this._tmPurchasesChangedBound) {
+            this._tmPurchasesChangedBound = true;
+            var self = this;
+            window.addEventListener('tm-purchases-changed', function () {
+                self.loadPurchases(self.purchaseCurrentPage || 1).then(function () {
+                    self.renderPurchases();
+                });
+            });
+        }
     },
 
     loadStatuses: async function() {
@@ -159,6 +170,63 @@ window.SupplierModule = {
         }
     },
 
+    loadAccounts: async function() {
+        try {
+            const response = await window.wrappedFetch('/api/v1/im/accounts', { method: 'GET' });
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    this.accounts = result.data;
+                } else {
+                    this.accounts = [];
+                }
+            }
+        } catch (error) {
+            console.error('Error loading accounts:', error);
+            this.accounts = [];
+        }
+    },
+
+    fillPurchaseAccountSelect: function(preferredAccountId) {
+        const sel = document.getElementById('purchase-account');
+        if (!sel) return;
+        const accounts = this.accounts || [];
+        sel.innerHTML = '<option value="">--- 请选择付款账户 ---</option>';
+        accounts.forEach(function(a) {
+            const opt = document.createElement('option');
+            opt.value = String(a.accountId);
+            opt.textContent = a.accountName || ('账户#' + a.accountId);
+            sel.appendChild(opt);
+        });
+        var pick = preferredAccountId;
+        if (pick == null || pick === '') {
+            const def = accounts.find(function(a) {
+                return a.isDefaultPay === true || a.isDefaultPay === 't' || a.isDefaultPay === 1;
+            });
+            if (def) pick = def.accountId;
+            else if (accounts.length) pick = accounts[0].accountId;
+        }
+        if (pick != null && pick !== '') {
+            const s = String(pick);
+            if (sel.querySelector('option[value="' + s + '"]')) {
+                sel.value = s;
+            } else {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = '账户#' + s;
+                opt.selected = true;
+                sel.appendChild(opt);
+            }
+        }
+    },
+
+    pickPurchaseDateRaw: function(purchase) {
+        if (!purchase) return null;
+        var v = purchase.purchaseDate;
+        if (v == null || v === '') v = purchase.purchase_date;
+        return v;
+    },
+
     getStatusBadge: function(statusCode) {
         const state = this.states.find(s => s.dictCode === statusCode);
         const statusName = state ? state.dictName : statusCode || '未知';
@@ -168,6 +236,9 @@ window.SupplierModule = {
         switch(statusCode) {
             case 'DRAFT':
                 color = 'bg-gray-100 text-gray-600 border-gray-200';
+                break;
+            case 'PENDING_REVIEW':
+                color = 'bg-orange-100 text-orange-600 border-orange-200';
                 break;
             case 'SUBMITTED':
                 color = 'bg-orange-100 text-orange-600 border-orange-200';
@@ -213,6 +284,22 @@ window.SupplierModule = {
         var m = String(d.getMonth() + 1).padStart(2, '0');
         var day = String(d.getDate()).padStart(2, '0');
         return y + '.' + m + '.' + day;
+    },
+
+    /** 将接口返回的日期时间转为 HTML5 date 控件所需的 yyyy-MM-dd */
+    toDateInputValue: function(dateStr) {
+        if (dateStr == null || dateStr === '') return '';
+        if (Array.isArray(dateStr)) {
+            var y = dateStr[0], mo = dateStr[1], day = dateStr[2];
+            if (y == null) return '';
+            return y + '-' + String(mo).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+        }
+        var s = String(dateStr).trim();
+        var head = s.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (head) return head[1];
+        var d = new Date(s);
+        if (Number.isNaN(d.getTime())) return '';
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     },
 
     showToast: function(message) {
@@ -550,10 +637,10 @@ window.SupplierModule = {
                         <option value="">--- 选择产品 ---</option>
                     </select>
                 </td>
-                <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="1" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
+                <td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]"><input type="number" class="form-input text-center qty-input w-full min-w-0" value="1" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
                 <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>
                 <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-                <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号"></td>
+                <td class="px-4 py-3 w-56 min-w-[14rem]"><input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号"></td>
                 <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
                 <td class="px-4 py-3 text-center">
                     <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
@@ -565,6 +652,7 @@ window.SupplierModule = {
         
         this.populateProductsSelects();
         this.calculatePurchaseTotal();
+        this.fillPurchaseAccountSelect(null);
     },
 
     populateSuppliersSelect: function() {
@@ -615,6 +703,7 @@ window.SupplierModule = {
         
         if (!productId) {
             unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
+            unitSelect.className = 'form-input text-center unit-select';
             priceInput.value = 0;
             this.calculatePurchaseTotal();
             return;
@@ -622,6 +711,7 @@ window.SupplierModule = {
         
         const product = this.products.find(p => p.productId == productId);
         if (product) {
+            unitSelect.className = 'form-input text-center unit-select';
             unitSelect.innerHTML = '';
             if (product.baseUnit) {
                 const option = document.createElement('option');
@@ -650,10 +740,10 @@ window.SupplierModule = {
                     <option value="">--- 选择产品 ---</option>
                 </select>
             </td>
-            <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="1" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
+            <td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]"><input type="number" class="form-input text-center qty-input w-full min-w-0" value="1" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
             <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>
             <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-            <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号"></td>
+            <td class="px-4 py-3 w-56 min-w-[14rem]"><input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号"></td>
             <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
             <td class="px-4 py-3 text-center">
                 <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
@@ -689,7 +779,7 @@ window.SupplierModule = {
     },
 
     editPurchase: async function(purchaseId) {
-        const purchase = this.purchases.find(p => p.purchaseId === purchaseId);
+        const purchase = this.purchases.find(p => String(p.purchaseId) === String(purchaseId));
         if (!purchase) return;
 
         this.currentPurchase = purchase;
@@ -700,7 +790,8 @@ window.SupplierModule = {
         
         document.getElementById('purchase-supplier').value = purchase.supplierId || '';
         document.getElementById('purchase-status').value = purchase.purchaseStatus || '';
-        document.getElementById('purchase-date').value = purchase.purchaseDate || '';
+        document.getElementById('purchase-date').value = this.toDateInputValue(this.pickPurchaseDateRaw(purchase));
+        this.fillPurchaseAccountSelect(purchase.accountId != null ? purchase.accountId : purchase.account_id);
         
         const tbody = document.getElementById('purchase-items-tbody');
         tbody.innerHTML = '';
@@ -715,10 +806,10 @@ window.SupplierModule = {
                             <option value="">--- 选择产品 ---</option>
                         </select>
                     </td>
-                    <td class="px-4 py-3"><input type="number" class="form-input text-center qty-input" value="${item.quantity || 1}" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
+                    <td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]"><input type="number" class="form-input text-center qty-input w-full min-w-0" value="${item.quantity || 1}" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
                     <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="${item.unitPrice || 0}" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>
                     <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-                    <td class="px-4 py-3"><input type="text" class="form-input text-center batch-input" placeholder="批次号" value="${item.batchNo || ''}"></td>
+                    <td class="px-4 py-3 w-56 min-w-[14rem]"><input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号" value="${item.batchNo || ''}"></td>
                     <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
                     <td class="px-4 py-3 text-center">
                         <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
@@ -763,6 +854,14 @@ window.SupplierModule = {
 
         if (!supplierId) {alert('请选择供应商');return;}
 
+        const accountEl = document.getElementById('purchase-account');
+        const accountRaw = accountEl ? accountEl.value : '';
+        let accountId = null;
+        if (accountRaw) {
+            const n = parseInt(accountRaw, 10);
+            if (!Number.isNaN(n)) accountId = n;
+        }
+
         try {
             const rows = document.querySelectorAll('.purchase-item-row');
             const items = [];
@@ -791,12 +890,17 @@ window.SupplierModule = {
 
             if (items.length === 0) {alert('请至少添加一项商品');return;}
 
+            const paidKeep = (this.currentPurchase && this.currentPurchase.paidAmount != null)
+                ? this.currentPurchase.paidAmount
+                : 0;
+
             const purchaseData = {
                 supplierId: parseInt(supplierId),
+                accountId: accountId,
                 purchaseStatus: status || 'DRAFT',
                 purchaseDate: purchaseDate,
                 totalAmount: totalAmount,
-                paidAmount: 0,
+                paidAmount: paidKeep,
                 items: items
             };
 

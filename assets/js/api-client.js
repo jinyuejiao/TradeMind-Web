@@ -118,8 +118,12 @@
                 }
                 throw new Error('未授权');
             }
-            
-            console.log('[API-Client] ✅ 响应状态正常');
+
+            if (!response.ok) {
+                console.warn('[API-Client] ❌ HTTP 非成功状态:', response.status, response.statusText);
+            } else {
+                console.log('[API-Client] ✅ 响应状态 2xx');
+            }
             
             // 日志契约：每个接口请求完成后，必须 console.log 响应状态及处理后的数据对象
             console.log('[API-Client] ========== 请求完成 ==========');

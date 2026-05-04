@@ -393,12 +393,10 @@
                     font-weight: 700;
                 }
 
-                /* 隐藏 PC 端元素在移动端 */
+                /* 注意：不得对全局 .md\\:hidden 在移动端写 display:none。
+                   Tailwind 的 md:hidden 表示「≥768px 隐藏」，小屏本应为可见；
+                   若在此强制隐藏，会误伤主壳 #tm-app-tabbar（与 UI 工程 index 底栏同类），导致手机端底栏整栏消失。 */
                 @media (max-width: 767px) {
-                    .md\\:hidden {
-                        display: none !important;
-                    }
-                    
                     .tm-mobile-only {
                         display: flex !important;
                     }
@@ -1084,9 +1082,23 @@ function getLoginPath() {
     return loginPath;
 }
 
+/**
+ * 将静态 HTML 入口解析为绝对 URL（相对当前页目录），避免子目录部署时 /index-app.html 指向错误根路径。
+ * @param {string} relativeWithOptionalHash 例如 index-app.html#tab=dashboard
+ */
+function resolveStaticPageUrl(relativeWithOptionalHash) {
+    try {
+        return new URL(relativeWithOptionalHash, window.location.href).href;
+    } catch (e) {
+        return '/' + String(relativeWithOptionalHash || '').replace(/^\//, '');
+    }
+}
+
+window.TM_resolveStaticPageUrl = resolveStaticPageUrl;
+
 // 获取工作台页面路径
 function getDashboardPath() {
-    return '/index-app.html';
+    return resolveStaticPageUrl('index-app.html');
 }
 
 function resolveDefaultTabFromPath(pathname) {
@@ -1100,7 +1112,7 @@ function resolveDefaultTabFromPath(pathname) {
 
 function getAppEntryPath(tabName) {
     const tab = tabName || 'dashboard';
-    return '/index-app.html#tab=' + encodeURIComponent(tab);
+    return resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab));
 }
 
 // 检查localStorage是否可用
@@ -1578,6 +1590,9 @@ window.injectCommonUI = function() {
 
             /** index-app 等主壳页已内置顶栏与 .mobile-nav-btn 底栏（方案 A），禁止再注入 tm-mobile-header / tm-mobile-nav */
             const isAppShellPage = !!document.getElementById('tm-app-tabbar');
+            /** 登录/注册等公开页：不注入底部模块切换栏，避免干扰登录操作 */
+            const pathLower = (window.location.pathname || '').toLowerCase();
+            const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
             
             // 移动端布局适配
             if (!isAppShellPage) {
@@ -1641,55 +1656,61 @@ window.injectCommonUI = function() {
                 console.log('TradeMindUI.injectCommonUI: 移动端Header已存在，跳过注入');
             }
             
-            // 注入移动端底部导航
-            const existingNav = document.querySelector('.tm-mobile-nav');
-            if (!existingNav) {
-                console.log('TradeMindUI.injectCommonUI: 注入移动端底部导航');
-                const mobileNav = `
+            // 注入移动端底部导航（登录/注册页不注入）
+            if (!isPublicAuthPage) {
+                const existingNav = document.querySelector('.tm-mobile-nav');
+                if (!existingNav) {
+                    console.log('TradeMindUI.injectCommonUI: 注入移动端底部导航');
+                    const mobileNav = `
                     <nav class="tm-mobile-nav">
-                        <a href="/index-app.html#tab=dashboard" class="tm-nav-item active">
+                        <a href="${resolveStaticPageUrl('index-app.html#tab=dashboard')}" class="tm-nav-item active">
                             <i class="ph-bold ph-squares-four"></i>
                             <span>工作台</span>
                         </a>
-                        <a href="/index-app.html#tab=biz" class="tm-nav-item">
+                        <a href="${resolveStaticPageUrl('index-app.html#tab=biz')}" class="tm-nav-item">
                             <i class="ph-bold ph-chart-line-up"></i>
                             <span>智能经营</span>
                         </a>
-                        <a href="/index-app.html#tab=crm" class="tm-nav-item">
+                        <a href="${resolveStaticPageUrl('index-app.html#tab=crm')}" class="tm-nav-item">
                             <i class="ph-bold ph-users"></i>
                             <span>客户</span>
                         </a>
-                        <a href="/index-app.html#tab=supply" class="tm-nav-item">
+                        <a href="${resolveStaticPageUrl('index-app.html#tab=supply')}" class="tm-nav-item">
                             <i class="ph-bold ph-flask"></i>
                             <span>产品中心</span>
                         </a>
-                        <a href="/index-app.html#tab=supplier" class="tm-nav-item">
+                        <a href="${resolveStaticPageUrl('index-app.html#tab=supplier')}" class="tm-nav-item">
                             <i class="ph-bold ph-warehouse"></i>
                             <span>供应商</span>
                         </a>
                     </nav>
                 `;
-                document.body.insertAdjacentHTML('beforeend', mobileNav);
-                console.log('TradeMindUI.injectCommonUI: 移动端底部导航注入成功');
+                    document.body.insertAdjacentHTML('beforeend', mobileNav);
+                    console.log('TradeMindUI.injectCommonUI: 移动端底部导航注入成功');
+                } else {
+                    console.log('TradeMindUI.injectCommonUI: 移动端底部导航已存在，跳过注入');
+                }
             } else {
-                console.log('TradeMindUI.injectCommonUI: 移动端底部导航已存在，跳过注入');
+                console.log('TradeMindUI.injectCommonUI: 公开认证页，跳过移动端底部模块栏');
             }
             
-            // 高亮当前页的导航项
-            console.log('TradeMindUI.injectCommonUI: 步骤3 - 高亮当前页导航项');
-            const currentPath = window.location.pathname;
-            const navItems = document.querySelectorAll('.tm-nav-item');
-            console.log('TradeMindUI.injectCommonUI: 当前路径:', currentPath, '找到导航项数量:', navItems.length);
-            
-            navItems.forEach((item, index) => {
-                const href = item.getAttribute('href');
-                console.log(`TradeMindUI.injectCommonUI: 导航项 ${index} href:`, href);
-                if (currentPath === href || currentPath.startsWith(href.replace('.html', ''))) {
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    item.classList.add('active');
-                    console.log('TradeMindUI.injectCommonUI: 已高亮导航项:', href);
-                }
-            });
+            // 高亮当前页的导航项（仅当存在注入式底栏时）
+            if (!isPublicAuthPage) {
+                console.log('TradeMindUI.injectCommonUI: 步骤3 - 高亮当前页导航项');
+                const currentPath = window.location.pathname;
+                const navItems = document.querySelectorAll('.tm-nav-item');
+                console.log('TradeMindUI.injectCommonUI: 当前路径:', currentPath, '找到导航项数量:', navItems.length);
+                
+                navItems.forEach((item, index) => {
+                    const href = item.getAttribute('href');
+                    console.log(`TradeMindUI.injectCommonUI: 导航项 ${index} href:`, href);
+                    if (currentPath === href || currentPath.startsWith(href.replace('.html', ''))) {
+                        navItems.forEach(nav => nav.classList.remove('active'));
+                        item.classList.add('active');
+                        console.log('TradeMindUI.injectCommonUI: 已高亮导航项:', href);
+                    }
+                });
+            }
             } else {
                 console.log('TradeMindUI.injectCommonUI: 主壳页面 (tm-app-tabbar) 已含内置导航，跳过注入式顶栏/底栏与侧栏覆盖');
             }

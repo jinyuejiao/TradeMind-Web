@@ -11,6 +11,10 @@
     flex: 1;
     padding-top: 0.25rem;
     transition: all 0.3s ease;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
 }
 
 #tm-app-tabbar .mobile-nav-btn i {
@@ -58,10 +62,10 @@
         flex-shrink: 0;
     }
     
-    /* 筛选器按钮 */
-    #category-filter button,
-    #supplier-filter button,
-    #stock-filter button {
+    /* 仅筛选条上的触发按钮（勿匹配下拉面板内的选项按钮，否则无法点击/展示异常） */
+    #category-filter > button,
+    #supplier-filter > button,
+    #stock-filter > button {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

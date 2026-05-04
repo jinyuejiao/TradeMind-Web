@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="../CSS/common.css">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/auth.js?v=20260422r13"></script>
-    <script src="../../assets/js/ui-supplier.js?v=20260422r16"></script>
+    <script src="../../assets/js/ui-supplier.js?v=20260205r19"></script>
     <style>
         body { display: flex; height: 100vh; overflow: hidden; }
         .view-toggle-btn { transition: all 0.2s ease; }
@@ -156,10 +156,10 @@
                             <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
                                 <tr>
                                     <th class="px-4 py-3 text-left">产品</th>
-                                    <th class="px-4 py-3 text-center w-24">数量</th>
+                                    <th class="px-4 py-3 text-center w-[9em] min-w-[9em] max-w-[11em]">数量</th>
                                     <th class="px-4 py-3 text-center w-28">进货单价</th>
-                                    <th class="px-4 py-3 text-center w-24">单位</th>
-                                    <th class="px-4 py-3 text-center w-28">批次号</th>
+                                    <th class="px-4 py-3 text-center w-28">单位</th>
+                                    <th class="px-4 py-3 text-center w-56 min-w-[14rem]">批次号</th>
                                     <th class="px-4 py-3 text-right">小计</th>
                                     <th class="px-4 py-3 text-center w-14">删除</th>
                                 </tr>
@@ -173,6 +173,11 @@
                     <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
                     <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">进货单总计</p><p class="text-[9px] text-slate-500 mt-1 italic">系统自动计算</p></div>
                     <div class="text-right"><span class="text-3xl font-black font-mono text-brand-500" id="purchase-grand-total">¥0.00</span></div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">付款账户</label>
+                    <select id="purchase-account" class="form-input w-full max-w-lg"><option value="">--- 请选择付款账户 ---</option></select>
                 </div>
             </div>
             <div class="p-6 border-t border-slate-100 bg-white flex gap-4 shrink-0">

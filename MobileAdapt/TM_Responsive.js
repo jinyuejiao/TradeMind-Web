@@ -130,7 +130,7 @@ window.TM_Responsive = {
      * @param {string} tabId - 当前激活的 tab
      */
     syncMobileNav: function(tabId) {
-        document.querySelectorAll('.mobile-nav-btn').forEach((btn) => {
+        document.querySelectorAll('#tm-app-tabbar .mobile-nav-btn').forEach((btn) => {
             btn.classList.remove('text-brand-600', 'active-nav');
             btn.classList.add('text-slate-400');
             const dataTab = btn.getAttribute('data-tab');

@@ -202,7 +202,11 @@
                 return;
             }
 
-            window.location.href = '/index-app.html#tab=' + encodeURIComponent(tab || 'dashboard');
+            var fallback = '/index-app.html#tab=' + encodeURIComponent(tab || 'dashboard');
+            if (typeof window.TM_resolveStaticPageUrl === 'function') {
+                fallback = window.TM_resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab || 'dashboard'));
+            }
+            window.location.href = fallback;
         },
 
         /**

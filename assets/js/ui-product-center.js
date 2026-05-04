@@ -7,8 +7,8 @@ window.ProductModule = {
             id: apiProduct.productId || apiProduct.id,
             name: apiProduct.productName || apiProduct.name,
             sku: apiProduct.productSku || apiProduct.sku,
-            categoryId: apiProduct.categoryId,
-            supplierId: apiProduct.supplierId,
+            categoryId: apiProduct.categoryId != null ? Number(apiProduct.categoryId) : null,
+            supplierId: apiProduct.supplierId != null ? Number(apiProduct.supplierId) : null,
             category1: apiProduct.category1 || apiProduct.category,
             category2: apiProduct.category2,
             supplier: apiProduct.supplierName || apiProduct.supplier,
@@ -223,11 +223,10 @@ window.ProductModule = {
     productTotal: 0,
     productTotalPages: 1,
 
-    // 筛选状态
+    // 筛选状态（与 products.category_id / supplier_id 对齐）
     filterState: {
-        category1: null,
-        category2: null,
-        supplier: null,
+        categoryId: null,
+        supplierId: null,
         stockStatus: null,
         searchText: ''
     },
@@ -247,6 +246,10 @@ window.ProductModule = {
     // 仓库相关状态
     editingWarehouseId: null,
     warehouseToDelete: null,
+
+    /** 进货单据生成弹窗：后端返回的分组缓存 */
+    purchaseGenGroups: [],
+    purchaseGenPreviewRef: '',
 
     // ==================== 初始化函数 ====================
     init: async function() {
@@ -280,7 +283,7 @@ window.ProductModule = {
                 const filterId = d.id.replace('-dropdown', '-filter');
                 const filterEl = document.getElementById(filterId);
                 if (filterEl) {
-                    const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
+                    const caretIcon = filterEl.querySelector('.filter-caret-icon');
                     if (caretIcon) {
                         caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
                         caretIcon.classList.add('ph-caret-down');
@@ -297,7 +300,7 @@ window.ProductModule = {
         const filterId = dropdownId.replace('-dropdown', '-filter');
         const filterEl = document.getElementById(filterId);
         if (filterEl) {
-            const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
+            const caretIcon = filterEl.querySelector('.filter-caret-icon');
             if (caretIcon) {
                 if (isHidden) {
                     console.log('[ProductModule] 打开下拉框，更新箭头');
@@ -321,31 +324,74 @@ window.ProductModule = {
         }
     },
 
+    /** 下拉选项用 data-* + 委托点击，避免内联 onclick 与 JSON 引号破坏属性导致无法选中（主壳重复注入 DOM 时按节点重新绑定） */
+    bindFilterDropdownDelegates: function() {
+        var catDd = document.getElementById('category-dropdown');
+        var supDd = document.getElementById('supplier-dropdown');
+        var stkDd = document.getElementById('stock-dropdown');
+        if (!catDd || !supDd || !stkDd) return;
+        if (catDd.dataset.tmFilterDelegated === '1' && supDd.dataset.tmFilterDelegated === '1' && stkDd.dataset.tmFilterDelegated === '1') {
+            return;
+        }
+        catDd.dataset.tmFilterDelegated = '1';
+        supDd.dataset.tmFilterDelegated = '1';
+        stkDd.dataset.tmFilterDelegated = '1';
+        var self = this;
+        catDd.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-category-key]');
+            if (!btn || !catDd.contains(btn)) return;
+            e.stopPropagation();
+            var key = btn.getAttribute('data-category-key');
+            if (key === 'all') {
+                self.selectCategoryFilter(null, null);
+            } else {
+                var id = Number(key);
+                var label = (btn.textContent || '').trim();
+                self.selectCategoryFilter(id, label);
+            }
+        });
+        supDd.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-supplier-key]');
+            if (!btn || !supDd.contains(btn)) return;
+            e.stopPropagation();
+            var key = btn.getAttribute('data-supplier-key');
+            if (key === 'all') {
+                self.selectSupplierFilter(null, '全部');
+            } else {
+                var sid = Number(key);
+                var label = (btn.textContent || '').trim();
+                self.selectSupplierFilter(sid, label);
+            }
+        });
+        stkDd.addEventListener('click', function (e) {
+            var btn = e.target.closest('button[data-stock-key]');
+            if (!btn || !stkDd.contains(btn)) return;
+            e.stopPropagation();
+            var status = btn.getAttribute('data-stock-key') || '全部';
+            self.selectStockStatus(status);
+        });
+    },
+
     // ==================== 筛选功能 ====================
-    selectCategory: function(category1, category2) {
-        console.log('[ProductModule] selectCategory 被调用，参数:', category1, category2);
-        this.filterState.category1 = category1;
-        this.filterState.category2 = category2;
-        
+    selectCategoryFilter: function(categoryId, displayName) {
+        const cid = categoryId == null || categoryId === '' ? null : Number(categoryId);
+        this.filterState.categoryId = cid != null && !Number.isNaN(cid) ? cid : null;
+
         const label = document.getElementById('category-label');
-        const btn = document.getElementById('category-filter').querySelector('button');
-        
-        if (category1 && category2) {
-            label.textContent = `${category1} > ${category2}`;
-            btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-        } else if (category1) {
-            label.textContent = category1;
+        const btn = document.querySelector('#category-filter > button');
+
+        if (this.filterState.categoryId != null) {
+            label.textContent = displayName || '已选分类';
             btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         } else {
             label.textContent = '产品类别';
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         }
-        
+
         document.getElementById('category-dropdown').classList.add('hidden');
-        // 重置箭头图标
         const filterEl = document.getElementById('category-filter');
         if (filterEl) {
-            const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
+            const caretIcon = filterEl.querySelector('.filter-caret-icon');
             if (caretIcon) {
                 caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
                 caretIcon.classList.add('ph-caret-down');
@@ -355,26 +401,25 @@ window.ProductModule = {
         this.filterProducts();
     },
 
-    selectSupplier: function(supplier) {
-        console.log('[ProductModule] selectSupplier 被调用，参数:', supplier);
-        this.filterState.supplier = supplier;
-        
+    selectSupplierFilter: function(supplierId, displayName) {
+        const sid = supplierId == null || supplierId === '' ? null : Number(supplierId);
+        this.filterState.supplierId = sid != null && !Number.isNaN(sid) ? sid : null;
+
         const label = document.getElementById('supplier-label');
-        const btn = document.getElementById('supplier-filter').querySelector('button');
-        
-        if (supplier && supplier !== '全部') {
-            label.textContent = supplier;
+        const btn = document.querySelector('#supplier-filter > button');
+
+        if (this.filterState.supplierId != null) {
+            label.textContent = displayName || '供应商';
             btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         } else {
             label.textContent = '供应商';
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         }
-        
+
         document.getElementById('supplier-dropdown').classList.add('hidden');
-        // 重置箭头图标
         const supplierFilterEl = document.getElementById('supplier-filter');
         if (supplierFilterEl) {
-            const caretIcon = supplierFilterEl.querySelector('.ph-caret-down, .ph-caret-up');
+            const caretIcon = supplierFilterEl.querySelector('.filter-caret-icon');
             if (caretIcon) {
                 caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
                 caretIcon.classList.add('ph-caret-down');
@@ -389,7 +434,7 @@ window.ProductModule = {
         this.filterState.stockStatus = status;
         
         const label = document.getElementById('stock-label');
-        const btn = document.getElementById('stock-filter').querySelector('button');
+        const btn = document.querySelector('#stock-filter > button');
         
         if (status && status !== '全部') {
             label.textContent = status;
@@ -403,7 +448,7 @@ window.ProductModule = {
         // 重置箭头图标
         const stockFilterEl = document.getElementById('stock-filter');
         if (stockFilterEl) {
-            const caretIcon = stockFilterEl.querySelector('.ph-caret-down, .ph-caret-up');
+            const caretIcon = stockFilterEl.querySelector('.filter-caret-icon');
             if (caretIcon) {
                 caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
                 caretIcon.classList.add('ph-caret-down');
@@ -418,7 +463,9 @@ window.ProductModule = {
         const resetBtn = document.getElementById('reset-filter-btn');
         if (!resetBtn) return;
         
-        const hasActiveFilter = this.filterState.category1 || this.filterState.supplier || this.filterState.stockStatus || this.filterState.searchText;
+        const hasActiveFilter = this.filterState.categoryId != null || this.filterState.supplierId != null
+            || (this.filterState.stockStatus && this.filterState.stockStatus !== '全部')
+            || (this.filterState.searchText && String(this.filterState.searchText).trim() !== '');
         
         if (hasActiveFilter) {
             resetBtn.classList.remove('hidden');
@@ -432,9 +479,8 @@ window.ProductModule = {
     resetFilters: function() {
         console.log('[ProductModule] resetFilters 被调用 ===');
         this.filterState = {
-            category1: null,
-            category2: null,
-            supplier: null,
+            categoryId: null,
+            supplierId: null,
             stockStatus: null,
             searchText: ''
         };
@@ -448,7 +494,7 @@ window.ProductModule = {
         document.getElementById('supplier-label').textContent = '供应商';
         document.getElementById('stock-label').textContent = '库存情况';
         
-        document.querySelectorAll('#category-filter button, #supplier-filter button, #stock-filter button').forEach(btn => {
+        document.querySelectorAll('#category-filter > button, #supplier-filter > button, #stock-filter > button').forEach(function (btn) {
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         });
         
@@ -470,22 +516,22 @@ window.ProductModule = {
         let filtered = [...this.products];
         
         if (this.filterState.searchText) {
-            const searchLower = this.filterState.searchText.toLowerCase();
-            filtered = filtered.filter(p => 
-                p.name.toLowerCase().includes(searchLower) || 
-                p.sku.toLowerCase().includes(searchLower)
-            );
+            const searchLower = String(this.filterState.searchText).toLowerCase().trim();
+            filtered = filtered.filter(p => {
+                const nm = (p.name != null ? String(p.name) : '').toLowerCase();
+                const sk = (p.sku != null ? String(p.sku) : '').toLowerCase();
+                return nm.includes(searchLower) || sk.includes(searchLower);
+            });
         }
-        
-        if (this.filterState.category1) {
-            filtered = filtered.filter(p => p.category1 === this.filterState.category1);
-            if (this.filterState.category2) {
-                filtered = filtered.filter(p => p.category2 === this.filterState.category2);
-            }
+
+        if (this.filterState.categoryId != null && !Number.isNaN(this.filterState.categoryId)) {
+            const cid = Number(this.filterState.categoryId);
+            filtered = filtered.filter(p => p.categoryId != null && Number(p.categoryId) === cid);
         }
-        
-        if (this.filterState.supplier && this.filterState.supplier !== '全部') {
-            filtered = filtered.filter(p => p.supplier === this.filterState.supplier);
+
+        if (this.filterState.supplierId != null && !Number.isNaN(this.filterState.supplierId)) {
+            const sid = Number(this.filterState.supplierId);
+            filtered = filtered.filter(p => p.supplierId != null && Number(p.supplierId) === sid);
         }
         
         if (this.filterState.stockStatus && this.filterState.stockStatus !== '全部') {
@@ -759,26 +805,22 @@ window.ProductModule = {
         console.log('[ProductModule] initCategoryOptions 被调用 ===');
         const container = document.getElementById('category-options');
         if (!container) return;
-        
-        container.innerHTML = `
-            <button onclick="window.ProductModule.selectCategory(null, null)" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">
-                全部类别
-            </button>
-        ` + this.categories.map(cat => `
-            <div class="border-b border-slate-50">
-                <button onclick="window.ProductModule.selectCategory('${cat.name}', null)" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-800 hover:bg-teal-50 hover:text-teal-700 transition-all flex items-center justify-between">
-                    <span>${cat.name}</span>
-                    <i class="ph ph-caret-right text-slate-400"></i>
-                </button>
-                <div class="pl-4 bg-slate-50/30">
-                    ${cat.subcategories.map(sub => `
-                        <button onclick="window.ProductModule.selectCategory('${cat.name}', '${sub}')" class="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                            <span class="ml-2">${sub}</span>
-                        </button>
-                    `).join('')}
-                </div>
-            </div>
-        `).join('');
+
+        const escHtml = function (s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+        const rows = [
+            '<button type="button" data-category-key="all" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">全部类别</button>'
+        ];
+        (this.categories || []).forEach(function (cat) {
+            const id = cat.categoryId;
+            const nm = cat.name || '未命名';
+            if (id == null || id === '') return;
+            rows.push(
+                '<button type="button" data-category-key="' + String(Number(id)) + '" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-800 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">' + escHtml(nm) + '</button>'
+            );
+        });
+        container.innerHTML = rows.join('');
     },
 
     initSupplierOptions: function() {
@@ -786,36 +828,47 @@ window.ProductModule = {
         const container = document.getElementById('supplier-options');
         if (!container) return;
 
-        const supplierNames = ['全部'];
-        (this.suppliers || []).forEach(supplier => {
+        const escHtml = function (s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+        const parts = [
+            '<button type="button" data-supplier-key="all" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">全部供应商</button>'
+        ];
+        (this.suppliers || []).forEach(function (supplier) {
             const name = supplier.supplierName || supplier.name;
-            if (name && !supplierNames.includes(name)) {
-                supplierNames.push(name);
-            }
+            const sid = supplier.supplierId != null ? supplier.supplierId : supplier.id;
+            if (sid == null || name == null) return;
+            parts.push(
+                '<button type="button" data-supplier-key="' + String(Number(sid)) + '" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0">' + escHtml(String(name)) + '</button>'
+            );
         });
-        
-        container.innerHTML = supplierNames.map(name => `
-            <button onclick='window.ProductModule.selectSupplier(${JSON.stringify(name)})' class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0">
-                ${name}
-            </button>
-        `).join('');
+        container.innerHTML = parts.join('');
     },
 
     initStockOptions: function() {
         console.log('[ProductModule] initStockOptions 被调用 ===');
         const container = document.getElementById('stock-options');
         if (!container) return;
-        
-        container.innerHTML = this.stockStatuses.map(status => `
-            <button onclick="window.ProductModule.selectStockStatus('${status}')" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0 flex items-center gap-3">
-                ${status !== '全部' ? `<span class="inline-block w-2.5 h-2.5 ${window.ProductModule.getStockStatusColor(status)} rounded-full"></span>` : ''}
-                ${status}
-            </button>
-        `).join('');
+
+        const escAttr = function (s) {
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        };
+        const escHtml = function (s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+        var self = this;
+        container.innerHTML = this.stockStatuses.map(function (status) {
+            var dot = status !== '全部'
+                ? '<span class="inline-block w-2.5 h-2.5 ' + self.getStockStatusColor(status) + ' rounded-full"></span>'
+                : '';
+            return '<button type="button" data-stock-key="' + escAttr(status) + '" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0 flex items-center gap-3">' +
+                dot + (dot ? '<span class="w-2"></span>' : '') + escHtml(status) + '</button>';
+        }).join('');
     },
 
     initFilterOptions: function() {
         console.log('[ProductModule] initFilterOptions 被调用 ===');
+        this.bindFilterDropdownDelegates();
         this.initCategoryOptions();
         this.initSupplierOptions();
         this.initStockOptions();
@@ -1079,18 +1132,16 @@ window.ProductModule = {
 
     openUnitModal: function() {
         console.log('[ProductModule] openUnitModal 被调用 ===');
-        const modal = document.getElementById('unit-modal');
-        if (modal) {
+        document.querySelectorAll('#unit-modal, #unit-modal-product').forEach(function (modal) {
             modal.classList.remove('hidden');
-        }
+        });
     },
 
     closeUnitModal: function() {
         console.log('[ProductModule] closeUnitModal 被调用 ===');
-        const modal = document.getElementById('unit-modal');
-        if (modal) {
+        document.querySelectorAll('#unit-modal, #unit-modal-product').forEach(function (modal) {
             modal.classList.add('hidden');
-        }
+        });
     },
 
     openWarehouseDrawer: async function() {
@@ -1299,25 +1350,281 @@ window.ProductModule = {
         }
     },
 
-    openPurchaseSuggestionModal: function() {
-        console.log('[ProductModule] openPurchaseSuggestionModal 被调用 ===');
-        const modal = document.getElementById('purchase-suggestion-modal');
-        if (modal) {
-            modal.classList.remove('hidden');
+    openPurchaseSuggestionModal: async function() {
+        var modal = document.getElementById('purchase-suggestion-modal');
+        var content = document.getElementById('purchase-suggestion-content');
+        if (!modal || !content) return;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        this.purchaseGenGroups = [];
+        this.purchaseGenPreviewRef = '';
+        content.innerHTML = this._renderPurchaseGenLoading();
+        try {
+            var response = await window.wrappedFetch('/api/v1/supp/purchases/suggestions/generation', { method: 'GET' });
+            var resp = await window.handleApiResponse(response);
+            if (!resp) {
+                content.innerHTML = '<div class="text-center py-16 text-slate-500 text-sm">无法加载进货建议</div>';
+                return;
+            }
+            var payload = resp.data || {};
+            this.purchaseGenPreviewRef = payload.previewRef || '';
+            this.purchaseGenGroups = Array.isArray(payload.groups) ? payload.groups : [];
+            this._renderPurchaseGenGroups(content);
+        } catch (err) {
+            console.error('[ProductModule] 进货建议加载失败', err);
+            content.innerHTML = '<div class="text-center py-16 text-red-500 text-sm px-4">' + this._escHtml(String(err.message || '加载失败')) + '</div>';
         }
     },
 
     closePurchaseSuggestionModal: function() {
-        console.log('[ProductModule] closePurchaseSuggestionModal 被调用 ===');
-        const modal = document.getElementById('purchase-suggestion-modal');
+        var modal = document.getElementById('purchase-suggestion-modal');
         if (modal) {
             modal.classList.add('hidden');
         }
+        document.body.style.overflow = '';
+    },
+
+    removePurchaseGenSupplierGroup: function(supplierId) {
+        var sid = String(supplierId);
+        this.purchaseGenGroups = (this.purchaseGenGroups || []).filter(function (g) {
+            return String(g.supplierId) !== sid;
+        });
+        var content = document.getElementById('purchase-suggestion-content');
+        if (content) {
+            this._renderPurchaseGenGroups(content);
+        }
+    },
+
+    confirmPurchaseGenGroup: async function(supplierId) {
+        var self = this;
+        var sid = String(supplierId);
+        var group = (this.purchaseGenGroups || []).find(function (g) {
+            return String(g.supplierId) === sid;
+        });
+        if (!group || !group.items || !group.items.length) return;
+        var wrap = document.querySelector('[data-purchase-gen-group="' + sid.replace(/"/g, '') + '"]');
+        if (!wrap) return;
+        var items = [];
+        var total = 0;
+        var purchaseDate = self._todayLocalISODate();
+        group.items.forEach(function (line) {
+            var pid = line.productId;
+            var inp = wrap.querySelector('[data-suggest-qty-product="' + pid + '"]');
+            var qty = inp ? (parseInt(inp.value, 10) || 0) : (Number(line.suggestQty) || 0);
+            var price = Number(line.unitPrice) || 0;
+            var unitName = line.purchaseUnit || line.baseUnit || '';
+            if (qty <= 0) return;
+            items.push({
+                productId: Number(pid),
+                quantity: qty,
+                unitPrice: price,
+                unitName: unitName,
+                batchNo: '',
+                purchaseStatus: 'PENDING_REVIEW',
+                purchaseDate: purchaseDate
+            });
+            total += qty * price;
+        });
+        if (!items.length) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('请至少保留一条数量大于 0 的明细', 'warning');
+            }
+            return;
+        }
+        var purchaseData = {
+            supplierId: parseInt(sid, 10),
+            purchaseStatus: 'PENDING_REVIEW',
+            purchaseDate: purchaseDate,
+            totalAmount: total,
+            paidAmount: 0,
+            items: items
+        };
+        var requestData = { purchase: purchaseData, items: items };
+        try {
+            var response = await window.wrappedFetch('/api/v1/supp/purchases/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            var result = await window.handleApiResponse(response);
+            if (!result) return;
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('进货单已生成（待审核），可在供应商管理中查看', 'success');
+            }
+            self.removePurchaseGenSupplierGroup(supplierId);
+            window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+        } catch (err) {
+            console.error('[ProductModule] 生成进货单失败', err);
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('生成失败: ' + (err.message || ''), 'error');
+            }
+        }
+    },
+
+    _todayLocalISODate: function() {
+        var d = new Date();
+        var z = function (n) { return n < 10 ? '0' + n : '' + n; };
+        return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+    },
+
+    _escHtml: function (s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    },
+
+    _renderPurchaseGenLoading: function() {
+        var ref = 'PG-' + Date.now().toString(36).toUpperCase().slice(-8);
+        return (
+            '<div class="max-w-lg mx-auto py-10 px-4 space-y-8">' +
+            '<div class="text-center space-y-2">' +
+            '<p class="text-[10px] font-mono text-slate-400 tracking-widest">预览编号 · ' + this._escHtml(ref) + '</p>' +
+            '<h3 class="text-lg font-black text-slate-800 tracking-tight">正在生成进货单据</h3>' +
+            '<p class="text-xs text-slate-500">正在按规则筛选库存并汇总供应商进货周期内销量…</p>' +
+            '</div>' +
+            '<div class="h-2 bg-slate-100 rounded-full overflow-hidden">' +
+            '<div class="h-full bg-gradient-to-r from-brand-500 to-teal-400 rounded-full w-2/3 animate-pulse"></div>' +
+            '</div></div>'
+        );
+    },
+
+    _renderPurchaseGenGroups: function (container) {
+        var self = this;
+        var groups = this.purchaseGenGroups || [];
+        if (!groups.length) {
+            container.innerHTML =
+                '<div class="text-center py-16 px-6">' +
+                '<div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-500">' +
+                '<i class="ph ph-check-circle text-3xl"></i></div>' +
+                '<p class="text-sm font-bold text-slate-700">当前无可展示的进货建议</p>' +
+                '<p class="text-xs text-slate-400 mt-2">无「库存&gt;0 且缺货或预警」且可计算建议量的产品，或已全部生成/移除。</p>' +
+                '</div>';
+            return;
+        }
+        var previewRef = this.purchaseGenPreviewRef || '';
+        var html = '';
+        html +=
+            '<div class="rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">' +
+            '<div><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">智能预览</p>' +
+            '<p class="text-sm font-black text-slate-800">按供应商汇总的补货建议</p>' +
+            '<p class="text-[10px] font-mono text-slate-400 mt-1">参考号 ' +
+            self._escHtml(previewRef) +
+            ' · 共 ' +
+            groups.length +
+            ' 家供应商</p></div>' +
+            '<div class="flex items-center gap-2 text-[10px] font-bold text-teal-700 bg-teal-50 px-3 py-1.5 rounded-xl w-fit">' +
+            '<i class="ph ph-info"></i> 建议量 = 进货周期内销售件数 ÷ 采购单位换算比（向上取整）</div></div>';
+
+        groups.forEach(function (g) {
+            var sid = String(g.supplierId);
+            var sname = self._escHtml(g.supplierName || '');
+            var items = g.items || [];
+            html +=
+                '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-purchase-gen-group="' +
+                sid +
+                '">' +
+                '<div class="px-6 py-4 border-b border-slate-50 bg-slate-50/30 flex flex-wrap items-center justify-between gap-3">' +
+                '<div class="min-w-0"><h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">' +
+                '<i class="ph ph-storefront text-brand-500"></i> <span>' +
+                sname +
+                '</span></h3>' +
+                '<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">' +
+                items.length +
+                ' 个 SKU · 统计窗 ' +
+                self._escHtml(String(g.windowStart || '').slice(0, 10)) +
+                ' ~ ' +
+                self._escHtml(String(g.windowEnd || '').slice(0, 10)) +
+                ' · 周期 ' +
+                (g.cycleDays != null ? g.cycleDays : '-') +
+                ' 天</span></div>' +
+                '<div class="flex flex-wrap gap-2 shrink-0">' +
+                '<button type="button" onclick="window.confirmPurchaseGenGroup(' +
+                sid +
+                ')" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black shadow-md hover:bg-slate-800 transition active:scale-95 flex items-center gap-1.5">' +
+                '<i class="ph ph-file-plus"></i> 生成进货单</button>' +
+                '<button type="button" onclick="window.removePurchaseGenSupplierGroup(' +
+                sid +
+                ')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 text-[10px] font-bold hover:bg-red-50 hover:text-risk-high hover:border-red-100 transition">删除本组</button>' +
+                '</div></div>';
+
+            html += '<div class="hidden md:block overflow-x-auto"><table class="w-full text-left border-collapse">' +
+                '<thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">' +
+                '<tr><th class="px-6 py-4">产品名 (SKU)</th><th class="px-6 py-4 text-right">库存 / 预警</th>' +
+                '<th class="px-6 py-4 text-right">周期销量(件)</th><th class="px-6 py-4 text-right">建议采购</th><th class="px-6 py-4 text-right">预估小计</th></tr></thead><tbody class="text-xs divide-y divide-slate-50">';
+
+            items.forEach(function (p) {
+                var st = p.stockStatus || '';
+                var stClass = st === '缺货' ? 'text-risk-high' : 'text-orange-600';
+                var lineBadge =
+                    st === '缺货'
+                        ? '<span class="ml-2 inline-block text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-red-50 text-risk-high">缺货</span>'
+                        : '<span class="ml-2 inline-block text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-orange-50 text-orange-600">预警</span>';
+                html +=
+                    '<tr><td class="px-6 py-4"><p class="font-bold text-slate-800">' +
+                    self._escHtml(p.name) +
+                    '</p><p class="text-[10px] text-slate-400 font-mono">SKU: ' +
+                    self._escHtml(p.sku) +
+                    '</p><p class="text-[10px] text-slate-400 mt-1">采购单位: ' +
+                    self._escHtml(p.purchaseUnit || p.baseUnit || '-') +
+                    '</p></td>' +
+                    '<td class="px-6 py-4 text-right"><span class="font-mono font-bold ' +
+                    stClass +
+                    '">' +
+                    p.stock +
+                    '</span><span class="text-slate-300"> / </span><span class="font-mono text-slate-500">' +
+                    (p.warningStock != null ? p.warningStock : '-') +
+                    '</span>' +
+                    lineBadge +
+                    '</td>' +
+                    '<td class="px-6 py-4 text-right font-mono text-slate-700">' +
+                    (p.soldBaseInWindow != null ? p.soldBaseInWindow : 0) +
+                    '</td>' +
+                    '<td class="px-6 py-4 text-right"><input type="number" min="0" data-suggest-qty-product="' +
+                    p.productId +
+                    '" value="' +
+                    (p.suggestQty != null ? p.suggestQty : 0) +
+                    '" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs text-right"></td>' +
+                    '<td class="px-6 py-4 text-right font-mono font-bold text-slate-900">¥' +
+                    ((Number(p.unitPrice) || 0) * (Number(p.suggestQty) || 0)).toFixed(2) +
+                    '</td></tr>';
+            });
+
+            html += '</tbody></table></div>';
+
+            html += '<div class="md:hidden space-y-4 p-4">';
+            items.forEach(function (p) {
+                html +=
+                    '<div class="border border-slate-100 rounded-xl p-4"><p class="font-bold text-slate-800">' +
+                    self._escHtml(p.name) +
+                    '</p><p class="text-[10px] text-slate-400 font-mono">SKU: ' +
+                    self._escHtml(p.sku) +
+                    '</p>' +
+                    '<div class="mt-3 space-y-2 text-xs"><div class="flex justify-between"><span class="text-slate-500">周期销量</span><span class="font-mono font-bold">' +
+                    (p.soldBaseInWindow != null ? p.soldBaseInWindow : 0) +
+                    '</span></div>' +
+                    '<div class="flex justify-between items-center"><span class="text-slate-500">建议采购</span>' +
+                    '<input type="number" min="0" data-suggest-qty-product="' +
+                    p.productId +
+                    '" value="' +
+                    (p.suggestQty != null ? p.suggestQty : 0) +
+                    '" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs text-right"></div></div></div>';
+            });
+            html += '</div>';
+
+            html +=
+                '<div class="px-6 py-4 border-t border-slate-50 bg-slate-50/30 flex justify-between items-center">' +
+                '<span class="text-sm font-bold text-slate-800">本供应商小计（按建议量）</span>' +
+                '<span class="font-mono font-bold text-slate-900">¥' +
+                (typeof g.groupSubtotal === 'number' ? g.groupSubtotal.toFixed(2) : '0.00') +
+                '</span></div></div>';
+        });
+
+        container.innerHTML = html;
     },
 
     savePurchaseOrder: function() {
-        console.log('[ProductModule] savePurchaseOrder 被调用 ===');
-        alert('进货单已保存！');
         this.closePurchaseSuggestionModal();
     },
 
@@ -1927,8 +2234,8 @@ window.ProductModule = {
 // ==================== 全局兼容函数 ====================
 // 为了兼容旧代码，暴露全局函数别名
 window.toggleDropdown = function(dropdownId) { window.ProductModule.toggleDropdown(dropdownId); };
-window.selectCategory = function(category1, category2) { window.ProductModule.selectCategory(category1, category2); };
-window.selectSupplier = function(supplier) { window.ProductModule.selectSupplier(supplier); };
+window.selectCategory = function(categoryId, displayName) { window.ProductModule.selectCategoryFilter(categoryId, displayName); };
+window.selectSupplier = function(supplierId, displayName) { window.ProductModule.selectSupplierFilter(supplierId, displayName); };
 window.selectStockStatus = function(status) { window.ProductModule.selectStockStatus(status); };
 window.updateResetButton = function() { window.ProductModule.updateResetButton(); };
 window.resetFilters = function() { window.ProductModule.resetFilters(); };
@@ -1952,7 +2259,20 @@ window.openCreateProductModal = function() { window.ProductModule.openCreateProd
 window.closeProductDetail = function() { window.ProductModule.closeProductDetail(); };
 window.confirmDeleteProduct = function(productName) { window.ProductModule.confirmDeleteProduct(productName); };
 window.saveProduct = function() { window.ProductModule.saveProduct(); };
-window.toggleAdvanced = function() { window.ProductModule.toggleAdvanced(); };
+/** 无参：产品详情弹窗 advanced-drawer；'prod'/'cust'：主壳审核弹窗内 drawer-prod / drawer-cust */
+window.toggleAdvanced = function(type) {
+    if (type === 'prod' || type === 'cust') {
+        var drawer = document.getElementById('drawer-' + type);
+        var icon = document.getElementById('icon-' + type);
+        if (drawer && icon) {
+            drawer.classList.toggle('open');
+            icon.classList.toggle('ph-caret-down');
+            icon.classList.toggle('ph-caret-up');
+        }
+        return;
+    }
+    window.ProductModule.toggleAdvanced();
+};
 window.openUnitModal = function() { window.ProductModule.openUnitModal(); };
 window.closeUnitModal = function() { window.ProductModule.closeUnitModal(); };
 window.openWarehouseDrawer = function() { window.ProductModule.openWarehouseDrawer(); };
@@ -1961,6 +2281,8 @@ window.saveWarehouse = function() { window.ProductModule.saveWarehouse(); };
 window.openPurchaseSuggestionModal = function() { window.ProductModule.openPurchaseSuggestionModal(); };
 window.closePurchaseSuggestionModal = function() { window.ProductModule.closePurchaseSuggestionModal(); };
 window.savePurchaseOrder = function() { window.ProductModule.savePurchaseOrder(); };
+window.removePurchaseGenSupplierGroup = function(supplierId) { window.ProductModule.removePurchaseGenSupplierGroup(supplierId); };
+window.confirmPurchaseGenGroup = function(supplierId) { window.ProductModule.confirmPurchaseGenGroup(supplierId); };
 window.closeCostAnalysis = function() { window.ProductModule.closeCostAnalysis(); };
 window.closeWorkshopModal = function() { window.ProductModule.closeWorkshopModal(); };
 window.closeClearanceModal = function() { window.ProductModule.closeClearanceModal(); };
@@ -1994,7 +2316,7 @@ document.addEventListener('click', function(e) {
             const filterId = d.id.replace('-dropdown', '-filter');
             const filterEl = document.getElementById(filterId);
             if (filterEl) {
-                const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
+                const caretIcon = filterEl.querySelector('.filter-caret-icon');
                 if (caretIcon) {
                     caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
                     caretIcon.classList.add('ph-caret-down');

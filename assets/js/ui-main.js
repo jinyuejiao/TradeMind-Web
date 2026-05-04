@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 从完整模块 HTML 中截取指定节点的 innerHTML，避免把整页侧栏/壳层再次注入单页壳导致重复导航。
  */
 function TM_extractInnerFromModuleHtml(htmlString, selector) {
@@ -260,10 +260,40 @@ function TM_refreshDashboardPendingOrders() {
                 }
                 const raw = record.aiResult || record.ai_result;
                 if (!raw) return '未知客户';
+                if (typeof window.TM_parseOrderExtractStructured === 'function') {
+                    try {
+                        var pr = window.TM_parseOrderExtractStructured(raw);
+                        var d = pr && pr.data;
+                        if (d && d.customer_data) {
+                            var cd0 = d.customer_data;
+                            var mn = (cd0.matched_customer_name || '').trim();
+                            if (mn) return mn;
+                            if (cd0.name) return cd0.name;
+                        }
+                        var ncf = d && Array.isArray(d.new_customers_found) ? d.new_customers_found[0] : null;
+                        if (ncf && ncf.name) return String(ncf.name).trim();
+                    } catch (e0) { /* ignore */ }
+                }
                 try {
                     const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                    if (obj.new_customer_info && obj.new_customer_info.name) return obj.new_customer_info.name;
-                    if (obj.customer_data && obj.customer_data.name) return obj.customer_data.name;
+                    const inner = obj && obj.data && typeof obj.data === 'object' && obj.result == null ? obj.data : obj;
+                    if (inner.new_customer_info && inner.new_customer_info.name) return inner.new_customer_info.name;
+                    if (inner.customer_data) {
+                        const cd = inner.customer_data;
+                        if (cd.matched_customer_name) return cd.matched_customer_name;
+                        if (cd.name) return cd.name;
+                    }
+                    let r = inner && inner.result;
+                    if (typeof r === 'string') {
+                        try {
+                            const parsed = JSON.parse(r);
+                            if (parsed && parsed.customer_data) {
+                                const cd = parsed.customer_data;
+                                if (cd.matched_customer_name) return cd.matched_customer_name;
+                                if (cd.name) return cd.name;
+                            }
+                        } catch (e2) { /* ignore */ }
+                    }
                 } catch (e) { /* ignore */ }
                 return '未知客户';
             }
@@ -310,8 +340,29 @@ function TM_refreshDashboardPendingOrders() {
                 let itemCount = 0;
                 try {
                     const ar = record.aiResult || record.ai_result;
-                    const parsed = typeof ar === 'string' ? JSON.parse(ar) : ar;
-                    if (parsed && Array.isArray(parsed.new_products_found)) itemCount = parsed.new_products_found.length;
+                    if (typeof window.TM_parseOrderExtractStructured === 'function') {
+                        var pr2 = window.TM_parseOrderExtractStructured(ar);
+                        var od2 = pr2 && pr2.data && pr2.data.order_data;
+                        if (od2 && Array.isArray(od2.items)) {
+                            itemCount = od2.items.length;
+                        }
+                    }
+                    if (itemCount === 0) {
+                        const parsed = typeof ar === 'string' ? JSON.parse(ar) : ar;
+                        const inner = parsed && parsed.data && typeof parsed.data === 'object' && parsed.result == null ? parsed.data : parsed;
+                        let od = inner && inner.order_data;
+                        if (!od && inner && typeof inner.result === 'string') {
+                            try {
+                                const pr = JSON.parse(inner.result);
+                                od = pr && pr.order_data;
+                            } catch (e2) { /* ignore */ }
+                        }
+                        if (od && Array.isArray(od.items)) {
+                            itemCount = od.items.length;
+                        } else if (inner && Array.isArray(inner.new_products_found)) {
+                            itemCount = inner.new_products_found.length;
+                        }
+                    }
                 } catch (e) { /* ignore */ }
 
                 return (
@@ -344,7 +395,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260425r14', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260504r15', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -379,7 +430,7 @@ function loadCRM() {
 
 function loadProductCenter() {
     console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
-    fetch('/modules/product-center/product-center.html?v=20260422r19', { cache: 'no-store' })
+    fetch('/modules/product-center/product-center.html?v=20260503r3', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             // 产品中心的类别/仓库编辑依赖 #content-area 内的弹窗与抽屉 DOM，
@@ -433,7 +484,7 @@ function initNavigationFromConfig() {
         }
     });
 
-    const mobileButtons = document.querySelectorAll('.mobile-nav-btn');
+    const mobileButtons = document.querySelectorAll('#tm-app-tabbar .mobile-nav-btn');
     mobileButtons.forEach((btn, index) => {
         const cfg = TM_NAV_CONFIG[index];
         if (!cfg) return;
@@ -463,72 +514,62 @@ function TM_navBtnMatchesTab(btn, tabId) {
 
 function TM_bindAppShellTabbar() {
     const bar = document.getElementById('tm-app-tabbar');
-    if (!bar || bar.dataset.tmBound === '1') {
+    if (!bar) {
         return;
     }
-    bar.dataset.tmBound = '1';
 
-    let lastTabSwitchAt = 0;
-    let suppressClickUntil = 0;
+    let lastInvokeAt = 0;
     function runShellTab(tab) {
         if (!tab) {
             return;
         }
         const now = Date.now();
-        if (now - lastTabSwitchAt < 280) {
+        if (now - lastInvokeAt < 120) {
             return;
         }
-        lastTabSwitchAt = now;
-        const fn = typeof window.TM_shellSwitchTab === 'function' ? window.TM_shellSwitchTab : window.switchTab;
+        lastInvokeAt = now;
+        /** 仅用主壳保存的 TM_shellSwitchTab，避免模块内联脚本覆盖 window.switchTab 后底栏调到错误实现 */
+        const fn = window.TM_shellSwitchTab;
         if (typeof fn === 'function') {
             fn(tab);
+        } else {
+            console.warn('[TM] TM_shellSwitchTab 未就绪，无法切换模块');
         }
     }
 
-    function targetButton(e) {
-        const t = e.target;
-        if (!t || !t.closest) {
-            return null;
+    /**
+     * 在「每个底栏按钮」上绑定 pointerup + click（去抖），避免：
+     * 1) 仅委托在 nav 上时，部分 WebView / iOS 下 touchend preventDefault 与点击合成异常；
+     * 2) document 里其它 .mobile-nav-btn 与底栏混用 querySelectorAll 导致 data-tab 错乱。
+     */
+    bar.querySelectorAll('.mobile-nav-btn').forEach(function (btn) {
+        if (btn.dataset.tmShellNav === '1') {
+            return;
         }
-        const btn = t.closest('.mobile-nav-btn');
-        if (!btn || !bar.contains(btn)) {
-            return null;
-        }
-        return btn;
-    }
+        btn.dataset.tmShellNav = '1';
 
-    bar.addEventListener('click', function (e) {
-        if (Date.now() < suppressClickUntil) {
-            return;
-        }
-        const btn = targetButton(e);
-        if (!btn) {
-            return;
-        }
-        const tab = btn.getAttribute('data-tab');
-        if (!tab) {
-            return;
-        }
-        runShellTab(tab);
-    });
-
-    bar.addEventListener(
-        'touchend',
-        function (e) {
-            const btn = targetButton(e);
-            if (!btn) {
-                return;
-            }
+        function activate() {
             const tab = btn.getAttribute('data-tab');
-            if (!tab) {
-                return;
+            if (tab) {
+                runShellTab(tab);
             }
-            e.preventDefault();
-            suppressClickUntil = Date.now() + 450;
-            runShellTab(tab);
-        },
-        { passive: false }
-    );
+        }
+
+        btn.addEventListener(
+            'pointerup',
+            function (ev) {
+                if (ev.pointerType === 'mouse' && ev.button !== 0) {
+                    return;
+                }
+                activate();
+            },
+            { passive: true }
+        );
+
+        btn.addEventListener('click', function () {
+            activate();
+        });
+    });
 }
 
 function getInitialTabFromHash() {
@@ -578,10 +619,18 @@ function TM_bootIndexAppShell() {
     switchTab(getInitialTabFromHash());
 }
 
-// 尽早绑定底栏（不依赖 window.onload，避免大图/外链拖慢后长时间点不动）
-document.addEventListener('DOMContentLoaded', function () {
-    TM_bindAppShellTabbar();
-});
+// 尽早绑定底栏；若脚本执行时 DOM 已就绪，则立即绑定（避免错过 DOMContentLoaded）
+function TM_scheduleAppShellTabbarBind() {
+    function go() {
+        TM_bindAppShellTabbar();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', go);
+    } else {
+        go();
+    }
+}
+TM_scheduleAppShellTabbarBind();
 
 window.addEventListener('load', function () {
     TM_bootIndexAppShell();
@@ -601,7 +650,7 @@ function switchTab(tabId) {
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
 
-    document.querySelectorAll('.nav-btn, .mobile-nav-btn').forEach(btn => {
+    document.querySelectorAll('aside .nav-btn, #tm-app-tabbar .mobile-nav-btn').forEach(btn => {
         btn.classList.remove('active-nav', 'bg-slate-800', 'text-brand-500', 'text-brand-600');
         btn.classList.add('text-slate-400');
         if (!TM_navBtnMatchesTab(btn, tabId)) {
@@ -1656,794 +1705,7 @@ function closeNewProductReport() {
     document.body.style.overflow = '';
 }
 
-// 产品中心产品库过滤逻辑
-function filterProducts() {
-    let input = document.getElementById('prodSearchInput').value.toUpperCase();
-    let rows = document.querySelectorAll('.product-row');
-
-    rows.forEach(row => {
-        let text = row.innerText.toUpperCase();
-        // 实时匹配名称或 SKU
-        if (text.includes(input)) {
-            row.style.display = ""; // 显示
-        } else {
-            row.style.display = "none"; // 隐藏
-        }
-    });
-}
-
-// 现有产品库实时搜索 (按名称或 SKU)
-function filterInventoryTable() {
-    const filter = document.getElementById('inventorySearch').value.toUpperCase();
-    const rows = document.querySelectorAll('#existingProdTable .product-row');
-    rows.forEach(row => {
-        const name = row.querySelector('.product-name-cell').innerText.toUpperCase();
-        const sku = row.querySelector('.product-sku-cell').innerText.toUpperCase();
-        row.style.display = (name.includes(filter) || sku.includes(filter)) ? "" : "none";
-    });
-}
-
-// ============== 产品中心完整代码 ==============
-
-// ============== 产品数据模型 ==============
-window.products = [
-    {
-        id: 1,
-        name: '金色镂空户外灯具 (V3)',
-        sku: 'G-882101',
-        category1: '户外照明',
-        category2: '装饰灯具',
-        supplier: '深圳照明科技',
-        region: '中东市场',
-        price: 12.50,
-        purchasePrice: 8.50,
-        stock: 1240,
-        salesVolume: 5820,
-        icon: 'lightbulb',
-        stockStatus: '充足'
-    },
-    {
-        id: 2,
-        name: '多功能露营折叠桌',
-        sku: 'CP-T2-04',
-        category1: '户外装备',
-        category2: '露营用品',
-        supplier: '广州户外用品厂',
-        region: '欧美市场',
-        price: 48.00,
-        purchasePrice: 32.00,
-        stock: 42,
-        salesVolume: 3250,
-        icon: 'layout',
-        stockStatus: '缺货'
-    },
-    {
-        id: 3,
-        name: '便携无叶挂脖扇 (V2)',
-        sku: 'FAN-002',
-        category1: '户外照明',
-        category2: '实用灯具',
-        supplier: '深圳照明科技',
-        region: '东南亚市场',
-        price: 18.90,
-        purchasePrice: 12.50,
-        stock: 380,
-        salesVolume: 8450,
-        icon: 'fan',
-        stockStatus: '预警'
-    },
-    {
-        id: 4,
-        name: '太阳能庭院灯',
-        sku: 'SOLAR-001',
-        category1: '户外照明',
-        category2: '实用灯具',
-        supplier: '深圳照明科技',
-        region: '全球市场',
-        price: 35.00,
-        purchasePrice: 24.00,
-        stock: 1680,
-        salesVolume: 4580,
-        icon: 'sun',
-        stockStatus: '充足'
-    },
-    {
-        id: 5,
-        name: '野营帐篷4人款',
-        sku: 'TENT-4',
-        category1: '户外装备',
-        category2: '露营用品',
-        supplier: '广州户外用品厂',
-        region: '欧美市场',
-        price: 89.00,
-        purchasePrice: 58.00,
-        stock: 210,
-        salesVolume: 2150,
-        icon: 'tent',
-        stockStatus: '充足'
-    }
-];
-
-window.filterState = {
-    category1: null,
-    category2: null,
-    supplier: null,
-    stockStatus: null,
-    searchText: ''
-};
-
-window.suppliers = ['全部', '深圳照明科技', '广州户外用品厂', '大连大发制冷厂'];
-window.stockStatuses = ['全部', '充足', '预警', '缺货'];
-window.categories = [
-    { name: '户外照明', subcategories: ['装饰灯具', '实用灯具'] },
-    { name: '户外装备', subcategories: ['露营用品'] }
-];
-window.currentProduct = null;
-
-// ============== 全局暴露函数 ==============
-
-window.toggleDropdown = function(dropdownId) {
-    const dropdown = document.getElementById(dropdownId);
-    if (!dropdown) {
-        return;
-    }
-    
-    document.querySelectorAll('[id$="-dropdown"]').forEach(d => {
-        if (d.id !== dropdownId) {
-            d.classList.add('hidden');
-            const filterId = d.id.replace('-dropdown', '-filter');
-            const filterEl = document.getElementById(filterId);
-            if (filterEl) {
-                const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
-                if (caretIcon) {
-                    caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-                    caretIcon.classList.add('ph-caret-down');
-                }
-            }
-        }
-    });
-    
-    const isHidden = dropdown.classList.contains('hidden');
-    dropdown.classList.toggle('hidden');
-    
-    const filterId = dropdownId.replace('-dropdown', '-filter');
-    const filterEl = document.getElementById(filterId);
-    if (filterEl) {
-        const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
-        if (caretIcon) {
-            if (isHidden) {
-                caretIcon.classList.remove('ph-caret-down');
-                caretIcon.classList.add('ph-caret-up', 'rotate-180', 'text-teal-500');
-            } else {
-                caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-                caretIcon.classList.add('ph-caret-down');
-            }
-        }
-    }
-    
-    if (event) event.stopPropagation();
-};
-
-window.selectCategory = function(category1, category2) {
-    window.filterState.category1 = category1;
-    window.filterState.category2 = category2;
-    
-    const label = document.getElementById('category-label');
-    const btn = document.getElementById('category-filter').querySelector('button');
-    
-    if (category1 && category2) {
-        label.textContent = `${category1} > ${category2}`;
-        btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    } else if (category1) {
-        label.textContent = category1;
-        btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    } else {
-        label.textContent = '产品类别';
-        btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    }
-    
-    document.getElementById('category-dropdown').classList.add('hidden');
-    const filterEl = document.getElementById('category-filter');
-    if (filterEl) {
-        const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
-        if (caretIcon) {
-            caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-            caretIcon.classList.add('ph-caret-down');
-        }
-    }
-    window.updateResetButton();
-    window.filterProducts();
-};
-
-window.selectSupplier = function(supplier) {
-    window.filterState.supplier = supplier;
-    
-    const label = document.getElementById('supplier-label');
-    const btn = document.getElementById('supplier-filter').querySelector('button');
-    
-    if (supplier && supplier !== '全部') {
-        label.textContent = supplier;
-        btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    } else {
-        label.textContent = '供应商';
-        btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    }
-    
-    document.getElementById('supplier-dropdown').classList.add('hidden');
-    const supplierFilterEl = document.getElementById('supplier-filter');
-    if (supplierFilterEl) {
-        const caretIcon = supplierFilterEl.querySelector('.ph-caret-down, .ph-caret-up');
-        if (caretIcon) {
-            caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-            caretIcon.classList.add('ph-caret-down');
-        }
-    }
-    window.updateResetButton();
-    window.filterProducts();
-};
-
-window.selectStockStatus = function(status) {
-    window.filterState.stockStatus = status;
-    
-    const label = document.getElementById('stock-label');
-    const btn = document.getElementById('stock-filter').querySelector('button');
-    
-    if (status && status !== '全部') {
-        label.textContent = status;
-        btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    } else {
-        label.textContent = '库存情况';
-        btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    }
-    
-    document.getElementById('stock-dropdown').classList.add('hidden');
-    const stockFilterEl = document.getElementById('stock-filter');
-    if (stockFilterEl) {
-        const caretIcon = stockFilterEl.querySelector('.ph-caret-down, .ph-caret-up');
-        if (caretIcon) {
-            caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-            caretIcon.classList.add('ph-caret-down');
-        }
-    }
-    window.updateResetButton();
-    window.filterProducts();
-};
-
-window.updateResetButton = function() {
-    const resetBtn = document.getElementById('reset-filter-btn');
-    if (!resetBtn) return;
-    
-    const hasActiveFilter = window.filterState.category1 || window.filterState.supplier || window.filterState.stockStatus || window.filterState.searchText;
-    if (hasActiveFilter) {
-        resetBtn.classList.remove('hidden');
-        resetBtn.classList.add('flex', 'items-center');
-    } else {
-        resetBtn.classList.add('hidden');
-        resetBtn.classList.remove('flex', 'items-center');
-    }
-};
-
-window.resetFilters = function() {
-    window.filterState = { category1: null, category2: null, supplier: null, stockStatus: null, searchText: '' };
-    const searchInput = document.getElementById('inventorySearch');
-    if (searchInput) searchInput.value = '';
-    
-    document.getElementById('category-label').textContent = '产品类别';
-    document.getElementById('supplier-label').textContent = '供应商';
-    document.getElementById('stock-label').textContent = '库存情况';
-    
-    document.querySelectorAll('#category-filter button, #supplier-filter button, #stock-filter button').forEach(btn => {
-        btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
-    });
-    
-    window.updateResetButton();
-    window.filterProducts();
-};
-
-window.filterInventoryTable = function() {
-    const searchInput = document.getElementById('inventorySearch');
-    if (searchInput) {
-        window.filterState.searchText = searchInput.value;
-        window.filterProducts();
-    }
-};
-
-window.filterProducts = function() {
-    let filtered = [...window.products];
-    
-    if (window.filterState.searchText) {
-        const searchLower = window.filterState.searchText.toLowerCase();
-        filtered = filtered.filter(p => 
-            p.name.toLowerCase().includes(searchLower) || p.sku.toLowerCase().includes(searchLower)
-        );
-    }
-    
-    if (window.filterState.category1) {
-        filtered = filtered.filter(p => p.category1 === window.filterState.category1);
-        if (window.filterState.category2) {
-            filtered = filtered.filter(p => p.category2 === window.filterState.category2);
-        }
-    }
-    
-    if (window.filterState.supplier && window.filterState.supplier !== '全部') {
-        filtered = filtered.filter(p => p.supplier === window.filterState.supplier);
-    }
-    
-    if (window.filterState.stockStatus && window.filterState.stockStatus !== '全部') {
-        filtered = filtered.filter(p => p.stockStatus === window.filterState.stockStatus);
-    }
-    
-    window.renderProducts(filtered);
-};
-
-window.renderProducts = function(productList) {
-    const sortedProducts = [...productList].sort((a, b) => b.salesVolume - a.salesVolume);
-    window.renderDesktopTable(sortedProducts);
-    window.renderMobileCards(sortedProducts);
-};
-
-window.renderDesktopTable = function(productList) {
-    const tbody = document.querySelector('#existingProdTable tbody');
-    if (!tbody) return;
-    
-    if (productList.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="px-6 py-12 text-center">
-                    <div class="flex flex-col items-center gap-3">
-                        <i class="ph ph-package text-4xl text-slate-300"></i>
-                        <p class="text-slate-400 font-bold">暂无产品</p>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    tbody.innerHTML = productList.map(product => `
-        <tr onclick="window.openProductDetail(${product.id})" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
-            <td class="px-6 py-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-500 transition-colors">
-                        <i class="ph ph-${product.icon} text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="font-bold text-slate-800 product-name-cell">${product.name}</p>
-                        <p class="text-[10px] text-slate-400 font-mono product-sku-cell uppercase mt-1">SKU: ${product.sku}</p>
-                    </div>
-                </div>
-            </td>
-            <td class="px-6 py-4 col-hide-mobile">
-                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-bold">${product.region}</span>
-            </td>
-            <td class="px-6 py-4 text-right font-mono font-bold text-slate-500 col-hide-mobile">
-                $${product.price.toFixed(2)}
-            </td>
-            <td class="px-6 py-4 text-right font-mono font-bold text-brand-600 col-hide-mobile">
-                $${product.purchasePrice.toFixed(2)}
-            </td>
-            <td class="px-6 py-4 text-right">
-                <p class="font-mono font-bold ${window.getStockColor(product.stockStatus)} tracking-tighter">
-                    ${product.stock.toLocaleString()} <span class="text-[9px] text-slate-400 uppercase">Pcs</span>
-                </p>
-                <div class="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden md:block hidden">
-                    <div class="w-[${window.getStockPercentage(product.stock)}%] ${window.getStockBgColor(product.stockStatus)} h-full ${product.stockStatus === '缺货' ? 'animate-pulse' : ''}"></div>
-                </div>
-            </td>
-            <td class="px-6 py-4 text-right whitespace-nowrap">
-                <div class="flex justify-end gap-1">
-                    <button onclick="event.stopPropagation(); window.openProductDetail(${product.id})" title="编辑" class="action-icon-btn">
-                        <i class="ph ph-pencil-simple-line text-lg"></i>
-                    </button>
-                    <button onclick="event.stopPropagation(); window.confirmDeleteProduct('${product.name}')" title="删除" class="action-icon-btn delete">
-                        <i class="ph ph-trash text-lg"></i>
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-};
-
-window.renderMobileCards = function(productList) {
-    const container = document.getElementById('mobile-product-cards');
-    if (!container) return;
-    
-    if (productList.length === 0) {
-        container.innerHTML = `
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-                <i class="ph ph-package text-4xl text-slate-300"></i>
-                <p class="text-slate-400 font-bold mt-3">暂无产品</p>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = productList.map(product => `
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 product-card cursor-pointer hover:shadow-md transition-shadow" onclick="window.openProductDetail(${product.id})">
-            <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                    <i class="ph ph-${product.icon} text-xl"></i>
-                </div>
-                <div class="flex-1">
-                    <p class="font-bold text-slate-800">${product.name}</p>
-                    <p class="text-[10px] text-slate-400 font-mono uppercase mt-1">SKU: ${product.sku}</p>
-                    <div class="mt-2 grid grid-cols-2 gap-2">
-                        <div>
-                            <p class="text-[10px] text-slate-400">销售价</p>
-                            <p class="font-mono font-bold text-slate-600">$${product.price.toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-slate-400">进货价</p>
-                            <p class="font-mono font-bold text-brand-600">$${product.purchasePrice.toFixed(2)}</p>
-                        </div>
-                    </div>
-                    <div class="mt-2 flex justify-between items-center">
-                        <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold">${product.region}</span>
-                        <p class="font-mono font-bold ${window.getStockColor(product.stockStatus)}">
-                            ${product.stock.toLocaleString()} Pcs
-                        </p>
-                    </div>
-                    <div class="w-full h-1 bg-slate-100 rounded-full mt-2 overflow-hidden">
-                        <div class="w-[${window.getStockPercentage(product.stock)}%] ${window.getStockBgColor(product.stockStatus)} h-full ${product.stockStatus === '缺货' ? 'animate-pulse' : ''}"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-4 flex justify-end gap-2">
-                <button onclick="event.stopPropagation(); window.openProductDetail(${product.id})" class="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-brand-600">
-                    <i class="ph ph-pencil-simple-line text-lg"></i>
-                </button>
-                <button onclick="event.stopPropagation(); window.confirmDeleteProduct('${product.name}')" class="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-risk-high">
-                    <i class="ph ph-trash text-lg"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
-};
-
-window.getStockColor = function(status) {
-    switch(status) {
-        case '充足': return 'text-slate-900';
-        case '预警': return 'text-orange-500';
-        case '缺货': return 'text-risk-high';
-        default: return 'text-slate-900';
-    }
-};
-
-window.getStockBgColor = function(status) {
-    switch(status) {
-        case '充足': return 'bg-brand-500';
-        case '预警': return 'bg-orange-500';
-        case '缺货': return 'bg-risk-high';
-        default: return 'bg-brand-500';
-    }
-};
-
-window.getStockPercentage = function(stock) {
-    if (stock >= 1000) return 85;
-    if (stock >= 500) return 60;
-    if (stock >= 100) return 40;
-    return 30;
-};
-
-window.getStockStatusColor = function(status) {
-    switch(status) {
-        case '充足': return 'bg-brand-500';
-        case '预警': return 'bg-orange-500';
-        case '缺货': return 'bg-risk-high';
-        default: return '';
-    }
-};
-
-window.initCategoryOptions = function() {
-    const container = document.getElementById('category-options');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <button onclick="window.selectCategory(null, null)" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">
-            全部类别
-        </button>
-    ` + window.categories.map(cat => `
-        <div class="border-b border-slate-50">
-            <button onclick="window.selectCategory('${cat.name}', null)" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-800 hover:bg-teal-50 hover:text-teal-700 transition-all flex items-center justify-between">
-                <span>${cat.name}</span>
-                <i class="ph ph-caret-right text-slate-400"></i>
-            </button>
-            <div class="pl-4 bg-slate-50/30">
-                ${cat.subcategories.map(sub => `
-                    <button onclick="window.selectCategory('${cat.name}', '${sub}')" class="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all">
-                        <span class="ml-2">${sub}</span>
-                    </button>
-                `).join('')}
-            </div>
-        </div>
-    `).join('');
-};
-
-window.initSupplierOptions = function() {
-    const container = document.getElementById('supplier-options');
-    if (!container) return;
-    
-    container.innerHTML = window.suppliers.map(supplier => `
-        <button onclick="window.selectSupplier('${supplier}')" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0">
-            ${supplier}
-        </button>
-    `).join('');
-};
-
-window.initStockOptions = function() {
-    const container = document.getElementById('stock-options');
-    if (!container) return;
-    
-    container.innerHTML = window.stockStatuses.map(status => `
-        <button onclick="window.selectStockStatus('${status}')" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0 flex items-center gap-3">
-            ${status !== '全部' ? `<span class="inline-block w-2.5 h-2.5 ${window.getStockStatusColor(status)} rounded-full"></span>` : ''}
-            ${status}
-        </button>
-    `).join('');
-};
-
-window.initFilterOptions = function() {
-    window.initCategoryOptions();
-    window.initSupplierOptions();
-    window.initStockOptions();
-};
-
-window.initProductList = function() {
-    window.renderProducts(window.products);
-};
-
-window.initProductCenter = function() {
-    window.initProductList();
-    window.initFilterOptions();
-};
-
-window.openProductDetail = function(productId) {
-    const product = window.products.find(p => p.id === productId || p.name === productId);
-    if (product) {
-        window.currentProduct = product;
-        const modal = document.getElementById('product-detail-modal');
-        if (modal) {
-            const titleEl = document.getElementById('detail-title');
-            const skuEl = document.getElementById('detail-sku');
-            if (titleEl) titleEl.textContent = product.name;
-            if (skuEl) skuEl.textContent = 'SKU: ' + product.sku;
-            modal.classList.remove('hidden');
-        }
-    }
-};
-
-window.closeProductDetail = function() {
-    const modal = document.getElementById('product-detail-modal');
-    if (modal) modal.classList.add('hidden');
-    window.currentProduct = null;
-};
-
-window.confirmDeleteProduct = function(productName) {
-    if (confirm('确定要删除产品 "' + productName + '" 吗？')) {
-        window.products = window.products.filter(p => p.name !== productName);
-        window.filterProducts();
-    }
-};
-
-window.saveProduct = function() {
-    alert('产品信息已保存！');
-    window.closeProductDetail();
-};
-
-window.toggleAdvanced = function(type) {
-    const drawerId = type ? ('drawer-' + type) : 'advanced-drawer';
-    const iconId = type ? ('icon-' + type) : 'advanced-icon';
-    const drawer = document.getElementById(drawerId);
-    const icon = document.getElementById(iconId);
-    if (drawer && icon) {
-        drawer.classList.toggle('open');
-        icon.classList.toggle('ph-caret-down');
-        icon.classList.toggle('ph-caret-up');
-    }
-};
-
-window.openUnitModal = function() {
-    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
-        modal.classList.remove('hidden');
-    });
-};
-
-window.closeUnitModal = function() {
-    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
-        modal.classList.add('hidden');
-    });
-};
-
-window.openWarehouseDrawer = function() {
-    const drawer = document.getElementById('warehouse-drawer');
-    if (drawer) drawer.classList.remove('hidden');
-};
-
-window.closeWarehouseDrawer = function() {
-    const drawer = document.getElementById('warehouse-drawer');
-    if (drawer) drawer.classList.add('hidden');
-};
-
-window.saveWarehouse = function() {
-    const nameInput = document.getElementById('new-warehouse-name');
-    const locationInput = document.getElementById('new-warehouse-location');
-    if (nameInput && locationInput) {
-        alert('仓库 "' + nameInput.value + '" 已保存！');
-        nameInput.value = '';
-        locationInput.value = '';
-    }
-};
-
-window.openPurchaseSuggestionModal = function() {
-    const modal = document.getElementById('purchase-suggestion-modal');
-    if (modal) modal.classList.remove('hidden');
-};
-
-window.closePurchaseSuggestionModal = function() {
-    const modal = document.getElementById('purchase-suggestion-modal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.savePurchaseOrder = function() {
-    alert('进货单已保存！');
-    window.closePurchaseSuggestionModal();
-};
-
-window.closeCostAnalysis = function() {
-    const modal = document.getElementById('cost-analysis-modal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.closeWorkshopModal = function() {
-    const modal = document.getElementById('workshop-modal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.closeClearanceModal = function() {
-    const modal = document.getElementById('clearance-modal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.openCategoryModal = function() {
-    document.getElementById('category-modal').classList.remove('hidden');
-};
-
-window.closeCategoryModal = function() {
-    document.getElementById('category-modal').classList.add('hidden');
-};
-
-// ============== 产品类别管理模块 ==============
-let pendingDeleteId = null;
-
-window.ProductModule = {
-    openCategoryManager: function() {
-        const modal = document.getElementById('category-modal-root');
-        if (modal) {
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                const input = document.getElementById('new-category-input');
-                if (input) input.focus();
-            }, 100);
-            window.ProductModule.renderCategoryEditList();
-        }
-    },
-
-    closeCategoryManager: function() {
-        const modal = document.getElementById('category-modal-root');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-    },
-
-    renderCategoryEditList: function() {
-        const container = document.getElementById('category-edit-list');
-        if (!container) return;
-
-        container.innerHTML = window.categories.map((category, index) => `
-            <div class="group flex items-center justify-between p-4 bg-slate-50 hover:bg-white hover:shadow-md rounded-2xl mb-2 transition-all">
-                <span class="font-bold text-slate-700">${category.name}</span>
-                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onclick="window.ProductModule.editCategory(${index})" class="p-2 text-teal-600 hover:bg-teal-50 rounded-lg">
-                        <i class="ph-bold ph-pencil-simple"></i>
-                    </button>
-                    <button onclick="window.ProductModule.deleteCategory(${index})" class="p-2 text-rose-400 hover:bg-rose-50 rounded-lg">
-                        <i class="ph-bold ph-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `).join('');
-
-        console.log('当前类别数据:', window.categories);
-    },
-
-    addCategory: function() {
-        const input = document.getElementById('new-category-input');
-        if (!input || !input.value.trim()) {
-            return;
-        }
-
-        const newCategory = {
-            name: input.value.trim(),
-            subcategories: []
-        };
-
-        window.categories.push(newCategory);
-        input.value = '';
-        window.ProductModule.renderCategoryEditList();
-        window.refreshCategoryFilter();
-    },
-
-    editCategory: function(index) {
-        const category = window.categories[index];
-        if (category) {
-            const newName = prompt('编辑类别名称:', category.name);
-            if (newName && newName.trim()) {
-                category.name = newName.trim();
-                window.ProductModule.renderCategoryEditList();
-                window.refreshCategoryFilter();
-            }
-        }
-    },
-
-    deleteCategory: function(index) {
-        pendingDeleteId = index;
-        const confirmModal = document.getElementById('category-delete-confirm');
-        if (confirmModal) {
-            confirmModal.classList.remove('hidden');
-        }
-    },
-
-    hideDeleteConfirm: function() {
-        const confirmModal = document.getElementById('category-delete-confirm');
-        if (confirmModal) {
-            confirmModal.classList.add('hidden');
-        }
-        pendingDeleteId = null;
-    },
-
-    confirmDelete: function() {
-        if (pendingDeleteId !== null) {
-            window.categories.splice(pendingDeleteId, 1);
-            window.ProductModule.renderCategoryEditList();
-            window.refreshCategoryFilter();
-            window.ProductModule.hideDeleteConfirm();
-        }
-    }
-};
-
-window.refreshCategoryFilter = function() {
-    if (typeof window.initCategoryOptions === 'function') {
-        window.initCategoryOptions();
-    }
-};
-
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('#category-filter') && 
-        !e.target.closest('#supplier-filter') && 
-        !e.target.closest('#stock-filter')) {
-        document.querySelectorAll('[id$="-dropdown"]').forEach(d => {
-            d.classList.add('hidden');
-            const filterId = d.id.replace('-dropdown', '-filter');
-            const filterEl = document.getElementById(filterId);
-            if (filterEl) {
-                const caretIcon = filterEl.querySelector('.ph-caret-down, .ph-caret-up');
-                if (caretIcon) {
-                    caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-                    caretIcon.classList.add('ph-caret-down');
-                }
-            }
-        });
-    }
-});
-function closeProductDetail() { document.getElementById('product-detail-modal').classList.add('hidden'); document.body.style.overflow = ''; }
-
-// 高级配置折叠切换（统一入口）
-function toggleAdvanced(type) {
-    if (typeof window.toggleAdvanced === 'function') {
-        window.toggleAdvanced(type);
-    }
-}
-
+// 产品中心由 ui-product-center.js（ProductModule）提供；主壳不再内嵌模拟数据或重复 window.* 绑定。
 // --- 供应商管理交互逻辑 ---
 
 
@@ -2514,7 +1776,6 @@ function closePurchaseDetail() {
     document.getElementById('purchase-detail-modal').classList.add('hidden');
     document.body.style.overflow = '';
 }
-function saveProduct() { alert('产品数据已更新，单位配置已成功同步。'); closeProductDetail(); }
 
 // 其他辅助函数
 function showToast(message) {

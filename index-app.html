@@ -7,10 +7,11 @@
 
     <script src="/assets/js/env-config.js"></script>
     <script src="/assets/js/api-client.js"></script>
+    <script src="/assets/js/ai-order-extract-parse.js?v=20260504r2"></script>
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
-    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260501r1">
-    <link rel="stylesheet" href="/modules/CSS/common.css">
+    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260503r2">
+    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260503r1">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -20,16 +21,12 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/assets/js/auth.js?v=20260424r17"></script>
+    <script src="/assets/js/auth.js?v=20260503r2"></script>
     <script src="/assets/js/main-app.js"></script>
     <script src="/MobileAdapt/TM_Responsive.js"></script>
     <script src="/assets/js/ui-components.js"></script>
-    <script src="/assets/js/ui-main.js?v=20260501r4"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260422r20"></script>
-    <script>
-        console.log('=== 页面脚本标签加载检查');
-        console.log('window.toggleDropdown 是否存在:', typeof window.toggleDropdown);
-    </script>
+    <script src="/assets/js/ui-main.js?v=20260504r2"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260503r3"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
@@ -929,7 +926,7 @@
                             <button onclick="toggleAdvanced()" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
                                 <span>展开高级配置与描述信息</span><i id="advanced-icon" class="ph ph-caret-down group-hover:translate-y-0.5 transition-transform"></i>
                             </button>
-                            <div id="advanced-drawer" class="advanced-drawer">
+                            <div id="advanced-drawer" class="advanced-drawer hidden">
                                 <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存下限</label><input type="number" value="100" class="form-input border-red-100"></div>
                                     <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">主销区域</label><input type="text" value="华北/华东" class="form-input"></div>

@@ -55,6 +55,9 @@
          */
         mobileNav: function(options) {
             const currentPath = options.currentPath || window.location.pathname;
+            const resolveEntry = typeof window.TM_resolveStaticPageUrl === 'function'
+                ? window.TM_resolveStaticPageUrl
+                : function (rel) { return '/' + String(rel).replace(/^\//, ''); };
             let activeDashboard = '';
             let activeBiz = '';
             let activeCrm = '';
@@ -75,23 +78,23 @@
             
             return `
                 <div class="tm-mobile-nav">
-                    <a href="/index-app.html#tab=dashboard" class="tm-nav-item ${activeDashboard}">
+                    <a href="${resolveEntry('index-app.html#tab=dashboard')}" class="tm-nav-item ${activeDashboard}">
                         <i class="ph ph-squares-four"></i>
                         <span>工作台</span>
                     </a>
-                    <a href="/index-app.html#tab=biz" class="tm-nav-item ${activeBiz}">
+                    <a href="${resolveEntry('index-app.html#tab=biz')}" class="tm-nav-item ${activeBiz}">
                         <i class="ph ph-chart-line-up"></i>
                         <span>智能经营</span>
                     </a>
-                    <a href="/index-app.html#tab=crm" class="tm-nav-item ${activeCrm}">
+                    <a href="${resolveEntry('index-app.html#tab=crm')}" class="tm-nav-item ${activeCrm}">
                         <i class="ph ph-users"></i>
                         <span>客户CRM</span>
                     </a>
-                    <a href="/index-app.html#tab=supply" class="tm-nav-item ${activeSupply}">
+                    <a href="${resolveEntry('index-app.html#tab=supply')}" class="tm-nav-item ${activeSupply}">
                         <i class="ph ph-package"></i>
                         <span>产品中心</span>
                     </a>
-                    <a href="/index-app.html#tab=supplier" class="tm-nav-item ${activeSupplier}">
+                    <a href="${resolveEntry('index-app.html#tab=supplier')}" class="tm-nav-item ${activeSupplier}">
                         <i class="ph ph-truck"></i>
                         <span>供应链</span>
                     </a>
@@ -189,7 +192,16 @@
          * 注入移动端组件
          */
         injectMobileComponents: function() {
-            const currentPath = window.location.pathname;
+            const currentPath = window.location.pathname || '';
+            const pathLower = currentPath.toLowerCase();
+            const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
+            /** 与 auth.injectCommonUI 一致：主壳页已含 #tm-app-tabbar，禁止再叠一层 .tm-mobile-nav（否则会挡住底栏点击） */
+            const isAppShellPage = !!document.getElementById('tm-app-tabbar');
+
+            if (isAppShellPage || isPublicAuthPage) {
+                return;
+            }
+
             let pageTitle = '商贸智脑';
             
             if (currentPath.includes('/dashboard/')) {
