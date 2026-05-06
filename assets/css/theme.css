@@ -86,6 +86,25 @@
     --tm-z-modal: 1000;
     --tm-z-popover: 110;
     --tm-z-toast: 50;
+
+    /* 商户类型换肤用 RGB（供自定义组件引用，勿破坏 Tailwind 内置 palette） */
+    --tm-brand-accent-rgb: 20 184 166;
+}
+
+[data-merchant-type='FOREIGN_TRADE'] {
+    --tm-brand-accent-rgb: 59 130 246;
+}
+
+[data-merchant-type='ECOM'] {
+    --tm-brand-accent-rgb: 168 85 247;
+}
+
+[data-merchant-type='FACTORY_TRADE'] {
+    --tm-brand-accent-rgb: 217 119 6;
+}
+
+.tm-merchant-slot:empty {
+    display: none;
 }
 
 /* ================ 基础样式 ================ */

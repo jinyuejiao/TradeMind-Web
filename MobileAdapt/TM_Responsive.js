@@ -28,6 +28,11 @@ window.TM_Responsive = {
         return !this.isMobile();
     },
 
+    /** 与 UI 规范一致：移动端为宽度小于 768px；CSS max-width 使用 767px */
+    isMobileView: function() {
+        return this.isMobile();
+    },
+
     /**
      * 安全判断是否显示某元素
      * @param {string} id - 元素ID

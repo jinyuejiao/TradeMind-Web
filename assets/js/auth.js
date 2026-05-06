@@ -35,6 +35,29 @@
     }
 })();
 
+/** 注册/专题页商户意图：URL ?merchantType=ECOM 等与字典 D013 dict_code 一致 */
+window.tmResolveMerchantIntent = function () {
+    const ALLOWED = ['WHOLESALE', 'FOREIGN_TRADE', 'ECOM', 'FACTORY_TRADE'];
+    try {
+        const params = new URLSearchParams(window.location.search);
+        let raw = params.get('merchantType') || params.get('industryType') || params.get('industry') || params.get('version');
+        if (raw) {
+            const v = String(raw).trim().toUpperCase().replace(/-/g, '_');
+            if (ALLOWED.indexOf(v) !== -1) {
+                sessionStorage.setItem('tm_merchant_intent', v);
+                return v;
+            }
+        }
+        const stored = sessionStorage.getItem('tm_merchant_intent');
+        if (stored && ALLOWED.indexOf(stored) !== -1) {
+            return stored;
+        }
+    } catch (e) {
+        console.warn('[Auth] tmResolveMerchantIntent:', e);
+    }
+    return 'WHOLESALE';
+};
+
 // 注入全局 UI 样式
 (function injectGlobalStyles() {
     console.log('TradeMindUI: 开始注入全局 CSS 样式');
@@ -1276,21 +1299,11 @@ function checkAuth() {
                 return false;
             }
         } else {
-            // 没有登录时间戳，视为无效
-            console.log('❌ 缺少登录时间戳');
+            // 兼容旧会话：仅有 token、未写入 login_timestamp 时不应直接清登录态（否则会与登录页「有 token 即跳主页」形成往返刷新）
+            console.log('⚠️ 缺少登录时间戳，写入当前时间以迁移本地会话');
             if (checkLocalStorage()) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('login_timestamp');
-                localStorage.removeItem('user_info');
-                localStorage.removeItem('username');
-                localStorage.removeItem('currentUser');
-                console.log('已清除无效的认证信息');
+                localStorage.setItem('login_timestamp', Date.now().toString());
             }
-            if (!isLoginPage) {
-                console.log('未登录，跳转至登录页');
-                tmSafeReplace('/login.html');
-            }
-            return false;
         }
         console.log('✅ Token未过期');
 
@@ -1772,6 +1785,10 @@ let tmRoleTypeDictMap = null;
 async function getRoleTypeDictMap() {
     if (tmRoleTypeDictMap) return tmRoleTypeDictMap;
     tmRoleTypeDictMap = {};
+    const tok = localStorage.getItem('token');
+    if (!tok || tok.trim() === '' || tok === 'null' || tok === 'undefined') {
+        return tmRoleTypeDictMap;
+    }
     try {
         const gatewayUrl = typeof getApiUrl === 'function' ? getApiUrl('gateway') : '';
         const url = (gatewayUrl || '') + '/api/v1/crm/dictionary/D002';
@@ -2149,6 +2166,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             localStorage.setItem('username', username);
                             localStorage.setItem('currentUser', JSON.stringify(data.user || {}));
                         }
+
+                        if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
+                            window.TM_UI.applyContextFromToken(data.token);
+                        }
                         
                         // 统一跳转到单入口应用
                         window.location.href = getAppEntryPath('dashboard');
@@ -2165,6 +2186,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             localStorage.setItem('user_info', JSON.stringify(data.data.user || {}));
                             localStorage.setItem('username', username);
                             localStorage.setItem('currentUser', JSON.stringify(data.data.user || {}));
+                        }
+
+                        if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
+                            window.TM_UI.applyContextFromToken(data.data.token);
                         }
                         
                         // 统一跳转到单入口应用
@@ -2353,7 +2378,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     password: encryptedPassword,
                     inviteCode: inviteCode,
                     smsToken: registerSmsToken || '',
-                    smsCode: smsCode
+                    smsCode: smsCode,
+                    merchantType: typeof window.tmResolveMerchantIntent === 'function'
+                        ? window.tmResolveMerchantIntent()
+                        : 'WHOLESALE'
                 };
                 
                 // 发送注册请求

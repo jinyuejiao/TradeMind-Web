@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <script src="./assets/js/env-config.js"></script>
-    <script src="./assets/js/api-client.js"></script>
+    <script src="./assets/js/api-client.js?v=20260506r3"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind - 注册</title>
@@ -40,6 +40,7 @@
         </div>
         
         <div class="p-8">
+            <p id="tm-register-merchant-hint" class="text-center text-xs text-brand-600 font-bold mb-4 hidden" aria-live="polite"></p>
             <form id="registerForm" class="space-y-4">
                 <div class="space-y-2">
                     <label class="block text-sm font-bold text-slate-700">用户名 <span class="text-red-500">*</span></label>
@@ -172,13 +173,24 @@
     <footer class="w-full text-center text-slate-500 text-xs pb-6 px-4 leading-6">
         <p>© 2026 杭州巨猿科技有限公司 | <a class="hover:text-teal-600 underline decoration-slate-200 underline-offset-4" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2026010267号-1</a></p>
     </footer>
-    <script src="./assets/js/auth.js?v=20260422r13"></script>
+    <script src="./assets/js/main-app.js"></script>
+    <script src="./assets/js/tm-ui-loader.js"></script>
+    <script src="./assets/js/auth.js?v=20260506r1"></script>
     <script>
-        // 页面加载时注入公共 UI 组件
         document.addEventListener('DOMContentLoaded', function() {
             if (window.injectCommonUI) {
                 window.injectCommonUI();
             }
+            var hint = document.getElementById('tm-register-merchant-hint');
+            if (hint && typeof window.tmResolveMerchantIntent === 'function') {
+                var m = window.tmResolveMerchantIntent();
+                if (m && m !== 'WHOLESALE') {
+                    hint.textContent = '当前注册业态：' + m + '（来自专题页链接或上次选择）';
+                    hint.classList.remove('hidden');
+                }
+            }
+            document.documentElement.setAttribute('data-merchant-type',
+                (typeof window.tmResolveMerchantIntent === 'function' ? window.tmResolveMerchantIntent() : 'WHOLESALE'));
         });
     </script>
 </body>

@@ -402,6 +402,14 @@ function loadDashboard() {
             document.getElementById('view-dashboard').innerHTML = inner || html;
             TM_syncDashboardOverlays(html);
             TM_injectModuleScripts(html, 'dashboard');
+            var vd = document.getElementById('view-dashboard');
+            if (vd && window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
+                window.TM_UI.injectSlots(vd).then(function () {
+                    if (window.TM_RoleGate && typeof window.TM_RoleGate.apply === 'function') {
+                        window.TM_RoleGate.apply(vd);
+                    }
+                });
+            }
         })
         .catch(function (error) {
             console.error('Error loading dashboard:', error);
@@ -437,6 +445,14 @@ function loadProductCenter() {
             // 仅注入主内容会导致“编辑图标点击无反应”。
             var inner = TM_extractInnerFromModuleHtml(html, '#content-area');
             document.getElementById('view-supply').innerHTML = inner || html;
+            var vs = document.getElementById('view-supply');
+            if (vs && window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
+                window.TM_UI.injectSlots(vs).then(function () {
+                    if (window.TM_RoleGate && typeof window.TM_RoleGate.apply === 'function') {
+                        window.TM_RoleGate.apply(vs);
+                    }
+                });
+            }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
                     console.log('[ui-main] 初始化 ProductModule');

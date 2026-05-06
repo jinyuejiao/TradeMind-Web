@@ -84,10 +84,8 @@
                     console.error('[API-Client] ❌ 解析用户信息时发生错误:', error);
                 }
             } else {
-                console.log('[API-Client] ❌ 未添加Authorization头，因为token不存在或为空');
-                if (window.TradeMindApp && window.TradeMindApp.logout) {
-                    window.TradeMindApp.logout();
-                }
+                // 未登录场景（登录/注册页、injectCommonUI 拉字典等）严禁 logout：否则会 replace(login) 造成页面死循环刷新
+                console.log('[API-Client] ❌ 未添加 Authorization：token 为空（skipAuth=false），拒绝请求');
                 return Promise.reject(new Error('token不存在或为空'));
             }
             console.log('[API-Client] 最终请求头:', headers);
@@ -103,16 +101,19 @@
             console.log('[API-Client] 响应状态:', response.status);
             console.log('[API-Client] 响应状态文本:', response.statusText);
             
-            // 处理401响应
+            // 处理401响应：登录/注册等 skipAuth 请求失败也会返回401，不得 logout 或消费 body，否则弹窗一闪即被 replace(login) 刷掉
             if (response.status === 401) {
+                if (skipAuth) {
+                    console.log('[API-Client] skipAuth 请求收到401，交由调用方展示错误（不执行 logout）');
+                    return response;
+                }
                 console.log('[API-Client] ❌ 收到401响应，执行logout');
                 try {
-                    const errorData = await response.json();
+                    const errorData = await response.clone().json();
                     console.log('[API-Client] 401响应内容:', errorData);
                 } catch (e) {
                     console.log('[API-Client] 无法解析401响应内容');
                 }
-                
                 if (window.TradeMindApp && window.TradeMindApp.logout) {
                     window.TradeMindApp.logout();
                 }
@@ -133,10 +134,8 @@
         } catch (error) {
             console.error('[API-Client] ❌ 创建请求时发生错误:', error);
             console.error('[API-Client] 错误堆栈:', error.stack);
-            
-            if (window.TradeMindApp && window.TradeMindApp.logout) {
-                window.TradeMindApp.logout();
-            }
+            // 勿在通用 catch 里 logout：网关未启动、DNS、CORS、断网等会导致登录后主壳误踢出并形成「刷新循环」
+            // 未授权仅在收到 HTTP 401 响应时处理（见上方分支）；此处仅向上抛出由调用方决定是否提示
             throw error;
         }
     };
