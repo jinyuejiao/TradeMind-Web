@@ -40,8 +40,30 @@
         </div>
         
         <div class="p-8">
-            <p id="tm-register-merchant-hint" class="text-center text-xs text-brand-600 font-bold mb-4 hidden" aria-live="polite"></p>
             <form id="registerForm" class="space-y-4">
+                <div class="space-y-3">
+                    <label id="tm-mt-label" class="block text-sm font-bold text-slate-700">商户类型 <span class="text-red-500">*</span></label>
+                    <p id="tm-register-merchant-summary" class="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2" aria-live="polite">当前选择：批发商户（WHOLESALE）</p>
+                    <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="tm-mt-label">
+                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+                            <input type="radio" name="tmMerchantType" value="WHOLESALE" class="shrink-0 text-brand-600 focus:ring-brand-500">
+                            <span class="text-sm font-medium text-slate-800">批发</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+                            <input type="radio" name="tmMerchantType" value="FOREIGN_TRADE" class="shrink-0 text-brand-600 focus:ring-brand-500">
+                            <span class="text-sm font-medium text-slate-800">外贸</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+                            <input type="radio" name="tmMerchantType" value="ECOM" class="shrink-0 text-brand-600 focus:ring-brand-500">
+                            <span class="text-sm font-medium text-slate-800">电商</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+                            <input type="radio" name="tmMerchantType" value="FACTORY_TRADE" class="shrink-0 text-brand-600 focus:ring-brand-500">
+                            <span class="text-sm font-medium text-slate-800">工贸</span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-400">与字典 D013 一致；带参数访问（如 <code class="text-slate-500">?merchantType=ECOM</code>）时将默认勾选对应类型。</p>
+                </div>
                 <div class="space-y-2">
                     <label class="block text-sm font-bold text-slate-700">用户名 <span class="text-red-500">*</span></label>
                     <div class="relative">
@@ -86,7 +108,6 @@
                 <div class="space-y-2">
                     <label class="block text-sm font-bold text-slate-700">短信验证码 <span class="text-red-500">*</span></label>
                     <input type="text" id="regSmsCode" name="smsCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" class="w-full px-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请先点击发送验证码，再填写收到的验证码">
-                    <p class="text-xs text-slate-500">未开启阿里云短信时，可填写任意数字完成流程（以服务端配置为准）。</p>
                 </div>
                 
                 <div class="space-y-2">
@@ -175,22 +196,38 @@
     </footer>
     <script src="./assets/js/main-app.js"></script>
     <script src="./assets/js/tm-ui-loader.js"></script>
-    <script src="./assets/js/auth.js?v=20260506r1"></script>
+    <script src="./assets/js/auth.js?v=20260507r2"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (window.injectCommonUI) {
                 window.injectCommonUI();
             }
-            var hint = document.getElementById('tm-register-merchant-hint');
-            if (hint && typeof window.tmResolveMerchantIntent === 'function') {
-                var m = window.tmResolveMerchantIntent();
-                if (m && m !== 'WHOLESALE') {
-                    hint.textContent = '当前注册业态：' + m + '（来自专题页链接或上次选择）';
-                    hint.classList.remove('hidden');
+            var TM_MT_LABELS = { WHOLESALE: '批发', FOREIGN_TRADE: '外贸', ECOM: '电商', FACTORY_TRADE: '工贸' };
+            function tmUpdateMerchantSummary() {
+                var el = document.querySelector('#registerForm input[name="tmMerchantType"]:checked');
+                var code = el ? el.value : 'WHOLESALE';
+                var zh = TM_MT_LABELS[code] || code;
+                var sum = document.getElementById('tm-register-merchant-summary');
+                if (sum) {
+                    sum.textContent = '当前选择：' + zh + '商户（' + code + '）';
                 }
+                document.documentElement.setAttribute('data-merchant-type', code);
+                try {
+                    sessionStorage.setItem('tm_merchant_intent', code);
+                } catch (e) { /* ignore */ }
             }
-            document.documentElement.setAttribute('data-merchant-type',
-                (typeof window.tmResolveMerchantIntent === 'function' ? window.tmResolveMerchantIntent() : 'WHOLESALE'));
+            document.querySelectorAll('#registerForm input[name="tmMerchantType"]').forEach(function(r) {
+                r.addEventListener('change', tmUpdateMerchantSummary);
+            });
+            var initial = typeof window.tmResolveMerchantIntent === 'function' ? window.tmResolveMerchantIntent() : 'WHOLESALE';
+            var radio = document.querySelector('#registerForm input[name="tmMerchantType"][value="' + initial + '"]');
+            if (radio) {
+                radio.checked = true;
+            } else {
+                var fb = document.querySelector('#registerForm input[name="tmMerchantType"][value="WHOLESALE"]');
+                if (fb) fb.checked = true;
+            }
+            tmUpdateMerchantSummary();
         });
     </script>
 </body>

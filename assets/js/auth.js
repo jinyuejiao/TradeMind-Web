@@ -58,6 +58,21 @@ window.tmResolveMerchantIntent = function () {
     return 'WHOLESALE';
 };
 
+/** 注册页：优先取已勾选的商户类型单选，否则回落 URL/session 意图 */
+window.tmGetSelectedMerchantType = function () {
+    try {
+        var form = document.getElementById('registerForm');
+        var scope = form || document;
+        var r = scope.querySelector('input[name="tmMerchantType"]:checked');
+        if (r && r.value) {
+            return r.value;
+        }
+    } catch (e) { /* ignore */ }
+    return typeof window.tmResolveMerchantIntent === 'function'
+        ? window.tmResolveMerchantIntent()
+        : 'WHOLESALE';
+};
+
 // 注入全局 UI 样式
 (function injectGlobalStyles() {
     console.log('TradeMindUI: 开始注入全局 CSS 样式');
@@ -2266,7 +2281,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         sendCodeBtn.textContent = '发送验证码';
                     }
                 }, 1000);
-                showModal(data.mock ? '验证码流程已就绪（当前为未开启短信网关或开发模式）' : '验证码已发送，请查收短信', false);
+                if (data.mock) {
+                    console.info('[注册验证码] 服务端返回模拟票据（联调/未配置短信时可忽略）');
+                }
+                showModal('验证码已发送，请查收短信', false);
             } catch (err) {
                 console.error('发送验证码失败:', err);
                 showModal('发送验证码失败：网络错误', true);
@@ -2379,9 +2397,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     inviteCode: inviteCode,
                     smsToken: registerSmsToken || '',
                     smsCode: smsCode,
-                    merchantType: typeof window.tmResolveMerchantIntent === 'function'
-                        ? window.tmResolveMerchantIntent()
-                        : 'WHOLESALE'
+                    merchantType: typeof window.tmGetSelectedMerchantType === 'function'
+                        ? window.tmGetSelectedMerchantType()
+                        : (typeof window.tmResolveMerchantIntent === 'function'
+                            ? window.tmResolveMerchantIntent()
+                            : 'WHOLESALE')
                 };
                 
                 // 发送注册请求
