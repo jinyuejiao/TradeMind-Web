@@ -299,6 +299,10 @@
                                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">归属主体</label>
                                 <input id="biz-account-holder" type="text" class="form-input" placeholder="请输入商户主体名称">
                             </div>
+                            <div class="space-y-2 md:col-span-2">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">账户余额（元）</label>
+                                <input id="biz-account-balance" type="number" step="0.01" class="form-input font-mono" placeholder="0.00">
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -337,13 +341,22 @@
             <div id="biz-account-detail-modal" class="hidden fixed inset-0 z-[132] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountDetailModal()"></div>
                 <div class="relative bg-white w-full max-w-md rounded-[1.8rem] shadow-2xl overflow-hidden text-left">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
                         <h4 class="text-sm font-black text-slate-800">账户详情</h4>
-                        <button onclick="window.closeBizAccountDetailModal()" class="p-1.5 rounded-full hover:bg-slate-200 transition-colors">
-                            <i class="ph ph-x text-lg text-slate-400"></i>
-                        </button>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="window.openBizAccountEditFromDetail()" class="tm-biz-acct-action w-9 h-9 rounded-xl border border-transparent flex items-center justify-center text-[#0D9488]" title="修改账户">
+                                <i class="ph ph-pencil-simple text-lg"></i>
+                            </button>
+                            <button type="button" onclick="window.closeBizAccountDetailModal()" class="p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                                <i class="ph ph-x text-lg text-slate-400"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="p-5 space-y-4 text-xs">
+                        <div class="rounded-xl border border-[#CCFBF1] bg-gradient-to-br from-[#F0FDFA] to-slate-50 px-4 py-3">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">账户余额</p>
+                            <p id="biz-detail-balance" class="text-xl font-mono font-black text-[#0D9488] tabular-nums"></p>
+                        </div>
                         <div>
                             <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">账户名称</p>
                             <p id="biz-detail-name" class="text-base font-black text-slate-900 tracking-tight"></p>
@@ -358,9 +371,57 @@
                             <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
                         </div>
                     </div>
-                    <div class="px-5 py-4 border-t border-slate-100 bg-white flex gap-2">
-                        <button onclick="window.closeBizAccountDetailModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
-                        <button onclick="window.openBizAccountModal(window.bizAccountDetailId); window.closeBizAccountDetailModal();" class="flex-1 py-2.5 rounded-xl bg-[#14B8A6] text-white text-xs font-black hover:bg-[#0D9488] transition-colors shadow-sm">编辑</button>
+                    <div class="px-5 py-4 border-t border-slate-100 bg-white">
+                        <button type="button" onclick="window.closeBizAccountDetailModal()" class="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 账户流水 -->
+            <div id="biz-account-ledger-modal" class="hidden fixed inset-0 z-[133] flex items-center justify-center p-3 md:p-4">
+                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountLedgerModal()"></div>
+                <div class="relative bg-white w-full max-w-4xl max-h-[92vh] flex flex-col rounded-[1.25rem] md:rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 text-left">
+                    <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/60 flex items-start md:items-center justify-between gap-3 shrink-0">
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-black text-slate-800 flex items-center gap-2">
+                                <i class="ph ph-arrows-left-right text-[#14B8A6]"></i> 账户流水
+                            </h4>
+                            <p id="biz-ledger-subtitle" class="text-[11px] text-slate-400 mt-1 truncate font-mono"></p>
+                        </div>
+                        <button type="button" onclick="window.closeBizAccountLedgerModal()" class="p-2 rounded-xl hover:bg-slate-200 transition-colors shrink-0">
+                            <i class="ph ph-x text-lg text-slate-400"></i>
+                        </button>
+                    </div>
+                    <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+                        <div class="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+                            <div class="flex-1 min-w-[8rem]">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">开始日期</label>
+                                <input type="date" id="biz-ledger-date-start" class="form-input text-xs py-2 w-full" onchange="window.loadBizAccountLedger()">
+                            </div>
+                            <div class="flex-1 min-w-[8rem]">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">结束日期</label>
+                                <input type="date" id="biz-ledger-date-end" class="form-input text-xs py-2 w-full" onchange="window.loadBizAccountLedger()">
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.exportBizAccountLedgerExcel()" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-slate-800 transition-colors shadow-lg shrink-0 w-full sm:w-auto">
+                            <i class="ph ph-download-simple text-base"></i>
+                            导出 Excel
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto overflow-x-auto p-4 md:p-5">
+                        <table class="w-full text-left border-collapse text-[11px] md:text-xs min-w-[520px]">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
+                                    <th class="px-3 py-2.5 rounded-tl-lg whitespace-nowrap">类型</th>
+                                    <th class="px-3 py-2.5">对方账号</th>
+                                    <th class="px-3 py-2.5 text-right whitespace-nowrap">金额</th>
+                                    <th class="px-3 py-2.5 whitespace-nowrap">日期</th>
+                                    <th class="px-3 py-2.5 text-right whitespace-nowrap rounded-tr-lg">账户余额</th>
+                                </tr>
+                            </thead>
+                            <tbody id="biz-ledger-tbody" class="divide-y divide-slate-50 text-slate-700"></tbody>
+                        </table>
+                        <p id="biz-ledger-empty" class="hidden text-center text-xs text-slate-400 py-10">所选时间范围内暂无流水记录</p>
                     </div>
                 </div>
             </div>
@@ -860,6 +921,13 @@
         window.bizEditingAccountId = null;
         window.bizDeletingAccountId = null;
         window.bizAccountDetailId = null;
+        window.bizLedgerAccountId = null;
+
+        function formatBizMoney(n) {
+            const x = Number(n);
+            if (!Number.isFinite(x)) return '0.00';
+            return x.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
 
         function escapeHtml(value) {
             return String(value || '')
@@ -900,6 +968,7 @@
             container.innerHTML = window.bizAccounts.map(item => {
                 const name = escapeHtml(item.accountName);
                 const holder = escapeHtml(item.accountHolder || '-');
+                const bal = formatBizMoney(item.balance);
                 const isDefaultReceive = item.isDefaultReceive === true;
                 const isDefaultPay = item.isDefaultPay === true;
                 return `
@@ -911,11 +980,12 @@
                                     ${isDefaultReceive ? '<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-[#F0FDFA] text-[#0D9488] border border-[#CCFBF1] text-[10px] font-bold">默认收款</span>' : ''}
                                     ${isDefaultPay ? '<span class="inline-flex items-center px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px] font-bold">默认付款</span>' : ''}
                                 </div>
-                                <p class="text-[10px] text-slate-400 mt-1.5">主体：${holder}</p>
+                                <p class="text-[10px] text-slate-500 mt-1 font-mono tabular-nums">余额：<span class="text-[#0D9488] font-bold">${bal}</span> 元</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">主体：${holder}</p>
                             </div>
                             <div class="flex items-center gap-1 shrink-0">
                                 <button type="button" onclick="event.stopPropagation(); window.openBizAccountDetail(${item.accountId})" class="tm-biz-acct-action w-8 h-8 rounded-lg border border-transparent text-slate-400" title="查看"><i class="ph ph-eye text-sm"></i></button>
-                                <button type="button" onclick="event.stopPropagation(); window.openBizAccountModal(${item.accountId})" class="tm-biz-acct-action w-8 h-8 rounded-lg border border-transparent text-slate-400" title="编辑"><i class="ph ph-pencil-simple text-sm"></i></button>
+                                <button type="button" onclick="event.stopPropagation(); window.openBizAccountLedgerModal(${item.accountId})" class="tm-biz-acct-action w-8 h-8 rounded-lg border border-transparent text-slate-400" title="账户流水"><i class="ph ph-arrows-left-right text-sm"></i></button>
                                 <button type="button" onclick="event.stopPropagation(); window.openBizAccountDeleteModal(${item.accountId})" class="w-8 h-8 rounded-lg border border-transparent text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors" title="删除"><i class="ph ph-trash text-sm"></i></button>
                             </div>
                         </div>
@@ -935,6 +1005,10 @@
             document.getElementById('biz-account-name').value = current ? (current.accountName || '') : '';
             document.getElementById('biz-account-no').value = current ? (current.accountNo || '') : '';
             document.getElementById('biz-account-holder').value = current ? (current.accountHolder || '') : '';
+            var balEl = document.getElementById('biz-account-balance');
+            if (balEl) {
+                balEl.value = current && current.balance !== undefined && current.balance !== null ? String(current.balance) : '0';
+            }
             document.getElementById('biz-account-default-receive').checked = !!(current && current.isDefaultReceive);
             document.getElementById('biz-account-default-pay').checked = !!(current && current.isDefaultPay);
             if (title) {
@@ -951,12 +1025,16 @@
 
         window.saveBizAccount = async function() {
             try {
+                var balInput = document.getElementById('biz-account-balance');
+                var balNum = balInput ? parseFloat(balInput.value) : 0;
+                if (!Number.isFinite(balNum)) balNum = 0;
                 const payload = {
                     accountId: window.bizEditingAccountId || null,
                     accountType: document.getElementById('biz-account-type').value,
                     accountName: document.getElementById('biz-account-name').value.trim(),
                     accountNo: document.getElementById('biz-account-no').value.trim(),
                     accountHolder: document.getElementById('biz-account-holder').value.trim(),
+                    balance: balNum,
                     isDefaultReceive: document.getElementById('biz-account-default-receive').checked,
                     isDefaultPay: document.getElementById('biz-account-default-pay').checked
                 };
@@ -1007,24 +1085,138 @@
             }
         };
 
-        window.openBizAccountDetail = function(accountId) {
-            const item = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
-            if (!item) return;
+        window.openBizAccountDetail = async function(accountId) {
             window.bizAccountDetailId = accountId;
+            try {
+                const response = await window.wrappedFetch('/api/v1/im/accounts/' + accountId, { method: 'GET' });
+                const result = await window.handleApiResponse(response);
+                const item = result && result.data !== undefined ? result.data : result;
+                if (!item || item.accountId === undefined) {
+                    var fallback = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
+                    if (!fallback) return;
+                    window.renderBizAccountDetailFields(fallback);
+                } else {
+                    window.renderBizAccountDetailFields(item);
+                }
+            } catch (e) {
+                console.error(e);
+                var fb = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
+                if (!fb) return;
+                window.renderBizAccountDetailFields(fb);
+            }
+            const modal = document.getElementById('biz-account-detail-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.renderBizAccountDetailFields = function(item) {
+            document.getElementById('biz-detail-balance').textContent = formatBizMoney(item.balance) + ' 元';
             document.getElementById('biz-detail-name').textContent = item.accountName || '-';
             document.getElementById('biz-detail-type').textContent = item.accountType || '-';
             document.getElementById('biz-detail-no').textContent = item.accountNo || '-';
             document.getElementById('biz-detail-holder').textContent = item.accountHolder || '-';
             document.getElementById('biz-detail-default-receive').classList.toggle('hidden', !item.isDefaultReceive);
             document.getElementById('biz-detail-default-pay').classList.toggle('hidden', !item.isDefaultPay);
-            const modal = document.getElementById('biz-account-detail-modal');
-            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.openBizAccountEditFromDetail = function() {
+            var id = window.bizAccountDetailId;
+            if (!id) return;
+            window.closeBizAccountDetailModal();
+            window.openBizAccountModal(id);
         };
 
         window.closeBizAccountDetailModal = function() {
             const modal = document.getElementById('biz-account-detail-modal');
             if (modal) modal.classList.add('hidden');
             window.bizAccountDetailId = null;
+        };
+
+        window.openBizAccountLedgerModal = function(accountId) {
+            window.bizLedgerAccountId = accountId;
+            var item = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
+            var sub = document.getElementById('biz-ledger-subtitle');
+            if (sub) sub.textContent = item ? ((item.accountName || '') + ' · ' + (item.accountNo || '')) : ('账户 #' + accountId);
+            var m = document.getElementById('biz-account-ledger-modal');
+            if (m) m.classList.remove('hidden');
+            window.loadBizAccountLedger();
+        };
+
+        window.closeBizAccountLedgerModal = function() {
+            var m = document.getElementById('biz-account-ledger-modal');
+            if (m) m.classList.add('hidden');
+            window.bizLedgerAccountId = null;
+        };
+
+        window.loadBizAccountLedger = async function() {
+            var id = window.bizLedgerAccountId;
+            if (!id) return;
+            var qs = '?pageNo=1&pageSize=500';
+            var ds = document.getElementById('biz-ledger-date-start');
+            var de = document.getElementById('biz-ledger-date-end');
+            if (ds && ds.value) qs += '&startDate=' + encodeURIComponent(ds.value);
+            if (de && de.value) qs += '&endDate=' + encodeURIComponent(de.value);
+            try {
+                const response = await window.wrappedFetch('/api/v1/im/accounts/' + id + '/ledger' + qs, { method: 'GET' });
+                const result = await window.handleApiResponse(response);
+                var pack = result && result.data !== undefined ? result.data : result;
+                var rows = pack && pack.records ? pack.records : [];
+                window.renderBizAccountLedgerTable(rows);
+            } catch (e) {
+                console.error(e);
+                window.renderBizAccountLedgerTable([]);
+            }
+        };
+
+        window.renderBizAccountLedgerTable = function(rows) {
+            var tb = document.getElementById('biz-ledger-tbody');
+            var empty = document.getElementById('biz-ledger-empty');
+            if (!tb) return;
+            if (!rows || rows.length === 0) {
+                tb.innerHTML = '';
+                if (empty) empty.classList.remove('hidden');
+                return;
+            }
+            if (empty) empty.classList.add('hidden');
+            tb.innerHTML = rows.map(function (r) {
+                var typeLabel = r.typeLabel || (r.txnType === 'RECEIPT' ? '收款' : '付款');
+                var cp = escapeHtml(r.counterpartyLabel || '—');
+                var amt = formatBizMoney(r.amount);
+                var tt = r.txnTime != null ? String(r.txnTime).replace('T', ' ').substring(0, 19) : '—';
+                var ba = formatBizMoney(r.balanceAfter);
+                return '<tr><td class="px-3 py-2 whitespace-nowrap">' + typeLabel + '</td><td class="px-3 py-2 break-all">' + cp + '</td>'
+                    + '<td class="px-3 py-2 text-right font-mono tabular-nums">' + amt + '</td>'
+                    + '<td class="px-3 py-2 whitespace-nowrap font-mono text-[10px] md:text-xs">' + tt + '</td>'
+                    + '<td class="px-3 py-2 text-right font-mono tabular-nums">' + ba + '</td></tr>';
+            }).join('');
+        };
+
+        window.exportBizAccountLedgerExcel = async function() {
+            var id = window.bizLedgerAccountId;
+            if (!id) return;
+            var qs = '';
+            var ds = document.getElementById('biz-ledger-date-start');
+            var de = document.getElementById('biz-ledger-date-end');
+            if (ds && ds.value) qs += '?startDate=' + encodeURIComponent(ds.value);
+            if (de && de.value) qs += (qs ? '&' : '?') + 'endDate=' + encodeURIComponent(de.value);
+            try {
+                const response = await window.wrappedFetch('/api/v1/im/accounts/' + id + '/ledger/export' + qs, { method: 'GET' });
+                if (!response.ok) {
+                    var err = {};
+                    try { err = await response.json(); } catch (x) {}
+                    alert(err.message || ('导出失败 HTTP ' + response.status));
+                    return;
+                }
+                var blob = await response.blob();
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'account-ledger-' + id + '.xlsx';
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                console.error(e);
+                alert('导出失败：' + e.message);
+            }
         };
 
         // 打开AI分析弹窗
