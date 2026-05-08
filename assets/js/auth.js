@@ -324,12 +324,22 @@ window.tmGetSelectedMerchantType = function () {
                     }
                     
                     /* 内容区域适配移动端上下边距 - 保持内容不被导航栏遮挡 */
+                    /* 排除 .tm-app-content-area：该类用于 index-app 主壳，已由 common.css 处理底栏留白，避免重复 padding */
+                    /* 不设 [class*="content"]：易误伤 modal-content-box 等类名，且与 UI 工程 index 不一致 */
                     .main-content-section,
-                    [class*="content"],
                     .page-content,
-                    #content-area {
+                    #content-area:not(.tm-app-content-area) {
                         padding-top: 4rem;
                         padding-bottom: 5rem;
+                    }
+
+                    /*
+                     * 嵌入主壳 iframe（html.tm-embedded）：顶栏由外层 index-app 提供，子页 header 已隐藏，
+                     * 不得再预留 tm-mobile-header 的 4rem 顶距（对齐 UI 工程 index.html #content-area 无上 padding）。
+                     */
+                    html.tm-embedded #content-area {
+                        padding-top: 0 !important;
+                        padding-bottom: 0 !important;
                     }
                 }
 
@@ -1608,13 +1618,30 @@ window.injectCommonUI = function() {
         // 2. 检测环境并适配移动端
         const isMobile = window.innerWidth < 768;
         console.log('TradeMindUI.injectCommonUI: 步骤2 - 检测环境 - isMobile:', isMobile, '窗口宽度:', window.innerWidth);
+
+        /** iframe 内嵌模块页（SmartOps/CRM/供应链 embed）：禁止注入顶栏/底栏，避免主壳内出现第二层模块切换栏 */
+        let isEmbeddedModule = false;
+        try {
+            isEmbeddedModule = window.self !== window.top;
+        } catch (e) {
+            isEmbeddedModule = true;
+        }
+        if (!isEmbeddedModule) {
+            try {
+                if (new URLSearchParams(window.location.search || '').get('embed') === '1') {
+                    isEmbeddedModule = true;
+                }
+            } catch (e2) { /* ignore */ }
+        }
         
         if (isMobile) {
             console.log('TradeMindUI.injectCommonUI: 检测到移动设备，开始移动端适配');
             
-            // 给 body 添加移动端类名
-            document.body.classList.add('tm-mobile-active');
-            console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active 类');
+            // 给 body 添加移动端类名（嵌入 iframe 的模块页不加，避免全局移动端样式干扰子页布局）
+            if (!isEmbeddedModule) {
+                document.body.classList.add('tm-mobile-active');
+                console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active 类');
+            }
 
             /** index-app 等主壳页已内置顶栏与 .mobile-nav-btn 底栏（方案 A），禁止再注入 tm-mobile-header / tm-mobile-nav */
             const isAppShellPage = !!document.getElementById('tm-app-tabbar');
@@ -1623,7 +1650,7 @@ window.injectCommonUI = function() {
             const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
             
             // 移动端布局适配
-            if (!isAppShellPage) {
+            if (!isAppShellPage && !isEmbeddedModule) {
             const sidebar = document.querySelector('aside');
             if (sidebar) {
                 console.log('TradeMindUI.injectCommonUI: 找到侧边栏，准备隐藏');
@@ -1739,6 +1766,8 @@ window.injectCommonUI = function() {
                     }
                 });
             }
+            } else if (isEmbeddedModule) {
+                console.log('TradeMindUI.injectCommonUI: 嵌入模块页（iframe/embed），跳过注入式顶栏/底栏与侧栏覆盖');
             } else {
                 console.log('TradeMindUI.injectCommonUI: 主壳页面 (tm-app-tabbar) 已含内置导航，跳过注入式顶栏/底栏与侧栏覆盖');
             }

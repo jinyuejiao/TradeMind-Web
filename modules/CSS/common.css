@@ -18,10 +18,26 @@
     --tm-iframe-min-h: 420px;
 }
 
+/* 与 MobileAdapt/mobile.css 一致：小屏隐藏带 col-hide-mobile 的列（供应链等仅引用 common.css 的页面依赖此项） */
+.col-hide-mobile {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .col-hide-mobile {
+        display: table-cell;
+    }
+}
+
 @media (max-width: 767px) {
     :root {
         --tm-header-h: 3.5rem;
         --tm-tabbar-h: 4.5rem;
+    }
+
+    /* 与 UI 工程 index.html 一致：滚动内容区紧贴顶栏下沿，勿额外 padding-top */
+    #content-area.tm-app-content-area {
+        padding-top: 0 !important;
     }
 
     .tm-app-content-area {
@@ -220,6 +236,30 @@ textarea {
     box-sizing: border-box;
 }
 
+/*
+ * 左侧含放大镜的搜索框：↑ 全局 input padding 会覆盖 Tailwind 的 pl-*（特异性低于 input[type=text]），
+ * 手机端占位文字会与图标重叠（客户 CRM、产品中心 index-app 注入片段等）。
+ */
+.relative > i.ph-magnifying-glass + input[type="text"],
+.relative i.ph-magnifying-glass + input[type="text"] {
+    padding-left: 2.75rem !important;
+}
+
+@media (min-width: 768px) {
+
+    .relative > i.ph-magnifying-glass + input[type="text"],
+    .relative i.ph-magnifying-glass + input[type="text"] {
+        padding-left: 3rem !important;
+    }
+}
+
+/* CRM 列表搜索：紧凑高度需抵消全局 input 垂直 padding，否则与 h-9 冲突 */
+input#crmSearchInput[type="text"] {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 2.25rem !important;
+}
+
 .form-input:focus,
 input[type="text"]:focus,
 input[type="password"]:focus,
@@ -283,4 +323,79 @@ textarea {
 
 .tm-compliance-footer a:hover {
     color: #0d9488;
+}
+
+/* 供应商管理（iframe 内无 #view-supplier）：横向排版 + 列宽 + 过长省略，对齐 UI/MobileAdapt/mobile.css */
+@media (max-width: 767px) {
+
+    #orders-list table.supplier-mgmt-po-table,
+    #suppliers-list table.supplier-mgmt-edit-table,
+    #view-supplier #orders-list table.supplier-mgmt-po-table,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table {
+        table-layout: fixed;
+        width: 100%;
+        writing-mode: horizontal-tb;
+    }
+
+    #orders-list table.supplier-mgmt-po-table th,
+    #orders-list table.supplier-mgmt-po-table td,
+    #suppliers-list table.supplier-mgmt-edit-table th,
+    #suppliers-list table.supplier-mgmt-edit-table td,
+    #view-supplier #orders-list table.supplier-mgmt-po-table th,
+    #view-supplier #orders-list table.supplier-mgmt-po-table td,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table th,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table td {
+        writing-mode: horizontal-tb;
+        text-orientation: mixed;
+        vertical-align: middle;
+        word-break: keep-all;
+        overflow-wrap: normal;
+    }
+
+    #orders-list table.supplier-mgmt-po-table .tm-po-date,
+    #view-supplier #orders-list table.supplier-mgmt-po-table .tm-po-date {
+        width: 24%;
+    }
+
+    #orders-list table.supplier-mgmt-po-table .tm-po-supplier,
+    #view-supplier #orders-list table.supplier-mgmt-po-table .tm-po-supplier {
+        width: 40%;
+    }
+
+    #orders-list table.supplier-mgmt-po-table .tm-po-status,
+    #view-supplier #orders-list table.supplier-mgmt-po-table .tm-po-status {
+        width: 22%;
+    }
+
+    #orders-list table.supplier-mgmt-po-table .tm-po-action,
+    #view-supplier #orders-list table.supplier-mgmt-po-table .tm-po-action {
+        width: 14%;
+    }
+
+    #suppliers-list table.supplier-mgmt-edit-table .tm-sup-name,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table .tm-sup-name {
+        width: 34%;
+    }
+
+    #suppliers-list table.supplier-mgmt-edit-table .tm-sup-contact,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table .tm-sup-contact {
+        width: 18%;
+    }
+
+    #suppliers-list table.supplier-mgmt-edit-table .tm-sup-phone,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table .tm-sup-phone {
+        width: 30%;
+    }
+
+    #suppliers-list table.supplier-mgmt-edit-table .tm-sup-action,
+    #view-supplier #suppliers-list table.supplier-mgmt-edit-table .tm-sup-action {
+        width: 18%;
+    }
+
+    #supplier-tab-list #orders-list .overflow-x-auto.no-scrollbar,
+    #supplier-tab-supplier #suppliers-list .overflow-x-auto.no-scrollbar,
+    #view-supplier #sup-list-view .overflow-x-auto,
+    #view-supplier #sup-supplier-view .overflow-x-auto {
+        overflow-x: visible;
+    }
 }

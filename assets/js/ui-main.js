@@ -137,7 +137,8 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
  * 统一挂载 iframe 模块并在加载后强制裁剪子页面壳层。
  * 这样即使子页面 embed 脚本未按预期执行，也不会出现重复导航栏。
  */
-function TM_mountEmbeddedFrame(host, frameKey, src, title) {
+function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
+    opts = opts || {};
     if (!host) return;
     function revealFrame(frame) {
         if (!frame) return;
@@ -156,6 +157,10 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title) {
             // 保留 DOM 结构，仅隐藏壳层节点，避免子页面脚本因节点缺失而中断。
             var shells = doc.querySelectorAll('aside, header, .tm-compliance-footer');
             shells.forEach(function (el) {
+                el.style.setProperty('display', 'none', 'important');
+            });
+
+            doc.querySelectorAll('.tm-mobile-nav, .tm-mobile-header').forEach(function (el) {
                 el.style.setProperty('display', 'none', 'important');
             });
 
@@ -178,6 +183,37 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title) {
 
     var existed = host.querySelector('iframe[data-tm-embed="' + frameKey + '"]');
     if (existed) {
+        var didRewindSrc = false;
+        if (opts.embedPathCheck) {
+            try {
+                var idoc = existed.contentDocument;
+                var path = (idoc && idoc.location && idoc.location.pathname) || '';
+                if (path.indexOf(opts.embedPathCheck) === -1) {
+                    didRewindSrc = true;
+                    var baseSrc = String(src || '').split('&_tmrec=')[0].split('?_tmrec=')[0];
+                    existed.src = baseSrc + (baseSrc.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
+                }
+            } catch (eReload) {
+                didRewindSrc = true;
+                var baseSrc2 = String(src || '').split('&_tmrec=')[0].split('?_tmrec=')[0];
+                existed.src = baseSrc2 + (baseSrc2.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
+            }
+        }
+        if (didRewindSrc) {
+            existed.addEventListener('load', function onEmbedReload() {
+                existed.removeEventListener('load', onEmbedReload);
+                cleanupFrame(existed);
+                setTimeout(function () {
+                    cleanupFrame(existed);
+                    revealFrame(existed);
+                }, 120);
+            });
+            setTimeout(function () {
+                cleanupFrame(existed);
+                revealFrame(existed);
+            }, 1500);
+            return;
+        }
         cleanupFrame(existed);
         revealFrame(existed);
         return;
@@ -395,7 +431,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260504r15', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260508r1', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -422,7 +458,8 @@ function loadSmartOps() {
         document.getElementById('view-biz'),
         'biz',
         '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r24',
-        '智能经营'
+        '智能经营',
+        { embedPathCheck: 'SmartOps' }
     );
 }
 
@@ -431,14 +468,15 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260422r23',
-        'CRM'
+        '/modules/crm/crm.html?embed=1&v=20260508r4',
+        'CRM',
+        { embedPathCheck: 'crm' }
     );
 }
 
 function loadProductCenter() {
     console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
-    fetch('/modules/product-center/product-center.html?v=20260503r3', { cache: 'no-store' })
+    fetch('/modules/product-center/product-center.html?v=20260508r4', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             // 产品中心的类别/仓库编辑依赖 #content-area 内的弹窗与抽屉 DOM，
@@ -470,8 +508,9 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260422r16',
-        '供应商'
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260508r5',
+        '供应商',
+        { embedPathCheck: 'supply-chain' }
     );
 }
 

@@ -21,7 +21,10 @@
         html.tm-embedded .tm-compliance-footer {
             display: none !important;
         }
-        html.tm-embedded #content-area { padding-bottom: 0 !important; }
+        html.tm-embedded #content-area {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
     </style>
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
@@ -99,10 +102,10 @@
         };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260508r4">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <!-- 确保 auth.js 加载完成后再执行页面代码 -->
-    <script src="../../assets/js/auth.js?v=20260422r13"></script>
+    <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
         // 打开会员订阅弹窗
@@ -238,8 +241,8 @@
                             </button>
                         </div>
                         <div class="relative">
-                            <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
-                            <input type="text" id="crmSearchInput" placeholder="搜索姓名、电话、地区..." class="form-input text-[11px] pl-9 h-9">
+                            <i class="ph ph-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="crmSearchInput" placeholder="搜索姓名、电话、地区..." class="form-input text-[11px] h-9">
                         </div>
                     </div>
 

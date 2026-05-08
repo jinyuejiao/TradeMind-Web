@@ -440,7 +440,7 @@ window.ProductModule = {
             label.textContent = status;
             btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         } else {
-            label.textContent = '库存情况';
+            label.textContent = '库存';
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         }
         
@@ -492,7 +492,7 @@ window.ProductModule = {
         
         document.getElementById('category-label').textContent = '产品类别';
         document.getElementById('supplier-label').textContent = '供应商';
-        document.getElementById('stock-label').textContent = '库存情况';
+        document.getElementById('stock-label').textContent = '库存';
         
         document.querySelectorAll('#category-filter > button, #supplier-filter > button, #stock-filter > button').forEach(function (btn) {
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
@@ -610,6 +610,8 @@ window.ProductModule = {
 
         if (total === 0) {
             container.innerHTML = '';
+            const mobilePagEmpty = document.getElementById('mobile-product-pagination');
+            if (mobilePagEmpty) mobilePagEmpty.innerHTML = '';
             return;
         }
 
@@ -622,6 +624,24 @@ window.ProductModule = {
                 </div>
             </div>
         `;
+
+        const mobilePag = document.getElementById('mobile-product-pagination');
+        if (mobilePag) {
+            mobilePag.innerHTML = `
+            <div class="flex flex-col gap-1.5">
+                <p class="mobile-product-pagination-summary text-[9px] text-slate-500 leading-snug text-center">共 ${total} 条，第 ${page}/${totalPages} 页，每页 ${pageSize} 条</p>
+                <div class="flex gap-1.5 justify-center items-center">
+                    <button type="button" class="mobile-page-btn" ${disablePrev ? 'disabled' : ''} onclick="${config.onPrev}" aria-label="上一页">
+                        <i class="ph ph-caret-left mobile-page-btn__icon" aria-hidden="true"></i>
+                        <span class="mobile-page-btn__text">上一页</span>
+                    </button>
+                    <button type="button" class="mobile-page-btn" ${disableNext ? 'disabled' : ''} onclick="${config.onNext}" aria-label="下一页">
+                        <span class="mobile-page-btn__text">下一页</span>
+                        <i class="ph ph-caret-right mobile-page-btn__icon" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>`;
+        }
     },
 
     setProductPage: function(page) {
@@ -646,7 +666,7 @@ window.ProductModule = {
         if (productList.length === 0) {
             console.log('[ProductModule] 产品列表为空，显示空状态');
             tbody.innerHTML = `
-                <tr>
+                <tr class="hidden md:table-row">
                     <td colspan="5" class="px-6 py-12 text-center">
                         <div class="flex flex-col items-center gap-3">
                             <i class="ph ph-package text-4xl text-slate-300"></i>
@@ -715,54 +735,41 @@ window.ProductModule = {
         
         if (productList.length === 0) {
             container.innerHTML = `
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-                    <i class="ph ph-package text-4xl text-slate-300"></i>
-                    <p class="text-slate-400 font-bold mt-3">暂无产品</p>
-                </div>
-            `;
+                <div class="py-10 px-4 text-center">
+                    <i class="ph ph-package text-3xl text-slate-300"></i>
+                    <p class="text-slate-400 font-bold mt-2 text-xs">暂无产品</p>
+                </div>`;
             return;
         }
-        
-        container.innerHTML = productList.map(product => `
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 product-card cursor-pointer hover:shadow-md transition-shadow" onclick="window.ProductModule.openProductDetail(${product.id})">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
-                        <i class="ph ph-${product.icon} text-xl"></i>
-                    </div>
-                    <div class="flex-1">
-                        <p class="font-bold text-slate-800">${product.name}</p>
-                        <p class="text-[10px] text-slate-400 font-mono uppercase mt-1">SKU: ${product.sku}</p>
-                        <div class="mt-2 grid grid-cols-2 gap-2">
-                            <div>
-                                <p class="text-[10px] text-slate-400">销售价</p>
-                                <p class="font-mono font-bold text-slate-600">$${(product.price || 0).toFixed(2)}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-slate-400">进货价</p>
-                                <p class="font-mono font-bold text-brand-600">$${(product.purchasePrice || 0).toFixed(2)}</p>
-                            </div>
-                        </div>
-                        <div class="mt-2 flex justify-between items-center">
-                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold">${product.region}</span>
-                            <p class="font-mono font-bold ${window.ProductModule.getStockColor(product.stockStatus)}">
-                                ${(product.stock || 0).toLocaleString()} Pcs
-                            </p>
-                        </div>
-                        <div class="w-full h-1 bg-slate-100 rounded-full mt-2 overflow-hidden">
-                            <div class="w-[${window.ProductModule.getStockPercentage(product.stock || 0)}%] ${window.ProductModule.getStockBgColor(product.stockStatus)} h-full ${product.stockStatus === '缺货' ? 'animate-pulse' : ''}"></div>
-                        </div>
-                    </div>
+
+        container.innerHTML = productList.map(product => {
+            const pct = window.ProductModule.getStockPercentage(product.stock || 0);
+            const barClass = window.ProductModule.getStockBgColor(product.stockStatus);
+            const pulse = product.stockStatus === '缺货' ? 'animate-pulse' : '';
+            return `
+        <div class="mobile-product-row flex items-stretch gap-2 px-3 py-1.5 cursor-pointer hover:bg-slate-50/90 active:bg-slate-50" onclick="window.ProductModule.openProductDetail(${product.id})">
+            <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                <i class="ph ph-${product.icon} text-base"></i>
+            </div>
+            <div class="flex-1 min-w-0 py-0">
+                <div class="flex justify-between gap-2 items-start">
+                    <p class="font-bold text-slate-800 text-[12px] leading-tight line-clamp-2">${product.name}</p>
+                    <span class="font-mono text-[9px] text-slate-500 shrink-0">${(product.stock || 0).toLocaleString()} Pcs</span>
                 </div>
-                <div class="mt-4 flex justify-end gap-2">
-                    <button onclick="event.stopPropagation(); window.ProductModule.openProductDetail(${product.id})" class="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-brand-600">
-                        <i class="ph ph-pencil-simple-line text-lg"></i>
-                    </button>
-                    <button onclick="event.stopPropagation(); window.ProductModule.confirmDeleteProduct(${product.id}, '${product.name}')" class="p-2 bg-slate-100 rounded-full text-slate-400 hover:text-risk-high">
-                        <i class="ph ph-trash text-lg"></i>
-                    </button>
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0 mt-0.5 text-[10px]">
+                    <span class="text-slate-600">销售 <span class="font-mono font-bold">$${(product.price || 0).toFixed(2)}</span></span>
+                    <span class="text-brand-600">进货 <span class="font-mono font-bold">$${(product.purchasePrice || 0).toFixed(2)}</span></span>
+                </div>
+                <div class="w-full max-w-[11rem] h-0.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div class="${barClass} h-full ${pulse}" style="width:${pct}%"></div>
                 </div>
             </div>
-        `).join('');
+            <div class="flex flex-col gap-1 justify-center shrink-0" onclick="event.stopPropagation()">
+                <button type="button" onclick="window.ProductModule.openProductDetail(${product.id})" class="mobile-mini-btn" title="编辑"><i class="ph ph-pencil-simple"></i></button>
+                <button type="button" onclick="window.ProductModule.confirmDeleteProduct(${product.id}, '${String(product.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" class="mobile-mini-btn delete" title="删除"><i class="ph ph-trash"></i></button>
+            </div>
+        </div>`;
+        }).join('');
     },
 
     // ==================== 辅助函数 ====================

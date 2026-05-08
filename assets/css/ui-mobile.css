@@ -72,21 +72,22 @@
         max-width: 120px;
     }
     
-    /* 下拉菜单移动端适配 */
+    /* 下拉菜单：紧贴筛选按钮（父级为 .relative），勿 fixed 贴屏幕底部 */
     #category-dropdown,
     #supplier-dropdown,
     #stock-dropdown {
-        position: fixed !important;
+        position: absolute !important;
         left: 0 !important;
-        right: 0 !important;
-        top: auto !important;
-        bottom: 0 !important;
-        width: 100% !important;
-        max-width: none !important;
-        margin-top: 0 !important;
-        border-radius: 1.5rem 1.5rem 0 0 !important;
-        max-height: 60vh !important;
-        z-index: 200 !important;
+        right: auto !important;
+        top: 100% !important;
+        bottom: auto !important;
+        width: min(18rem, calc(100vw - 2rem)) !important;
+        max-width: 18rem !important;
+        margin-top: 0.5rem !important;
+        border-radius: 1rem !important;
+        max-height: min(50vh, 20rem) !important;
+        z-index: 250 !important;
+        box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
     }
     
     /* 下拉菜单内容 */
@@ -124,27 +125,12 @@
         font-size: 0.875rem !important;
     }
     
-    /* 类别标签适配 */
-    #existingProdTable span.rounded-full,
-    #mobile-product-cards span.rounded-full {
+    /* 类别标签适配（桌面表格） */
+    #existingProdTable span.rounded-full {
         padding: 0.25rem 0.5rem !important;
         font-size: 0.625rem !important;
     }
-    
-    /* 产品卡片移动端适配 */
-    #mobile-product-cards .product-card {
-        padding: 0.875rem !important;
-    }
-    
-    #mobile-product-cards .w-12 {
-        width: 2.75rem !important;
-        height: 2.75rem !important;
-    }
-    
-    #mobile-product-cards .product-card p.font-bold {
-        font-size: 0.875rem !important;
-    }
-    
+
     /* 弹窗移动端适配 */
     #category-modal .rounded-\\[2\\.5rem\\] {
         border-radius: 1.5rem !important;
@@ -170,5 +156,184 @@
     /* 重置筛选按钮移动端适配 */
     #reset-filter-btn {
         white-space: nowrap;
+    }
+}
+
+/* ================= 产品中心：对齐 UI 工程 MobileAdapt/mobile.css ================= */
+@media (max-width: 767px) {
+    #mobile-product-cards {
+        display: block !important;
+        padding-top: 0.25rem;
+    }
+
+    #product-library-header {
+        padding: 0.625rem 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+
+    #product-library-header h3 {
+        width: 100%;
+        text-align: left;
+        letter-spacing: 0.06em;
+    }
+
+    #inventorySearch {
+        height: 2.25rem;
+        font-size: 0.6875rem;
+        /* 与放大镜间距：无 common.css 的独立打开页面也需留出左侧空间 */
+        padding-left: 2.75rem !important;
+    }
+
+    #product-library-header .product-library-action-btn {
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    #product-library-header .product-library-action-btn.bg-slate-800 {
+        border: none;
+    }
+
+    #product-filter-toolbar {
+        padding-left: 0.625rem !important;
+        padding-right: 0.625rem !important;
+        gap: 0.25rem !important;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    #product-filter-toolbar #category-filter button,
+    #product-filter-toolbar #supplier-filter button,
+    #product-filter-toolbar #stock-filter button {
+        font-size: 0.5625rem;
+        padding: 0.28rem 0.38rem;
+        border-radius: 0.5rem;
+        line-height: 1.2;
+        max-height: 1.85rem;
+    }
+
+    #product-filter-toolbar #category-filter button i.ph-tree-structure,
+    #product-filter-toolbar #supplier-filter button i.ph-users,
+    #product-filter-toolbar #stock-filter button i.ph-box {
+        font-size: 0.65rem !important;
+    }
+
+    #new-product-btn {
+        width: auto !important;
+        min-width: 1.75rem;
+        flex-shrink: 0;
+        justify-content: center;
+        border-radius: 0.5rem;
+        padding: 0.28rem 0.38rem !important;
+        max-height: 1.85rem;
+    }
+
+    #new-product-btn i.ph-plus-circle {
+        font-size: 0.8rem !important;
+    }
+
+    #reset-filter-btn {
+        padding: 0.28rem 0.38rem !important;
+        font-size: 0.5625rem !important;
+        border-radius: 0.5rem !important;
+        max-height: 1.85rem;
+    }
+
+    #mobile-product-cards .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .mobile-product-row {
+        border-radius: 0.65rem !important;
+        padding: 0.42rem 0.65rem !important;
+    }
+
+    .mobile-product-row .w-9 {
+        width: 2.1rem !important;
+        height: 2.1rem !important;
+    }
+
+    .mobile-product-row i.text-base {
+        font-size: 0.9rem !important;
+    }
+
+    .mobile-product-row p.text-\[12px\] {
+        font-size: 0.73rem !important;
+    }
+
+    .mobile-product-row p.text-\[10px\],
+    .mobile-product-row span.text-\[11px\] {
+        font-size: 0.62rem !important;
+    }
+
+    .mobile-mini-btn {
+        width: 1.4rem;
+        height: 1.4rem;
+        border-radius: 0.4rem;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 0.62rem;
+        font-weight: 700;
+        line-height: 1.4rem;
+        text-align: center;
+        padding: 0;
+        border: none;
+        cursor: pointer;
+    }
+
+    .mobile-mini-btn.delete {
+        color: #e11d48;
+        background: #fff1f2;
+    }
+
+    #mobile-product-pagination {
+        padding: 0.5rem 0.625rem !important;
+    }
+
+    .mobile-product-pagination-summary {
+        font-size: 0.5625rem !important;
+        line-height: 1.35 !important;
+    }
+
+    .mobile-page-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        min-height: 1.65rem;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.5625rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #0f766e;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid rgba(45, 212, 191, 0.45);
+        border-radius: 9999px;
+        box-shadow: 0 1px 2px rgba(15, 118, 110, 0.06);
+        cursor: pointer;
+    }
+
+    .mobile-page-btn__icon {
+        font-size: 0.65rem !important;
+        line-height: 1;
+        opacity: 0.92;
+    }
+
+    .mobile-page-btn__text {
+        font-size: inherit;
+    }
+
+    .mobile-page-btn:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    .mobile-page-btn:disabled {
+        opacity: 0.4;
+        pointer-events: none;
+        color: #94a3b8;
+        border-color: #e2e8f0;
+        background: #f8fafc;
+        box-shadow: none;
     }
 }

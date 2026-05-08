@@ -227,51 +227,57 @@ window.SupplierModule = {
         return v;
     },
 
-    getStatusBadge: function(statusCode) {
-        const state = this.states.find(s => s.dictCode === statusCode);
-        const statusName = state ? state.dictName : statusCode || '未知';
-        
-        let color = 'bg-gray-100 text-gray-600 border-gray-200';
-        
-        switch(statusCode) {
+    /**
+     * 进货单行状态胶囊，对齐 UI 工程 getPurchaseStatusBadgeClass（无描边、中文词典名）
+     */
+    getPurchaseStatusPill: function(statusCode) {
+        var state = this.states.find(function(s) { return s.dictCode === statusCode; });
+        var statusName = state ? state.dictName : (statusCode || '未知');
+        var pill = 'bg-slate-50 text-slate-600';
+        switch (statusCode) {
             case 'DRAFT':
-                color = 'bg-gray-100 text-gray-600 border-gray-200';
+                pill = 'bg-slate-100 text-slate-600';
                 break;
             case 'PENDING_REVIEW':
-                color = 'bg-orange-100 text-orange-600 border-orange-200';
-                break;
             case 'SUBMITTED':
-                color = 'bg-orange-100 text-orange-600 border-orange-200';
+                pill = 'bg-amber-50 text-amber-700';
                 break;
             case 'APPROVED':
-                color = 'bg-blue-100 text-blue-600 border-blue-200';
+                pill = 'bg-sky-50 text-sky-700';
                 break;
+            case 'PARTIAL_INBOUND':
+                pill = 'bg-orange-50 text-orange-600';
+                break;
+            case 'FULL_INBOUND':
             case 'STOCKED':
-                color = 'bg-teal-100 text-teal-600 border-teal-200';
+                pill = 'bg-emerald-50 text-emerald-700';
                 break;
+            case 'REJECTED':
+                pill = 'bg-red-50 text-red-600';
+                break;
+            case 'VOIDED':
             case 'CANCELLED':
-                color = 'bg-red-100 text-red-600 border-red-200';
+                pill = 'bg-slate-200 text-slate-500';
+                break;
+            default:
                 break;
         }
-        
-        return `<span class="text-xs px-3 py-1 rounded-full font-bold border ${color}">${statusName}</span>`;
+        var esc = this.escapeAttr(statusName);
+        return '<span class="inline-flex max-w-full min-w-0 justify-center w-full align-middle">' +
+            '<span class="truncate max-w-full whitespace-nowrap px-2 py-0.5 rounded-full font-bold text-[10px] ' + pill + '" title="' + esc + '">' + esc + '</span></span>';
     },
 
-    getRatingBadge: function(rating) {
-        var value = parseFloat(rating);
-        if (Number.isNaN(value)) {
-            return '<span class="px-2 py-0.5 bg-slate-50 text-slate-500 rounded-full font-bold text-[10px]">-</span>';
-        }
-        if (value >= 4.5) {
-            return '<span class="px-2 py-0.5 bg-green-50 text-green-600 rounded-full font-bold text-[10px]">A+</span>';
-        }
-        if (value >= 3.8) {
-            return '<span class="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-full font-bold text-[10px]">A</span>';
-        }
-        if (value >= 3.0) {
-            return '<span class="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full font-bold text-[10px]">B</span>';
-        }
-        return '<span class="px-2 py-0.5 bg-red-50 text-red-600 rounded-full font-bold text-[10px]">C</span>';
+    formatPurchaseAmountCn: function(n) {
+        var v = Number(n) || 0;
+        return '\u00a5' + v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+
+    /** 用于 title 属性，避免引号与尖括号破坏 HTML */
+    escapeAttr: function(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
     },
 
     formatDate: function(dateStr) {
@@ -324,8 +330,6 @@ window.SupplierModule = {
     },
 
     renderPagination: function(type, page, totalPages, total) {
-        var disablePrevClass = page <= 1 ? 'opacity-40 cursor-not-allowed' : '';
-        var disableNextClass = page >= totalPages ? 'opacity-40 cursor-not-allowed' : '';
         var disablePrevAttr = page <= 1 ? 'disabled' : '';
         var disableNextAttr = page >= totalPages ? 'disabled' : '';
         var prevAction = type === 'supplier'
@@ -335,12 +339,15 @@ window.SupplierModule = {
             ? 'onclick="SupplierModule.setSupplierPage(' + (page + 1) + ')"'
             : 'onclick="SupplierModule.setPurchasePage(' + (page + 1) + ')"';
 
+        var btnCls = 'inline-flex items-center justify-center gap-1 min-h-[2rem] px-3 py-1.5 rounded-full border border-teal-200 bg-white text-[11px] font-bold text-teal-700 shadow-sm hover:bg-teal-50 disabled:opacity-40 disabled:pointer-events-none disabled:text-slate-400 disabled:border-slate-200 transition-colors';
         return `
-            <div class="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
-                <div class="text-xs text-slate-400">共 ${total} 条，当前第 ${page}/${totalPages} 页，每页最多 ${this.PAGE_SIZE} 条</div>
-                <div class="flex items-center gap-2">
-                    <button ${prevAction} ${disablePrevAttr} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disablePrevClass}">上一页</button>
-                    <button ${nextAction} ${disableNextAttr} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disableNextClass}">下一页</button>
+            <div class="border-t border-slate-100 bg-slate-50/70 px-3 py-2.5">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-[10px] sm:text-[11px] text-slate-500 leading-snug text-center sm:text-left">共 ${total} 条，第 ${page}/${totalPages} 页，每页 ${this.PAGE_SIZE} 条</p>
+                    <div class="flex gap-2 justify-center sm:justify-end">
+                        <button type="button" ${prevAction} ${disablePrevAttr} class="${btnCls}"><i class="ph ph-caret-left"></i>上一页</button>
+                        <button type="button" ${nextAction} ${disableNextAttr} class="${btnCls}">下一页<i class="ph ph-caret-right"></i></button>
+                    </div>
                 </div>
             </div>
         `;
@@ -380,31 +387,42 @@ window.SupplierModule = {
         container.innerHTML = `
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest border-b border-slate-100">
+                    <table class="supplier-mgmt-edit-table w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-50/50 text-slate-400 font-bold border-b border-slate-100 md:uppercase md:tracking-widest">
                             <tr>
-                                <th class="px-6 py-4">供应商名称</th>
-                                <th class="px-6 py-4">联系人</th>
-                                <th class="px-6 py-4">电话</th>
-                                <th class="px-6 py-4">评分</th>
-                                <th class="px-6 py-4 text-right">操作</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 tm-sup-name whitespace-nowrap overflow-hidden text-ellipsis">供应商名称</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 tm-sup-contact whitespace-nowrap">联系人</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 tm-sup-phone whitespace-nowrap overflow-hidden text-ellipsis">电话</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-right tm-sup-action whitespace-nowrap">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 text-slate-700">
-                            ${rows.map((supplier) => `
+                            ${rows.map((supplier) => {
+                                var name = supplier.name || supplier.supplierName || '未命名';
+                                var contact = supplier.contact || '-';
+                                var phone = supplier.phone || '-';
+                                var nameEsc = this.escapeAttr(name);
+                                var contactEsc = this.escapeAttr(contact);
+                                var phoneEsc = this.escapeAttr(phone);
+                                return `
                                 <tr class="hover:bg-slate-50/80 transition-all">
-                                    <td class="px-6 py-4 font-bold text-slate-800">${supplier.name || supplier.supplierName || '未命名'}</td>
-                                    <td class="px-6 py-4">${supplier.contact || '-'}</td>
-                                    <td class="px-6 py-4 font-mono">${supplier.phone || '-'}</td>
-                                    <td class="px-6 py-4">${this.getRatingBadge(supplier.rating)}</td>
-                                    <td class="px-6 py-4 text-right">
+                                    <td class="px-3 py-3 md:px-6 md:py-4 tm-sup-name-cell align-middle">
+                                        <span class="block font-bold text-slate-800 truncate max-w-full" title="${nameEsc}">${nameEsc}</span>
+                                    </td>
+                                    <td class="px-3 py-3 md:px-6 md:py-4 tm-sup-contact-cell align-middle">
+                                        <span class="block truncate max-w-full" title="${contactEsc}">${contactEsc}</span>
+                                    </td>
+                                    <td class="px-3 py-3 md:px-6 md:py-4 tm-sup-phone-cell align-middle">
+                                        <span class="block font-mono truncate max-w-full" title="${phoneEsc}">${phoneEsc}</span>
+                                    </td>
+                                    <td class="px-3 py-3 md:px-6 md:py-4 text-right align-middle tm-sup-action-cell">
                                         <div class="flex justify-end gap-2">
-                                            <button onclick="editSupplier(${supplier.supplierId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-pencil text-slate-400"></i></button>
-                                            <button onclick="deleteSupplier(${supplier.supplierId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-trash text-slate-400 hover:text-red-500"></i></button>
+                                            <button type="button" title="编辑" onclick="editSupplier(${supplier.supplierId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors shrink-0"><i class="ph ph-pencil text-slate-400"></i></button>
+                                            <button type="button" title="删除" onclick="deleteSupplier(${supplier.supplierId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors shrink-0"><i class="ph ph-trash text-slate-400 hover:text-red-500"></i></button>
                                         </div>
                                     </td>
-                                </tr>
-                            `).join('')}
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -435,15 +453,14 @@ window.SupplierModule = {
         container.innerHTML = `
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-widest border-b border-slate-100">
+                    <table class="supplier-mgmt-po-table w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-50/50 text-slate-400 font-bold border-b border-slate-100 md:uppercase md:tracking-widest">
                             <tr>
-                                <th class="px-6 py-4">进货日期</th>
-                                <th class="px-6 py-4">单据编号 / 来源</th>
-                                <th class="px-6 py-4">供应商名称</th>
-                                <th class="px-6 py-4 text-right col-hide-mobile">进货总额</th>
-                                <th class="px-6 py-4 text-center">状态</th>
-                                <th class="px-6 py-4 text-right">操作</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 tm-po-date whitespace-nowrap">进货日期</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 tm-po-supplier whitespace-nowrap overflow-hidden text-ellipsis">供应商名称</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-right col-hide-mobile whitespace-nowrap">进货总额</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-center tm-po-status whitespace-nowrap">状态</th>
+                                <th class="px-3 py-3 md:px-6 md:py-4 text-right tm-po-action whitespace-nowrap">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50 text-slate-700">
@@ -453,21 +470,19 @@ window.SupplierModule = {
                                     supplier = this.allSuppliers.find((s) => String(s.supplierId) === String(purchase.supplierId));
                                 }
                                 var supplierName = purchase.supplierName || (supplier ? (supplier.name || supplier.supplierName) : '未知供应商');
+                                var dateStr = this.formatDate(purchase.purchaseDate);
+                                var dateEsc = this.escapeAttr(dateStr);
+                                var supEsc = this.escapeAttr(supplierName || '-');
                                 return `
                                     <tr class="hover:bg-slate-50/80 transition-all cursor-pointer group" onclick="editPurchase(${purchase.purchaseId})">
-                                        <td class="px-6 py-4 font-mono text-slate-400">${this.formatDate(purchase.purchaseDate)}</td>
-                                        <td class="px-6 py-4">
-                                            <p class="font-bold text-slate-800">${purchase.purchaseCode || ('PUR-' + purchase.purchaseId)}</p>
-                                            <p class="text-[9px] text-slate-300 font-medium">提取源：系统录入</p>
+                                        <td class="px-3 py-3 md:px-6 md:py-4 tm-po-date font-mono text-slate-400 whitespace-nowrap align-middle">${dateEsc}</td>
+                                        <td class="px-3 py-3 md:px-6 md:py-4 tm-po-supplier align-middle">
+                                            <span class="block font-bold text-brand-600 truncate max-w-full" title="${supEsc}">${supEsc}</span>
                                         </td>
-                                        <td class="px-6 py-4"><span class="font-bold text-brand-600">${supplierName || '-'}</span></td>
-                                        <td class="px-6 py-4 text-right font-mono font-bold col-hide-mobile">¥${(purchase.totalAmount || 0).toFixed(2)}</td>
-                                        <td class="px-6 py-4 text-center">${this.getStatusBadge(purchase.purchaseStatus)}</td>
-                                        <td class="px-6 py-4 text-right">
-                                            <div class="flex justify-end gap-2">
-                                                <button onclick="event.stopPropagation(); editPurchase(${purchase.purchaseId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-pencil text-slate-400"></i></button>
-                                                <button onclick="event.stopPropagation(); deletePurchase(${purchase.purchaseId})" class="p-1.5 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-trash text-slate-400 hover:text-red-500"></i></button>
-                                            </div>
+                                        <td class="px-3 py-3 md:px-6 md:py-4 text-right font-mono font-bold col-hide-mobile align-middle">${this.formatPurchaseAmountCn(purchase.totalAmount)}</td>
+                                        <td class="px-3 py-3 md:px-6 md:py-4 text-center tm-po-status align-middle whitespace-nowrap">${this.getPurchaseStatusPill(purchase.purchaseStatus)}</td>
+                                        <td class="px-3 py-3 md:px-6 md:py-4 text-right tm-po-action align-middle">
+                                            <i class="ph ph-caret-right text-slate-300 group-hover:text-brand-500 transition-colors"></i>
                                         </td>
                                     </tr>
                                 `;

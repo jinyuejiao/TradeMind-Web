@@ -2209,6 +2209,28 @@
         // 关闭语音模态框
         function closeVoiceModal() {
             document.getElementById('voice-modal').classList.add('hidden');
+            var ready = document.getElementById('voice-ready-ui');
+            var active = document.getElementById('voice-active-ui');
+            var proc = document.getElementById('voice-processing-ui');
+            if (ready) ready.classList.remove('hidden');
+            if (active) active.classList.add('hidden');
+            if (proc) proc.classList.add('hidden');
+            try {
+                if (typeof stopVoiceTimer === 'function') stopVoiceTimer();
+            } catch (e) { /* ignore */ }
+            try {
+                if (recorder && recorder.state !== 'inactive') {
+                    recorder.stop();
+                }
+            } catch (e2) { /* ignore */ }
+            try {
+                if (recorder && recorder.stream) {
+                    recorder.stream.getTracks().forEach(function (t) { t.stop(); });
+                }
+            } catch (e3) { /* ignore */ }
+            recording = false;
+            recorder = null;
+            audioChunks = [];
         }
 
         // 开始录音
@@ -2233,8 +2255,8 @@
                     }
                 };
                 
-                // 开始录音
-                recorder.start();
+                // 定时切片：部分移动浏览器仅在分段 ondataavailable 中产出数据
+                recorder.start(500);
                 console.log('开始录音');
                 
                 // 开始计时
@@ -2250,27 +2272,47 @@
         async function stopVoiceRecording() {
             try {
                 if (!recorder || !recording) return;
-                
-                // 切换到处理状态 UI
+
                 document.getElementById('voice-active-ui').classList.add('hidden');
                 document.getElementById('voice-processing-ui').classList.remove('hidden');
-                
-                // 停止录音
-                recorder.stop();
+
                 recording = false;
-                
-                // 等待录音完成
-                await new Promise((resolve) => {
-                    recorder.onstop = async () => {
-                        // 停止计时
+                var rec = recorder;
+                var chunks = audioChunks;
+
+                await new Promise(function (resolve, reject) {
+                    var done = false;
+                    var t = setTimeout(function () {
+                        if (done) return;
+                        done = true;
+                        reject(new Error('录音停止超时'));
+                    }, 15000);
+
+                    rec.onstop = function () {
+                        if (done) return;
+                        done = true;
+                        clearTimeout(t);
                         stopVoiceTimer();
-                        
-                        // 处理录音数据
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        await processVoiceWithAIService(audioBlob);
-                        resolve();
+                        var mime = (rec.mimeType && String(rec.mimeType).length) ? rec.mimeType : 'audio/webm';
+                        var audioBlob = new Blob(chunks, { type: mime });
+                        Promise.resolve(processVoiceWithAIService(audioBlob)).then(resolve, reject);
                     };
+
+                    try {
+                        rec.stop();
+                    } catch (err) {
+                        clearTimeout(t);
+                        reject(err);
+                    }
                 });
+
+                try {
+                    if (rec.stream) {
+                        rec.stream.getTracks().forEach(function (track) { track.stop(); });
+                    }
+                } catch (e) { /* ignore */ }
+                recorder = null;
+                audioChunks = [];
             } catch (error) {
                 console.error('停止录音失败:', error);
                 showToast('处理录音失败，请重试');
@@ -2316,7 +2358,10 @@
                 }
                 
                 // 上传到 OSS
-                const fileName = `voice-${Date.now()}.wav`;
+                var ext = 'webm';
+                if (audioBlob && audioBlob.type && audioBlob.type.indexOf('wav') !== -1) ext = 'wav';
+                else if (audioBlob && audioBlob.type && audioBlob.type.indexOf('mpeg') !== -1) ext = 'mp3';
+                const fileName = 'voice-' + Date.now() + '.' + ext;
                 const result = await OSSService.put(fileName, audioBlob);
                 const audioUrl = result.url;
                 
