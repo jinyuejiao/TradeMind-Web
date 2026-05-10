@@ -90,55 +90,11 @@
                 <button onclick="closeMemberModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
             </div>
 
-            <!-- 主体内容：适配单屏展示 -->
+            <!-- 主体内容：套餐区由 auth.js 根据 /subscription/plans 与 /subscription/me 动态填充 -->
             <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-6">
-                <!-- 订阅等级对比 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- 试用版卡片 -->
-                    <div class="p-5 rounded-[2rem] border border-slate-200 bg-slate-50 relative flex flex-col justify-between">
-                        <div>
-                            <span class="absolute top-4 right-8 text-[9px] font-black text-slate-300 uppercase tracking-widest">Current Plan</span>
-                            <h4 class="text-base font-bold text-slate-600">基础试用版</h4>
-                            <div class="mt-4 space-y-2 text-[11px] text-slate-500 border-l-2 border-slate-200 pl-3">
-                                <p class="flex items-center gap-2"><i class="ph ph-user"></i> 1位 管理员账号</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-package"></i> 100个 产品SKU限制</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-users-three"></i> 100个 客户档案上限</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-warehouse"></i> 10个 供应商配额</p>
-                            </div>
-                        </div>
-                        <div class="mt-6 text-2xl font-mono font-black text-slate-400">¥ 0</div>
-                    </div>
-
-                    <!-- 普通会员卡片：凸显 888 与 3.7折 -->
-                    <div class="p-6 rounded-[2rem] border-4 border-[#14B8A6] bg-white shadow-2xl relative overflow-hidden group flex flex-col justify-between transition-all hover:-translate-y-1">
-                        <!-- 3.7折 飘带 -->
-                        <div class="absolute -right-14 top-8 rotate-45 discount-ribbon text-white text-[11px] font-black py-2 px-16 shadow-lg uppercase tracking-tighter">
-                            首发 3.7 折
-                        </div>
-
-                        <div>
-                            <p class="text-[9px] font-black text-[#14B8A6] uppercase tracking-widest mb-1">Recommended</p>
-                            <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">普通会员订阅 <i class="ph ph-seal-check-fill text-[#14B8A6]"></i></h4>
-
-                            <div class="mt-4 space-y-2 text-[11px] text-slate-800 font-bold">
-                                <p class="flex items-center gap-2"><i class="ph ph-users-four text-[#14B8A6] text-base"></i> 5个 不同角色子账号</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-package text-[#14B8A6] text-base"></i> 1000个 产品数量管理</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-address-book text-[#14B8A6] text-base"></i> 1000个 客户管理权限</p>
-                                <p class="flex items-center gap-2"><i class="ph ph-warehouse text-[#14B8A6] text-base"></i> 100个 供应商管理</p>
-                            </div>
-                        </div>
-
-                        <div class="mt-6 pt-4 border-t border-slate-50 flex items-end justify-between">
-                            <div>
-                                <p class="text-[10px] text-slate-300 line-through font-bold italic">原价 ¥2388</p>
-                                <div class="flex items-baseline gap-1">
-                                    <span class="text-5xl font-mono font-black text-[#14B8A6] tracking-tighter">¥888</span>
-                                    <span class="text-[10px] font-bold text-slate-400 uppercase">/ Year</span>
-                                </div>
-                            </div>
-                            <button class="mb-1 px-8 py-3 bg-[#14B8A6] text-white rounded-xl font-black text-xs shadow-xl shadow-[#14B8A6]/30 hover:bg-[#0D9488] transition-all active:scale-95">立即升级</button>
-                        </div>
-                    </div>
+                <div id="tm-member-status-strip"></div>
+                <div id="tm-member-plan-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[120px]">
+                    <div class="col-span-full flex items-center justify-center text-xs text-slate-400 py-12">正在加载会员方案…</div>
                 </div>
 
                 <!-- 2. 推荐官计划 (保留金色 UI) -->
@@ -155,7 +111,7 @@
                         <div class="flex items-center gap-3 w-full md:w-auto">
                             <div class="bg-white/70 backdrop-blur-sm px-5 py-2 rounded-xl border border-amber-300 text-center flex-1 md:flex-none">
                                 <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>
-                                <p class="text-lg font-mono font-black text-amber-900 tracking-tighter">GIGA-JIN-8821</p>
+                                <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">—</p>
                             </div>
                             <button onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">
                                 <i class="ph ph-image-square-bold text-lg"></i> 生成海报

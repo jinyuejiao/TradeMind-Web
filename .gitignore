@@ -1,0 +1,21 @@
+# 依赖与构建
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 本地环境与密钥
+.env
+.env.*
+!.env.example
+
+# 日志
+*.log
+logs/
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

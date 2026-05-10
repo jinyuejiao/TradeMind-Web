@@ -776,14 +776,7 @@ function toggleSidebar() {
     if (ol) ol.classList.toggle('hidden');
 }
 
-// --- <用户订阅>语音逻辑 (修复版) ---
-// 会员弹窗控制
-function openMemberModal() { document.getElementById('member-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-function closeMemberModal() { document.getElementById('member-modal').classList.add('hidden'); document.body.style.overflow = ''; }
-
-// 品牌海报控制
-function showPoster() { document.getElementById('poster-modal').classList.remove('hidden'); }
-function closePoster() { document.getElementById('poster-modal').classList.add('hidden'); }
+// --- <用户订阅>会员 / 海报：openMemberModal、showPoster 等由 auth.js 提供（含 wrapModal 与数据拉取） ---
 /**
 * 核心功能：生成并下载海报照片
 */

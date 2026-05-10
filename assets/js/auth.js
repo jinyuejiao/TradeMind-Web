@@ -530,7 +530,7 @@ const LOGO_TEMPLATE = '<div class="h-16 flex items-center px-6 border-b border-s
     '<span class="text-white text-lg font-bold tracking-wider">TradeMind</span>' +
 '</div>';
 
-const USER_SECTION_TEMPLATE = '<div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openSubscriptionModal()">' +
+const USER_SECTION_TEMPLATE = '<div class="p-4 border-t border-slate-800 bg-slate-900 mt-auto flex items-center cursor-pointer transition-all hover:bg-slate-800" onclick="openMemberModal()">' +
     '<div class="w-10 h-10 rounded-full bg-slate-800 text-[#14B8A6] border-2 border-[#14B8A6] flex items-center justify-center text-xs font-bold font-mono" id="sidebar-user-avatar">AD</div>' +
     '<div class="ml-3 text-left">' +
         '<p class="text-xs font-bold text-slate-200" id="sidebar-user-name">用户 (角色)</p>' +
@@ -559,51 +559,11 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '            </div>' +
 '            <button onclick="closeSubscriptionModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>' +
 '        </div>' +
-'        <!-- 主体内容：适配单屏展示 -->' +
+'        <!-- 主体内容：套餐由 tmHydrateMemberCenter 填充 -->' +
 '        <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-6">' +
-'            <!-- 订阅等级对比 -->' +
-'            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">' +
-'                <!-- 试用版卡片 -->' +
-'                <div class="p-5 rounded-[2rem] border border-slate-200 bg-slate-50 relative flex flex-col justify-between">' +
-'                    <div>' +
-'                        <span class="absolute top-4 right-8 text-[9px] font-black text-slate-300 uppercase tracking-widest">Current Plan</span>' +
-'                        <h4 class="text-base font-bold text-slate-600">基础试用版</h4>' +
-'                        <div class="mt-4 space-y-2 text-[11px] text-slate-500 border-l-2 border-slate-200 pl-3">' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-user"></i> 1位 管理员账号</p>' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-package"></i> 100个 产品SKU限制</p>' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-users-three"></i> 100个 客户档案上限</p>' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-warehouse"></i> 10个 供应商配额</p>' +
-'                        </div>' +
-'                    </div>' +
-'                    <div class="mt-6 text-2xl font-mono font-black text-slate-400">¥ 0</div>' +
-'                </div>' +
-'                <!-- 普通会员卡片：凸显 888 与 3.7折 -->' +
-'                <div class="p-6 rounded-[2rem] border-4 border-[#14B8A6] bg-white shadow-2xl relative overflow-hidden group flex flex-col justify-between transition-all hover:-translate-y-1">' +
-'                    <!-- 3.7折 飘带 -->' +
-'                    <div class="absolute -right-14 top-8 rotate-45 discount-ribbon text-white text-[11px] font-black py-2 px-16 shadow-lg uppercase tracking-tighter">' +
-'                        首发 3.7 折' +
-'                    </div>' +
-'                    <div>' +
-'                        <p class="text-[9px] font-black text-[#14B8A6] uppercase tracking-widest mb-1">Recommended</p>' +
-'                        <h4 class="text-xl font-black text-slate-900 flex items-center gap-2">普通会员订阅 <i class="ph ph-seal-check-fill text-[#14B8A6]"></i></h4>' +
-'                        <div class="mt-4 space-y-2 text-[11px] text-slate-800 font-bold">' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-users-four text-[#14B8A6] text-base"></i> 5个 不同角色子账号</p>' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-package text-[#14B8A6] text-base"></i> 1000个 产品数量管理</p>' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-address-book text-[#14B8A6] text-base"></i> 1000个 客户管理权限</p>' +
-'                            <p class="flex items-center gap-2"><i class="ph ph-warehouse text-[#14B8A6] text-base"></i> 100个 供应商管理</p>' +
-'                        </div>' +
-'                    </div>' +
-'                    <div class="mt-6 pt-4 border-t border-slate-50 flex items-end justify-between">' +
-'                        <div>' +
-'                            <p class="text-[10px] text-slate-300 line-through font-bold italic">原价 ¥2388</p>' +
-'                            <div class="flex items-baseline gap-1">' +
-'                                <span class="text-5xl font-mono font-black text-[#14B8A6] tracking-tighter">¥888</span>' +
-'                                <span class="text-[10px] font-bold text-slate-400 uppercase">/ Year</span>' +
-'                            </div>' +
-'                        </div>' +
-'                        <button class="mb-1 px-8 py-3 bg-[#14B8A6] text-white rounded-xl font-black text-xs shadow-xl shadow-[#14B8A6]/30 hover:bg-[#0D9488] transition-all active:scale-95">立即升级</button>' +
-'                    </div>' +
-'                </div>' +
+'            <div id="tm-member-status-strip"></div>' +
+'            <div id="tm-member-plan-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[120px]">' +
+'                <div class="col-span-full flex items-center justify-center text-xs text-slate-400 py-12">正在加载会员方案…</div>' +
 '            </div>' +
 '            <!-- 2. 推荐官计划 (保留金色 UI) -->' +
 '            <div class="gold-referral-card rounded-[2rem] p-5 relative overflow-hidden shadow-sm">' +
@@ -1424,44 +1384,340 @@ function showNotification(message) {
     }
 }
 
-// 打开会员订阅弹窗
-function openSubscriptionModal() {
-    console.log('========== 打开会员订阅弹窗 ==========');
-    console.log('openSubscriptionModal: 开始执行');
+function tmMemberApiUrl(path) {
+    var base = (window.TM_API_BASE || '').replace(/\/$/, '');
+    return base + path;
+}
+
+function tmEscapeHtml(s) {
+    if (s == null || s === '') return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function tmFmtSubEnd(iso) {
+    if (!iso) return '—';
     try {
-        console.log('openSubscriptionModal: 调用 TradeMindUI.wrapModal');
-        TradeMindUI.wrapModal('subscription-modal');
-        const modal = document.getElementById('subscription-modal');
-        if (modal) {
-            console.log('openSubscriptionModal: 找到弹窗元素，移除 hidden 类');
-            modal.classList.remove('hidden');
-            console.log('openSubscriptionModal: 弹窗已显示');
-        } else {
-            console.error('openSubscriptionModal: 未找到弹窗元素');
-        }
-    } catch (error) {
-        console.error('openSubscriptionModal: 打开弹窗时出错:', error);
+        var d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return String(iso);
     }
-    console.log('========== 打开会员订阅弹窗完成 ==========');
+}
+
+function tmFmtMoneyDisplay(n) {
+    if (n == null || n === '') return '—';
+    var x = Number(n);
+    if (Number.isNaN(x)) return tmEscapeHtml(String(n));
+    if (x >= 100) return String(Math.round(x));
+    return String(x);
+}
+
+function tmQuotaFeatureLines(q) {
+    q = q || {};
+    var pairs = [
+        ['max_users', 'ph-user', '个账号'],
+        ['max_products', 'ph-package', '个产品数量管理'],
+        ['max_customers', 'ph-address-book', '个客户管理'],
+        ['max_suppliers', 'ph-warehouse', '个供应商管理']
+    ];
+    var rows = [];
+    for (var i = 0; i < pairs.length; i++) {
+        var k = pairs[i][0];
+        var ic = pairs[i][1];
+        var suf = pairs[i][2];
+        if (q[k] != null) {
+            rows.push('<p class="flex items-center gap-2"><i class="ph ' + ic + '"></i> ' + tmEscapeHtml(String(q[k])) + suf + '</p>');
+        }
+    }
+    return rows.join('');
+}
+
+function tmRenderPlanCard(plan, ctx) {
+    var tier = plan.tierCode || '';
+    var fm = plan.featureMatrix || {};
+    var ribbon = fm.ribbon || fm.discount_tag || '';
+    var recommended = fm.recommended === true;
+    var borderCls = recommended ? 'border-4 border-[#14B8A6] shadow-2xl' : 'border border-slate-200 bg-white shadow-lg';
+    var qLines = tmQuotaFeatureLines(plan.quotaLimits || {});
+    var orig = plan.originalPriceCny != null ? '<p class="text-[10px] text-slate-300 line-through font-bold italic">原价 ¥' + tmFmtMoneyDisplay(plan.originalPriceCny) + '</p>' : '';
+    var priceNum = plan.listPriceCny != null ? Number(plan.listPriceCny) : 0;
+    var priceColor = recommended ? 'text-[#14B8A6]' : 'text-slate-800';
+    var tagRec = recommended ? '<p class="text-[9px] font-black text-[#14B8A6] uppercase tracking-widest mb-1">Recommended</p>' : '';
+    var ribbonHtml = ribbon ? '<div class="absolute -right-14 top-8 rotate-45 discount-ribbon text-white text-[11px] font-black py-2 px-16 shadow-lg uppercase tracking-tighter">' + tmEscapeHtml(ribbon) + '</div>' : '';
+
+    var userTier = ctx.subscriptionType || 'TRIAL';
+    var hints = ctx.pricingHints || {};
+    var btn = '';
+    var dimCurrent = '';
+
+    if (tier === userTier && userTier !== 'TRIAL') {
+        dimCurrent = '<span class="absolute top-4 right-8 text-[9px] font-black text-[#14B8A6] uppercase tracking-widest">当前套餐</span>';
+        var renewP = hints.renewListPrice != null ? Number(hints.renewListPrice) : priceNum;
+        var renewLabel = ctx.paidSubscriptionActive === false ? '续费恢复' : '续费延长';
+        btn = '<button type="button" onclick="tmMemberPay(\'RENEW\',\'' + tier + '\',' + renewP + ')" class="mb-1 px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs shadow-lg hover:bg-slate-800 transition-all active:scale-95 whitespace-nowrap">' + renewLabel + '</button>';
+    } else if (userTier === 'TRIAL') {
+        btn = '<button type="button" onclick="tmMemberPay(\'NEW\',\'' + tier + '\',' + priceNum + ')" class="mb-1 px-6 py-3 ' + (recommended ? 'bg-[#14B8A6]' : 'bg-slate-900') + ' text-white rounded-xl font-black text-xs shadow-xl transition-all active:scale-95 whitespace-nowrap">' + (tier === 'BASIC' ? '订阅启航' : '立即升级') + '</button>';
+    } else if (userTier === 'BASIC' && tier === 'PREMIUM') {
+        var delta = hints.upgradeToPremiumDelta != null ? Number(hints.upgradeToPremiumDelta) : Math.max(0, priceNum - (ctx.basicListPrice || 0));
+        btn = '<button type="button" onclick="tmMemberPay(\'UPGRADE\',\'PREMIUM\',' + delta + ')" class="mb-1 px-6 py-3 bg-[#14B8A6] text-white rounded-xl font-black text-xs shadow-xl shadow-[#14B8A6]/30 hover:bg-[#0D9488] transition-all active:scale-95 whitespace-nowrap">升级补差价 ¥' + tmFmtMoneyDisplay(delta) + '</button>';
+    } else if (userTier === 'PREMIUM' && tier === 'BASIC') {
+        btn = '<button type="button" disabled class="mb-1 px-6 py-3 bg-slate-200 text-slate-500 rounded-xl font-black text-xs cursor-not-allowed whitespace-nowrap">已享更高套餐</button>';
+    } else {
+        btn = '<button type="button" onclick="tmMemberPay(\'NEW\',\'' + tier + '\',' + priceNum + ')" class="mb-1 px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs whitespace-nowrap">立即订阅</button>';
+    }
+
+    var title = tmEscapeHtml(plan.displayName || (tier === 'BASIC' ? '启航会员' : tier === 'PREMIUM' ? '优享会员' : tier));
+
+    return '<div class="p-6 rounded-[2rem] ' + borderCls + ' relative overflow-hidden flex flex-col justify-between transition-all hover:-translate-y-0.5">' +
+        ribbonHtml + dimCurrent +
+        '<div>' + tagRec +
+        '<h4 class="text-lg font-black text-slate-900 flex items-center gap-2">' + title +
+        (recommended ? ' <i class="ph ph-seal-check-fill text-[#14B8A6]"></i>' : '') + '</h4>' +
+        '<div class="mt-4 space-y-2 text-[11px] text-slate-800 font-bold border-l-2 border-slate-100 pl-3">' + qLines + '</div></div>' +
+        '<div class="mt-6 pt-4 border-t border-slate-50 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">' +
+        '<div>' + orig +
+        '<div class="flex items-baseline gap-1">' +
+        '<span class="text-4xl sm:text-5xl font-mono font-black ' + priceColor + ' tracking-tighter">¥' + tmFmtMoneyDisplay(plan.listPriceCny) + '</span>' +
+        '<span class="text-[10px] font-bold text-slate-400 uppercase">/ YEAR</span></div>' +
+        (fm.discount_tag ? '<p class="text-[10px] text-slate-500 mt-1 font-bold">' + tmEscapeHtml(String(fm.discount_tag)) + '</p>' : '') +
+        '</div>' + btn + '</div></div>';
+}
+
+async function tmHydrateMemberCenter(modalEl) {
+    var strip = modalEl.querySelector('#tm-member-status-strip');
+    var grid = modalEl.querySelector('#tm-member-plan-cards');
+    if (!strip || !grid) return;
+
+    var merchantType = 'WHOLESALE';
+    try {
+        var intent = sessionStorage.getItem('tm_merchant_intent');
+        if (intent) merchantType = intent;
+    } catch (e1) { /* ignore */ }
+    try {
+        var htmlMt = document.documentElement.getAttribute('data-merchant-type');
+        if (htmlMt) merchantType = htmlMt;
+    } catch (e2) { /* ignore */ }
+
+    grid.innerHTML = '<div class="col-span-full flex items-center justify-center text-xs text-slate-400 py-12">正在加载会员方案…</div>';
+    strip.innerHTML = '';
+
+    var plansUrl = tmMemberApiUrl('/api/v1/tenant/subscription/plans?merchantType=' + encodeURIComponent(merchantType));
+    var plansRes = await wrappedFetch(plansUrl, { method: 'GET', skipAuth: true });
+    var plansJson = await plansRes.json().catch(function () { return {}; });
+
+    var me = { success: false };
+    try {
+        var meUrl = tmMemberApiUrl('/api/v1/tenant/subscription/me');
+        var meRes = await wrappedFetch(meUrl, { method: 'GET' });
+        me = await meRes.json().catch(function () { return {}; });
+        if (me.merchantType) merchantType = me.merchantType;
+    } catch (e3) {
+        me = { success: false };
+    }
+
+    if (!plansJson.success || !plansJson.plans || !plansJson.plans.length) {
+        grid.innerHTML = '<div class="col-span-full text-center text-sm text-red-500 py-8">暂时无法加载订阅方案，请稍后重试</div>';
+        return;
+    }
+
+    var ctx = {
+        subscriptionType: me.subscriptionType || 'TRIAL',
+        paidSubscriptionActive: me.paidSubscriptionActive === true,
+        pricingHints: me.pricingHints || {},
+        basicListPrice: null
+    };
+    for (var pi = 0; pi < plansJson.plans.length; pi++) {
+        if (plansJson.plans[pi].tierCode === 'BASIC' && plansJson.plans[pi].listPriceCny != null) {
+            ctx.basicListPrice = Number(plansJson.plans[pi].listPriceCny);
+            break;
+        }
+    }
+
+    if (me.success) {
+        window._tmMemberCtx = { subscriptionType: me.subscriptionType || 'TRIAL', paidActive: me.paidSubscriptionActive === true };
+        var dname = me.displayName || (ctx.subscriptionType === 'TRIAL' ? '试用版本' : ctx.subscriptionType === 'BASIC' ? '启航会员' : ctx.subscriptionType === 'PREMIUM' ? '优享会员' : ctx.subscriptionType);
+        var endLabel = tmFmtSubEnd(me.subEndTime);
+        strip.innerHTML = '<div class="rounded-2xl border border-teal-100 bg-teal-50/80 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">' +
+            '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' +
+            '<span class="text-slate-500"> · 有效期至 </span><span class="font-mono font-bold">' + tmEscapeHtml(endLabel) + '</span></div>' +
+            '<p class="text-[10px] text-slate-500">升级按档位补差价；续费在到期日基础上叠加年费周期。</p></div>';
+    } else {
+        strip.innerHTML = '<div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">登录后可查看当前租户订阅状态，并进行续费或升级。</div>';
+    }
+
+    var cards = plansJson.plans.map(function (p) {
+        return tmRenderPlanCard(p, ctx);
+    }).join('');
+    grid.innerHTML = cards;
+
+    try {
+        var refUrl = tmMemberApiUrl('/api/v1/tenant/referral/summary');
+        var refRes = await wrappedFetch(refUrl, { method: 'GET' });
+        var refJson = await refRes.json().catch(function () { return {}; });
+        if (refJson.success && refJson.referralCode) {
+            var code = String(refJson.referralCode);
+            var rc = modalEl.querySelector('#referral-code');
+            var pr = modalEl.querySelector('#poster-ref-code');
+            var qr = modalEl.querySelector('#poster-qr');
+            if (rc) rc.textContent = code;
+            if (pr) pr.textContent = code;
+            if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent('TradeMind-' + code);
+        }
+    } catch (e4) { /* ignore */ }
+}
+
+function tmClosePayOverlay() {
+    var ov = document.getElementById('tm-pay-overlay');
+    if (ov) ov.classList.add('hidden');
+    if (window._tmPayPollId) {
+        clearInterval(window._tmPayPollId);
+        window._tmPayPollId = null;
+    }
+}
+
+function tmOpenPayFlow(payUrl, txnOrderId, instantComplete) {
+    if (instantComplete) {
+        showNotification('订阅已更新（演示模式）');
+        var m = document.getElementById('member-modal') || document.getElementById('subscription-modal');
+        if (m && typeof tmHydrateMemberCenter === 'function') tmHydrateMemberCenter(m);
+        return;
+    }
+    var isMobile = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 640px)').matches : window.innerWidth < 640;
+    if (isMobile) {
+        window.location.href = payUrl;
+        return;
+    }
+    var ov = document.getElementById('tm-pay-overlay');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'tm-pay-overlay';
+        ov.className = 'hidden fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/70 p-4';
+        ov.innerHTML = '<div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center relative">' +
+            '<button type="button" class="absolute top-3 right-3 p-2 text-slate-400 hover:text-slate-800" onclick="tmClosePayOverlay()"><i class="ph ph-x text-xl"></i></button>' +
+            '<h3 class="text-sm font-black text-slate-800 mb-2">扫码支付</h3>' +
+            '<p class="text-[10px] text-slate-500 mb-4">请使用手机银行或微信/支付宝扫描下方二维码完成支付</p>' +
+            '<img id="tm-pay-qr" class="mx-auto w-[220px] h-[220px] border border-slate-100 rounded-2xl" alt="支付二维码" />' +
+            '<p class="text-[10px] text-slate-400 mt-4">支付完成后将自动刷新会员状态；也可手动关闭本窗口。</p></div>';
+        document.body.appendChild(ov);
+    }
+    var img = ov.querySelector('#tm-pay-qr');
+    if (img) img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(payUrl);
+    ov.classList.remove('hidden');
+    if (window._tmPayPollId) clearInterval(window._tmPayPollId);
+    window._tmPayPollId = setInterval(function () {
+        wrappedFetch(tmMemberApiUrl('/api/v1/tenant/subscription/payment/status?txnOrderId=' + encodeURIComponent(txnOrderId)), { method: 'GET' })
+            .then(function (r) { return r.json().catch(function () { return {}; }); })
+            .then(function (d) {
+                if (d && d.success && d.status === 'SUCCESS') {
+                    tmClosePayOverlay();
+                    showNotification('支付成功');
+                    var m = document.getElementById('member-modal') || document.getElementById('subscription-modal');
+                    if (m && typeof tmHydrateMemberCenter === 'function') tmHydrateMemberCenter(m);
+                }
+            })
+            .catch(function () { /* ignore */ });
+    }, 4000);
+}
+
+async function tmMemberPayFallback(action, targetTierCode, legacyPrice) {
+    try {
+        if (action === 'RENEW') {
+            var body = { pricePaid: Number(legacyPrice), externalOrderId: 'WEB-REN-' + Date.now() };
+            var res = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/subscription/renew'), { method: 'POST', body: JSON.stringify(body) });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok || !data.success) {
+                showNotification((data && data.message) ? data.message : '续费失败');
+                return;
+            }
+            if (data.newToken) localStorage.setItem('token', data.newToken);
+            showNotification('续费成功');
+        } else {
+            var b2 = { targetTierCode: String(targetTierCode), pricePaid: Number(legacyPrice), externalOrderId: 'WEB-UPG-' + Date.now() };
+            var res2 = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/subscription/upgrade'), { method: 'POST', body: JSON.stringify(b2) });
+            var data2 = await res2.json().catch(function () { return {}; });
+            if (!res2.ok || !data2.success) {
+                showNotification((data2 && data2.message) ? data2.message : '升级失败');
+                return;
+            }
+            if (data2.newToken) localStorage.setItem('token', data2.newToken);
+            showNotification('升级成功');
+        }
+        var m = document.getElementById('member-modal') || document.getElementById('subscription-modal');
+        if (m) await tmHydrateMemberCenter(m);
+    } catch (e) {
+        console.error(e);
+        showNotification('操作失败');
+    }
+}
+
+window.tmMemberPay = async function (action, targetTierCode, legacyPrice) {
+    try {
+        var url = tmMemberApiUrl('/api/v1/tenant/subscription/payment/create');
+        var res = await wrappedFetch(url, {
+            method: 'POST',
+            body: JSON.stringify({ action: action, targetTierCode: targetTierCode })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (res.status === 503 && data.code === 'PAYMENT_DISABLED') {
+            await tmMemberPayFallback(action, targetTierCode, legacyPrice);
+            return;
+        }
+        if (!res.ok || data.success === false) {
+            showNotification((data && data.message) ? data.message : '支付下单失败');
+            return;
+        }
+        if (data.payUrl || data.instantComplete) {
+            tmOpenPayFlow(data.payUrl || '', data.txnOrderId, data.instantComplete === true);
+        }
+    } catch (err) {
+        console.error(err);
+        showNotification('支付请求失败');
+    }
+};
+
+window.tmMemberRenew = function (pricePaid) {
+    var t = (window._tmMemberCtx && window._tmMemberCtx.subscriptionType) ? window._tmMemberCtx.subscriptionType : 'BASIC';
+    return tmMemberPay('RENEW', t, pricePaid);
+};
+window.tmMemberUpgrade = function (targetTierCode, pricePaid) {
+    var sub = window._tmMemberCtx && window._tmMemberCtx.subscriptionType;
+    if (sub === 'BASIC' && String(targetTierCode).toUpperCase() === 'PREMIUM') {
+        return tmMemberPay('UPGRADE', 'PREMIUM', pricePaid);
+    }
+    return tmMemberPay('NEW', String(targetTierCode).toUpperCase(), pricePaid);
+};
+
+// 打开会员订阅弹窗（无 member-modal 壳的页面使用 subscription-modal）
+async function openSubscriptionModal() {
+    try {
+        var modal = document.getElementById('subscription-modal');
+        if (!modal) {
+            console.warn('[TradeMind] subscription-modal 不在当前页面，跳过打开');
+            return;
+        }
+        if (window.TradeMindUI && TradeMindUI.wrapModal) TradeMindUI.wrapModal('subscription-modal');
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        await tmHydrateMemberCenter(modal);
+    } catch (error) {
+        console.error('openSubscriptionModal:', error);
+    }
 }
 
 // 关闭会员订阅弹窗
 function closeSubscriptionModal() {
-    console.log('========== 关闭会员订阅弹窗 ==========');
-    console.log('closeSubscriptionModal: 开始执行');
     try {
-        const modal = document.getElementById('subscription-modal');
-        if (modal) {
-            console.log('closeSubscriptionModal: 找到弹窗元素，添加 hidden 类');
-            modal.classList.add('hidden');
-            console.log('closeSubscriptionModal: 弹窗已隐藏');
-        } else {
-            console.error('closeSubscriptionModal: 未找到弹窗元素');
-        }
+        var modal = document.getElementById('subscription-modal');
+        if (modal) modal.classList.add('hidden');
+        document.body.style.overflow = '';
     } catch (error) {
-        console.error('closeSubscriptionModal: 关闭弹窗时出错:', error);
+        console.error('closeSubscriptionModal:', error);
     }
-    console.log('========== 关闭会员订阅弹窗完成 ==========');
 }
 
 // 复制推荐码
@@ -1510,44 +1766,32 @@ function downloadPoster() {
     }
 }
 
-// 打开会员中心弹窗
-function openMemberModal() {
-    console.log('========== 打开会员中心弹窗 ==========');
-    console.log('openMemberModal: 开始执行');
+// 打开会员中心弹窗（index-app 等主壳使用 member-modal）
+async function openMemberModal() {
     try {
-        console.log('openMemberModal: 调用 TradeMindUI.wrapModal');
-        TradeMindUI.wrapModal('member-modal');
-        const modal = document.getElementById('member-modal');
-        if (modal) {
-            console.log('openMemberModal: 找到弹窗元素，移除 hidden 类');
-            modal.classList.remove('hidden');
-            console.log('openMemberModal: 弹窗已显示');
-        } else {
-            console.error('openMemberModal: 未找到弹窗元素');
+        if (window.TradeMindUI && TradeMindUI.wrapModal) TradeMindUI.wrapModal('member-modal');
+        var modal = document.getElementById('member-modal');
+        if (!modal) {
+            await openSubscriptionModal();
+            return;
         }
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        await tmHydrateMemberCenter(modal);
     } catch (error) {
-        console.error('openMemberModal: 打开弹窗时出错:', error);
+        console.error('openMemberModal:', error);
     }
-    console.log('========== 打开会员中心弹窗完成 ==========');
 }
 
 // 关闭会员中心弹窗
 function closeMemberModal() {
-    console.log('========== 关闭会员中心弹窗 ==========');
-    console.log('closeMemberModal: 开始执行');
     try {
-        const modal = document.getElementById('member-modal');
-        if (modal) {
-            console.log('closeMemberModal: 找到弹窗元素，添加 hidden 类');
-            modal.classList.add('hidden');
-            console.log('closeMemberModal: 弹窗已隐藏');
-        } else {
-            console.error('closeMemberModal: 未找到弹窗元素');
-        }
+        var modal = document.getElementById('member-modal');
+        if (modal) modal.classList.add('hidden');
+        document.body.style.overflow = '';
     } catch (error) {
-        console.error('closeMemberModal: 关闭弹窗时出错:', error);
+        console.error('closeMemberModal:', error);
     }
-    console.log('========== 关闭会员中心弹窗完成 ==========');
 }
 
 // 显示海报弹窗
@@ -1606,13 +1850,14 @@ window.injectCommonUI = function() {
         
         // 1. 弹窗注入
         console.log('TradeMindUI.injectCommonUI: 步骤1 - 检查并注入弹窗模板');
-        const existingModal = document.getElementById('subscription-modal');
-        if (!existingModal) {
-            console.log('TradeMindUI.injectCommonUI: 未找到订阅弹窗，开始注入 MODAL_TEMPLATE');
+        const existingSubModal = document.getElementById('subscription-modal');
+        const existingMemberShell = document.getElementById('member-modal');
+        if (!existingSubModal && !existingMemberShell) {
+            console.log('TradeMindUI.injectCommonUI: 未找到会员/订阅弹窗壳，开始注入 MODAL_TEMPLATE');
             document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
             console.log('TradeMindUI.injectCommonUI: 弹窗模板注入成功');
         } else {
-            console.log('TradeMindUI.injectCommonUI: 订阅弹窗已存在，跳过注入');
+            console.log('TradeMindUI.injectCommonUI: 页面已含 member-modal 或 subscription-modal，跳过重复注入');
         }
         
         // 2. 检测环境并适配移动端
@@ -2111,6 +2356,7 @@ window.downloadPoster = downloadPoster;
 window.loadUserInfo = loadUserInfo;
 window.openMemberModal = openMemberModal;
 window.closeMemberModal = closeMemberModal;
+window.tmClosePayOverlay = tmClosePayOverlay;
 window.showPoster = showPoster;
 window.closePoster = closePoster;
 window.initCommonUI = initCommonUI;
