@@ -431,7 +431,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260508r1', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260508r2', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -468,7 +468,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260508r4',
+        '/modules/crm/crm.html?embed=1&v=20260508r5',
         'CRM',
         { embedPathCheck: 'crm' }
     );
@@ -913,14 +913,22 @@ function toggleAdvancedPanel(type) {
     icon.classList.toggle('ph-caret-down');
 }
 
-// 单位弹窗开关
+// 单位弹窗开关（产品中心由 ProductModule 接管）
 function openUnitModal() {
-    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
+    if (window.ProductModule && typeof window.ProductModule.openUnitModal === 'function') {
+        window.ProductModule.openUnitModal();
+        return;
+    }
+    document.querySelectorAll('#unit-modal').forEach((modal) => {
         modal.classList.remove('hidden');
     });
 }
 function closeUnitModal() {
-    document.querySelectorAll('#unit-modal, #unit-modal-product').forEach((modal) => {
+    if (window.ProductModule && typeof window.ProductModule.closeUnitModal === 'function') {
+        window.ProductModule.closeUnitModal();
+        return;
+    }
+    document.querySelectorAll('#unit-modal').forEach((modal) => {
         modal.classList.add('hidden');
     });
 }
@@ -1619,8 +1627,9 @@ function openSupplierEditModal(supplierName, contact, phone, rating) {
         if (phone) {
             document.getElementById('supplier-phone').value = phone;
         }
-        if (rating) {
-            document.getElementById('supplier-rating').value = rating;
+        var ratingEl = document.getElementById('supplier-rating');
+        if (rating && ratingEl) {
+            ratingEl.value = rating;
         }
         
         modal.classList.remove('hidden');
@@ -1641,7 +1650,8 @@ function saveSupplierEdit() {
     const name = document.getElementById('supplier-name').value;
     const contact = document.getElementById('supplier-contact').value;
     const phone = document.getElementById('supplier-phone').value;
-    const rating = document.getElementById('supplier-rating').value;
+    var ratingEl = document.getElementById('supplier-rating');
+    const rating = ratingEl ? ratingEl.value : '';
     
     // 模拟保存操作
     console.log('保存供应商信息:', { name, contact, phone, rating });

@@ -3,6 +3,9 @@ console.log('[ProductModule] 产品中心模块加载中...');
 window.ProductModule = {
     // ==================== API数据映射函数 ====================
     mapProductFromApi: function(apiProduct) {
+        var stockVal = apiProduct.stockQuantity != null ? apiProduct.stockQuantity : apiProduct.stock;
+        var stockNum = stockVal != null ? Number(stockVal) : 0;
+        var ucList = apiProduct.unitConversions;
         return {
             id: apiProduct.productId || apiProduct.id,
             name: apiProduct.productName || apiProduct.name,
@@ -13,14 +16,20 @@ window.ProductModule = {
             category2: apiProduct.category2,
             supplier: apiProduct.supplierName || apiProduct.supplier,
             region: apiProduct.marketRegion || apiProduct.region,
-            price: apiProduct.salePrice || apiProduct.price,
+            price: apiProduct.salePrice != null ? apiProduct.salePrice : apiProduct.price,
             purchasePrice: apiProduct.costPrice || apiProduct.purchasePrice,
-            stock: apiProduct.stockQuantity || apiProduct.stock,
+            stock: stockNum,
             salesVolume: apiProduct.salesCount || apiProduct.salesVolume,
             icon: apiProduct.productIcon || apiProduct.icon || 'package',
+            baseUnit: apiProduct.baseUnit || '',
+            purchaseUnit: apiProduct.purchaseUnit || '',
+            salesUnit: apiProduct.salesUnit || '',
+            warningStock: apiProduct.warningStock != null ? apiProduct.warningStock : apiProduct.warning_stock,
+            description: apiProduct.description || '',
+            unitConversions: Array.isArray(ucList) ? ucList : [],
             stockStatus: apiProduct.stockStatus || (
-                (apiProduct.stockQuantity || apiProduct.stock) >= 100 ? '充足' :
-                (apiProduct.stockQuantity || apiProduct.stock) >= 10 ? '预警' : '缺货'
+                stockNum >= 100 ? '充足' :
+                stockNum >= 10 ? '预警' : '缺货'
             )
         };
     },
@@ -242,6 +251,9 @@ window.ProductModule = {
 
     // 当前选中的产品
     currentProduct: null,
+
+    /** 单位换算编辑草稿（最多 2 行），与 unitConversion 表对应 */
+    unitConversionDraft: [{ unitName: '', ratio: '' }],
     
     // 仓库相关状态
     editingWarehouseId: null,
@@ -266,6 +278,9 @@ window.ProductModule = {
     // ==================== 下拉菜单功能 ====================
     toggleDropdown: function(dropdownId, evt) {
         console.log('[ProductModule] toggleDropdown 被调用，参数:', dropdownId);
+        if (evt && evt.preventDefault) {
+            evt.preventDefault();
+        }
         if (evt && evt.stopPropagation) {
             evt.stopPropagation();
         }
@@ -907,6 +922,7 @@ window.ProductModule = {
             console.log('[ProductModule] 产品详情:', product);
             
             this.currentProduct = product;
+            this.syncDraftFromApiConversions(product.unitConversions);
             
             // 加载类别和供应商列表并填充到下拉框
             await this.loadCategories();
@@ -943,6 +959,8 @@ window.ProductModule = {
             ]);
 
             this.currentProduct = {};
+            this.unitConversionDraft = [{ unitName: '', ratio: '' }];
+
             this.populateCategorySelect(null);
             this.populateSupplierSelect(null);
 
@@ -973,6 +991,8 @@ window.ProductModule = {
 
             const modal = document.getElementById('product-detail-modal');
             if (modal) modal.classList.remove('hidden');
+
+            this.rebuildPurchaseSalesUnitSelects(null, null);
         } catch (error) {
             console.error('[ProductModule] 打开新增产品弹窗失败:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -1003,11 +1023,19 @@ window.ProductModule = {
         const skuInput = document.getElementById('product-sku-input');
         const priceInput = document.getElementById('product-price-input');
         const stockInput = document.getElementById('product-stock-input');
-        
+        const baseUnitInput = document.getElementById('product-base-unit-input');
+        const warningStockInput = document.getElementById('product-warning-stock-input');
+        const descTextarea = document.getElementById('product-desc-textarea');
+
         if (nameInput) nameInput.value = product.name || '';
         if (skuInput) skuInput.value = product.sku || '';
-        if (priceInput) priceInput.value = product.price || 0;
-        if (stockInput) stockInput.value = product.stock || 0;
+        if (priceInput) priceInput.value = product.price != null ? product.price : 0;
+        if (stockInput) stockInput.value = product.stock != null ? product.stock : 0;
+        if (baseUnitInput) baseUnitInput.value = product.baseUnit || '';
+        if (warningStockInput) warningStockInput.value = product.warningStock != null ? product.warningStock : '';
+        if (descTextarea) descTextarea.value = product.description || '';
+
+        this.rebuildPurchaseSalesUnitSelects(product.purchaseUnit, product.salesUnit);
     },
 
     closeProductDetail: function() {
@@ -1050,6 +1078,62 @@ window.ProductModule = {
         }
     },
 
+    /**
+     * 组装 POST /products/save 请求体（产品主表 + unitConversion 列表）
+     * @param {Array<{unitName:string,ratio:number}>} validUnitConv 已通过校验的换算行
+     * @returns {{ error: string|null, body: object|null }}
+     */
+    buildProductSaveBodyWithUnits: function(validUnitConv) {
+        if (!validUnitConv || validUnitConv.length < 1) {
+            return { error: '请至少配置一条单位换算', body: null };
+        }
+        const nameInput = document.getElementById('product-name-input');
+        const skuInput = document.getElementById('product-sku-input');
+        const priceInput = document.getElementById('product-price-input');
+        const categorySelect = document.getElementById('product-category-select');
+        const supplierSelect = document.getElementById('product-supplier-select');
+        const purchaseUnitSelect = document.getElementById('product-purchase-unit-select');
+        const salesUnitSelect = document.getElementById('product-sales-unit-select');
+        const baseUnitInput = document.getElementById('product-base-unit-input');
+        const stockInput = document.getElementById('product-stock-input');
+        const warningStockInput = document.getElementById('product-warning-stock-input');
+        const descTextarea = document.getElementById('product-desc-textarea');
+
+        const nm = nameInput ? nameInput.value.trim() : '';
+        const sk = skuInput ? skuInput.value.trim() : '';
+        if (!nm || !sk) {
+            return { error: '请填写产品名称与 SKU', body: null };
+        }
+
+        const unitPayload = validUnitConv.map(function (c) {
+            return { unitName: c.unitName, ratio: c.ratio, isDefault: false };
+        });
+
+        const baseUnitStr = baseUnitInput ? baseUnitInput.value.trim() : '';
+        var catRaw = categorySelect && categorySelect.value ? parseInt(categorySelect.value, 10) : null;
+        var supRaw = supplierSelect && supplierSelect.value ? parseInt(supplierSelect.value, 10) : null;
+        var cp = this.currentProduct || {};
+        const productPayload = {
+            productId: cp.id || null,
+            name: nm,
+            sku: sk,
+            categoryId: catRaw != null && !isNaN(catRaw) ? catRaw : null,
+            supplierId: supRaw != null && !isNaN(supRaw) ? supRaw : null,
+            price: priceInput ? parseFloat(priceInput.value) : 0,
+            stock: stockInput ? parseInt(stockInput.value, 10) : 0,
+            warningStock: warningStockInput && warningStockInput.value !== '' ? parseInt(warningStockInput.value, 10) : null,
+            description: descTextarea ? descTextarea.value : '',
+            baseUnit: baseUnitStr || null,
+            purchaseUnit: purchaseUnitSelect && purchaseUnitSelect.value ? purchaseUnitSelect.value : null,
+            salesUnit: salesUnitSelect && salesUnitSelect.value ? salesUnitSelect.value : null,
+            region: cp.region != null ? cp.region : null,
+            salesVolume: cp.salesVolume != null ? cp.salesVolume : null,
+            tenantId: window.currentTenantId
+        };
+
+        return { error: null, body: { product: productPayload, unitConversions: unitPayload } };
+    },
+
     saveProduct: async function() {
         console.log('[ProductModule] saveProduct 被调用 ===');
         try {
@@ -1063,59 +1147,42 @@ window.ProductModule = {
                 return;
             }
 
-            // 从表单获取当前值
-            const nameInput = document.getElementById('product-name-input');
-            const skuInput = document.getElementById('product-sku-input');
-            const priceInput = document.getElementById('product-price-input');
-            const categorySelect = document.getElementById('product-category-select');
-            const supplierSelect = document.getElementById('product-supplier-select');
-            const purchaseUnitSelect = document.getElementById('product-purchase-unit-select');
-            const salesUnitSelect = document.getElementById('product-sales-unit-select');
-            const baseUnitInput = document.getElementById('product-base-unit-input');
-            const stockInput = document.getElementById('product-stock-input');
-            const warningStockInput = document.getElementById('product-warning-stock-input');
-            const descTextarea = document.getElementById('product-desc-textarea');
-
-            // 构建产品数据
-            const productData = {
-                productId: this.currentProduct.id,
-                name: nameInput ? nameInput.value : this.currentProduct.name,
-                sku: skuInput ? skuInput.value : this.currentProduct.sku,
-                categoryId: categorySelect && categorySelect.value ? parseInt(categorySelect.value, 10) : this.currentProduct.categoryId,
-                supplierId: supplierSelect && supplierSelect.value ? parseInt(supplierSelect.value, 10) : this.currentProduct.supplierId,
-                price: priceInput ? parseFloat(priceInput.value) : this.currentProduct.price,
-                stock: stockInput ? parseInt(stockInput.value) : this.currentProduct.stock,
-                tenantId: window.currentTenantId
-            };
-
-            console.log('[ProductModule] 保存产品数据:', productData);
-
-            // 根据是否有 productId 决定是更新还是创建
-            let url, method;
-            if (productData.productId) {
-                url = `/api/v1/rd/products/${productData.productId}`;
-                method = 'PUT';
-            } else {
-                url = '/api/v1/rd/products';
-                method = 'POST';
+            var validUnitConv = this.collectValidConversionsFromDraft();
+            var built = this.buildProductSaveBodyWithUnits(validUnitConv);
+            if (built.error) {
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification(
+                        built.error.indexOf('单位换算') >= 0
+                            ? '请先在「配置单位换算」中保存至少一条包装单位换算'
+                            : built.error,
+                        'error'
+                    );
+                }
+                return;
             }
 
-            const response = await window.wrappedFetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(productData)
+            const body = built.body;
+            console.log('[ProductModule] 保存产品与单位换算:', body);
+
+            const response = await window.wrappedFetch('/api/v1/rd/products/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             });
 
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
+            const saved = data.data || {};
+            if (saved.productId != null && !this.currentProduct.id) {
+                this.currentProduct.id = saved.productId;
+            }
+
             console.log('[ProductModule] 产品保存成功');
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('产品保存成功！', 'success');
             }
-            
+
             this.closeProductDetail();
             await this.loadProducts();
         } catch (error) {
@@ -1137,16 +1204,315 @@ window.ProductModule = {
         }
     },
 
+    // ---------- 单位换算（unitConversion 表） ----------
+    escHtmlAttr: function(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+
+    escHtmlText: function(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+
+    getBaseUnitLabel: function() {
+        var el = document.getElementById('product-base-unit-input');
+        var v = el && el.value ? String(el.value).trim() : '';
+        if (!v) {
+            var alt = document.getElementById('product-base-unit');
+            if (alt && alt.value) v = String(alt.value).trim();
+        }
+        return v || '件';
+    },
+
+    normalizeUnitDraft: function(rows) {
+        var src = Array.isArray(rows) ? rows.slice(0, 2) : [];
+        var out = [];
+        for (var i = 0; i < src.length; i++) {
+            out.push({
+                unitName: src[i].unitName != null ? String(src[i].unitName) : '',
+                ratio: src[i].ratio != null ? src[i].ratio : ''
+            });
+        }
+        while (out.length < 1) {
+            out.push({ unitName: '', ratio: '' });
+        }
+        return out.slice(0, 2);
+    },
+
+    MAX_UNIT_CONVERSION_ROWS: 2,
+
+    queryUnitModalRoots: function() {
+        return document.querySelectorAll('#unit-modal');
+    },
+
+    getActiveUnitRowsContainer: function() {
+        var openModal = document.querySelector('#unit-modal:not(.hidden)');
+        if (openModal) {
+            var inOpen = openModal.querySelector('.tm-unit-conversion-rows');
+            if (inOpen) return inOpen;
+        }
+        var roots = this.queryUnitModalRoots();
+        for (var i = 0; i < roots.length; i++) {
+            if (!roots[i].classList.contains('hidden')) {
+                var c = roots[i].querySelector('.tm-unit-conversion-rows');
+                if (c) return c;
+            }
+        }
+        var first = roots[0];
+        return first ? first.querySelector('.tm-unit-conversion-rows') : null;
+    },
+
+    setUnitModalRowsHtml: function(html) {
+        var roots = this.queryUnitModalRoots();
+        for (var i = 0; i < roots.length; i++) {
+            var c = roots[i].querySelector('.tm-unit-conversion-rows');
+            if (c) c.innerHTML = html;
+        }
+    },
+
+    syncDraftFromApiConversions: function(list) {
+        var mapped = (list || []).map(function (u) {
+            var r = u.ratio != null ? u.ratio : '';
+            return {
+                unitName: u.unitName || u.unit_name || '',
+                ratio: r
+            };
+        }).filter(function (row) {
+            var hasName = row.unitName && String(row.unitName).trim();
+            var hasRatio = row.ratio !== '' && row.ratio != null;
+            return hasName || hasRatio;
+        });
+        this.unitConversionDraft = this.normalizeUnitDraft(mapped.length ? mapped : [{ unitName: '', ratio: '' }]);
+    },
+
+    collectValidConversionsFromDraft: function() {
+        var draft = this.normalizeUnitDraft(this.unitConversionDraft);
+        var valid = [];
+        for (var i = 0; i < draft.length; i++) {
+            var u = (draft[i].unitName || '').trim();
+            var ratioNum = parseFloat(draft[i].ratio);
+            if (!u && (draft[i].ratio === '' || draft[i].ratio == null)) {
+                continue;
+            }
+            if (!u || !ratioNum || ratioNum <= 0 || isNaN(ratioNum)) {
+                continue;
+            }
+            valid.push({ unitName: u, ratio: ratioNum });
+        }
+        return valid.slice(0, 2);
+    },
+
+    readUnitModalInputsIntoDraft: function() {
+        var container = this.getActiveUnitRowsContainer();
+        if (!container) return;
+        var rowEls = container.querySelectorAll('.unit-conversion-row');
+        var next = [];
+        rowEls.forEach(function (row) {
+            var nu = row.querySelector('.uc-unit-name');
+            var nr = row.querySelector('.uc-ratio');
+            next.push({
+                unitName: nu ? nu.value : '',
+                ratio: nr ? nr.value : ''
+            });
+        });
+        if (next.length) {
+            this.unitConversionDraft = this.normalizeUnitDraft(next);
+        }
+    },
+
+    updateUnitModalAddRemoveButtons: function() {
+        var n = this.normalizeUnitDraft(this.unitConversionDraft).length;
+        var maxR = this.MAX_UNIT_CONVERSION_ROWS;
+        var roots = this.queryUnitModalRoots();
+        for (var r = 0; r < roots.length; r++) {
+            var addBtn = roots[r].querySelector('.unit-modal-add-btn');
+            var rmBtn = roots[r].querySelector('.unit-modal-remove-btn');
+            if (addBtn) {
+                addBtn.disabled = n >= maxR;
+                addBtn.classList.toggle('opacity-40', n >= maxR);
+                addBtn.classList.toggle('cursor-not-allowed', n >= maxR);
+            }
+            if (rmBtn) {
+                rmBtn.disabled = n <= 1;
+                rmBtn.classList.toggle('opacity-40', n <= 1);
+                rmBtn.classList.toggle('cursor-not-allowed', n <= 1);
+            }
+        }
+    },
+
+    renderUnitModalRows: function() {
+        if (!this.queryUnitModalRoots().length) return;
+        var base = this.getBaseUnitLabel();
+        this.unitConversionDraft = this.normalizeUnitDraft(this.unitConversionDraft);
+        var draft = this.unitConversionDraft;
+        var self = this;
+        var html = '';
+        for (var i = 0; i < draft.length; i++) {
+            var row = draft[i];
+            var un = self.escHtmlAttr(row.unitName != null ? row.unitName : '');
+            var rv = row.ratio !== '' && row.ratio != null ? self.escHtmlAttr(row.ratio) : '';
+            html += '<div class="unit-conversion-row flex flex-wrap items-end gap-2 sm:gap-3" data-row-index="' + i + '">';
+            html += '<div class="flex-1 min-w-[5rem]">' + (i === 0 ? '<label class="text-[9px] font-black text-slate-400 uppercase block mb-1">包装单位</label>' : '<span class="block mb-1 h-[14px]" aria-hidden="true"></span>');
+            html += '<input type="text" class="uc-unit-name form-input text-center font-bold w-full" placeholder="如：箱" value="' + un + '" autocomplete="off"></div>';
+            html += '<div class="pb-2 text-slate-300 hidden sm:block select-none">=</div>';
+            html += '<div class="flex-1 min-w-[5rem]">' + (i === 0 ? '<label class="text-[9px] font-black text-slate-400 uppercase block mb-1">折合基本数量</label>' : '<span class="block mb-1 h-[14px]" aria-hidden="true"></span>');
+            html += '<input type="number" min="0.0001" step="any" class="uc-ratio form-input text-center text-brand-600 font-black w-full" placeholder="数量" value="' + rv + '" autocomplete="off"></div>';
+            html += '<div class="pb-2 text-xs font-bold text-slate-400 shrink-0 uc-base-suffix">' + self.escHtmlText(base) + '</div>';
+            html += '</div>';
+        }
+        this.setUnitModalRowsHtml(html);
+        document.querySelectorAll('#unit-modal .uc-base-suffix').forEach(function (el) {
+            el.textContent = base;
+        });
+        this.updateUnitModalAddRemoveButtons();
+    },
+
+    onBaseUnitChanged: function() {
+        var modal = document.getElementById('product-detail-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+        var pu = document.getElementById('product-purchase-unit-select');
+        var su = document.getElementById('product-sales-unit-select');
+        var pv = pu ? pu.value : null;
+        var sv = su ? su.value : null;
+        this.rebuildPurchaseSalesUnitSelects(pv, sv);
+    },
+
+    rebuildPurchaseSalesUnitSelects: function(selectedPurchase, selectedSales) {
+        var pu = document.getElementById('product-purchase-unit-select');
+        var su = document.getElementById('product-sales-unit-select');
+        if (!pu || !su) return;
+
+        var base = this.getBaseUnitLabel();
+        var conv = this.collectValidConversionsFromDraft();
+        var opts = [];
+        opts.push({ value: base, label: base + '（基本单位）' });
+        conv.forEach(function (c) {
+            opts.push({
+                value: c.unitName,
+                label: c.unitName + '(1' + c.unitName + '=' + c.ratio + base + ')'
+            });
+        });
+
+        function fillSelect(sel, selVal) {
+            sel.innerHTML = opts.map(function (o) {
+                return '<option value="' + this.escHtmlAttr(o.value) + '">' + this.escHtmlText(o.label) + '</option>';
+            }, this).join('');
+            if (selVal) {
+                var has = Array.prototype.some.call(sel.options, function (op) {
+                    return op.value === selVal;
+                });
+                if (has) sel.value = selVal;
+            }
+        }
+
+        fillSelect.call(this, pu, selectedPurchase);
+        fillSelect.call(this, su, selectedSales);
+
+        if (!pu.value && opts.length) pu.selectedIndex = 0;
+        if (!su.value && opts.length) su.selectedIndex = Math.min(1, opts.length - 1);
+    },
+
+    addUnitConversionRow: function() {
+        this.readUnitModalInputsIntoDraft();
+        if (this.unitConversionDraft.length >= this.MAX_UNIT_CONVERSION_ROWS) return;
+        this.unitConversionDraft.push({ unitName: '', ratio: '' });
+        this.renderUnitModalRows();
+    },
+
+    removeUnitConversionRow: function() {
+        this.readUnitModalInputsIntoDraft();
+        if (this.unitConversionDraft.length <= 1) return;
+        this.unitConversionDraft.pop();
+        this.renderUnitModalRows();
+    },
+
+    saveUnitConversionModal: async function() {
+        var notify = function (msg, type) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification(msg, type);
+            } else {
+                alert(msg);
+            }
+        };
+
+        this.readUnitModalInputsIntoDraft();
+        var draft = this.normalizeUnitDraft(this.unitConversionDraft);
+        var valid = [];
+        for (var i = 0; i < draft.length; i++) {
+            var u = (draft[i].unitName || '').trim();
+            var ratioNum = parseFloat(draft[i].ratio);
+            var emptyPair = !u && (draft[i].ratio === '' || draft[i].ratio == null);
+            if (emptyPair) continue;
+            if (!u || !ratioNum || ratioNum <= 0 || isNaN(ratioNum)) {
+                notify('请填写完整的包装单位与折合基本数量（大于 0）', 'error');
+                return;
+            }
+            valid.push({ unitName: u, ratio: ratioNum });
+        }
+        if (!valid.length) {
+            notify('请至少配置一条单位换算（包装单位与折合基本数量）', 'error');
+            return;
+        }
+
+        if (!this.currentProduct) {
+            notify('请先打开产品编辑后再保存单位换算', 'error');
+            return;
+        }
+
+        var built = this.buildProductSaveBodyWithUnits(valid);
+        if (built.error) {
+            notify(built.error, 'error');
+            return;
+        }
+
+        try {
+            if (window.checkAuth && !window.checkAuth()) {
+                return;
+            }
+
+            console.log('[ProductModule] 保存单位换算（写入 unitConversion 表）:', built.body);
+            const response = await window.wrappedFetch('/api/v1/rd/products/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(built.body)
+            });
+
+            const data = await window.handleApiResponse(response);
+            if (!data) return;
+
+            const saved = data.data || {};
+            if (saved.productId != null && this.currentProduct && !this.currentProduct.id) {
+                this.currentProduct.id = saved.productId;
+            }
+            this.currentProduct.unitConversions = valid.map(function (v) {
+                return { unitName: v.unitName, ratio: v.ratio };
+            });
+
+            this.unitConversionDraft = this.normalizeUnitDraft(valid);
+            this.rebuildPurchaseSalesUnitSelects(
+                document.getElementById('product-purchase-unit-select') ? document.getElementById('product-purchase-unit-select').value : null,
+                document.getElementById('product-sales-unit-select') ? document.getElementById('product-sales-unit-select').value : null
+            );
+            this.closeUnitModal();
+            notify('单位换算已保存到数据库', 'success');
+            await this.loadProducts();
+        } catch (error) {
+            console.error('[ProductModule] 保存单位换算异常:', error);
+            notify('保存单位换算失败: ' + (error.message || String(error)), 'error');
+        }
+    },
+
     openUnitModal: function() {
         console.log('[ProductModule] openUnitModal 被调用 ===');
-        document.querySelectorAll('#unit-modal, #unit-modal-product').forEach(function (modal) {
+        this.unitConversionDraft = this.normalizeUnitDraft(this.unitConversionDraft);
+        this.renderUnitModalRows();
+        document.querySelectorAll('#unit-modal').forEach(function (modal) {
             modal.classList.remove('hidden');
         });
     },
 
     closeUnitModal: function() {
         console.log('[ProductModule] closeUnitModal 被调用 ===');
-        document.querySelectorAll('#unit-modal, #unit-modal-product').forEach(function (modal) {
+        document.querySelectorAll('#unit-modal').forEach(function (modal) {
             modal.classList.add('hidden');
         });
     },
@@ -2240,7 +2606,7 @@ window.ProductModule = {
 
 // ==================== 全局兼容函数 ====================
 // 为了兼容旧代码，暴露全局函数别名
-window.toggleDropdown = function(dropdownId) { window.ProductModule.toggleDropdown(dropdownId); };
+window.toggleDropdown = function(dropdownId, evt) { window.ProductModule.toggleDropdown(dropdownId, evt); };
 window.selectCategory = function(categoryId, displayName) { window.ProductModule.selectCategoryFilter(categoryId, displayName); };
 window.selectSupplier = function(supplierId, displayName) { window.ProductModule.selectSupplierFilter(supplierId, displayName); };
 window.selectStockStatus = function(status) { window.ProductModule.selectStockStatus(status); };
@@ -2313,24 +2679,25 @@ window.startCategoryEdit = function(idx) { window.ProductModule.startCategoryEdi
 window.cancelCategoryEdit = function() { window.ProductModule.cancelCategoryEdit(); };
 window.saveCategoryEdit = function(idx) { window.ProductModule.saveCategoryEdit(idx); };
 
-// 点击外部关闭下拉菜单
+// 点击外部关闭下拉菜单（筛选块内含下拉层，点击选项由委托 stopPropagation 处理）
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('#category-filter') && 
-        !e.target.closest('#supplier-filter') && 
-        !e.target.closest('#stock-filter')) {
-        document.querySelectorAll('[id$="-dropdown"]').forEach(d => {
-            d.classList.add('hidden');
-            const filterId = d.id.replace('-dropdown', '-filter');
-            const filterEl = document.getElementById(filterId);
-            if (filterEl) {
-                const caretIcon = filterEl.querySelector('.filter-caret-icon');
-                if (caretIcon) {
-                    caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
-                    caretIcon.classList.add('ph-caret-down');
-                }
-            }
-        });
+    if (e.target.closest('#category-filter') ||
+        e.target.closest('#supplier-filter') ||
+        e.target.closest('#stock-filter')) {
+        return;
     }
+    document.querySelectorAll('[id$="-dropdown"]').forEach(function (d) {
+        d.classList.add('hidden');
+        var filterId = d.id.replace('-dropdown', '-filter');
+        var filterEl = document.getElementById(filterId);
+        if (filterEl) {
+            var caretIcon = filterEl.querySelector('.filter-caret-icon');
+            if (caretIcon) {
+                caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
+                caretIcon.classList.add('ph-caret-down');
+            }
+        }
+    });
 });
 
 console.log('[ProductModule] 产品中心模块加载完成');

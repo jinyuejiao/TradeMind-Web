@@ -24,6 +24,9 @@ function switchSupplierMainView(viewType) {
             chips.classList.add('hidden');
         }
     }
+    if (viewType === 'list' && window.SupplierModule && typeof SupplierModule.loadPurchaseSummary === 'function') {
+        SupplierModule.loadPurchaseSummary();
+    }
 }
 window.switchSupplierView = switchSupplierMainView;
 
@@ -56,6 +59,7 @@ window.SupplierModule = {
         ]);
         this.renderSuppliers();
         this.renderPurchases();
+        this.loadPurchaseSummary();
         this.initDateInput();
         if (!this._tmPurchasesChangedBound) {
             this._tmPurchasesChangedBound = true;
@@ -63,6 +67,7 @@ window.SupplierModule = {
             window.addEventListener('tm-purchases-changed', function () {
                 self.loadPurchases(self.purchaseCurrentPage || 1).then(function () {
                     self.renderPurchases();
+                    self.loadPurchaseSummary();
                 });
             });
         }
@@ -154,19 +159,80 @@ window.SupplierModule = {
         }
     },
 
+    /** 兼容登录用户信息字段 tenantId / tenant_id */
+    getTenantIdFromStorage: function() {
+        try {
+            var s = localStorage.getItem('user_info');
+            if (!s) return '';
+            var u = JSON.parse(s);
+            var tid = u.tenantId != null ? u.tenantId : u.tenant_id;
+            return tid != null ? String(tid) : '';
+        } catch (e) {
+            return '';
+        }
+    },
+
     loadProducts: async function() {
+        this.products = [];
         try {
             const response = await window.wrappedFetch('/api/v1/rd/products', {
                 method: 'GET'
             });
             if (response.ok) {
                 const result = await response.json();
-                if (result.success && result.data) {
-                    this.products = result.data;
+                var list = [];
+                if (result && result.success && result.data != null) {
+                    if (Array.isArray(result.data)) {
+                        list = result.data;
+                    } else if (result.data.records && Array.isArray(result.data.records)) {
+                        list = result.data.records;
+                    }
+                }
+                this.products = list;
+            }
+            var tid = this.getTenantIdFromStorage();
+            if (this.products.length === 0 && tid) {
+                const r2 = await window.wrappedFetch('/api/v1/rd/products/list/' + encodeURIComponent(tid), {
+                    method: 'GET'
+                });
+                if (r2.ok) {
+                    const j2 = await r2.json();
+                    if (j2 && j2.success && Array.isArray(j2.data)) {
+                        this.products = j2.data;
+                    }
                 }
             }
         } catch (error) {
             console.error('Error loading products:', error);
+            this.products = [];
+        }
+    },
+
+    loadPurchaseSummary: async function() {
+        var elAmt = document.getElementById('sup-stat-month-total');
+        var elCnt = document.getElementById('sup-stat-pending-count');
+        if (!elAmt || !elCnt) return;
+        try {
+            const response = await window.wrappedFetch('/api/v1/supp/purchases/summary', { method: 'GET' });
+            if (!response.ok) {
+                elAmt.textContent = '\u00a50.00';
+                elCnt.textContent = '0 \u7b14';
+                return;
+            }
+            const result = await response.json();
+            if (!result.success || !result.data) {
+                elAmt.textContent = '\u00a50.00';
+                elCnt.textContent = '0 \u7b14';
+                return;
+            }
+            var d = result.data;
+            var amt = Number(d.monthTotalAmount != null ? d.monthTotalAmount : 0);
+            elAmt.textContent = '\u00a5' + amt.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            var cnt = Number(d.pendingInboundCount != null ? d.pendingInboundCount : 0);
+            elCnt.textContent = cnt + ' \u7b14';
+        } catch (e) {
+            elAmt.textContent = '\u00a50.00';
+            elCnt.textContent = '0 \u7b14';
         }
     },
 
@@ -502,7 +568,6 @@ window.SupplierModule = {
         document.getElementById('supplier-contact').value = '';
         document.getElementById('supplier-phone').value = '';
         document.getElementById('supplier-address').value = '';
-        document.getElementById('supplier-rating').value = '4.5';
         document.getElementById('supplier-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     },
@@ -523,7 +588,6 @@ window.SupplierModule = {
         document.getElementById('supplier-contact').value = supplier.contact || '';
         document.getElementById('supplier-phone').value = supplier.phone || '';
         document.getElementById('supplier-address').value = supplier.address || '';
-        document.getElementById('supplier-rating').value = String(supplier.rating || '4.5');
         document.getElementById('supplier-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
     },
@@ -533,8 +597,7 @@ window.SupplierModule = {
         const contact = document.getElementById('supplier-contact').value.trim();
         const phone = document.getElementById('supplier-phone').value.trim();
         const address = document.getElementById('supplier-address').value.trim();
-        const ratingInput = document.getElementById('supplier-rating').value.trim();
-        const rating = ratingInput ? parseFloat(ratingInput) : 0;
+        var rating = 0;
 
         if (!name) {
             alert('请输入供应商名称');
@@ -619,14 +682,16 @@ window.SupplierModule = {
         if (dateInput) {dateInput.value = today;}
     },
 
-    openPurchaseModal: function() {
+    openPurchaseModal: async function() {
         this.currentPurchase = null;
         document.getElementById('purchase-modal-title').textContent = '新增进货单';
-        
+
+        await this.loadProducts();
+
         this.populateSuppliersSelect();
         this.populateStatusesSelect();
         this.populateProductsSelects();
-        
+
         this.resetPurchaseForm();
         document.getElementById('purchase-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -700,8 +765,9 @@ window.SupplierModule = {
             select.innerHTML = '<option value="">--- 选择产品 ---</option>';
             this.products.forEach(product => {
                 const option = document.createElement('option');
-                option.value = product.productId;
-                option.textContent = product.name || '未命名产品';
+                var pid = product.productId != null ? product.productId : product.id;
+                option.value = pid != null ? pid : '';
+                option.textContent = product.name || product.productName || '未命名产品';
                 option.dataset.unit = product.purchaseUnit || product.baseUnit || '';
                 option.dataset.price = product.price || 0;
                 select.appendChild(option);
@@ -724,7 +790,10 @@ window.SupplierModule = {
             return;
         }
         
-        const product = this.products.find(p => p.productId == productId);
+        const product = this.products.find(function(p) {
+            var pid = p.productId != null ? p.productId : p.id;
+            return String(pid) === String(productId);
+        });
         if (product) {
             unitSelect.className = 'form-input text-center unit-select';
             unitSelect.innerHTML = '';
@@ -799,7 +868,9 @@ window.SupplierModule = {
 
         this.currentPurchase = purchase;
         document.getElementById('purchase-modal-title').textContent = '编辑进货单';
-        
+
+        await this.loadProducts();
+
         this.populateSuppliersSelect();
         this.populateStatusesSelect();
         
@@ -941,6 +1012,7 @@ window.SupplierModule = {
                     this.closePurchaseModal();
                     await this.loadPurchases(this.purchaseCurrentPage);
                     this.renderPurchases();
+                    this.loadPurchaseSummary();
                     alert('保存成功');
                 } else {
                     alert('保存失败: ' + (result.message || '未知错误'));
@@ -970,6 +1042,7 @@ window.SupplierModule = {
                         await this.loadPurchases(this.purchaseCurrentPage - 1);
                     }
                     this.renderPurchases();
+                    this.loadPurchaseSummary();
                     alert('删除成功');
                 } else {
                     alert('删除失败: ' + (result.message || '未知错误'));

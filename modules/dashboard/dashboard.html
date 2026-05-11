@@ -320,15 +320,13 @@
 
                     <!-- 进行中业务单据 (扩展部分) -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[480px]">
-                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
-                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-truck text-blue-500 font-bold"></i> 进行中业务单据</h3>
-                            <div class="flex items-center gap-2">
-                                <!-- 核心新增：添加订单按钮 -->
-                                <button onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95">
-                                    <i class="ph ph-plus-circle text-lg"></i> 添加订单
+                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center gap-3 bg-white sticky top-0 z-10">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-1"><i class="ph ph-truck text-blue-500 font-bold shrink-0"></i><span class="truncate">进行中业务单据</span></h3>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95 whitespace-nowrap">
+                                    <i class="ph ph-plus-circle text-lg shrink-0 leading-none"></i><span>添加订单</span>
                                 </button>
-                                <!-- 状态筛选下拉框 -->
-                                <select class="form-input text-[10px] font-bold text-slate-600">
+                                <select class="text-[10px] bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-slate-600 max-w-[7.5rem] sm:max-w-none">
                                     <option>全部状态</option>
                                     <option>待支付</option>
                                     <option>已发货</option>
@@ -570,29 +568,25 @@
         </div>
     </div>
 
-    <!-- 单位换算 -->
+    <!-- 单位换算（与产品中心一致；行由 ProductModule 渲染） -->
     <div id="unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
-        <div class="relative bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl fade-in">
-            <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 多级单位换算配置</h3>
-            <div class="space-y-6">
-                <div class="flex items-center gap-4">
-                    <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">包装单位</label><input type="text" value="箱" class="form-input text-center font-bold"></div>
-                    <div class="pt-4 text-slate-300">=</div>
-                    <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">折合基本数量</label><input type="number" value="200" class="form-input text-center text-brand-600 font-black"></div>
-                    <div class="pt-4 text-xs font-bold">根</div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="flex-1"><input type="text" value="包" class="form-input text-center font-bold"></div>
-                    <div class="pt-1 text-slate-300">=</div>
-                    <div class="flex-1"><input type="number" value="10" class="form-input text-center text-brand-600 font-black"></div>
-                    <div class="pt-1 text-xs font-bold">根</div>
+        <div class="relative bg-white w-full max-w-md rounded-2xl p-5 md:p-6 shadow-2xl fade-in text-left">
+            <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2 text-[15px]"><i class="ph ph-scales text-brand-500 text-lg"></i> 单位换算配置</h3>
+            <div class="flex gap-2 items-start mb-3">
+                <p class="text-[10px] text-slate-400 leading-snug flex-1 min-w-0">最多配置 2 个包装单位；1 包装单位 = 折合基本数量（基本单位见编辑表单）。</p>
+                <div class="flex items-center gap-0.5 shrink-0 pt-0.5">
+                    <button type="button" onclick="window.ProductModule && window.ProductModule.addUnitConversionRow()" title="添加一行" aria-label="添加一行" class="unit-modal-add-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors disabled:opacity-35 disabled:pointer-events-none">
+                        <i class="ph-bold ph-plus text-lg"></i>
+                    </button>
+                    <button type="button" onclick="window.ProductModule && window.ProductModule.removeUnitConversionRow()" title="删除末行" aria-label="删除末行" class="unit-modal-remove-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-risk-high transition-colors disabled:opacity-35 disabled:pointer-events-none">
+                        <i class="ph-bold ph-trash text-base"></i>
+                    </button>
                 </div>
             </div>
-            <div class="mt-8 flex flex-col gap-2">
-                <button onclick="closeUnitModal()" class="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg">保存单位配置</button>
-                <button onclick="closeUnitModal()" class="w-full py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Cancel</button>
-            </div>
+            <div class="tm-unit-conversion-rows space-y-3"></div>
+            <button type="button" onclick="window.ProductModule && window.ProductModule.saveUnitConversionModal()" class="w-full mt-4 bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold shadow-lg active:scale-[0.98] transition-transform">保存单位配置</button>
+            <button type="button" onclick="closeUnitModal()" class="w-full mt-2 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
         </div>
     </div>
 
@@ -1013,6 +1007,12 @@
                 setTextById('dashboard-turnover-rate', turnoverRaw.toFixed(2));
             } catch (error) {
                 console.warn('加载工作台概览指标失败:', error);
+                setTextById('dashboard-risk-count', '0');
+                setTextById('dashboard-pending-recognition-count', '0');
+                setTextById('dashboard-today-revenue', formatCurrencyCny(0));
+                setTextById('dashboard-extracted-count', '0');
+                setTextById('dashboard-stock-warning-count', '0');
+                setTextById('dashboard-turnover-rate', '0.00');
             }
         }
 
@@ -2100,12 +2100,22 @@
 
         // 打开单位配置模态框
         function openUnitModal() {
-            document.getElementById('unit-modal').classList.remove('hidden');
+            if (window.ProductModule && typeof window.ProductModule.openUnitModal === 'function') {
+                window.ProductModule.openUnitModal();
+                return;
+            }
+            var m = document.getElementById('unit-modal');
+            if (m) m.classList.remove('hidden');
         }
 
         // 关闭单位配置模态框
         function closeUnitModal() {
-            document.getElementById('unit-modal').classList.add('hidden');
+            if (window.ProductModule && typeof window.ProductModule.closeUnitModal === 'function') {
+                window.ProductModule.closeUnitModal();
+                return;
+            }
+            var m = document.getElementById('unit-modal');
+            if (m) m.classList.add('hidden');
         }
 
         // 打开订单详情模态框

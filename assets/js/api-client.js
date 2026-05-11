@@ -71,12 +71,14 @@
                     const userInfoStr = localStorage.getItem('user_info');
                     if (userInfoStr) {
                         const userInfo = JSON.parse(userInfoStr);
-                        if (userInfo.tenantId) {
-                            headers['X-Tenant-Id'] = userInfo.tenantId.toString();
+                        var tid = userInfo.tenantId != null ? userInfo.tenantId : userInfo.tenant_id;
+                        if (tid != null && tid !== '') {
+                            headers['X-Tenant-Id'] = String(tid);
                             console.log('[API-Client] ✅ 添加了X-Tenant-Id头');
                         }
-                        if (userInfo.userId) {
-                            headers['X-User-Id'] = userInfo.userId.toString();
+                        var uid = userInfo.userId != null ? userInfo.userId : userInfo.user_id;
+                        if (uid != null && uid !== '') {
+                            headers['X-User-Id'] = String(uid);
                             console.log('[API-Client] ✅ 添加了X-User-Id头');
                         }
                     }

@@ -26,8 +26,8 @@
     <script src="/MobileAdapt/TM_Responsive.js"></script>
     <script src="/assets/js/ui-components.js"></script>
     <script src="/assets/js/tm-ui-loader.js"></script>
-    <script src="/assets/js/ui-main.js?v=20260508r1"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260508r3"></script>
+    <script src="/assets/js/ui-main.js?v=20260508r3"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260508r7"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
@@ -233,18 +233,19 @@
 
             <!-- ================= [1] 工作台 DASHBOARD (核心操作区) ================= -->
             <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
+                <div data-tm-fragment-scope="dashboard" data-tm-slot="workspace-banner" class="tm-merchant-slot"></div>
                 <div class="flex flex-col md:flex-row md:items-end justify-between">
                     <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, Jin.</h1>
-                        <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold">3个风险点</span>，<span class="text-brand-600 font-bold">5个待识别单据</span>。</p>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, <span id="dashboard-greeting-name">用户</span>.</h1>
+                        <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold"><span id="dashboard-risk-count">0</span>个风险点</span>，<span class="text-brand-600 font-bold"><span id="dashboard-pending-recognition-count">0</span>个待识别单据</span>。</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">今日营收</p><div class="mt-2 font-mono font-bold text-slate-800">$12,400</div></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">单据提取</p><div class="mt-2 font-mono font-bold text-slate-800">5</div></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-risk-high"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">库存预警</p><div class="mt-2 font-mono font-bold text-slate-800">3</div></div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div class="mt-2 font-mono font-bold text-slate-800">4.2</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">今日营收</p><div id="dashboard-today-revenue" class="mt-2 font-mono font-bold text-slate-800">¥0.00</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">单据提取</p><div id="dashboard-extracted-count" class="mt-2 font-mono font-bold text-slate-800">0</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-risk-high"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">库存预警</p><div id="dashboard-stock-warning-count" class="mt-2 font-mono font-bold text-slate-800">0</div></div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div id="dashboard-turnover-rate" class="mt-2 font-mono font-bold text-slate-800">0.00</div></div>
                 </div>
 
                 <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in">
@@ -288,15 +289,13 @@
 
                     <!-- 进行中业务单据 (扩展部分) -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[45vh] max-h-[480px] md:h-[480px] md:max-h-none">
-                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
-                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-truck text-blue-500 font-bold"></i> 进行中业务单据</h3>
-                            <div class="flex items-center gap-2">
-                                <!-- 核心新增：添加订单按钮 -->
-                                <button onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95">
-                                    <i class="ph ph-plus-circle text-lg"></i> 添加订单
+                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center gap-3 bg-white sticky top-0 z-10">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-1"><i class="ph ph-truck text-blue-500 font-bold shrink-0"></i><span class="truncate">进行中业务单据</span></h3>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95 whitespace-nowrap">
+                                    <i class="ph ph-plus-circle text-lg shrink-0 leading-none"></i><span>添加订单</span>
                                 </button>
-                                <!-- 状态筛选下拉框 -->
-                                <select class="text-[10px] bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none font-bold text-slate-600">
+                                <select class="text-[10px] bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-slate-600 max-w-[7.5rem] sm:max-w-none">
                                     <option>全部状态</option>
                                     <option>待支付</option>
                                     <option>已发货</option>
@@ -306,31 +305,12 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar" id="inprogress-list">
-                            <!-- 进行中单据项 1 -->
-                            <div onclick="openOrderDetail('INV-2026-0082')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
-                                <div>
-                                    <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">INV-2026-0082</p>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <span class="text-[9px] text-slate-400 uppercase tracking-tighter">John Smith</span>
-                                        <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                        <span class="text-[9px] text-brand-600 font-bold">待仓库捡货</span>
-                                    </div>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar min-h-0" id="inprogress-list">
+                            <div class="flex items-center justify-center h-full min-h-[160px] text-slate-400 text-sm">
+                                <div class="text-center">
+                                    <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
+                                    <p>加载进行中单据中...</p>
                                 </div>
-                                <div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">85%</div>
-                            </div>
-
-                            <!-- 进行中单据项 2 -->
-                            <div onclick="openOrderDetail('INV-2026-0079')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
-                                <div>
-                                    <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">INV-2026-0079</p>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <span class="text-[9px] text-slate-400 uppercase tracking-tighter">Satoshi Nakamoto</span>
-                                        <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                        <span class="text-[9px] text-orange-500 font-bold">待支付尾款</span>
-                                    </div>
-                                </div>
-                                <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 font-black text-[10px]">60%</div>
                             </div>
                         </div>
                     </div>
@@ -509,32 +489,6 @@
                             <button onclick="closeAuditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">存为草稿</button>
                             <button onclick="alert('订单已确认，库存已实时扣减。')" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [二级弹窗] 单位换算 -->
-            <div id="unit-modal-product" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
-                <div class="relative bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl fade-in">
-                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 多级单位换算配置</h3>
-                    <div class="space-y-6">
-                        <div class="flex items-center gap-4">
-                            <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">包装单位</label><input type="text" value="箱" class="form-input text-center font-bold"></div>
-                            <div class="pt-4 text-slate-300">=</div>
-                            <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">折合基本数量</label><input type="number" value="200" class="form-input text-center text-brand-600 font-black"></div>
-                            <div class="pt-4 text-xs font-bold">根</div>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="flex-1"><input type="text" value="包" class="form-input text-center font-bold"></div>
-                            <div class="pt-1 text-slate-300">=</div>
-                            <div class="flex-1"><input type="number" value="10" class="form-input text-center text-brand-600 font-black"></div>
-                            <div class="pt-1 text-xs font-bold">根</div>
-                        </div>
-                    </div>
-                    <div class="mt-8 flex flex-col gap-2">
-                        <button onclick="closeUnitModal()" class="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg">保存单位配置</button>
-                        <button onclick="closeUnitModal()" class="w-full py-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -906,26 +860,25 @@
                 </div>
             </div>
 
-            <!-- [二级弹窗] 单位换算配置 -->
+            <!-- [二级弹窗] 单位换算配置（与产品中心一致，由 ProductModule 渲染行） -->
             <div id="unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
-                <div class="relative bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl fade-in text-left">
-                    <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-scales text-brand-500"></i> 单位换算配置</h3>
-                    <div class="space-y-6">
-                        <div class="flex items-center gap-4">
-                            <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">包装单位</label><input type="text" value="箱" class="form-input text-center font-bold"></div>
-                            <div class="pt-4 text-slate-300">=</div>
-                            <div class="flex-1"><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">折合基本数</label><input type="number" value="200" class="form-input text-center text-brand-600 font-black"></div>
-                            <div class="pt-4 text-xs font-bold text-slate-400">根</div>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="flex-1"><input type="text" value="包" class="form-input text-center font-bold"></div>
-                            <div class="pt-1 text-slate-300">=</div>
-                            <div class="flex-1"><input type="number" value="10" class="form-input text-center text-brand-600 font-black"></div>
-                            <div class="pt-1 text-xs font-bold text-slate-400">根</div>
+                <div class="relative bg-white w-full max-w-md rounded-2xl p-5 md:p-6 shadow-2xl fade-in text-left">
+                    <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2 text-[15px]"><i class="ph ph-scales text-brand-500 text-lg"></i> 单位换算配置</h3>
+                    <div class="flex gap-2 items-start mb-3">
+                        <p class="text-[10px] text-slate-400 leading-snug flex-1 min-w-0">最多配置 2 个包装单位；1 包装单位 = 折合基本数量（基本单位见编辑表单）。</p>
+                        <div class="flex items-center gap-0.5 shrink-0 pt-0.5">
+                            <button type="button" onclick="window.ProductModule.addUnitConversionRow()" title="添加一行" aria-label="添加一行" class="unit-modal-add-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors disabled:opacity-35 disabled:pointer-events-none">
+                                <i class="ph-bold ph-plus text-lg"></i>
+                            </button>
+                            <button type="button" onclick="window.ProductModule.removeUnitConversionRow()" title="删除末行" aria-label="删除末行" class="unit-modal-remove-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-risk-high transition-colors disabled:opacity-35 disabled:pointer-events-none">
+                                <i class="ph-bold ph-trash text-base"></i>
+                            </button>
                         </div>
                     </div>
-                    <button onclick="closeUnitModal()" class="w-full mt-8 bg-slate-900 text-white py-3 rounded-2xl text-xs font-bold shadow-lg active:scale-95">保存换算规则</button>
+                    <div class="tm-unit-conversion-rows space-y-3"></div>
+                    <button type="button" onclick="window.ProductModule.saveUnitConversionModal()" class="w-full mt-4 bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold shadow-lg active:scale-[0.98] transition-transform">保存单位配置</button>
+                    <button type="button" onclick="closeUnitModal()" class="w-full mt-2 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
                 </div>
             </div>
 

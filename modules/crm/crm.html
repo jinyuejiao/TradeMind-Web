@@ -42,8 +42,6 @@
         }
 
         #customer-list-container {
-            max-height: calc(100vh - 190px);
-            overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #cbd5e1 #f8fafc;
         }
@@ -70,6 +68,29 @@
         .customer-card:hover .crm-action-btn {
             opacity: 1;
             pointer-events: auto;
+        }
+
+        /* 字母索引条：加大触控热区（手机），避免遮挡滚动 */
+        .crm-alpha-rail {
+            z-index: 15;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            max-height: min(72vh, 520px);
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        .crm-alpha-rail::-webkit-scrollbar {
+            display: none;
+        }
+        .crm-alpha-rail button {
+            min-width: 28px;
+            min-height: 26px;
+        }
+        @media (min-width: 768px) {
+            .crm-alpha-rail button {
+                min-width: 18px;
+                min-height: 18px;
+            }
         }
 
         /* --- 手机端 CRM 专用适配样式 --- */
@@ -246,14 +267,14 @@
                         </div>
                     </div>
 
-                    <div class="relative flex-1 overflow-hidden">
-                        <div class="h-full pr-8" id="customer-list-container">
+                    <div class="relative flex-1 overflow-hidden min-h-0 flex flex-col">
+                        <div class="flex-1 min-h-0 overflow-y-auto pr-11 md:pr-10" id="customer-list-container">
                             <div class="p-8 text-center text-slate-400">
                                 <i class="ph ph-users text-4xl mb-3"></i>
                                 <p class="text-sm">加载客户列表中...</p>
                             </div>
                         </div>
-                        <div id="customer-alpha-rail" class="absolute right-1 top-1/2 -translate-y-1/2 bg-white/90 border border-slate-200 rounded-2xl py-2 px-1 shadow-sm"></div>
+                        <nav id="customer-alpha-rail" class="crm-alpha-rail absolute right-1 top-1/2 -translate-y-1/2 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl py-2 px-1 shadow-md flex flex-col items-center gap-0.5" aria-label="客户拼音首字母索引"></nav>
                     </div>
                 </div>
 
@@ -443,6 +464,16 @@
         </div>
     </div>
 
+    <!-- 汉字拼音首字母（用于索引 / 排序）；失败时不影响页面，仅中文暂归入「#」直至库就绪 -->
+    <script type="module">
+        try {
+            const { pinyin } = await import('https://cdn.jsdelivr.net/npm/pinyin-pro@3.26.0/dist/index.mjs');
+            window.__crmPinyin = pinyin;
+        } catch (e) {
+            console.warn('[CRM] pinyin-pro 加载失败，中文索引将降级:', e);
+        }
+    </script>
+
     <script>
         const GATEWAY_URL = window.getApiUrl('gateway');
         const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -514,9 +545,39 @@
             return name.trim().slice(0, 2).toUpperCase();
         }
 
+        /** DOM id：HTML id 不能安全使用「#」 */
+        function letterSectionDomId(letter) {
+            return letter === '#' ? 'letter-other' : ('letter-' + letter);
+        }
+
+        /**
+         * 客户名称首字符对应的 A–Z 分组（中文→拼音首字母，数字/符号→#）
+         */
         function getFirstLetter(name) {
-            const char = ((name || '').trim().charAt(0) || '').toUpperCase();
-            return /^[A-Z]$/.test(char) ? char : '#';
+            var s = (name || '').trim();
+            if (!s) return '#';
+            var ch = s.charAt(0);
+            if (/^[a-zA-Z]$/.test(ch)) return ch.toUpperCase();
+            if (/^[0-9]$/.test(ch)) return '#';
+            if (window.__crmPinyin) {
+                try {
+                    var py = window.__crmPinyin(ch, { pattern: 'first', toneType: 'none' });
+                    var L = String(py || '').trim().charAt(0).toUpperCase();
+                    if (/^[A-Z]$/.test(L)) return L;
+                } catch (err) { /* ignore */ }
+            }
+            return '#';
+        }
+
+        function compareCustomersByName(a, b) {
+            var la = getFirstLetter(a.name);
+            var lb = getFirstLetter(b.name);
+            var ia = LETTER_SECTIONS.indexOf(la);
+            var ib = LETTER_SECTIONS.indexOf(lb);
+            var va = ia === -1 ? 999 : ia;
+            var vb = ib === -1 ? 999 : ib;
+            if (va !== vb) return va - vb;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN');
         }
 
         function shortText(text, limit) {
@@ -550,27 +611,32 @@
         }
 
         function sortCustomersAlphabetically(list) {
-            const orderMap = {};
-            LETTER_SECTIONS.forEach(function(letter, idx) { orderMap[letter] = idx; });
-            return (list || []).slice().sort(function(a, b) {
-                const la = getFirstLetter(a.name);
-                const lb = getFirstLetter(b.name);
-                if (la !== lb) {
-                    return (orderMap[la] ?? 999) - (orderMap[lb] ?? 999);
-                }
-                return String(a.name || '').localeCompare(String(b.name || ''), 'en', { sensitivity: 'base' });
+            return (list || []).slice().sort(compareCustomersByName);
+        }
+
+        function countLettersInList(customerList) {
+            var counts = {};
+            LETTERS.forEach(function(L) { counts[L] = 0; });
+            (customerList || []).forEach(function(c) {
+                var L = getFirstLetter(c.name);
+                if (counts[L] !== undefined) counts[L]++;
             });
+            return counts;
         }
 
         function renderAlphaRail() {
-            const rail = document.getElementById('customer-alpha-rail');
+            var rail = document.getElementById('customer-alpha-rail');
             if (!rail) return;
+            var counts = countLettersInList(state.filteredCustomers);
             rail.innerHTML = LETTERS.map(function(letter) {
-                const active = state.activeLetter === letter;
-                const cls = active
+                var active = state.activeLetter === letter;
+                var cnt = counts[letter] || 0;
+                var empty = cnt === 0;
+                var cls = active
                     ? 'bg-[#14B8A6] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-brand-600';
-                return '<button type="button" onclick="jumpToLetter(\'' + letter + '\')" class="block w-4 h-4 rounded text-[9px] font-bold transition ' + cls + '">' + letter + '</button>';
+                    : (empty ? 'text-slate-300' : 'text-slate-500 hover:text-brand-600 hover:bg-teal-50');
+                return '<button type="button" title="' + letter + ' · ' + cnt + ' 人" onclick="jumpToLetter(\'' + letter + '\')" '
+                    + 'class="crm-alpha-btn rounded-md text-[11px] md:text-[9px] font-bold transition ' + cls + '">' + letter + '</button>';
             }).join('');
         }
 
@@ -592,6 +658,7 @@
 
             if (!customers.length) {
                 container.innerHTML = '<div class="p-8 text-center text-slate-400"><i class="ph ph-users text-4xl mb-3"></i><p class="text-sm">暂无客户数据</p></div>';
+                renderAlphaRail();
                 return;
             }
 
@@ -617,9 +684,11 @@
                         + '  </div>'
                         + '</div>';
                 }).join('');
-                return '<div id="letter-' + letter + '"><div class="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 bg-slate-50 border-y border-slate-100">' + letter + '</div>' + cards + '</div>';
+                var heading = letter === '#' ? '#' : letter;
+                return '<div id="' + letterSectionDomId(letter) + '" class="crm-letter-section" data-crm-letter="' + escapeHtml(letter) + '"><div class="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 bg-slate-50 border-y border-slate-100">' + heading + '</div>' + cards + '</div>';
             }).join('');
             container.innerHTML = sections || '<div class="p-8 text-center text-slate-400"><p class="text-sm">暂无字母匹配数据</p></div>';
+            renderAlphaRail();
         }
 
         function applyFilter() {
@@ -766,15 +835,23 @@
             document.getElementById('view-crm').classList.remove('crm-detail-active');
         }
 
+        function scrollLetterSectionIntoView(letter) {
+            var container = document.getElementById('customer-list-container');
+            var target = document.getElementById(letterSectionDomId(letter));
+            if (!container || !target) return false;
+            var cRect = container.getBoundingClientRect();
+            var tRect = target.getBoundingClientRect();
+            var delta = (tRect.top - cRect.top) + container.scrollTop;
+            container.scrollTo({ top: Math.max(0, delta - 8), behavior: 'smooth' });
+            return true;
+        }
+
         function jumpToLetter(letter) {
             state.activeLetter = letter;
             renderAlphaRail();
-            const target = document.getElementById('letter-' + letter);
-            if (!target) return;
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            const first = state.filteredCustomers.find(function(item) { return getFirstLetter(item.name) === letter; });
-            if (first && (!state.currentCustomer || state.currentCustomer.id !== first.id)) {
-                selectCustomer(first.id);
+            if (scrollLetterSectionIntoView(letter)) return;
+            if (typeof window.showToast === 'function') {
+                window.showToast('暂无「' + letter + '」分组客户');
             }
         }
 
@@ -995,6 +1072,23 @@
                 await fetchCustomerStatusOptions();
                 renderAlphaRail();
                 await loadCustomers();
+
+                (function waitPinyinResort() {
+                    var left = 80;
+                    var timer = setInterval(function() {
+                        if (window.__crmPinyin) {
+                            clearInterval(timer);
+                            if (state.customers.length) {
+                                state.customers = sortCustomersAlphabetically(state.customers);
+                                state.filteredCustomers = state.customers.slice();
+                                renderCustomerList();
+                            }
+                            return;
+                        }
+                        if (--left <= 0) clearInterval(timer);
+                    }, 50);
+                })();
+
                 document.addEventListener('click', function(event) {
                     const card = document.getElementById('crm-phone-card');
                     if (!card || card.classList.contains('hidden')) return;
