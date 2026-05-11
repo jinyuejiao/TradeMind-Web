@@ -1668,7 +1668,8 @@ window.tmMemberPay = async function (action, targetTierCode, legacyPrice) {
             return;
         }
         if (!res.ok || data.success === false) {
-            showNotification((data && data.message) ? data.message : '支付下单失败');
+            var payErr = (data && data.message) ? data.message : ((data && data.respMsg) ? data.respMsg : '支付下单失败');
+            showNotification(payErr);
             return;
         }
         if (data.payUrl || data.instantComplete) {
