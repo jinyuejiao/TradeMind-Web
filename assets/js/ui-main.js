@@ -51,6 +51,19 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
         return;
     }
     try {
+        // 工作台内联脚本含大量顶层 let：重复 append 会触发 Identifier has already been declared，导致语音/待确认逻辑整段未执行。
+        // 已加载过则只恢复导航全局并刷新待确认列表（DOM 已由 loadDashboard 重注入）。
+        if (window.__TM_DASHBOARD_INLINE_LOADED) {
+            TM_restoreShellNavigationGlobals();
+            TM_refreshDashboardPendingOrders();
+            try {
+                if (typeof window.loadPendingOrders === 'function') {
+                    window.loadPendingOrders();
+                }
+            } catch (e0) { /* ignore */ }
+            return;
+        }
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         const scripts = doc.querySelectorAll('script');
@@ -95,8 +108,16 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
             queue.push({ kind: 'inline', text: srcScript.textContent || '' });
         });
 
+        if (queue.length === 0) {
+            console.warn('[TM] dashboard 脚本队列为空，跳过注入');
+            TM_restoreShellNavigationGlobals();
+            TM_refreshDashboardPendingOrders();
+            return;
+        }
+
         function runStep(index) {
             if (index >= queue.length) {
+                window.__TM_DASHBOARD_INLINE_LOADED = true;
                 TM_restoreShellNavigationGlobals();
                 TM_refreshDashboardPendingOrders();
                 return;
@@ -431,7 +452,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260508r2', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260508r3', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -812,33 +833,52 @@ async function downloadPoster() {
     }
 }
 
-// --- <工作台>语音逻辑 (修复版) ---
-let recTimer;
-function openVoiceModal() { document.getElementById('voice-modal').classList.remove('hidden'); setVoiceUI('ready'); }
-function setVoiceUI(s) {
-    document.getElementById('voice-ready-ui').classList.toggle('hidden', s !== 'ready');
-    document.getElementById('voice-active-ui').classList.toggle('hidden', s !== 'active');
-    document.getElementById('voice-processing-ui').classList.toggle('hidden', s !== 'processing');
-}
-function startVoiceRecording() {
-    setVoiceUI('active');
-    document.getElementById('voice-pulse-icon').classList.add('recording-pulse');
-    let sec = 0;
-    recTimer = setInterval(() => { sec++; document.getElementById('voice-timer').innerText = `00:${sec.toString().padStart(2, '0')}`; }, 1000);
-}
-function stopVoiceRecording() {
-    clearInterval(recTimer);
-    document.getElementById('voice-pulse-icon').classList.remove('recording-pulse');
-    setVoiceUI('processing'); // 切换到 AI 处理中状态
-
-    // 核心修复：模拟处理闭环
-    setTimeout(() => {
-        closeVoiceModal();
-        showToast("语音解析成功，已生成草稿单据");
-    }, 2000);
-}
-
-function closeVoiceModal() { document.getElementById('voice-modal').classList.add('hidden'); clearInterval(recTimer); document.getElementById('voice-timer').innerText = "00:00"; }
+// --- <工作台>语音逻辑：壳层仅提供稳定入口，真实录音/OSS/AI 由 dashboard 模块注册到 window.__TM_dashboardVoice ---
+(function () {
+    function tmVoiceToast(msg) {
+        if (typeof showToast === 'function') {
+            showToast(msg);
+        } else if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
+            window.TM_UI.showNotification(msg, 'info');
+        } else {
+            alert(msg);
+        }
+    }
+    function tmVoiceImpl() {
+        return window.__TM_dashboardVoice;
+    }
+    window.openVoiceModal = function () {
+        var impl = tmVoiceImpl();
+        if (impl && typeof impl.openVoiceModal === 'function') {
+            return impl.openVoiceModal();
+        }
+        var m = document.getElementById('voice-modal');
+        if (m) m.classList.remove('hidden');
+        tmVoiceToast('工作台正在加载，请稍后再试语音提单');
+    };
+    window.closeVoiceModal = function () {
+        var impl = tmVoiceImpl();
+        if (impl && typeof impl.closeVoiceModal === 'function') {
+            return impl.closeVoiceModal();
+        }
+        var m = document.getElementById('voice-modal');
+        if (m) m.classList.add('hidden');
+    };
+    window.startVoiceRecording = function () {
+        var impl = tmVoiceImpl();
+        if (impl && typeof impl.startVoiceRecording === 'function') {
+            return impl.startVoiceRecording();
+        }
+        tmVoiceToast('工作台正在加载，请稍后再试语音提单');
+    };
+    window.stopVoiceRecording = function () {
+        var impl = tmVoiceImpl();
+        if (impl && typeof impl.stopVoiceRecording === 'function') {
+            return impl.stopVoiceRecording();
+        }
+        tmVoiceToast('工作台正在加载，请稍后再试语音提单');
+    };
+})();
 
 // --- 拍照逻辑 (修复版) ---
 function openPhotoModal() { document.getElementById('photo-modal').classList.remove('hidden'); resetPhoto(); }

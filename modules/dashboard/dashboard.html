@@ -1424,10 +1424,10 @@
                     console.error('pending-orders-list 元素不存在');
                     return;
                 }
-                
-                // 检查数据是否为数组
-                if (!data || !Array.isArray(data)) {
-                    console.error("预期返回数组但收到:", data);
+
+                const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
+                if (!rows) {
+                    console.error("预期返回数组或 { data: [] }，收到:", data);
                     pendingOrdersList.innerHTML = `
                         <div class="flex items-center justify-center h-full text-slate-400 text-sm">
                             <div class="text-center">
@@ -1440,7 +1440,7 @@
                 }
                 
                 // 过滤状态为 SUCCESS 或 EXTRACTING 的记录，并按时间倒序排序
-                const filteredRecords = data.filter(record =>
+                const filteredRecords = rows.filter(record =>
                     record.status === 'SUCCESS' || record.status === 'EXTRACTING'
                 ).sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0)).slice(0, 20);
                 pendingRecordsCache = filteredRecords;
@@ -2214,6 +2214,20 @@
         // 打开语音模态框
         function openVoiceModal() {
             document.getElementById('voice-modal').classList.remove('hidden');
+            var ready = document.getElementById('voice-ready-ui');
+            var active = document.getElementById('voice-active-ui');
+            var proc = document.getElementById('voice-processing-ui');
+            if (ready) ready.classList.remove('hidden');
+            if (active) active.classList.add('hidden');
+            if (proc) proc.classList.add('hidden');
+            try {
+                if (typeof stopVoiceTimer === 'function') stopVoiceTimer();
+            } catch (e) { /* ignore */ }
+            voiceTimerSeconds = 0;
+            var vt = document.getElementById('voice-timer');
+            if (vt) vt.textContent = '00:00';
+            var pulse = document.getElementById('voice-pulse-icon');
+            if (pulse) pulse.classList.remove('recording-pulse');
         }
 
         // 关闭语音模态框
@@ -2269,6 +2283,9 @@
                 recorder.start(500);
                 console.log('开始录音');
                 
+                var pulseIcon = document.getElementById('voice-pulse-icon');
+                if (pulseIcon) pulseIcon.classList.add('recording-pulse');
+
                 // 开始计时
                 startVoiceTimer();
             } catch (error) {
@@ -2281,10 +2298,21 @@
         // 停止录音
         async function stopVoiceRecording() {
             try {
-                if (!recorder || !recording) return;
+                if (!recorder || !recording) {
+                    showToast('请先点击「开始录音」');
+                    var ru = document.getElementById('voice-ready-ui');
+                    var au = document.getElementById('voice-active-ui');
+                    var pr = document.getElementById('voice-processing-ui');
+                    if (ru) ru.classList.remove('hidden');
+                    if (au) au.classList.add('hidden');
+                    if (pr) pr.classList.add('hidden');
+                    return;
+                }
 
                 document.getElementById('voice-active-ui').classList.add('hidden');
                 document.getElementById('voice-processing-ui').classList.remove('hidden');
+                var pulseStop = document.getElementById('voice-pulse-icon');
+                if (pulseStop) pulseStop.classList.remove('recording-pulse');
 
                 recording = false;
                 var rec = recorder;
@@ -2373,7 +2401,10 @@
                 else if (audioBlob && audioBlob.type && audioBlob.type.indexOf('mpeg') !== -1) ext = 'mp3';
                 const fileName = 'voice-' + Date.now() + '.' + ext;
                 const result = await OSSService.put(fileName, audioBlob);
-                const audioUrl = result.url;
+                var audioUrl = (result && (result.url || (result.res && result.res.requestUrls && result.res.requestUrls[0]))) || '';
+                if (!audioUrl) {
+                    throw new Error('上传成功但未获得音频访问地址，请检查 OSS 配置');
+                }
                 
                 // 隐藏模态框
                 closeVoiceModal();
@@ -2395,19 +2426,24 @@
                         }
                     })
                 });
-                if (response.ok) {
-                    await response.json();
-                    // 不弹审核窗口，直接刷新待确认单据
-                    schedulePendingOrdersRefresh(3, 2000);
+                var execData = null;
+                if (typeof window.handleApiResponse === 'function') {
+                    execData = await window.handleApiResponse(response);
                 } else {
-                    let errorBody = '';
-                    try {
-                        errorBody = await response.text();
-                    } catch (e) {
-                        errorBody = '[无法读取响应体]';
+                    if (!response.ok) {
+                        throw new Error('AI 服务调用失败，状态码: ' + response.status);
                     }
-                    console.error('[AI-ORDER][VOICE] /ai/execute 调用失败', { status: response.status, body: errorBody });
-                    throw new Error('AI 服务调用失败，状态码: ' + response.status);
+                    execData = await response.json();
+                    if (execData && execData.success === false) {
+                        throw new Error(execData.message || 'AI 受理失败');
+                    }
+                }
+                if (!execData) {
+                    return;
+                }
+                schedulePendingOrdersRefresh(3, 2000);
+                if (typeof TM_refreshDashboardPendingOrders === 'function') {
+                    TM_refreshDashboardPendingOrders();
                 }
             } catch (error) {
                 console.error('[AI-ORDER][VOICE] 处理语音失败:', error);
@@ -2640,7 +2676,10 @@
                 // 上传到 OSS
                 const fileName = `image-${Date.now()}.jpg`;
                 const result = await OSSService.put(fileName, imageBlob);
-                const imageUrl = result.url;
+                var imageUrl = (result && (result.url || (result.res && result.res.requestUrls && result.res.requestUrls[0]))) || '';
+                if (!imageUrl) {
+                    throw new Error('上传成功但未获得图片访问地址，请检查 OSS 配置');
+                }
                 
                 // 隐藏模态框
                 closePhotoModal();
@@ -2663,19 +2702,24 @@
                         }
                     })
                 });
-                if (response.ok) {
-                    await response.json();
-                    // 不弹审核窗口，直接刷新待确认单据
-                    schedulePendingOrdersRefresh(3, 2000);
+                var execImg = null;
+                if (typeof window.handleApiResponse === 'function') {
+                    execImg = await window.handleApiResponse(response);
                 } else {
-                    let errorBody = '';
-                    try {
-                        errorBody = await response.text();
-                    } catch (e) {
-                        errorBody = '[无法读取响应体]';
+                    if (!response.ok) {
+                        throw new Error('AI 服务调用失败，状态码: ' + response.status);
                     }
-                    console.error('[AI-ORDER][IMAGE] /ai/execute 调用失败', { status: response.status, body: errorBody });
-                    throw new Error('AI 服务调用失败，状态码: ' + response.status);
+                    execImg = await response.json();
+                    if (execImg && execImg.success === false) {
+                        throw new Error(execImg.message || 'AI 受理失败');
+                    }
+                }
+                if (!execImg) {
+                    return;
+                }
+                schedulePendingOrdersRefresh(3, 2000);
+                if (typeof TM_refreshDashboardPendingOrders === 'function') {
+                    TM_refreshDashboardPendingOrders();
                 }
             } catch (error) {
                 console.error('[AI-ORDER][IMAGE] 处理图片失败:', error);
@@ -2724,20 +2768,25 @@
                         }
                     })
                 });
-                if (response.ok) {
-                    await response.json();
-                    showToast('文本已提交，正在识别中...');
-                    // 不弹审核窗口，直接刷新待确认单据
-                    schedulePendingOrdersRefresh(3, 2000);
+                var execTxt = null;
+                if (typeof window.handleApiResponse === 'function') {
+                    execTxt = await window.handleApiResponse(response);
                 } else {
-                    let errorBody = '';
-                    try {
-                        errorBody = await response.text();
-                    } catch (e) {
-                        errorBody = '[无法读取响应体]';
+                    if (!response.ok) {
+                        throw new Error('AI 服务调用失败，状态码: ' + response.status);
                     }
-                    console.error('[AI-ORDER][TEXT] /ai/execute 调用失败', { status: response.status, body: errorBody });
-                    throw new Error('AI 服务调用失败，状态码: ' + response.status);
+                    execTxt = await response.json();
+                    if (execTxt && execTxt.success === false) {
+                        throw new Error(execTxt.message || 'AI 受理失败');
+                    }
+                }
+                if (!execTxt) {
+                    return;
+                }
+                showToast('文本已提交，正在识别中...');
+                schedulePendingOrdersRefresh(3, 2000);
+                if (typeof TM_refreshDashboardPendingOrders === 'function') {
+                    TM_refreshDashboardPendingOrders();
                 }
             } catch (error) {
                 console.error('[AI-ORDER][TEXT] 处理文本失败:', error);
@@ -2770,6 +2819,14 @@
                 }, 3000);
             }
         }
+
+        // 供 index-app 壳层委托：window.startVoiceRecording 等始终指向此处实现
+        window.__TM_dashboardVoice = {
+            openVoiceModal: openVoiceModal,
+            startVoiceRecording: startVoiceRecording,
+            stopVoiceRecording: stopVoiceRecording,
+            closeVoiceModal: closeVoiceModal
+        };
     </script>
 </body>
 </html>
