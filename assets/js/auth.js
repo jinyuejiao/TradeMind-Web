@@ -1624,6 +1624,72 @@ function tmOpenPayFlow(payUrl, txnOrderId, instantComplete) {
     }, 4000);
 }
 
+/**
+ * 手机端跳转收银台支付完成后，行方 frontEndUrl 会带回 ?txnOrderId=…；此前未轮询导致界面不刷新。
+ * 在已登录时轮询订单状态，与桌面扫码 overlay 内逻辑一致。
+ */
+function tmTryResumeSubscriptionPaymentFromUrl() {
+    try {
+        if (!localStorage.getItem('token')) return;
+        var tid = null;
+        try {
+            var sp = new URLSearchParams(window.location.search || '');
+            tid = sp.get('txnOrderId');
+            if (!tid && window.location.hash && window.location.hash.indexOf('txnOrderId=') >= 0) {
+                var hi = window.location.hash.indexOf('?');
+                if (hi >= 0) {
+                    sp = new URLSearchParams(window.location.hash.slice(hi + 1));
+                    tid = sp.get('txnOrderId');
+                }
+            }
+        } catch (e0) { /* ignore */ }
+        if (!tid) return;
+        if (window._tmPayResumePollId) {
+            clearInterval(window._tmPayResumePollId);
+            window._tmPayResumePollId = null;
+        }
+        var tries = 0;
+        var maxTries = 80;
+        window._tmPayResumePollId = setInterval(function () {
+            tries++;
+            wrappedFetch(tmMemberApiUrl('/api/v1/tenant/subscription/payment/status?txnOrderId=' + encodeURIComponent(tid)), { method: 'GET' })
+                .then(function (r) { return r.json().catch(function () { return {}; }); })
+                .then(function (d) {
+                    if (d && d.success && d.status === 'SUCCESS') {
+                        clearInterval(window._tmPayResumePollId);
+                        window._tmPayResumePollId = null;
+                        showNotification('支付成功');
+                        if (typeof openSubscriptionModal === 'function') {
+                            openSubscriptionModal().then(function () {
+                                var modal = document.getElementById('subscription-modal') || document.getElementById('member-modal');
+                                if (modal && typeof tmHydrateMemberCenter === 'function') tmHydrateMemberCenter(modal);
+                            }).catch(function () { /* ignore */ });
+                        } else {
+                            var m2 = document.getElementById('member-modal') || document.getElementById('subscription-modal');
+                            if (m2 && typeof tmHydrateMemberCenter === 'function') tmHydrateMemberCenter(m2);
+                        }
+                        try {
+                            var u = new URL(window.location.href);
+                            u.searchParams.delete('txnOrderId');
+                            window.history.replaceState({}, '', u.pathname + u.search + u.hash);
+                        } catch (e2) { /* ignore */ }
+                    } else if (tries >= maxTries) {
+                        clearInterval(window._tmPayResumePollId);
+                        window._tmPayResumePollId = null;
+                    }
+                })
+                .catch(function () {
+                    if (tries >= maxTries) {
+                        clearInterval(window._tmPayResumePollId);
+                        window._tmPayResumePollId = null;
+                    }
+                });
+        }, 3000);
+    } catch (e) {
+        console.warn('tmTryResumeSubscriptionPaymentFromUrl', e);
+    }
+}
+
 async function tmMemberPayFallback(action, targetTierCode, legacyPrice) {
     try {
         if (action === 'RENEW') {
@@ -2358,9 +2424,12 @@ window.loadUserInfo = loadUserInfo;
 window.openMemberModal = openMemberModal;
 window.closeMemberModal = closeMemberModal;
 window.tmClosePayOverlay = tmClosePayOverlay;
+window.tmTryResumeSubscriptionPaymentFromUrl = tmTryResumeSubscriptionPaymentFromUrl;
 window.showPoster = showPoster;
 window.closePoster = closePoster;
 window.initCommonUI = initCommonUI;
+
+document.addEventListener('DOMContentLoaded', tmTryResumeSubscriptionPaymentFromUrl);
 
 // 同步用户上下文信息
 window.syncUserContext = function() {
