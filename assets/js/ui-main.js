@@ -747,7 +747,13 @@ function switchTab(tabId) {
     const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供应商管理' };
     if (document.getElementById('page-title')) document.getElementById('page-title').innerText = titles[tabId];
     document.getElementById('content-area').scrollTop = 0;
-    window.history.replaceState(null, '', '#tab=' + encodeURIComponent(tabId));
+    try {
+        const u = new URL(window.location.href);
+        u.hash = '#tab=' + encodeURIComponent(tabId);
+        window.history.replaceState(null, '', u.pathname + u.search + u.hash);
+    } catch (eRs) {
+        window.history.replaceState(null, '', '#tab=' + encodeURIComponent(tabId));
+    }
 
     // 加载对应模块
     if (tabId === 'dashboard') loadDashboard();
