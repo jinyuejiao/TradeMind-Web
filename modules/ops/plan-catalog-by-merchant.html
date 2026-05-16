@@ -1,0 +1,106 @@
+<div class="space-y-6 fade-in">
+    <div class="tm-ops-glass rounded-tm-3xl p-5 md:p-6">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-1"><i class="ph ph-tag text-ops-600"></i> 订阅策略（按商户类型）</h2>
+        <p class="text-[10px] text-slate-500 leading-relaxed">订阅<strong class="text-ops-700">仅支持年付</strong>。在此维护各商户类型的<strong class="text-ops-700">档位名称</strong>、<strong class="text-ops-700">年付原价 / 年付现价</strong>、<strong class="text-ops-700">折扣对外文案</strong>及资源上限；<strong class="text-ops-700">标价减免比例由系统自动根据原价与现价计算</strong>，便于运营改价、改文案即发布。演示数据写入 localStorage。</p>
+        <p class="text-[10px] text-slate-400 mt-2 font-mono">GET/PUT /api/ops/catalog/subscription-plans?merchantType=…</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2" id="ops-plan-merchant-tabs" role="tablist">
+        <button type="button" data-merchant="WHOLESALE" class="ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md">批发</button>
+        <button type="button" data-merchant="FOREIGN" class="ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">外贸</button>
+        <button type="button" data-merchant="ECOM" class="ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">电商</button>
+        <button type="button" data-merchant="FACTORY" class="ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">工贸一体</button>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+        <button type="button" id="ops-plan-btn-add" class="px-4 py-2 rounded-2xl text-xs font-bold bg-ops-600 text-white hover:bg-ops-700 shadow-md shadow-ops-600/20">＋ 新增档位</button>
+        <button type="button" id="ops-plan-btn-reset-merchant" class="px-4 py-2 rounded-2xl text-xs font-bold border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100">恢复本商户类型默认</button>
+        <span id="ops-plan-save-hint" class="text-[10px] text-slate-400 ml-1">变更后请在弹窗内「保存」写入</span>
+    </div>
+
+    <div class="tm-ops-glass rounded-tm-3xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-indigo-100/80 bg-white/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h3 class="text-xs font-bold text-slate-800"><span id="ops-plan-merchant-label">批发</span> · 当前套餐列表（年付）</h3>
+            <span class="text-[10px] text-slate-400">金额单位：元/年；减免比例 = f(原价, 现价)，无需手填</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs min-w-[800px]">
+                <thead class="bg-ops-50/80 text-[10px] uppercase font-bold text-ops-800 tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3">订阅类型名称</th>
+                        <th class="px-4 py-3">年付原价</th>
+                        <th class="px-4 py-3">年付现价</th>
+                        <th class="px-4 py-3">折扣（自动）</th>
+                        <th class="px-4 py-3 text-right">用户上限</th>
+                        <th class="px-4 py-3 text-right">产品上限</th>
+                        <th class="px-4 py-3 text-right">供应商上限</th>
+                        <th class="px-4 py-3 text-right">客户上限</th>
+                        <th class="px-4 py-3 text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="ops-plan-table-body" class="divide-y divide-indigo-50 bg-white/60"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="ops-plan-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 tm-ops-modal-backdrop">
+    <div class="bg-white rounded-tm-3xl shadow-2xl max-w-lg w-full p-6 md:p-8 relative fade-in border border-indigo-100 max-h-[92vh] overflow-y-auto list-scrollbar-ops">
+        <button type="button" id="ops-plan-modal-close" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+        <h3 id="ops-plan-modal-title" class="text-lg font-bold text-slate-800 pr-8">编辑套餐</h3>
+        <p class="text-[10px] text-slate-500 mt-1 mb-5">保存后对本商户类型立即生效（演示：<code class="bg-slate-100 px-1 rounded">tm_ops_subscription_catalog_v1</code>）</p>
+        <input type="hidden" id="ops-plan-modal-plan-id" value="">
+        <div class="space-y-3">
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">订阅类型名称</label>
+                <input type="text" id="ops-plan-field-name" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500" placeholder="如：启航会员">
+            </div>
+
+            <div class="rounded-2xl border-2 border-ops-200 bg-ops-50/40 p-4 space-y-3">
+                <p class="text-[10px] font-bold text-ops-800 uppercase tracking-wide">年付定价与折扣（仅年付）</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">年付原价（元）</label>
+                        <input type="number" id="ops-plan-field-price-original-y" min="0" step="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500 bg-white" placeholder="标价/划线价">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">年付现价（元）</label>
+                        <input type="number" id="ops-plan-field-price-current-y" min="0" step="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500 bg-white" placeholder="实际售卖价">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">折扣文案（选填，可展示给租户）</label>
+                    <input type="text" id="ops-plan-field-discount-label" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500 bg-white" placeholder="如：年货节限时 · 首年立减">
+                </div>
+                <p id="ops-plan-modal-discount-auto" class="text-[10px] text-ops-800 leading-relaxed rounded-xl bg-white px-3 py-2.5 border border-ops-100">请填写年付原价后，系统将自动根据原价与现价计算减免比例。</p>
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">运营备注（选填，可不展示给租户）</label>
+                <input type="text" id="ops-plan-field-promo-note" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500" placeholder="内部说明">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">用户数上限</label>
+                    <input type="number" id="ops-plan-field-max-users" min="0" step="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">产品数上限</label>
+                    <input type="number" id="ops-plan-field-max-products" min="0" step="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">供应商上限</label>
+                    <input type="number" id="ops-plan-field-max-suppliers" min="0" step="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">客户数上限</label>
+                    <input type="number" id="ops-plan-field-max-customers" min="0" step="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2 pt-2">
+                <button type="button" id="ops-plan-modal-save" class="flex-1 min-w-[120px] py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-sm font-bold shadow-lg">保存</button>
+                <button type="button" id="ops-plan-modal-delete" class="py-3 px-4 rounded-2xl border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-50 hidden">删除档位</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,71 @@
+<div class="space-y-6 fade-in">
+    <!-- 顶栏：左行业筛选 · 右排序 + 汇总统计（与 UI 工程稿同一行） -->
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div class="flex flex-wrap gap-2 flex-1 min-w-0" id="ops-industry-filter">
+            <button type="button" data-industry="ALL" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md">全行业</button>
+            <button type="button" data-industry="WHOLESALE" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">批发</button>
+            <button type="button" data-industry="FOREIGN" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">外贸</button>
+            <button type="button" data-industry="ECOM" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">电商</button>
+            <button type="button" data-industry="FACTORY" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">工贸一体</button>
+        </div>
+        <div class="tm-ops-tenant-toolbar flex flex-wrap items-center gap-3 sm:gap-4 shrink-0 justify-end">
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">租户排序</span>
+                <select id="ops-tree-sort" class="tm-ops-tree-sort rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:border-ops-500 focus:ring-2 focus:ring-ops-200 min-w-[168px] sm:min-w-[220px]">
+                    <option value="aiTokensMonth">AI 使用量（Tokens/月）</option>
+                    <option value="subscriptionYear">订阅金额（年付现价）</option>
+                    <option value="revenueMonth">营业额（月）</option>
+                    <option value="profitMonth">利润（月）</option>
+                </select>
+            </div>
+            <div class="hidden sm:block w-px h-10 bg-indigo-200/80 shrink-0" aria-hidden="true"></div>
+            <div class="tm-ops-tenant-stats flex items-center gap-4 sm:gap-5 text-center shrink-0">
+                <div class="tm-ops-stat-pill min-w-[3rem]">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">租户</span>
+                    <p id="ops-stat-tenants" class="tm-ops-stat-value">—</p>
+                </div>
+                <div class="w-px h-9 bg-indigo-200/80 shrink-0" aria-hidden="true"></div>
+                <div class="tm-ops-stat-pill min-w-[3rem]">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">用户</span>
+                    <p id="ops-stat-users" class="tm-ops-stat-value">—</p>
+                </div>
+                <div class="w-px h-9 bg-indigo-200/80 shrink-0" aria-hidden="true"></div>
+                <div class="tm-ops-stat-pill min-w-[4.5rem]">
+                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">角色</span>
+                    <p id="ops-stat-roles" class="tm-ops-stat-value text-base sm:text-xl">—</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tm-ops-glass rounded-tm-3xl p-4 md:p-5 border border-indigo-100/80" id="ops-tenant-board-hint">
+        <p class="text-[10px] text-slate-500 leading-relaxed"><strong class="text-ops-700">租户看板</strong>：树状结构 租户 → 用户 → 用户 AI 使用（提取 / 对话 Tokens）。数据为聚合展示，接口 <span class="font-mono text-slate-400">GET /api/v1/ops/tenants/tree</span>。</p>
+        <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/tenants/tree?sort=…&amp;industry=… · POST /api/v1/ops/tenant/extend-subscription</p>
+    </div>
+
+    <div id="ops-tree-root" class="space-y-4 list-scrollbar-ops max-h-[calc(100vh-14rem)] overflow-y-auto pr-1"></div>
+</div>
+
+<div id="ops-modal-tenant" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 tm-ops-modal-backdrop">
+    <div class="bg-white rounded-tm-3xl shadow-2xl max-w-md w-full p-6 md:p-8 relative fade-in border border-indigo-100">
+        <button type="button" id="ops-modal-tenant-close" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+        <h3 id="ops-modal-tenant-title" class="text-lg font-bold text-slate-800 pr-8">租户运维</h3>
+        <p id="ops-modal-tenant-sub" class="text-xs text-slate-500 mt-1 mb-5"></p>
+        <input type="hidden" id="ops-modal-tenant-id" value="">
+        <div class="space-y-4">
+            <div class="">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">赠送试用（月）</label>
+                <input type="number" id="ops-input-trial-months" min="0" max="36" value="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+            </div>
+            <div class="">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">活动类型 / 备注</label>
+                <input type="text" id="ops-input-trial-note" placeholder="如：春节活动、KA 拓新" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+            </div>
+            <div class="">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">或直接调整到期日</label>
+                <input type="date" id="ops-input-expiry-date" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+            </div>
+            <button type="button" id="ops-btn-save-tenant-ops" class="w-full py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-sm font-bold shadow-lg shadow-ops-600/25 transition-colors">保存并记审计</button>
+        </div>
+    </div>
+</div>

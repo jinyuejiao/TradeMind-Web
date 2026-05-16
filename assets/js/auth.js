@@ -1123,6 +1123,16 @@ function getAppEntryPath(tabName) {
     return resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab));
 }
 
+/** 登录成功后：运维账号进运维门户，其余进商户主壳 */
+function getPostLoginEntryPath(user) {
+    try {
+        if (user && user.roleType === 'ROLE_OPS_ADMIN') {
+            return resolveStaticPageUrl('ops-hub.html');
+        }
+    } catch (e) { /* ignore */ }
+    return getAppEntryPath('dashboard');
+}
+
 // 检查localStorage是否可用
 function checkLocalStorage() {
     try {
@@ -1202,8 +1212,10 @@ function checkAuth() {
         }
         
         if (token && isLoginPage) {
-            console.log('已登录，跳转至工作台');
-            tmSafeReplace(getAppEntryPath('dashboard'));
+            console.log('已登录，跳转至工作台或运维门户');
+            let u = {};
+            try { u = JSON.parse(localStorage.getItem('user_info') || '{}'); } catch (e) { /* ignore */ }
+            tmSafeReplace(getPostLoginEntryPath(u));
             return false;
         }
         
@@ -1301,8 +1313,8 @@ function checkAuth() {
             isEmbeddedMode = true;
         }
 
-        // 单入口收敛：非嵌入态的模块直链统一回到 index-app.html
-        if (!isLoginPage && path.includes('/modules/') && !isEmbeddedMode) {
+        // 单入口收敛：非嵌入态的模块直链统一回到 index-app.html（运维门户除外）
+        if (!isLoginPage && path.includes('/modules/') && !isEmbeddedMode && !path.includes('ops-hub.html') && !path.includes('ops-portal.html')) {
             const tab = resolveDefaultTabFromPath(path);
             tmSafeReplace(getAppEntryPath(tab));
             return false;
@@ -2597,8 +2609,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             window.TM_UI.applyContextFromToken(data.token);
                         }
                         
-                        // 统一跳转到单入口应用
-                        window.location.href = getAppEntryPath('dashboard');
+                        window.location.href = getPostLoginEntryPath(data.user || {});
                     } else {
                         showModal('登录失败：缺少token', true);
                     }
@@ -2618,8 +2629,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             window.TM_UI.applyContextFromToken(data.data.token);
                         }
                         
-                        // 统一跳转到单入口应用
-                        window.location.href = getAppEntryPath('dashboard');
+                        window.location.href = getPostLoginEntryPath(data.data.user || {});
                     } else {
                         showModal('登录失败：缺少token', true);
                     }

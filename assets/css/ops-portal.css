@@ -1,0 +1,74 @@
+/* TradeMind 运维中心门户 — 与租户端物理隔离的样式域 */
+body.tm-ops-portal {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Inter', -apple-system, 'Microsoft YaHei', sans-serif;
+    color: #1e293b;
+    background: linear-gradient(145deg, #eef2ff 0%, #e0e7ff 35%, #f8fafc 100%);
+}
+
+.tm-ops-glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    box-shadow: 0 4px 24px -4px rgba(79, 70, 229, 0.12);
+}
+
+.tm-ops-sidebar-glass {
+    background: rgba(30, 27, 75, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-right: 1px solid rgba(129, 140, 248, 0.2);
+}
+
+.tm-ops-nav-btn.tm-ops-nav-active {
+    background: rgba(99, 102, 241, 0.35);
+    color: #fff;
+    border: 1px solid rgba(165, 180, 252, 0.4);
+}
+
+.tm-ops-modal-backdrop {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.list-scrollbar-ops {
+    scrollbar-width: thin;
+    scrollbar-color: #c7d2fe #f5f3ff;
+}
+
+.list-scrollbar-ops::-webkit-scrollbar {
+    width: 8px;
+}
+
+.list-scrollbar-ops::-webkit-scrollbar-thumb {
+    background: #c7d2fe;
+    border-radius: 999px;
+}
+
+/* 租户看板顶栏：排序 + 汇总统计（与 UI 工程稿对齐） */
+.tm-ops-tenant-toolbar {
+    align-items: center;
+}
+
+.tm-ops-tree-sort {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.tm-ops-stat-value {
+    margin-top: 0.125rem;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: #4338ca;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 640px) {
+    .tm-ops-stat-value {
+        font-size: 1.5rem;
+    }
+}

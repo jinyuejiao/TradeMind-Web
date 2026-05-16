@@ -1,0 +1,28 @@
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 fade-in">
+    <div class="tm-ops-glass rounded-tm-3xl p-5 md:p-6">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4"><i class="ph ph-megaphone text-ops-600"></i> 全站公告</h2>
+        <p class="text-[10px] text-slate-500 mb-3">支持 HTML；写入 localStorage 键 <code class="bg-slate-100 px-1 rounded">tm_ops_site_announcement_v1</code>，租户端 <code class="bg-slate-100 px-1 rounded">index.html</code> 首页顶部展示。</p>
+        <div class="space-y-3">
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">生效时间</label>
+                <input type="datetime-local" id="ops-ann-from" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">失效时间</label>
+                <input type="datetime-local" id="ops-ann-to" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">HTML 内容</label>
+                <textarea id="ops-ann-html" rows="6" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-mono outline-none focus:border-ops-500" placeholder="<p>系统将于今晚 02:00 维护…</p>"></textarea>
+            </div>
+            <button type="button" id="ops-btn-publish-ann" class="w-full py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-sm font-bold shadow-lg">发布 / 更新公告</button>
+            <button type="button" id="ops-btn-clear-ann" class="w-full py-2 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">清除公告</button>
+        </div>
+    </div>
+
+    <div class="tm-ops-glass rounded-tm-3xl p-5 md:p-6 flex flex-col min-h-[320px]">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4"><i class="ph ph-list-dashes text-ops-600"></i> 敏感操作审计</h2>
+        <p class="text-[10px] text-slate-500 mb-3">本地演示：键 <code class="bg-slate-100 px-1 rounded">tm_ops_audit_log_v1</code> · 生产对接 GET /api/ops/audit-logs</p>
+        <div id="ops-audit-log" class="flex-1 overflow-y-auto list-scrollbar-ops space-y-2 text-xs max-h-[480px]"></div>
+    </div>
+</div>

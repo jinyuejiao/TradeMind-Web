@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>TradeMind 运维中心 — OpsService</title>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <script src="./assets/js/env-config.js"></script>
+    <script src="./assets/js/api-client.js?v=20260506r3"></script>
+    <link rel="stylesheet" href="./assets/css/ops-portal.css?v=tm-ops-7">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ops: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81'
+                        }
+                    },
+                    borderRadius: {
+                        'tm-3xl': '2.5rem'
+                    }
+                }
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
+    <script src="./assets/js/auth.js?v=20260606r3"></script>
+</head>
+<body class="tm-ops-portal text-slate-700 overflow-hidden h-screen flex">
+
+    <aside class="tm-ops-sidebar-glass w-64 shrink-0 flex flex-col z-20 min-h-0 h-full text-indigo-100">
+        <div class="h-16 flex items-center px-5 border-b border-indigo-500/20">
+            <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-ops-500 to-ops-700 flex items-center justify-center text-white shadow-lg shadow-ops-600/40">
+                <i class="ph ph-shield-checkered text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-white font-bold text-sm tracking-wide">OpsService</p>
+                <p class="text-[10px] text-indigo-300 font-medium">运维中台 · ops-hub</p>
+            </div>
+        </div>
+        <nav class="flex-1 py-4 px-3 space-y-1 overflow-y-auto list-scrollbar-ops" id="tm-ops-nav">
+            <button type="button" data-ops-route="tenants" class="tm-ops-nav-btn tm-ops-nav-active w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
+                <i class="ph ph-squares-four text-lg"></i> 租户看板
+            </button>
+            <button type="button" data-ops-route="plans" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
+                <i class="ph ph-currency-circle-dollar text-lg"></i> 订阅策略
+            </button>
+            <button type="button" data-ops-route="referral" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
+                <i class="ph ph-gift text-lg"></i> 推荐与结算
+            </button>
+            <button type="button" data-ops-route="announce" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
+                <i class="ph ph-scroll text-lg"></i> 公告与审计
+            </button>
+        </nav>
+        <div class="p-4 border-t border-indigo-500/20 space-y-2">
+            <a href="./index-app.html" class="flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold bg-white/10 text-indigo-100 hover:bg-white/15 border border-indigo-400/20 transition-all">
+                <i class="ph ph-arrow-square-out"></i> 进入租户工作台
+            </a>
+            <button type="button" id="opsLogoutBtn" class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] text-indigo-300 hover:text-white hover:bg-white/10 transition-colors border border-transparent">
+                <i class="ph ph-sign-out"></i> 退出登录
+            </button>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col min-w-0 min-h-0">
+        <header class="tm-ops-glass shrink-0 h-14 md:h-16 flex items-center justify-between px-4 md:px-8 border-b border-indigo-100/80">
+            <div>
+                <h1 id="tm-ops-page-title" class="text-base md:text-lg font-bold text-slate-800 tracking-tight">租户看板</h1>
+                <p class="text-[10px] md:text-xs text-slate-500 mt-0.5">平台管理大脑 · 已对接网关 /api/v1/ops</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-ops-50 text-ops-700 border border-ops-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-ops-500 animate-pulse"></span> 运维会话
+                </span>
+                <div class="w-9 h-9 rounded-2xl bg-ops-600 text-white flex items-center justify-center text-xs font-black font-mono shadow-md">OP</div>
+            </div>
+        </header>
+        <main id="tm-ops-view-root" class="flex-1 overflow-y-auto p-4 md:p-8 list-scrollbar-ops">
+            <div class="tm-ops-glass rounded-tm-3xl p-8 text-center text-slate-500 text-sm">加载模块…</div>
+        </main>
+    </div>
+
+    <script src="./assets/js/ui-ops.js?v=tm-ops-sub-20260516e"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof checkAuth === 'function' && !checkAuth()) return;
+            var btn = document.getElementById('opsLogoutBtn');
+            if (btn && typeof logout === 'function') {
+                btn.addEventListener('click', function () { logout(); });
+            }
+        });
+    </script>
+</body>
+</html>

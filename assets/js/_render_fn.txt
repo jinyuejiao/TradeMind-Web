@@ -1,0 +1,63 @@
+    function renderTenantTreeMergedRows(mergedRows, expanded, opts) {
+        opts = opts || {};
+        var root = el('ops-tree-root');
+        if (!root) return;
+        if (!mergedRows.length) {
+            root.innerHTML = '<p class="text-slate-500 text-sm text-center py-8">暂无租户数据</p>';
+            return;
+        }
+        var userAiTitle = opts.live ? '租户 → 用户 → 本月 AI' : '租户 → 用户 → 本月 AI（演示拆分）';
+        root.innerHTML = mergedRows.map(function (row) {
+            var t = row.raw;
+            var p = row.plan;
+            var open = expanded.has(t.id);
+            var caret = open ? 'ph-caret-down' : 'ph-caret-right';
+            var frozenTag = t.frozen
+                ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
+                : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>';
+            var ind = industryLabel[t.industry] || t.industry;
+            var orig = p.priceOriginalYear || 0;
+            var cur = p.priceCurrentYear || 0;
+            var off = computeDiscountPercentFromYearPrices(orig, cur);
+            var ribbon = p.discountLabel
+                ? '<span class="inline-block mt-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-[9px] font-black">' + escapeHtml(p.discountLabel) + '</span>'
+                : '';
+            var promo = p.promoNote
+                ? '<p class="text-[9px] text-slate-500 mt-1 leading-snug">' + escapeHtml(p.promoNote) + '</p>'
+                : '';
+            var zhe = orig > 0 ? (Math.round((cur / orig) * 1000) / 100).toFixed(1) : '—';
+            var discLine = off > 0
+                ? '<p class="text-[9px] font-black text-ops-600">约减 ' + off + '% · 合 ' + zhe + ' 折</p>'
+                : '';
+            var subHidden = open ? '' : 'hidden';
+            var userBlock = row.users.map(function (u) {
+                return (
+                    '<div class="border-b border-indigo-50/80 last:border-0 py-2 pl-2">' +
+                    '<div class="flex flex-wrap items-center justify-between gap-2">' +
+                    '<motion><span class="text-xs font-bold text-slate-800">' + escapeHtml(u.name) + '</span>' +
+                    '<span class="ml-2 text-[10px] font-bold text-slate-400">' + escapeHtml(u.role) + '</span></motion>' +
+                    '<span class="text-[10px] font-mono text-ops-700 font-bold">Σ ' + formatTokens(u.tokensMonth) + '</span></div>' +
+                    '<div class="mt-1 pl-2 text-[10px] text-slate-500 font-mono">提取 ' + formatTokens(u.extractMonth) + ' · 对话 ' + formatTokens(u.chatMonth) + '</div></div>'
+                ).replace(/<\/?motion>/g, '');
+            }).join('');
+            if (!userBlock) {
+                userBlock = '<p class="text-[10px] text-slate-400 py-2 pl-2">该租户暂无用户</p>';
+            }
+            var metricBadges = opts.live
+                ? '<span class="px-2 py-1 rounded-lg bg-ops-50 border border-ops-100">AI月 ' + formatTokens(row.aiTokensMonth) + '</span>' +
+                  '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">产品 ' + row.usage.products + '</span>' +
+                  '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">客户 ' + row.usage.customers + '</span>' +
+                  '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">供应商 ' + row.usage.suppliers + '</span>'
+                : '<span class="px-2 py-1 rounded-lg bg-ops-50 border border-ops-100">AI月 ' + formatTokens(row.aiTokensMonth) + '</span>' +
+                  '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">年付 ¥' + row.subscriptionYear + '</span>' +
+                  '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">营收 ¥' + (row.revenueMonth / 10000).toFixed(1) + '万</span>' +
+                  '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">利润 ¥' + (row.profitMonth / 10000).toFixed(1) + '万</span>';
+            var freezeBtn = opts.live ? '' : (
+                '<button type="button" class="ops-act-freeze px-2 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 hover:bg-slate-50" data-id="' + escapeHtml(t.id) + '">' +
+                (t.frozen ? '解冻' : '冻结') + '</button>'
+            );
+            return (
+                '<motion class="tm-ops-glass rounded-tm-3xl border border-indigo-100/80 overflow-hidden shadow-sm" data-tenant-id="' + escapeHtml(t.id) + '">'
+            );
+        }).join('');
+    }
