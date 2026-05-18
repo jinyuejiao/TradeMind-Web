@@ -1,0 +1,121 @@
+<div id="poster-modal" class="fixed inset-0 z-[115] flex items-center justify-center hidden p-4">
+        <!-- 遮罩 -->
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePoster()"></div>
+
+        <!-- 弹窗主体 (已移除左侧，仅保留推荐页，宽度调整为 max-w-lg) -->
+        <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-[420px] overflow-hidden relative z-10 animate-in fade-in zoom-in duration-300">
+
+            <!-- 关闭按钮 -->
+            <button type="button" onclick="closePoster()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 z-20 transition-colors">
+                <i class="ph ph-x text-2xl font-bold"></i>
+            </button>
+
+            <!-- 推荐海报区域 -->
+            <div class="w-full bg-white p-6 md:p-8 flex flex-col items-center">
+                <div class="text-center mb-6">
+                    <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">专属推荐海报</h3>
+                    <p class="text-xs text-slate-500 mt-1">分享您的专属名片，邀好友加入</p>
+                </div>
+
+                <!-- 海报快照区域 (html2canvas 将截取此处) -->
+                <div id="poster-capture-area" class="w-full p-2 bg-gradient-to-b from-slate-100 to-white rounded-[2.5rem] shadow-xl">
+                    <div class="poster-card-inner w-full min-h-[520px] rounded-[2rem] flex flex-col gap-3 relative overflow-hidden text-white ring-1 ring-slate-200/80 shadow-inner pt-3 pb-4"
+                         style="background: linear-gradient(145deg, #0f766e 0%, #14B8A6 38%, #0d9488 72%, #115e59 100%);">
+
+                        <!-- 纹理与光效 -->
+                        <div class="pointer-events-none absolute inset-0 opacity-[0.12]" style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 20px 20px;"></div>
+                        <div class="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-emerald-300/35 blur-3xl"></div>
+                        <div class="pointer-events-none absolute bottom-0 left-1/2 z-0 -translate-x-1/2 w-[120%] h-32 bg-gradient-to-t from-black/20 to-transparent"></div>
+
+                        <!-- 品牌区（与会员中心一致；保存海报不含邀新有礼条） -->
+                        <div class="poster-brand-header relative z-10 mx-4 mt-4 flex items-center gap-3">
+                            <div class="w-11 h-11 shrink-0 bg-[#14B8A6] rounded-xl flex items-center justify-center text-white shadow-lg shadow-[#14B8A6]/40 ring-2 ring-white/25">
+                                <i class="ph ph-brain text-xl"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-base font-black text-white tracking-tight leading-tight">TradeMind 商贸智脑</p>
+                                <p class="text-[10px] font-bold text-teal-100/90 mt-0.5">智能经营 · 一体化</p>
+                            </div>
+                        </div>
+
+                        <!-- 主标题 -->
+                        <div class="relative z-10 px-5 pt-4 pb-1">
+                            <p class="text-[9px] font-bold uppercase tracking-widest text-teal-100/85 mb-1">为什么选择我们</p>
+                            <h4 class="text-lg sm:text-xl font-black leading-snug tracking-tight drop-shadow-md">
+                                经营提效<br />
+                                <span class="text-teal-50">从订单到决策，一屏掌控</span>
+                            </h4>
+                        </div>
+
+                        <!-- 能力卡片网格（与底部推荐码区留间距，避免叠层遮挡） -->
+                        <div class="poster-features-grid relative z-10 shrink-0 px-4 pb-0 grid grid-cols-2 gap-2 content-start">
+                            <div class="rounded-xl bg-white/12 backdrop-blur-sm border border-white/20 p-2.5 shadow-md">
+                                <div class="mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-amber-300/90 text-amber-950">
+                                    <i class="ph ph-sparkle text-sm"></i>
+                                </div>
+                                <p class="text-[10px] font-black leading-tight">AI 订单提取</p>
+                                <p class="mt-0.5 text-[8px] leading-snug text-white/88">语音/拍照/文本录单</p>
+                            </div>
+                            <div class="rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 p-2.5 shadow-sm">
+                                <div class="mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-white/25 text-white">
+                                    <i class="ph ph-clipboard-text text-sm"></i>
+                                </div>
+                                <p class="text-[10px] font-black leading-tight">进货清单</p>
+                                <p class="mt-0.5 text-[8px] leading-snug text-white/88">库存 + 进货建议</p>
+                            </div>
+                            <div class="rounded-xl bg-white/10 backdrop-blur-sm border border-white/15 p-2.5 shadow-sm">
+                                <div class="mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-300/80 text-teal-950">
+                                    <i class="ph ph-chart-line-up text-sm"></i>
+                                </div>
+                                <p class="text-[10px] font-black leading-tight">智能经营分析</p>
+                                <p class="mt-0.5 text-[8px] leading-snug text-white/88">瓶颈定位与优化</p>
+                            </div>
+                            <div class="rounded-xl bg-white/12 backdrop-blur-sm border border-white/20 p-2.5 shadow-md">
+                                <div class="mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-200/90 text-emerald-950">
+                                    <i class="ph ph-chart-bar text-sm"></i>
+                                </div>
+                                <p class="text-[10px] font-black leading-tight">经营报表</p>
+                                <p class="mt-0.5 text-[8px] leading-snug text-white/88">利润·库存·周转</p>
+                            </div>
+                        </div>
+
+                        <!-- 推荐码区：内嵌白底圆角卡片（左右与能力区对齐，白底铺满卡片宽度） -->
+                        <div class="poster-referral-wrap relative z-10 w-full box-border shrink-0 px-4 pb-0">
+                            <div class="poster-referral-footer box-border w-full rounded-2xl bg-white shadow-lg shadow-black/10">
+                                <div class="poster-referral-body flex w-full items-stretch gap-3 py-3.5 pl-3 pr-4">
+                                    <span class="poster-referral-accent shrink-0 w-[3px] self-stretch rounded-full bg-teal-500" aria-hidden="true"></span>
+                                    <div class="flex-1 min-w-0 flex flex-col justify-center">
+                                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">我的专属推荐码</p>
+                                        <p id="poster-ref-code" class="mt-1 text-xl sm:text-2xl font-black text-slate-900 tracking-tight break-all leading-tight" style="font-family: ui-monospace, SFMono-Regular, monospace;">—</p>
+                                        <p class="mt-2 text-[9px] font-semibold text-teal-700 leading-snug flex items-start gap-1">
+                                            <i class="ph ph-info shrink-0 mt-0.5 text-teal-600"></i>
+                                            <span>注册或开通时在「推荐码」栏填写本码，权益与返现以活动规则为准。</span>
+                                        </p>
+                                    </div>
+                                    <div class="w-px shrink-0 bg-slate-200 self-stretch my-1" aria-hidden="true"></div>
+                                    <div class="flex flex-col items-center justify-center gap-1 shrink-0">
+                                        <div class="rounded-xl bg-slate-50 p-1.5 ring-2 ring-teal-100 shadow-inner">
+                                            <img id="poster-qr" src="" class="h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem] block" alt="扫码打开官网" />
+                                        </div>
+                                        <span class="text-[8px] font-black text-slate-500 uppercase tracking-wider">扫码了解</span>
+                                        <span id="poster-qr-url-hint" class="text-[8px] font-bold text-teal-600 text-center max-w-[5.5rem] leading-tight break-all">trademind.com.cn</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <p class="text-[11px] text-slate-500 leading-relaxed">邀请好友开通，<span class="text-teal-600 font-bold">立享推荐返现</span>
+                    </p>
+
+                    <!-- 生成并保存海报按钮 -->
+                    <button type="button" onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">
+                        <i class="ph ph-download-simple-bold text-lg group-hover:translate-y-0.5 transition-transform"></i>
+                        保存高清海报到相册
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>

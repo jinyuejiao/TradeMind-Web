@@ -21,7 +21,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/assets/js/auth.js?v=20260606r3"></script>
+    <script src="/assets/js/auth.js?v=20260608referral"></script>
+    <script src="/modules/membership/referral-rewards.js?v=20260608d"></script>
     <script src="/assets/js/main-app.js"></script>
     <script src="/MobileAdapt/TM_Responsive.js"></script>
     <script src="/assets/js/ui-components.js"></script>
@@ -113,7 +114,10 @@
                                 <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>
                                 <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">—</p>
                             </div>
-                            <button onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">
+                            <button type="button" onclick="openReferralListModal()" class="px-4 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-2">
+                                <i class="ph ph-users-three text-lg"></i> 推荐名单
+                            </button>
+                            <button type="button" onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">
                                 <i class="ph ph-image-square-bold text-lg"></i> 生成海报
                             </button>
                         </div>
@@ -199,7 +203,7 @@
 
                 <div class="mt-6 text-center">
                     <p class="text-[11px] text-slate-400 leading-relaxed">
-                        邀请好友注册，双方立享 <span class="text-teal-600 font-bold">15天 专业版</span> 奖励
+                        扫码或访问 <a id="poster-landing-link" href="https://trademind.com.cn/register.html" target="_blank" rel="noopener" class="text-teal-600 font-bold underline">trademind.com.cn</a> 注册商贸智脑
                     </p>
 
                     <!-- 生成并保存海报按钮 -->

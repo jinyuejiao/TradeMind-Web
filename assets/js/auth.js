@@ -35,6 +35,88 @@
     }
 })();
 
+/** 海报/分享落地页注册链接 */
+window.tmBuildPosterLandingUrl = function (referralCode, merchantType) {
+    var base = 'https://trademind.com.cn/register.html';
+    var p = new URLSearchParams();
+    if (referralCode) p.set('ref', String(referralCode).trim());
+    if (merchantType) p.set('merchantType', String(merchantType).trim().toUpperCase());
+    var q = p.toString();
+    return q ? base + '?' + q : base;
+};
+
+/** 与 UI 工程一致的海报弹窗（片段 modules/fragments/poster-modal.html） */
+var TM_POSTER_MODAL_FRAGMENT_URL = '/modules/fragments/poster-modal.html';
+var _tmPosterModalHtmlCache = null;
+
+function tmIsPlaceholderReferralCode(code) {
+    if (!code || code === '—') return true;
+    return /^TM-\d+$/i.test(code) || code === 'GIGA-JIN-8821';
+}
+
+window.tmMountPosterModal = async function () {
+    var existing = document.getElementById('poster-modal');
+    if (existing && existing.querySelector('.poster-card-inner')) return;
+    if (existing) existing.remove();
+    if (!_tmPosterModalHtmlCache) {
+        var res = await fetch(TM_POSTER_MODAL_FRAGMENT_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error('poster-modal.html load failed');
+        _tmPosterModalHtmlCache = await res.text();
+    }
+    document.body.insertAdjacentHTML('beforeend', _tmPosterModalHtmlCache);
+};
+
+window.tmApplyPosterReferralData = function (referralCode, merchantType) {
+    var code = String(referralCode || '').trim();
+    var mt = merchantType || (window._tmMemberMe && window._tmMemberMe.merchantType) || (window._tmMemberCtx && window._tmMemberCtx.merchantType) || 'WHOLESALE';
+    if (tmIsPlaceholderReferralCode(code)) code = window._tmCachedReferralCode || '';
+    if (!code) return;
+    var landing = tmBuildPosterLandingUrl(code, mt);
+    window._tmPosterLandingUrl = landing;
+    window._tmCachedReferralCode = code;
+    ['referral-code', 'member-referral-inline', 'poster-ref-code'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = code;
+    });
+    var qr = document.getElementById('poster-qr');
+    if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(landing);
+    var hint = document.getElementById('poster-qr-url-hint');
+    if (hint) hint.textContent = 'trademind.com.cn';
+    var linkEl = document.getElementById('poster-landing-link');
+    if (linkEl) {
+        linkEl.href = landing;
+        linkEl.textContent = 'trademind.com.cn';
+    }
+};
+
+window.tmSyncPosterReferral = async function () {
+    await tmMountPosterModal();
+    var code = '';
+    var mt = 'WHOLESALE';
+    try {
+        if (localStorage.getItem('token')) {
+            var refRes = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/referral/summary'), { method: 'GET' });
+            var refJson = await refRes.json().catch(function () { return {}; });
+            if (refJson.success && refJson.referralCode) code = String(refJson.referralCode).trim();
+            try {
+                var meRes = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/subscription/me'), { method: 'GET' });
+                var meJson = await meRes.json().catch(function () { return {}; });
+                if (meJson.merchantType) mt = meJson.merchantType;
+                window._tmMemberMe = meJson;
+            } catch (eMe) { /* ignore */ }
+        }
+    } catch (eRef) { /* ignore */ }
+    if (!code || tmIsPlaceholderReferralCode(code)) {
+        var rc = document.getElementById('referral-code');
+        if (rc) {
+            var t = rc.textContent.trim();
+            if (t && !tmIsPlaceholderReferralCode(t)) code = t;
+        }
+    }
+    if (code) tmApplyPosterReferralData(code, mt);
+    return code;
+};
+
 /** 注册/专题页商户意图：URL ?merchantType=ECOM 等与字典 D013 dict_code 一致 */
 window.tmResolveMerchantIntent = function () {
     const ALLOWED = ['WHOLESALE', 'FOREIGN_TRADE', 'ECOM', 'FACTORY_TRADE'];
@@ -581,7 +663,8 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '                            <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>' +
 '                            <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">TM-100001</p>' +
 '                        </div>' +
-'                        <button onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">' +
+'                        <button type="button" onclick="openReferralListModal()" class="px-4 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-2"><i class="ph ph-gift text-lg"></i> 推荐奖励</button>' +
+'                        <button type="button" onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">' +
 '                            <i class="ph ph-image-square-bold text-lg"></i> 生成海报' +
 '                        </button>' +
 '                    </div>' +
@@ -653,7 +736,7 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '            </div>' +
 '            <div class="mt-6 text-center">' +
 '                <p class="text-[11px] text-slate-400 leading-relaxed">' +
-'                    邀请好友注册，双方立享 <span class="text-teal-600 font-bold">15天 专业版</span> 奖励' +
+'                    扫码或访问 <a id="poster-landing-link" href="https://trademind.com.cn/register.html" target="_blank" rel="noopener" class="text-teal-600 font-bold underline">trademind.com.cn</a> 注册' +
 '                </p>' +
 '                <!-- 生成并保存海报按钮 -->' +
 '                <button onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">' +
@@ -663,7 +746,15 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '            </div>' +
 '        </div>' +
 '    </div>' +
-'</div>'
+'</div>';
+
+window.injectMemberAuxModals = async function () {
+    if (typeof window.tmMountReferralRewardsModal === 'function') {
+        await window.tmMountReferralRewardsModal();
+    }
+    if (document.getElementById('member-accounts-manage-modal')) return;
+    document.body.insertAdjacentHTML('beforeend', "<div id=\"member-accounts-manage-modal\" class=\"hidden fixed inset-0 z-[108] flex items-end md:items-center justify-center p-0 md:p-6\"><div class=\"absolute inset-0 bg-slate-900/45 backdrop-blur-[2px]\" onclick=\"closeMemberAccountsManageModal()\"></div><div class=\"relative bg-white w-full md:max-w-lg md:rounded-[2rem] rounded-t-[2rem] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden border border-slate-100\"><div class=\"px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0\"><div><h3 class=\"text-sm font-black text-slate-800\">商户子账号</h3><p id=\"member-subuser-modal-desc\" class=\"text-[10px] text-slate-400 mt-0.5\">席位加载中…</p></div><button type=\"button\" onclick=\"closeMemberAccountsManageModal()\" class=\"p-2 hover:bg-slate-100 rounded-full\"><i class=\"ph ph-x text-xl text-slate-400\"></i></button></div><div class=\"flex-1 overflow-y-auto p-4 md:p-5 space-y-4\"><span id=\"member-subuser-count-badge\" class=\"text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg\"></span><p id=\"member-premium-users-gate-hint\" class=\"hidden text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2\">当前登录账号非主管理员，子账号增删改由主管理员操作。</p><div id=\"member-premium-users-editor\" class=\"space-y-4\"><table class=\"w-full text-left text-xs border border-slate-200 rounded-2xl overflow-hidden\"><thead class=\"bg-slate-50 text-slate-400 font-bold\"><tr><th class=\"px-4 py-3\">用户名</th><th class=\"px-4 py-3\">角色</th><th class=\"px-4 py-3 text-center\">操作</th></tr></thead><tbody id=\"member-subusers-tbody\" class=\"divide-y divide-slate-100\"></tbody></table><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4\"><input type=\"text\" id=\"member-new-user-name\" placeholder=\"用户名\" class=\"form-input text-sm\" maxlength=\"32\"/><input type=\"tel\" id=\"member-new-user-phone\" placeholder=\"手机号\" class=\"form-input text-sm\" maxlength=\"11\"/><input type=\"password\" id=\"member-new-user-password\" placeholder=\"初始密码\" class=\"form-input text-sm\"/><select id=\"member-new-user-role\" class=\"form-input text-sm\"></select><button type=\"button\" onclick=\"tmMemberAddSubUser()\" class=\"sm:col-span-2 bg-slate-900 text-white rounded-xl text-xs font-black py-2.5\">新建子账号</button></div><p id=\"member-subuser-limit-hint\" class=\"text-[10px] text-slate-400\"></p></div></div></div></div>");
+};
 
 
 // MD5加密函数
@@ -1551,13 +1642,20 @@ async function tmHydrateMemberCenter(modalEl) {
     }
 
     if (me.success) {
-        window._tmMemberCtx = { subscriptionType: me.subscriptionType || 'TRIAL', paidActive: me.paidSubscriptionActive === true };
+        window._tmMemberCtx = {
+            subscriptionType: me.subscriptionType || 'TRIAL',
+            paidActive: me.paidSubscriptionActive === true,
+            merchantType: me.merchantType || merchantType,
+            canManageUsers: me.canManageUsers === true
+        };
+        window._tmMemberMe = me;
         var dname = me.displayName || (ctx.subscriptionType === 'TRIAL' ? '试用版本' : ctx.subscriptionType === 'BASIC' ? '启航会员' : ctx.subscriptionType === 'PREMIUM' ? '优享会员' : ctx.subscriptionType);
         var endLabel = tmFmtSubEnd(me.subEndTime);
         strip.innerHTML = '<div class="rounded-2xl border border-teal-100 bg-teal-50/80 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">' +
             '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' +
-            '<span class="text-slate-500"> · 有效期至 </span><span class="font-mono font-bold">' + tmEscapeHtml(endLabel) + '</span></div>' +
-            '<p class="text-[10px] text-slate-500">升级按档位补差价；续费在到期日基础上叠加年费周期。</p></div>';
+            '<span class="text-slate-500"> · 有效期至 </span><span class="font-mono font-bold">' + tmEscapeHtml(endLabel) + '</span>' +
+            (me.pricePaidCny != null ? '<span class="text-slate-400"> · 实付 ¥' + tmEscapeHtml(tmFmtMoneyDisplay(me.pricePaidCny)) + '</span>' : '') + '</div>' +
+            (me.canManageUsers === true ? '<button type="button" onclick="openMemberAccountsManageModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#14B8A6] text-white text-[10px] font-black shadow-md"><i class="ph ph-users-three"></i> 账号管理</button>' : '') + '</div>';
     } else {
         strip.innerHTML = '<div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">登录后可查看当前租户订阅状态，并进行续费或升级。</div>';
     }
@@ -1573,14 +1671,11 @@ async function tmHydrateMemberCenter(modalEl) {
         var refJson = await refRes.json().catch(function () { return {}; });
         if (refJson.success && refJson.referralCode) {
             var code = String(refJson.referralCode);
-            var rc = modalEl.querySelector('#referral-code');
-            var pr = modalEl.querySelector('#poster-ref-code');
-            var qr = modalEl.querySelector('#poster-qr');
-            if (rc) rc.textContent = code;
-            if (pr) pr.textContent = code;
-            if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent('TradeMind-' + code);
+            var mt = (me && me.merchantType) ? me.merchantType : merchantType;
+            tmApplyPosterReferralData(code, mt);
         }
     } catch (e4) { /* ignore */ }
+    if (typeof window.injectMemberAuxModals === 'function') await window.injectMemberAuxModals();
 }
 
 function tmClosePayOverlay() {
@@ -1878,37 +1973,50 @@ function copyReferralCode() {
     }
 }
 
-// 下载海报
-function downloadPoster() {
-    console.log('downloadPoster: 开始执行');
-    const posterPreview = document.getElementById('poster-capture-area');
-    if (posterPreview) {
-        console.log('downloadPoster: 找到海报捕获区域，开始生成海报');
-        html2canvas(posterPreview, {
-            scale: 2, // 提高清晰度
-            useCORS: true, // 允许加载跨域图片
-            logging: true
-        }).then(canvas => {
-            console.log('downloadPoster: 海报生成成功，准备下载');
-            const link = document.createElement('a');
-            link.download = 'trademind-referral-poster.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            console.log('downloadPoster: 海报下载触发成功');
-            showNotification('海报已成功下载');
-        }).catch(error => {
-            console.error('downloadPoster: 下载海报失败:', error);
-            showNotification('海报下载失败，请重试');
-        });
-    } else {
-        console.error('downloadPoster: 未找到海报预览元素');
+// 下载海报（与 UI 工程一致：高清 scale 3）
+async function downloadPoster() {
+    var saveBtn = (typeof event !== 'undefined' && event && event.currentTarget)
+        || document.querySelector('#poster-modal button[onclick*="downloadPoster"]');
+    var originalHtml = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin text-lg"></i> 生成中...';
+        saveBtn.disabled = true;
+    }
+    var element = document.getElementById('poster-capture-area');
+    if (!element) {
+        if (saveBtn) { saveBtn.innerHTML = originalHtml; saveBtn.disabled = false; }
         showNotification('海报元素未找到');
+        return;
+    }
+    try {
+        if (!window._tmCachedReferralCode) await tmSyncPosterReferral();
+        var canvas = await html2canvas(element, {
+            backgroundColor: null,
+            useCORS: true,
+            scale: 3,
+            borderRadius: 40
+        });
+        var link = document.createElement('a');
+        var refCode = (document.getElementById('poster-ref-code') && document.getElementById('poster-ref-code').textContent || 'REF').replace(/\s+/g, '');
+        link.download = 'TradeMind-Invite-' + refCode + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showNotification('海报已成功下载');
+    } catch (error) {
+        console.error('downloadPoster:', error);
+        showNotification('海报下载失败，请重试');
+    } finally {
+        if (saveBtn) {
+            saveBtn.innerHTML = originalHtml;
+            saveBtn.disabled = false;
+        }
     }
 }
 
 // 打开会员中心弹窗（index-app 等主壳使用 member-modal）
 async function openMemberModal() {
     try {
+        if (typeof window.injectMemberAuxModals === 'function') await window.injectMemberAuxModals();
         if (window.TradeMindUI && TradeMindUI.wrapModal) TradeMindUI.wrapModal('member-modal');
         var modal = document.getElementById('member-modal');
         if (!modal) {
@@ -1934,25 +2042,179 @@ function closeMemberModal() {
     }
 }
 
-// 显示海报弹窗
-function showPoster() {
-    console.log('========== 显示海报弹窗 ==========');
-    console.log('showPoster: 开始执行');
+var TM_MEMBER_ROLE_OPTS = [
+    { code: 'ADMIN', label: '管理员' },
+    { code: 'OPERATOR', label: '运营' },
+    { code: 'WAREHOUSE', label: '仓库' },
+    { code: 'FINANCE', label: '财务' },
+    { code: 'READONLY', label: '只读' }
+];
+
+function tmFmtInviteDate(iso) {
+    if (!iso) return '—';
     try {
-        console.log('showPoster: 调用 TradeMindUI.wrapModal');
-        TradeMindUI.wrapModal('poster-modal');
-        const modal = document.getElementById('poster-modal');
+        var d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    } catch (e) {
+        return '—';
+    }
+}
+
+function tmReferralStatusClass(status) {
+    if (status === 'QUALIFIED') return 'text-emerald-600 font-black';
+    if (status === 'PENDING') return 'text-slate-600 font-bold';
+    return 'text-slate-400';
+}
+
+/* openReferralListModal / closeReferralListModal -> modules/membership/referral-rewards.js */
+
+
+function tmFillMemberRoleSelect(sel, selected) {
+    if (!sel) return;
+    sel.innerHTML = TM_MEMBER_ROLE_OPTS.map(function (o) {
+        return '<option value="' + o.code + '"' + (o.code === selected ? ' selected' : '') + '>' + o.label + '</option>';
+    }).join('');
+}
+
+window.openMemberAccountsManageModal = async function () {
+    if (typeof window.injectMemberAuxModals === 'function') await window.injectMemberAuxModals();
+    var modal = document.getElementById('member-accounts-manage-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    await tmReloadMemberSubUsers();
+};
+
+window.closeMemberAccountsManageModal = function () {
+    var modal = document.getElementById('member-accounts-manage-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+async function tmReloadMemberSubUsers() {
+    var tbody = document.getElementById('member-subusers-tbody');
+    var badge = document.getElementById('member-subuser-count-badge');
+    var hint = document.getElementById('member-subuser-limit-hint');
+    var gate = document.getElementById('member-premium-users-gate-hint');
+    var editor = document.getElementById('member-premium-users-editor');
+    var desc = document.getElementById('member-subuser-modal-desc');
+    var roleSel = document.getElementById('member-new-user-role');
+    tmFillMemberRoleSelect(roleSel, 'OPERATOR');
+    try {
+        var res = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/users'), { method: 'GET' });
+        var data = await res.json().catch(function () { return {}; });
+        if (!data.success) throw new Error(data.message || '加载失败');
+        var used = data.seatUsed != null ? data.seatUsed : 0;
+        var max = data.seatMax != null ? data.seatMax : 1;
+        if (badge) badge.textContent = '已用 ' + used + ' / ' + max + ' 席位';
+        if (desc) desc.textContent = '优享套餐含主账号共 ' + max + ' 席';
+        if (hint) hint.textContent = data.canManage ? ('还可创建 ' + Math.max(0, max - used) + ' 个子账号') : '';
+        if (gate) gate.classList.toggle('hidden', data.canManage !== false);
+        if (editor) editor.style.opacity = data.canManage ? '1' : '0.55';
+        var rows = (data.users || []).map(function (u) {
+            var roleOpts = TM_MEMBER_ROLE_OPTS.map(function (o) {
+                return '<option value="' + o.code + '"' + (o.code === u.roleType ? ' selected' : '') + '>' + o.label + '</option>';
+            }).join('');
+            var editBtn = data.canManage && !u.primaryAdmin
+                ? '<button type="button" class="text-teal-600 font-bold mr-2" onclick="tmMemberEditSubUser(' + u.userId + ')">改密</button>' +
+                  '<select class="form-input text-[10px] py-1" onchange="tmMemberChangeRole(' + u.userId + ', this.value)">' + roleOpts + '</select>'
+                : '<span class="text-slate-400 text-[10px]">' + (u.primaryAdmin ? '主账号' : '—') + '</span>';
+            return '<tr><td class="px-4 py-2 font-medium">' + tmEscapeHtml(u.userName) + '</td>' +
+                '<td class="px-4 py-2">' + tmEscapeHtml(u.roleLabel || u.roleType) + '</td>' +
+                '<td class="px-4 py-2 text-center">' + editBtn + '</td></tr>';
+        }).join('');
+        if (tbody) tbody.innerHTML = rows || '<tr><td colspan="3" class="py-4 text-center text-slate-400">暂无账号</td></tr>';
+    } catch (e) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-red-500">加载失败</td></tr>';
+    }
+}
+
+window.tmMemberAddSubUser = async function () {
+    var nameEl = document.getElementById('member-new-user-name');
+    var phoneEl = document.getElementById('member-new-user-phone');
+    var passEl = document.getElementById('member-new-user-password');
+    var roleEl = document.getElementById('member-new-user-role');
+    var userName = nameEl ? nameEl.value.trim() : '';
+    var phone = phoneEl ? phoneEl.value.trim() : '';
+    var password = passEl ? passEl.value : '';
+    var roleType = roleEl ? roleEl.value : 'OPERATOR';
+    if (!userName || !phone || !password) {
+        showNotification('请填写用户名、手机号和初始密码');
+        return;
+    }
+    if (password.length < 6) {
+        showNotification('密码至少 6 位');
+        return;
+    }
+    try {
+        var hash = await md5Hash(password);
+        var res = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/users'), {
+            method: 'POST',
+            body: JSON.stringify({ userName: userName, phone: phone, password: hash, roleType: roleType })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) {
+            showNotification((data && data.message) ? data.message : '创建失败');
+            return;
+        }
+        showNotification('子账号已创建');
+        if (nameEl) nameEl.value = '';
+        if (phoneEl) phoneEl.value = '';
+        if (passEl) passEl.value = '';
+        await tmReloadMemberSubUsers();
+    } catch (e) {
+        showNotification('创建失败');
+    }
+};
+
+window.tmMemberChangeRole = async function (userId, roleType) {
+    try {
+        var res = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/users/' + userId), {
+            method: 'PUT',
+            body: JSON.stringify({ roleType: roleType })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) showNotification((data && data.message) ? data.message : '更新失败');
+        else showNotification('角色已更新');
+    } catch (e) {
+        showNotification('更新失败');
+    }
+};
+
+window.tmMemberEditSubUser = async function (userId) {
+    var pwd = window.prompt('输入新密码（至少 6 位）');
+    if (!pwd || pwd.length < 6) return;
+    try {
+        var hash = await md5Hash(pwd);
+        var res = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/users/' + userId), {
+            method: 'PUT',
+            body: JSON.stringify({ password: hash })
+        });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) showNotification((data && data.message) ? data.message : '修改失败');
+        else showNotification('密码已更新');
+    } catch (e) {
+        showNotification('修改失败');
+    }
+};
+
+// 显示海报弹窗（挂载 UI 工程版式 + 拉取真实推荐码）
+async function showPoster() {
+    try {
+        var code = await tmSyncPosterReferral();
+        if (!code) {
+            showNotification('无法获取推荐码，请先登录后重试');
+            return;
+        }
+        if (window.TradeMindUI && TradeMindUI.wrapModal) TradeMindUI.wrapModal('poster-modal');
+        var modal = document.getElementById('poster-modal');
         if (modal) {
-            console.log('showPoster: 找到弹窗元素，移除 hidden 类');
             modal.classList.remove('hidden');
-            console.log('showPoster: 弹窗已显示');
-        } else {
-            console.error('showPoster: 未找到弹窗元素');
+            document.body.style.overflow = 'hidden';
         }
     } catch (error) {
-        console.error('showPoster: 显示海报弹窗时出错:', error);
+        console.error('showPoster:', error);
+        showNotification('打开海报失败，请稍后重试');
     }
-    console.log('========== 显示海报弹窗完成 ==========');
 }
 
 // 关闭海报弹窗
@@ -1996,6 +2258,9 @@ window.injectCommonUI = function() {
             console.log('TradeMindUI.injectCommonUI: 未找到会员/订阅弹窗壳，开始注入 MODAL_TEMPLATE');
             document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
             console.log('TradeMindUI.injectCommonUI: 弹窗模板注入成功');
+            if (typeof window.injectMemberAuxModals === 'function') {
+                window.injectMemberAuxModals().catch(function (e) { console.warn('injectMemberAuxModals', e); });
+            }
         } else {
             console.log('TradeMindUI.injectCommonUI: 页面已含 member-modal 或 subscription-modal，跳过重复注入');
         }
@@ -2292,20 +2557,6 @@ async function resolveAndApplyUserContext() {
         document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
     }
 
-    if (document.getElementById('referral-code')) {
-        document.getElementById('referral-code').textContent = referralCode;
-    }
-    if (document.getElementById('poster-ref-code')) {
-        document.getElementById('poster-ref-code').textContent = referralCode;
-    }
-    if (document.getElementById('qrcode-img')) {
-        const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://trademind.ai/reg?ref=' + referralCode.replace('-', '');
-        document.getElementById('qrcode-img').src = qrCodeUrl;
-    }
-    if (document.getElementById('poster-qr')) {
-        const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-' + referralCode.replace('-', '');
-        document.getElementById('poster-qr').src = qrCodeUrl;
-    }
 }
 
 function loadUserInfo() {
@@ -2499,6 +2750,9 @@ window.closeMemberModal = closeMemberModal;
 window.tmClosePayOverlay = tmClosePayOverlay;
 window.tmTryResumeSubscriptionPaymentFromUrl = tmTryResumeSubscriptionPaymentFromUrl;
 window.showPoster = showPoster;
+/* openReferralListModal / closeReferralListModal 由 modules/membership/referral-rewards.js 挂载到 window */
+window.openMemberAccountsManageModal = openMemberAccountsManageModal;
+window.closeMemberAccountsManageModal = closeMemberAccountsManageModal;
 window.closePoster = closePoster;
 window.initCommonUI = initCommonUI;
 
@@ -2760,7 +3014,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const creditCode = document.getElementById('regCreditCode').value || '';
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regConfirmPassword').value;
-            const inviteCode = document.getElementById('inviteCode').value || '';
+            const inviteCode = (document.getElementById('inviteCode').value || '').trim();
             const smsCodeEl = document.getElementById('regSmsCode');
             const smsCode = smsCodeEl ? smsCodeEl.value.trim() : '';
             
@@ -2815,7 +3069,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tenantName: company, // 公司名称
                     tenantCode: creditCode, // 社会信用代码
                     password: encryptedPassword,
-                    inviteCode: inviteCode,
+                    referralCode: inviteCode,
                     smsToken: registerSmsToken || '',
                     smsCode: smsCode,
                     merchantType: typeof window.tmGetSelectedMerchantType === 'function'

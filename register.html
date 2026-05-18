@@ -228,6 +228,29 @@
                 if (fb) fb.checked = true;
             }
             tmUpdateMerchantSummary();
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var ref = params.get('ref');
+                if (ref) {
+                    var ic = document.getElementById('inviteCode');
+                    if (ic) ic.value = ref.trim();
+                }
+                if (!params.get('merchantType') && ref) {
+                    var gw = typeof getApiUrl === 'function' ? getApiUrl('gateway') : '';
+                    if (gw && window.wrappedFetch) {
+                        window.wrappedFetch(gw + '/api/v1/tenant/referral/validate', {
+                            skipAuth: true,
+                            method: 'POST',
+                            body: JSON.stringify({ code: ref.trim() })
+                        }).then(function (r) { return r.json(); }).then(function (v) {
+                            if (v && v.valid && v.referrerMerchantType) {
+                                var r2 = document.querySelector('#registerForm input[name="tmMerchantType"][value="' + v.referrerMerchantType + '"]');
+                                if (r2) { r2.checked = true; tmUpdateMerchantSummary(); }
+                            }
+                        }).catch(function () { /* ignore */ });
+                    }
+                }
+            } catch (eRef) { /* ignore */ }
         });
     </script>
 </body>
