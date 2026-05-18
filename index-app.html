@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
     <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260508r4">
-    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260508r4">
+    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260518beian">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -335,7 +335,7 @@
                         <div id="voice-pulse-icon" class="w-24 h-24 bg-brand-500 rounded-full mx-auto flex items-center justify-center text-white mb-8"><i class="ph ph-microphone text-5xl"></i></div>
                         <div class="flex items-center justify-center gap-2 mb-2"><span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span><span class="text-lg font-black text-slate-800">正在录音...</span></div>
                         <p class="text-2xl font-mono font-bold text-brand-600 mb-10" id="voice-timer">00:00</p>
-                        <button onclick="stopVoiceRecording()" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl">停止并提交解析</button>
+                        <button type="button" id="voice-stop-btn" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl touch-manipulation select-none" aria-label="停止并提交解析">停止并提交解析</button>
                     </div>
 
                     <!-- 核心修复：AI 处理加载态容器 -->

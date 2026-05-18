@@ -173,8 +173,18 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition-all duration-200">
-                    注册
+                <div class="tm-legal-row">
+                    <input type="checkbox" id="tmAgreeTerms" name="tmAgreeTerms" class="tm-legal-checkbox" aria-describedby="tm-legal-register-desc">
+                    <label id="tm-legal-register-desc" for="tmAgreeTerms" class="text-xs text-slate-500 cursor-pointer select-none">
+                        我已阅读并同意
+                        <a href="#" class="tm-legal-link" data-tm-legal="service" id="show-service">《用户服务协议》</a>
+                        与
+                        <a href="#" class="tm-legal-link" data-tm-legal="privacy" id="show-privacy">《隐私协议》</a>
+                    </label>
+                </div>
+
+                <button type="submit" id="registerSubmitBtn" disabled class="tm-register-submit w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition-all duration-200">
+                    立即注册
                 </button>
             </form>
             
@@ -203,6 +213,7 @@
     </footer>
     <script src="./assets/js/main-app.js"></script>
     <script src="./assets/js/tm-ui-loader.js"></script>
+    <script src="./assets/js/legal-agreements.js?v=20260518"></script>
     <script src="./assets/js/auth.js?v=20260507r2"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {

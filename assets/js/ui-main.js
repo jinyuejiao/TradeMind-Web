@@ -452,7 +452,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260508r3', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260508r4', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');

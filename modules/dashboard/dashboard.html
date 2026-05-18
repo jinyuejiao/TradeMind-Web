@@ -604,7 +604,7 @@
                 <div id="voice-pulse-icon" class="w-24 h-24 bg-brand-500 rounded-full mx-auto flex items-center justify-center text-white mb-8"><i class="ph ph-microphone text-5xl"></i></div>
                 <div class="flex items-center justify-center gap-2 mb-2"><span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span><span class="text-lg font-black text-slate-800">正在录音...</span></div>
                 <p class="text-2xl font-mono font-bold text-brand-600 mb-10" id="voice-timer">00:00</p>
-                <button onclick="stopVoiceRecording()" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl">停止并提交解析</button>
+                <button type="button" id="voice-stop-btn" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl touch-manipulation select-none" aria-label="停止并提交解析">停止并提交解析</button>
             </div>
 
             <!-- 核心修复：AI 处理加载态容器 -->
@@ -812,6 +812,114 @@
         let recorder = null;
         let audioChunks = [];
         let recording = false;
+        let localStream = null;
+        let voiceRecorderMime = '';
+        let voiceStopInProgress = false;
+        let voiceStopResolve = null;
+        let voiceStopReject = null;
+        let voiceOnstopHandled = false;
+        const VOICE_MIN_BLOB_BYTES = 1000;
+
+        function tmVoiceNotify(msg, type) {
+            if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
+                window.TM_UI.showNotification(msg, type || 'info');
+            } else {
+                showToast(msg);
+            }
+        }
+
+        function pickVoiceRecorderMime() {
+            if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+                return '';
+            }
+            var candidates = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/mp4',
+                'audio/aac',
+                'audio/mpeg'
+            ];
+            for (var i = 0; i < candidates.length; i++) {
+                if (MediaRecorder.isTypeSupported(candidates[i])) {
+                    console.log('[Voice] 选用 MIME:', candidates[i]);
+                    return candidates[i];
+                }
+            }
+            console.warn('[Voice] 无首选 MIME，使用浏览器默认');
+            return '';
+        }
+
+        function stopAllVoiceTracks() {
+            if (localStream) {
+                localStream.getTracks().forEach(function (track) {
+                    try {
+                        track.stop();
+                        console.log('[Voice] track stopped:', track.kind, track.readyState);
+                    } catch (e) { /* ignore */ }
+                });
+                localStream = null;
+            }
+            if (recorder && recorder.stream) {
+                recorder.stream.getTracks().forEach(function (track) {
+                    try { track.stop(); } catch (e2) { /* ignore */ }
+                });
+            }
+        }
+
+        function setVoiceStopButtonLoading(loading) {
+            var btn = document.getElementById('voice-stop-btn');
+            if (!btn) return;
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-80', 'pointer-events-none');
+                btn.innerHTML = '<span class="inline-flex items-center justify-center gap-2"><i class="ph-bold ph-spinner-gap animate-spin text-lg"></i> AI 正在识别中...</span>';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-80', 'pointer-events-none');
+                btn.textContent = '停止并提交解析';
+            }
+        }
+
+        function showVoiceProcessingPanel() {
+            var active = document.getElementById('voice-active-ui');
+            var proc = document.getElementById('voice-processing-ui');
+            if (active) active.classList.add('hidden');
+            if (proc) proc.classList.remove('hidden');
+            var pulseStop = document.getElementById('voice-pulse-icon');
+            if (pulseStop) pulseStop.classList.remove('recording-pulse');
+        }
+
+        function resetVoiceUIAfterFailure() {
+            voiceStopInProgress = false;
+            setVoiceStopButtonLoading(false);
+            var ready = document.getElementById('voice-ready-ui');
+            var active = document.getElementById('voice-active-ui');
+            var proc = document.getElementById('voice-processing-ui');
+            if (ready) ready.classList.remove('hidden');
+            if (active) active.classList.add('hidden');
+            if (proc) proc.classList.add('hidden');
+        }
+
+        function bindVoiceStopButton() {
+            var btn = document.getElementById('voice-stop-btn');
+            if (!btn || btn.getAttribute('data-voice-stop-bound') === '1') return;
+            btn.setAttribute('data-voice-stop-bound', '1');
+            var fireStop = function (e) {
+                if (e && e.cancelable) e.preventDefault();
+                if (voiceStopInProgress) return;
+                stopVoiceRecording();
+            };
+            btn.addEventListener('click', fireStop);
+            var usePointer = window.TM_Responsive && typeof window.TM_Responsive.isMobile === 'function' && window.TM_Responsive.isMobile();
+            if (usePointer) {
+                btn.addEventListener('pointerdown', function (e) {
+                    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+                        fireStop(e);
+                    }
+                }, { passive: false });
+            }
+            console.log('[Voice] 停止按钮已绑定', usePointer ? '(mobile pointer)' : '(click)');
+        }
 
         // 初始化 OSS 服务
         async function initOSSService() {
@@ -2224,10 +2332,13 @@
                 if (typeof stopVoiceTimer === 'function') stopVoiceTimer();
             } catch (e) { /* ignore */ }
             voiceTimerSeconds = 0;
+            voiceStopInProgress = false;
+            setVoiceStopButtonLoading(false);
             var vt = document.getElementById('voice-timer');
             if (vt) vt.textContent = '00:00';
             var pulse = document.getElementById('voice-pulse-icon');
             if (pulse) pulse.classList.remove('recording-pulse');
+            bindVoiceStopButton();
         }
 
         // 关闭语音模态框
@@ -2247,113 +2358,201 @@
                     recorder.stop();
                 }
             } catch (e2) { /* ignore */ }
-            try {
-                if (recorder && recorder.stream) {
-                    recorder.stream.getTracks().forEach(function (t) { t.stop(); });
-                }
-            } catch (e3) { /* ignore */ }
+            stopAllVoiceTracks();
+            recording = false;
+            voiceStopInProgress = false;
+            recorder = null;
+            audioChunks = [];
+            setVoiceStopButtonLoading(false);
+        }
+
+        function handleVoiceRecorderStop() {
+            if (voiceOnstopHandled) {
+                console.log('[Voice] onstop 已处理，跳过重复');
+                return;
+            }
+            voiceOnstopHandled = true;
+            console.log('[Voice] onstop 开始, chunks=', audioChunks.length);
+            stopVoiceTimer();
+            stopAllVoiceTracks();
+
+            var mime = voiceRecorderMime || (recorder && recorder.mimeType) || 'audio/webm';
+            var audioBlob = new Blob(audioChunks, { type: mime });
+            console.log('[Voice] Blob 已生成, size=', audioBlob.size, 'type=', audioBlob.type);
+
             recording = false;
             recorder = null;
             audioChunks = [];
+
+            if (audioBlob.size < VOICE_MIN_BLOB_BYTES) {
+                console.warn('[Voice] Blob 过小，视为无效录音');
+                tmVoiceNotify('录音时长过短或无效，请重试', 'error');
+                resetVoiceUIAfterFailure();
+                if (voiceStopReject) {
+                    voiceStopReject(new Error('录音无效'));
+                    voiceStopReject = null;
+                    voiceStopResolve = null;
+                }
+                return;
+            }
+
+            var done = voiceStopResolve;
+            var fail = voiceStopReject;
+            voiceStopResolve = null;
+            voiceStopReject = null;
+
+            Promise.resolve(processVoiceWithAIService(audioBlob))
+                .then(function () {
+                    if (done) done();
+                })
+                .catch(function (err) {
+                    console.error('[Voice] onstop 后续处理失败:', err);
+                    if (fail) fail(err);
+                });
         }
 
         // 开始录音
         async function startVoiceRecording() {
             try {
-                // 切换到录音状态 UI
+                if (recording || voiceStopInProgress) {
+                    return;
+                }
                 document.getElementById('voice-ready-ui').classList.add('hidden');
                 document.getElementById('voice-active-ui').classList.remove('hidden');
-                
-                // 获取麦克风权限
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                // 创建录音器
-                recorder = new MediaRecorder(stream);
+                setVoiceStopButtonLoading(false);
+                bindVoiceStopButton();
+
+                var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream = stream;
+                window.localStream = stream;
+
+                voiceRecorderMime = pickVoiceRecorderMime();
+                var options = voiceRecorderMime ? { mimeType: voiceRecorderMime } : undefined;
+                try {
+                    recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
+                } catch (mrErr) {
+                    console.warn('[Voice] 指定 MIME 创建失败，回退默认:', mrErr);
+                    voiceRecorderMime = '';
+                    recorder = new MediaRecorder(stream);
+                }
+                if (recorder.mimeType) {
+                    voiceRecorderMime = recorder.mimeType;
+                }
+
                 audioChunks = [];
                 recording = true;
-                
-                // 记录录音数据
-                recorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
+                voiceStopInProgress = false;
+                voiceOnstopHandled = false;
+
+                recorder.ondataavailable = function (event) {
+                    if (event.data && event.data.size > 0) {
                         audioChunks.push(event.data);
+                        console.log('[Voice] dataavailable chunk=', event.data.size);
                     }
                 };
-                
-                // 定时切片：部分移动浏览器仅在分段 ondataavailable 中产出数据
+                recorder.onerror = function (ev) {
+                    console.error('[Voice] MediaRecorder error:', ev);
+                };
+                recorder.onstop = function () {
+                    handleVoiceRecorderStop();
+                };
+
                 recorder.start(500);
-                console.log('开始录音');
-                
+                console.log('[Voice] 开始录音, state=', recorder.state, 'mime=', voiceRecorderMime);
+
                 var pulseIcon = document.getElementById('voice-pulse-icon');
                 if (pulseIcon) pulseIcon.classList.add('recording-pulse');
-
-                // 开始计时
                 startVoiceTimer();
             } catch (error) {
-                console.error('开始录音失败:', error);
-                showToast('获取麦克风权限失败，请检查权限设置');
+                console.error('[Voice] 开始录音失败:', error);
+                tmVoiceNotify('获取麦克风权限失败，请检查权限设置', 'error');
+                stopAllVoiceTracks();
                 closeVoiceModal();
             }
         }
 
         // 停止录音
         async function stopVoiceRecording() {
+            if (voiceStopInProgress) {
+                console.log('[Voice] 已在停止处理中，忽略重复点击');
+                return;
+            }
             try {
                 if (!recorder || !recording) {
-                    showToast('请先点击「开始录音」');
-                    var ru = document.getElementById('voice-ready-ui');
-                    var au = document.getElementById('voice-active-ui');
-                    var pr = document.getElementById('voice-processing-ui');
-                    if (ru) ru.classList.remove('hidden');
-                    if (au) au.classList.add('hidden');
-                    if (pr) pr.classList.add('hidden');
+                    tmVoiceNotify('请先点击「开始录音」', 'error');
+                    resetVoiceUIAfterFailure();
+                    return;
+                }
+                if (recorder.state === 'inactive') {
+                    console.warn('[Voice] recorder 已为 inactive');
                     return;
                 }
 
-                document.getElementById('voice-active-ui').classList.add('hidden');
-                document.getElementById('voice-processing-ui').classList.remove('hidden');
-                var pulseStop = document.getElementById('voice-pulse-icon');
-                if (pulseStop) pulseStop.classList.remove('recording-pulse');
-
-                recording = false;
-                var rec = recorder;
-                var chunks = audioChunks;
+                voiceStopInProgress = true;
+                setVoiceStopButtonLoading(true);
+                showVoiceProcessingPanel();
+                console.log('[Voice] 用户点击停止, recorder.state=', recorder.state);
 
                 await new Promise(function (resolve, reject) {
-                    var done = false;
+                    voiceStopResolve = resolve;
+                    voiceStopReject = reject;
+                    var finished = false;
                     var t = setTimeout(function () {
-                        if (done) return;
-                        done = true;
+                        if (finished) return;
+                        finished = true;
+                        console.error('[Voice] 停止超时，未收到 onstop');
+                        stopAllVoiceTracks();
+                        voiceStopInProgress = false;
+                        setVoiceStopButtonLoading(false);
                         reject(new Error('录音停止超时'));
-                    }, 15000);
+                    }, 20000);
 
-                    rec.onstop = function () {
-                        if (done) return;
-                        done = true;
+                    var wrapResolve = function () {
+                        if (finished) return;
+                        finished = true;
                         clearTimeout(t);
-                        stopVoiceTimer();
-                        var mime = (rec.mimeType && String(rec.mimeType).length) ? rec.mimeType : 'audio/webm';
-                        var audioBlob = new Blob(chunks, { type: mime });
-                        Promise.resolve(processVoiceWithAIService(audioBlob)).then(resolve, reject);
+                        voiceStopInProgress = false;
+                        resolve();
                     };
-
-                    try {
-                        rec.stop();
-                    } catch (err) {
+                    var wrapReject = function (err) {
+                        if (finished) return;
+                        finished = true;
                         clearTimeout(t);
+                        voiceStopInProgress = false;
+                        setVoiceStopButtonLoading(false);
                         reject(err);
+                    };
+                    voiceStopResolve = wrapResolve;
+                    voiceStopReject = wrapReject;
+
+                    var rec = recorder;
+                    try {
+                        if (rec.state === 'recording' && typeof rec.requestData === 'function') {
+                            try {
+                                rec.requestData();
+                                console.log('[Voice] requestData 已调用');
+                            } catch (rdErr) {
+                                console.warn('[Voice] requestData 失败:', rdErr);
+                            }
+                        }
+                        console.log('[Voice] 调用 mediaRecorder.stop()');
+                        rec.stop();
+                        stopAllVoiceTracks();
+                        setTimeout(function () {
+                            if (!voiceOnstopHandled && audioChunks.length > 0) {
+                                console.warn('[Voice] onstop 未触发，使用 chunks 回退合成');
+                                handleVoiceRecorderStop();
+                            }
+                        }, 400);
+                    } catch (err) {
+                        wrapReject(err);
                     }
                 });
-
-                try {
-                    if (rec.stream) {
-                        rec.stream.getTracks().forEach(function (track) { track.stop(); });
-                    }
-                } catch (e) { /* ignore */ }
-                recorder = null;
-                audioChunks = [];
             } catch (error) {
-                console.error('停止录音失败:', error);
-                showToast('处理录音失败，请重试');
+                console.error('[Voice] 停止录音失败:', error);
+                tmVoiceNotify('处理录音失败，请重试', 'error');
+                voiceStopInProgress = false;
+                setVoiceStopButtonLoading(false);
                 closeVoiceModal();
             }
         }
@@ -2387,6 +2586,12 @@
         // 处理语音数据
         async function processVoiceWithAIService(audioBlob) {
             try {
+                console.log('[Voice] processVoiceWithAIService 开始, size=', audioBlob && audioBlob.size);
+                if (!audioBlob || audioBlob.size < VOICE_MIN_BLOB_BYTES) {
+                    tmVoiceNotify('录音时长过短或无效，请重试', 'error');
+                    resetVoiceUIAfterFailure();
+                    return;
+                }
                 // 确保 OSS 服务已初始化
                 if (!OSSService) {
                     await initOSSService();
@@ -2397,10 +2602,15 @@
                 
                 // 上传到 OSS
                 var ext = 'webm';
-                if (audioBlob && audioBlob.type && audioBlob.type.indexOf('wav') !== -1) ext = 'wav';
-                else if (audioBlob && audioBlob.type && audioBlob.type.indexOf('mpeg') !== -1) ext = 'mp3';
+                if (audioBlob && audioBlob.type) {
+                    if (audioBlob.type.indexOf('wav') !== -1) ext = 'wav';
+                    else if (audioBlob.type.indexOf('mpeg') !== -1 || audioBlob.type.indexOf('mp3') !== -1) ext = 'mp3';
+                    else if (audioBlob.type.indexOf('mp4') !== -1 || audioBlob.type.indexOf('aac') !== -1) ext = 'm4a';
+                }
                 const fileName = 'voice-' + Date.now() + '.' + ext;
+                console.log('[Voice] OSS 上传开始:', fileName);
                 const result = await OSSService.put(fileName, audioBlob);
+                console.log('[Voice] OSS 上传完成');
                 var audioUrl = (result && (result.url || (result.res && result.res.requestUrls && result.res.requestUrls[0]))) || '';
                 if (!audioUrl) {
                     throw new Error('上传成功但未获得音频访问地址，请检查 OSS 配置');
@@ -2412,7 +2622,7 @@
                 // 显示通知
                 showToast('已提交AI订单提取，正在识别中...');
                 
-                // 调用 AI 服务
+                console.log('[Voice] AI /execute 请求开始, url=', audioUrl);
                 const response = await window.wrappedFetch('/api/v1/ai/execute', {
                     method: 'POST',
                     headers: {
@@ -2441,13 +2651,15 @@
                 if (!execData) {
                     return;
                 }
+                console.log('[Voice] AI 受理成功');
                 schedulePendingOrdersRefresh(3, 2000);
                 if (typeof TM_refreshDashboardPendingOrders === 'function') {
                     TM_refreshDashboardPendingOrders();
                 }
             } catch (error) {
                 console.error('[AI-ORDER][VOICE] 处理语音失败:', error);
-                showToast('处理语音失败，请重试');
+                tmVoiceNotify('处理语音失败，请重试', 'error');
+                resetVoiceUIAfterFailure();
                 closeVoiceModal();
             }
         }
@@ -2827,6 +3039,7 @@
             stopVoiceRecording: stopVoiceRecording,
             closeVoiceModal: closeVoiceModal
         };
+        bindVoiceStopButton();
     </script>
 </body>
 </html>

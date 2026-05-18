@@ -2781,6 +2781,15 @@ window.syncUserContext = function() {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.TM_Legal) {
+        if (typeof window.TM_Legal.bindLegalLinks === 'function') {
+            window.TM_Legal.bindLegalLinks(document);
+        }
+        if (typeof window.TM_Legal.initRegisterCompliance === 'function') {
+            window.TM_Legal.initRegisterCompliance();
+        }
+    }
+
     const togglePassword = document.getElementById('togglePassword');
     const password = document.getElementById('password');
     
@@ -3006,6 +3015,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (registerForm) {
         registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            if (typeof window.tmRegisterTermsAccepted === 'function' && !window.tmRegisterTermsAccepted()) {
+                if (window.TM_Legal && typeof window.TM_Legal.toastTermsRequired === 'function') {
+                    window.TM_Legal.toastTermsRequired();
+                } else {
+                    showModal('请先阅读并同意相关协议', true);
+                }
+                return;
+            }
             
             const username = document.getElementById('regUsername').value;
             const email = document.getElementById('regEmail').value;
