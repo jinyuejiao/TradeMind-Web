@@ -345,13 +345,53 @@ textarea {
     line-height: 1.6;
 }
 
+.tm-compliance-footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0 1rem;
+}
+
 .tm-compliance-footer a {
     color: #64748b;
     text-decoration: none;
+    transition: color 0.2s;
 }
 
 .tm-compliance-footer a:hover {
-    color: #0d9488;
+    color: #14b8a6;
+}
+
+.tm-compliance-footer .tm-beian-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.tm-compliance-footer .tm-beian-link img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+    .tm-compliance-footer .tm-beian-link {
+        margin-left: 1rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .tm-compliance-footer-inner {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .tm-compliance-footer .tm-beian-link {
+        margin-left: 0;
+    }
 }
 
 /* 供应商管理（iframe 内无 #view-supplier）：横向排版 + 列宽 + 过长省略，对齐 UI/MobileAdapt/mobile.css */
