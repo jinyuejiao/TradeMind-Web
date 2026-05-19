@@ -1,0 +1,85 @@
+/**
+ * TradeMind Design Tokens — 核心层
+ * 品牌色同时提供 *-rgb（空格分隔）供 Tailwind `rgb(var(...) / <alpha-value>)` 使用。
+ */
+
+:root {
+    --tm-brand-50-rgb: 240 253 250;
+    --tm-brand-100-rgb: 204 251 241;
+    --tm-brand-500-rgb: 20 184 166;
+    --tm-brand-600-rgb: 13 148 136;
+    --tm-brand-900-rgb: 19 78 74;
+
+    --tm-brand-50: rgb(var(--tm-brand-50-rgb));
+    --tm-brand-100: rgb(var(--tm-brand-100-rgb));
+    --tm-brand-500: rgb(var(--tm-brand-500-rgb));
+    --tm-brand-600: rgb(var(--tm-brand-600-rgb));
+    --tm-brand-900: rgb(var(--tm-brand-900-rgb));
+
+    --tm-surface-page: #F1F5F9;
+    --tm-surface-card: #ffffff;
+    --tm-text-primary: #334155;
+    --tm-brand-dark-surface: #0F172A;
+
+    --tm-risk-high-rgb: 244 63 94;
+    --tm-risk-medium-rgb: 245 158 11;
+    --tm-risk-safe-rgb: 16 185 129;
+    --tm-risk-high: rgb(var(--tm-risk-high-rgb));
+    --tm-risk-medium: rgb(var(--tm-risk-medium-rgb));
+    --tm-risk-safe: rgb(var(--tm-risk-safe-rgb));
+
+    --tm-radius-xl: 12px;
+    --tm-radius-2xl: 1rem;
+    --tm-radius-3xl: 2.5rem;
+    --tm-radius-modal: 3rem;
+    --tm-radius-pill: 9999px;
+
+    --tm-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --tm-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --tm-shadow-brand: 0 4px 10px rgba(20, 184, 166, 0.2);
+    --tm-shadow-brand-lg: 0 10px 25px rgba(20, 184, 166, 0.18);
+
+    /* md 断点（px）；移动端 CSS 使用 max-width: 767px，须与 TM_Responsive.js 一致 */
+    --tm-breakpoint-md: 768px;
+
+    --brand-primary: var(--tm-brand-500);
+    --brand-dark: var(--tm-brand-dark-surface);
+    --slate-bg: var(--tm-surface-page);
+    --text-main: var(--tm-text-primary);
+    --risk-high: var(--tm-risk-high);
+}
+
+[data-merchant-type="WHOLESALE"] {
+    --tm-brand-50-rgb: 240 253 250;
+    --tm-brand-100-rgb: 204 251 241;
+    --tm-brand-500-rgb: 20 184 166;
+    --tm-brand-600-rgb: 13 148 136;
+    --tm-brand-900-rgb: 19 78 74;
+    --tm-shadow-brand: 0 4px 10px rgba(20, 184, 166, 0.2);
+}
+
+[data-merchant-type="FOREIGN"] {
+    --tm-brand-50-rgb: 236 253 245;
+    --tm-brand-100-rgb: 209 250 229;
+    --tm-brand-500-rgb: 15 118 110;
+    --tm-brand-600-rgb: 17 94 89;
+    --tm-brand-900-rgb: 4 47 46;
+    --tm-shadow-brand: 0 4px 12px rgba(17, 94, 89, 0.25);
+}
+
+[data-merchant-type="ECOM"] {
+    --tm-brand-50-rgb: 240 253 250;
+    --tm-brand-100-rgb: 204 251 241;
+    --tm-brand-500-rgb: 45 212 191;
+    --tm-brand-600-rgb: 20 184 166;
+    --tm-brand-900-rgb: 19 78 74;
+    --tm-shadow-brand: 0 4px 14px rgba(45, 212, 191, 0.35);
+}
+
+[data-merchant-type="FACTORY"] {
+    --tm-brand-50-rgb: 230 255 250;
+    --tm-brand-100-rgb: 178 245 234;
+    --tm-brand-500-rgb: 13 148 136;
+    --tm-brand-600-rgb: 15 118 110;
+    --tm-brand-900-rgb: 2 44 34;
+}

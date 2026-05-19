@@ -21,14 +21,17 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/assets/js/auth.js?v=20260608referral"></script>
+    <script src="/assets/js/auth.js?v=20260619mobile"></script>
     <script src="/modules/membership/referral-rewards.js?v=20260608d"></script>
     <script src="/assets/js/main-app.js"></script>
     <script src="/MobileAdapt/TM_Responsive.js"></script>
     <script src="/assets/js/ui-components.js"></script>
     <script src="/assets/js/tm-ui-loader.js"></script>
-    <script src="/assets/js/ui-main.js?v=20260606r1"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260508r7"></script>
+    <script src="/assets/js/ui-main.js?v=20260620pc"></script>
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260620pc">
+    <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260621wb">
+    <script src="/assets/js/ui-product-center.js?v=20260620pc"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260620pc"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
 
@@ -109,17 +112,19 @@
                                 <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励。</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 w-full md:w-auto">
-                            <div class="bg-white/70 backdrop-blur-sm px-5 py-2 rounded-xl border border-amber-300 text-center flex-1 md:flex-none">
+                        <div class="flex flex-col gap-3 w-full md:flex-row md:items-stretch md:w-auto">
+                            <div class="bg-white/70 backdrop-blur-sm px-5 py-3 rounded-xl border border-amber-300 text-center w-full md:flex-none md:min-w-[140px]">
                                 <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>
                                 <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">—</p>
                             </div>
-                            <button type="button" onclick="openReferralListModal()" class="px-4 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-2">
-                                <i class="ph ph-users-three text-lg"></i> 推荐名单
-                            </button>
-                            <button type="button" onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">
-                                <i class="ph ph-image-square-bold text-lg"></i> 生成海报
-                            </button>
+                            <div class="grid grid-cols-2 gap-2 w-full md:flex md:gap-3">
+                                <button type="button" onclick="openReferralListModal()" class="w-full px-3 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                    <i class="ph ph-users-three text-base shrink-0"></i><span>推荐名单</span>
+                                </button>
+                                <button type="button" onclick="showPoster()" class="w-full px-3 py-3 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-1.5 hover:bg-amber-700 active:scale-95 transition-all whitespace-nowrap">
+                                    <i class="ph ph-image-square-bold text-base shrink-0"></i><span>生成海报</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -130,12 +135,12 @@
     </div>
 
     <!-- ================= [2. 品牌推荐海报弹窗] ================= -->
-    <div id="poster-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden p-4">
+    <div id="poster-modal" class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center hidden p-0 sm:p-4">
         <!-- 遮罩 -->
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePoster()"></div>
 
         <!-- 弹窗主体 (已移除左侧，仅保留推荐页，宽度调整为 max-w-lg) -->
-        <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-[460px] overflow-hidden relative z-10 animate-in fade-in zoom-in duration-300">
+        <div class="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-[460px] max-h-[92dvh] flex flex-col overflow-hidden relative z-10">
 
             <!-- 关闭按钮 -->
             <button onclick="closePoster()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 z-20 transition-colors">
@@ -143,7 +148,7 @@
             </button>
 
             <!-- 推荐海报区域 -->
-            <div class="w-full bg-white p-6 md:p-8 flex flex-col items-center">
+            <div class="flex-1 overflow-y-auto min-h-0 w-full bg-white p-4 sm:p-6 flex flex-col items-center">
                 <div class="text-center mb-6">
                     <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">专属推荐海报</h3>
                     <p class="text-xs text-slate-500 mt-1">分享您的专属名片，邀好友加入</p>
@@ -152,7 +157,7 @@
                 <!-- 海报快照区域 (html2canvas 将截取此处) -->
                 <div id="poster-capture-area" class="w-full p-2 bg-white rounded-[2.8rem] shadow-xl">
                     <!-- 海报主体：内联样式确保渐变生效 -->
-                    <div class="w-full aspect-[3/4.2] rounded-[2.2rem] p-8 flex flex-col relative overflow-hidden text-white"
+                    <div class="w-full max-h-[42dvh] sm:max-h-[48dvh] aspect-[3/4] rounded-[2.2rem] p-6 sm:p-8 flex flex-col relative overflow-hidden text-white"
                          style="background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);">
 
                         <!-- 装饰光晕 -->
@@ -201,17 +206,15 @@
                     </div>
                 </div>
 
-                <div class="mt-6 text-center">
-                    <p class="text-[11px] text-slate-400 leading-relaxed">
-                        扫码或访问 <a id="poster-landing-link" href="https://trademind.com.cn/register.html" target="_blank" rel="noopener" class="text-teal-600 font-bold underline">trademind.com.cn</a> 注册商贸智脑
-                    </p>
-
-                    <!-- 生成并保存海报按钮 -->
-                    <button onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">
-                        <i class="ph ph-download-simple-bold text-lg group-hover:translate-y-0.5 transition-transform"></i>
-                        保存高清海报到相册
-                    </button>
-                </div>
+                <p class="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">
+                    扫码或访问 <a id="poster-landing-link" href="https://trademind.com.cn/register.html" target="_blank" rel="noopener" class="text-teal-600 font-bold underline">trademind.com.cn</a> 注册商贸智脑
+                </p>
+            </div>
+            <div class="shrink-0 border-t border-slate-100 bg-white p-4 pb-safe text-center">
+                <button type="button" onclick="downloadPoster()" class="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-teal-600 text-white text-sm font-black py-3.5 rounded-2xl hover:bg-teal-700 transition-colors shadow-lg">
+                    <i class="ph ph-download-simple-bold text-lg"></i>
+                    保存海报到相册
+                </button>
             </div>
         </div>
     </div>
@@ -782,109 +785,7 @@
                 </div>
             </div>
 
-            <!-- [沉浸式弹窗] 产品详情编辑 (核心配置) -->
-            <div id="product-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeProductDetail()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-full max-h-[92vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-                    <!-- 弹窗页眉 -->
-                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg"><i class="ph ph-pencil-line text-xl"></i></div>
-                            <div><h2 class="text-sm font-black text-slate-800" id="detail-title">产品详情编辑</h2><p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5" id="detail-sku">SKU: ---</p></div>
-                        </div>
-                        <button onclick="closeProductDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
-                    </div>
-
-                    <!-- 详情内容区 -->
-                    <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
-                        <!-- 1. 核心经营信息 -->
-                        <section>
-                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心经营信息</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" value="东北大板 (原味经典)" class="form-input"></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" value="DB-ICE-001" class="form-input font-mono"></div>
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" value="1.50" class="form-input font-mono font-bold text-brand-600"></div>
-
-                                <!-- 单位角色配置组 -->
-                                <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">基本单位 (结算底数)</label>
-                                    <div class="flex gap-2">
-                                        <input type="text" value="根" class="form-input flex-1" placeholder="如：根">
-                                        <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100 transition-colors whitespace-nowrap">配置单位换算</button>
-                                    </div>
-                                </div>
-
-                                <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">默认入库单位 (采购)</label>
-                                    <select class="form-input font-bold"><option>箱 (1箱=200根)</option><option>包 (1包=10根)</option><option>根 (基本单位)</option></select>
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">默认销售单位 (出库)</label>
-                                    <select class="form-input font-bold text-brand-600"><option>包 (1包=10根)</option><option>根 (基本单位)</option><option>箱 (1箱=200根)</option></select>
-                                </div>
-
-                                <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">当前库存总量 (基本单位)</label><input type="number" value="1200" class="form-input font-mono"></div>
-
-                                <div class="space-y-2 col-span-full">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">关联主供应商</label>
-                                    <select class="form-input font-bold text-slate-700">
-                                        <option>哈尔滨红运冷链贸易中心 (Rating: A)</option>
-                                        <option>大连大发制冷厂</option>
-                                        <option>广东恒温物流服务公司</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- 2. 高级隐藏项 (抽屉式) -->
-                        <section class="pt-6 border-t border-slate-50">
-                            <button onclick="toggleAdvanced()" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
-                                <span>展开高级配置与描述信息</span><i id="advanced-icon" class="ph ph-caret-down group-hover:translate-y-0.5 transition-transform"></i>
-                            </button>
-                            <div id="advanced-drawer" class="advanced-drawer hidden">
-                                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存下限</label><input type="number" value="100" class="form-input border-red-100"></div>
-                                    <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">主销区域</label><input type="text" value="华北/华东" class="form-input"></div>
-                                    <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea class="form-input h-24 no-scrollbar">经典原味，特级奶油，-18度冷链保存。2026 年新包装版。</textarea></div>
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-
-                    <!-- 弹窗底部操作区 -->
-                    <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-                        <p class="text-[10px] text-slate-400 italic">保存后将自动更新单据提取与库存算力逻辑</p>
-                        <div class="flex gap-3 w-full md:w-auto">
-                            <button onclick="closeProductDetail()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
-                            <button onclick="saveProduct()" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95 flex items-center justify-center gap-2">
-                                <i class="ph ph-floppy-disk-back"></i> 保存修改内容
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [二级弹窗] 单位换算配置（与产品中心一致，由 ProductModule 渲染行） -->
-            <div id="unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeUnitModal()"></div>
-                <div class="relative bg-white w-full max-w-md rounded-2xl p-5 md:p-6 shadow-2xl fade-in text-left">
-                    <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2 text-[15px]"><i class="ph ph-scales text-brand-500 text-lg"></i> 单位换算配置</h3>
-                    <div class="flex gap-2 items-start mb-3">
-                        <p class="text-[10px] text-slate-400 leading-snug flex-1 min-w-0">最多配置 2 个包装单位；1 包装单位 = 折合基本数量（基本单位见编辑表单）。</p>
-                        <div class="flex items-center gap-0.5 shrink-0 pt-0.5">
-                            <button type="button" onclick="window.ProductModule.addUnitConversionRow()" title="添加一行" aria-label="添加一行" class="unit-modal-add-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors disabled:opacity-35 disabled:pointer-events-none">
-                                <i class="ph-bold ph-plus text-lg"></i>
-                            </button>
-                            <button type="button" onclick="window.ProductModule.removeUnitConversionRow()" title="删除末行" aria-label="删除末行" class="unit-modal-remove-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-risk-high transition-colors disabled:opacity-35 disabled:pointer-events-none">
-                                <i class="ph-bold ph-trash text-base"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="tm-unit-conversion-rows space-y-3"></div>
-                    <button type="button" onclick="window.ProductModule.saveUnitConversionModal()" class="w-full mt-4 bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold shadow-lg active:scale-[0.98] transition-transform">保存单位配置</button>
-                    <button type="button" onclick="closeUnitModal()" class="w-full mt-2 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
-                </div>
-            </div>
+            <!-- 产品编辑/单位换算/调拨弹窗由 TM_syncProductCenterOverlays 注入 body -->
 
             <!-- ================= [5] 供应商管理 ================= -->
             <div id="view-supplier" class="view-section hidden w-full p-4 md:p-8 space-y-6 fade-in">

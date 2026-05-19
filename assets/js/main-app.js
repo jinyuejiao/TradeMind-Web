@@ -132,6 +132,10 @@
          * @param {string} message - 消息内容
          * @param {string} type - 消息类型 (success|error|info|warning)
          */
+        toast: function(message, type) {
+            window.TM_UI.showNotification(message, type || 'warning');
+        },
+
         showNotification: function(message, type = 'success') {
             console.log('[TM_UI] 显示通知:', message, type);
             

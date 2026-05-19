@@ -9,6 +9,7 @@
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260621wb">
 
     <style>
         body {
@@ -403,9 +404,9 @@
     </main>
 
     <!-- AI 单据核对中心 (订单/产品/客户) -->
-    <div id="audit-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+    <div id="audit-modal" class="tm-audit-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuditModal()"></div>
-        <div class="relative bg-white w-full max-w-5xl h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+        <div class="relative bg-white w-full max-w-5xl max-h-[94vh] md:max-h-[95vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box tm-audit-panel min-h-0">
 
             <!-- 页眉 -->
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -427,36 +428,45 @@
             <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
 
                 <!-- 1. 订单详情 Tab 页 -->
-                <div id="pane-order" class="sub-pane space-y-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">客户名称</label>
-                            <select id="order-customer" onchange="handleAuditCustomerSelectChange(this)" class="form-input font-bold text-slate-800">
+                <div id="pane-order" class="sub-pane space-y-5 md:space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        <div class="tm-audit-field">
+                            <label class="tm-audit-label" for="order-customer">客户名称</label>
+                            <select id="order-customer" onchange="handleAuditCustomerSelectChange(this)" class="form-input tm-audit-input font-bold text-slate-800">
                                 <option value="">-- 请选择客户 --</option>
                             </select>
                         </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">预计交货日期</label>
-                            <input type="date" id="order-delivery-date" class="form-input">
+                        <div class="tm-audit-field">
+                            <label class="tm-audit-label" for="order-delivery-date">预计交货日期</label>
+                            <input type="date" id="order-delivery-date" class="form-input tm-audit-input tm-audit-date-input">
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
-                        <table class="w-full text-left text-xs" id="order-items-table">
-                            <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
-                                <tr><th class="px-5 py-4">产品名称</th><th class="px-5 py-4 text-center">数量</th><th class="px-5 py-4 text-right">单价</th><th class="px-5 py-4 text-right">小计</th></tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100" id="order-items-body">
-                                <!-- 产品明细将通过JavaScript动态生成 -->
-                            </tbody>
-                        </table>
+                    <div>
+                        <div class="flex justify-between items-center gap-2 mb-2">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">产品明细</p>
+                            <button type="button" onclick="auditFormAddLine()" class="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 shrink-0"><i class="ph ph-plus-circle"></i> 新增行</button>
+                        </div>
+                        <p class="tm-audit-lines-scroll-hint md:hidden flex items-center gap-1 mb-2"><i class="ph ph-arrows-horizontal"></i> 左右滑动查看完整列</p>
+                        <div class="tm-audit-lines-wrap">
+                            <table class="tm-audit-lines-table text-left text-xs" id="order-items-table">
+                                <thead>
+                                    <tr>
+                                        <th class="tm-audit-th tm-audit-th--product">产品名称</th>
+                                        <th class="tm-audit-th tm-audit-th--qty">数量</th>
+                                        <th class="tm-audit-th tm-audit-th--price">单价</th>
+                                        <th class="tm-audit-th tm-audit-th--sub">小计</th>
+                                        <th class="tm-audit-th tm-audit-th--action" aria-label="操作"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="order-items-body"></tbody>
+                            </table>
+                        </div>
                     </div>
-                    
-                    <!-- 订单总计 -->
-                    <div class="flex justify-between items-center p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden">
-                        <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计 (Total Amount)</p>
-                        <p class="text-2xl font-mono font-black text-brand-500" id="order-total-amount">$0.00</p>
+
+                    <div class="tm-audit-total-block flex justify-between items-center p-5 md:p-6 rounded-2xl text-white shadow-xl">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计</p>
+                        <p class="text-2xl font-mono font-black text-brand-400" id="order-total-amount">0.00</p>
                     </div>
                 </div>
 
@@ -548,7 +558,8 @@
             </div>
 
             <!-- 弹窗底部操作 -->
-            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+            <div class="tm-audit-footer p-4 md:p-6 border-t border-slate-100 bg-white shrink-0">
+                <div class="tm-audit-footer-actions">
                 <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
                 <div class="flex gap-3 w-full md:w-auto">
                     <div id="audit-footer-order-actions" class="contents">
@@ -557,12 +568,13 @@
                     </div>
                     <div id="audit-footer-product-actions" class="hidden contents">
                         <button onclick="skipNewProduct()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
-                        <button onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建产品信息</button>
+                        <button onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">打开产品编辑并保存</button>
                     </div>
                     <div id="audit-footer-customer-actions" class="hidden contents">
                         <button onclick="skipNewCustomer()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增客户</button>
                         <button onclick="saveNewCustomer()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建客户信息</button>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -609,11 +621,12 @@
 
             <!-- 核心修复：AI 处理加载态容器 -->
             <div id="voice-processing-ui" class="hidden py-10">
-                <div class="w-14 h-14 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-8"></div>
-                <p class="text-sm font-bold text-brand-600 tracking-widest uppercase">AI 智脑解析中...</p>
+                <div class="w-14 h-14 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <p class="text-sm font-bold text-brand-600 tracking-widest uppercase mb-2">AI 智脑解析中...</p>
+                <p id="voice-processing-status" class="text-[11px] text-slate-500">正在结束录音…</p>
             </div>
 
-            <button onclick="closeVoiceModal()" class="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">取消</button>
+            <button type="button" onclick="closeVoiceModal()" class="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">取消</button>
         </div>
     </div>
 
@@ -818,7 +831,14 @@
         let voiceStopResolve = null;
         let voiceStopReject = null;
         let voiceOnstopHandled = false;
+        let voiceAbortController = null;
+        let voiceUploadInFlight = false;
         const VOICE_MIN_BLOB_BYTES = 1000;
+
+        function setVoiceProcessingText(text) {
+            var el = document.getElementById('voice-processing-status');
+            if (el) el.textContent = text || '';
+        }
 
         function tmVoiceNotify(msg, type) {
             if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
@@ -832,13 +852,10 @@
             if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
                 return '';
             }
-            var candidates = [
-                'audio/webm;codecs=opus',
-                'audio/webm',
-                'audio/mp4',
-                'audio/aac',
-                'audio/mpeg'
-            ];
+            var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+            var candidates = isIos
+                ? ['audio/mp4', 'audio/aac', 'audio/webm;codecs=opus', 'audio/webm', 'audio/mpeg']
+                : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/mpeg'];
             for (var i = 0; i < candidates.length; i++) {
                 if (MediaRecorder.isTypeSupported(candidates[i])) {
                     console.log('[Voice] 选用 MIME:', candidates[i]);
@@ -880,13 +897,14 @@
             }
         }
 
-        function showVoiceProcessingPanel() {
+        function showVoiceProcessingPanel(statusText) {
             var active = document.getElementById('voice-active-ui');
             var proc = document.getElementById('voice-processing-ui');
             if (active) active.classList.add('hidden');
             if (proc) proc.classList.remove('hidden');
             var pulseStop = document.getElementById('voice-pulse-icon');
             if (pulseStop) pulseStop.classList.remove('recording-pulse');
+            setVoiceProcessingText(statusText || '正在结束录音…');
         }
 
         function resetVoiceUIAfterFailure() {
@@ -910,15 +928,7 @@
                 stopVoiceRecording();
             };
             btn.addEventListener('click', fireStop);
-            var usePointer = window.TM_Responsive && typeof window.TM_Responsive.isMobile === 'function' && window.TM_Responsive.isMobile();
-            if (usePointer) {
-                btn.addEventListener('pointerdown', function (e) {
-                    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
-                        fireStop(e);
-                    }
-                }, { passive: false });
-            }
-            console.log('[Voice] 停止按钮已绑定', usePointer ? '(mobile pointer)' : '(click)');
+            console.log('[Voice] 停止按钮已绑定 (click)');
         }
 
         // 初始化 OSS 服务
@@ -973,10 +983,7 @@
         async function initDashboardDataOnce() {
             if (__TM_DASHBOARD_INIT_DONE) return;
             __TM_DASHBOARD_INIT_DONE = true;
-            // 初始化公共 UI 组件
-            if (window.initCommonUI) {
-                window.initCommonUI();
-            }
+            // 主壳 index-app 已提供顶栏/底栏，禁止在内联工作台再次 initCommonUI（避免双层底栏）
             // 初始化 OSS 服务
             await initOSSService();
             // 加载待确认单据
@@ -1007,6 +1014,7 @@
             aiEnvelope: null,
             aiStructured: null
         };
+        window.auditState = auditState;
         let pendingRecordsCache = [];
         let customerLookupByName = {};
         let customerLookupById = {};
@@ -1685,7 +1693,7 @@
                     customerSelect.value = '';
                 }
             }
-            setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || '');
+            setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || getTodayDateInput());
 
             // 预填新增客户tab
             const firstNewCustomer = newCustomers[0] || {};
@@ -1931,95 +1939,59 @@
             }
         }
 
-        // 保存新产品信息
+        // 保存新产品：复用产品中心编辑弹窗（ProductModule + enhance）
         async function saveNewProduct() {
-            const name = (document.getElementById('product-name').value || '').trim();
-            const sku = (document.getElementById('product-sku').value || '').trim();
-            const price = Number(document.getElementById('product-price').value || 0);
-            const baseUnit = (document.getElementById('product-base-unit').value || '').trim();
-            const warningStock = parseInt(document.getElementById('product-warning-stock').value || '0', 10);
-            const categoryRaw = document.getElementById('product-category') ? document.getElementById('product-category').value : '';
-            const categoryId = /^\d+$/.test(String(categoryRaw || '').trim()) ? Number(categoryRaw) : null;
-
-            if (!name) {
-                alert('请输入产品名称');
+            if (!window.ProductModule || typeof window.ProductModule.openCreateProductModal !== 'function') {
+                showToast('产品中心模块未加载，请刷新后重试');
                 return;
             }
-            if (!sku) {
-                alert('请输入SKU编码');
-                return;
+            if (typeof TM_syncProductCenterOverlays === 'function') {
+                await TM_syncProductCenterOverlays();
             }
+            const firstNewProduct = (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found))
+                ? auditState.aiStructured.new_products_found[0] : {};
+            const name = (document.getElementById('product-name') && document.getElementById('product-name').value || firstNewProduct.name || '').trim();
+            const sku = (document.getElementById('product-sku') && document.getElementById('product-sku').value || firstNewProduct.sku || '').trim();
+            const baseUnit = (document.getElementById('product-base-unit') && document.getElementById('product-base-unit').value || '件').trim();
 
-            const productData = {
-                product: {
-                    name: name,
-                    sku: sku,
-                    price: Number.isFinite(price) ? price : 0,
-                    stock: Number.isFinite(warningStock) ? warningStock : 0,
-                    baseUnit: baseUnit || null,
-                    categoryId: categoryId,
-                    warningStock: Number.isFinite(warningStock) ? warningStock : 0,
-                    description: document.getElementById('product-description').value
-                },
-                unitConversions: []
+            window.ProductModule.auditSaveCallback = async function (saved, productPayload) {
+                const productId = saved && (saved.productId || saved.product_id || saved.id);
+                const productName = (productPayload && productPayload.name) || (saved && saved.name) || name;
+                const productSku = (productPayload && productPayload.sku) || (saved && saved.sku) || sku;
+                if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items) && productId) {
+                    auditState.aiStructured.order_data.items.forEach(function (item) {
+                        if (!item.matched_product_id || Number(item.matched_product_id) === 0) {
+                            item.matched_product_id = Number(productId);
+                            item.matched_product_name = productName;
+                            item.product_name_raw = productName;
+                            if (productSku) item.sku = productSku;
+                        }
+                    });
+                }
+                if (window.productList) {
+                    window.productList.unshift({
+                        productId: Number(productId),
+                        name: productName,
+                        sku: productSku
+                    });
+                }
+                auditState.aiStructured.new_products_found = [];
+                await persistAuditResult();
+                var pane = document.getElementById('confirm-product-tab');
+                if (pane) pane.classList.add('hidden');
+                var tabBtn = document.getElementById('tab-product');
+                if (tabBtn) tabBtn.style.display = 'none';
+                switchAuditTab('order');
+                generateProductSelects();
+                showToast('新增产品成功，已关联到待确认单据');
+                window.ProductModule.auditSaveCallback = null;
             };
 
-            try {
-                const response = await window.wrappedFetch('/api/v1/rd/products/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(productData)
-                });
-                const raw = await response.text();
-                const result = safeJsonParse(raw) || {};
-                const ok = response.ok && (result.success !== false);
-                if (ok) {
-                    const payload = result && result.data ? result.data : result;
-                    const productId = payload && (payload.productId || payload.product_id || payload.id) ? (payload.productId || payload.product_id || payload.id) : null;
-                    const productName = payload && (payload.name || payload.productName) ? (payload.name || payload.productName) : name;
-                    const productSku = payload && payload.sku ? payload.sku : sku;
-                    if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items) && productId) {
-                        auditState.aiStructured.order_data.items.forEach(item => {
-                            if (!item.matched_product_id || Number(item.matched_product_id) === 0) {
-                                item.matched_product_id = Number(productId);
-                                item.matched_product_name = productName;
-                                item.product_name_raw = productName;
-                                if (productSku) item.sku = productSku;
-                            }
-                        });
-                    }
-                    if (window.productList) {
-                        window.productList.unshift({
-                            productId: Number(productId),
-                            name: productName,
-                            sku: productSku
-                        });
-                    }
-                    auditState.aiStructured.new_products_found = [];
-                    await persistAuditResult();
-                    document.getElementById('confirm-product-tab').classList.add('hidden');
-                    const tabBtn = document.getElementById('tab-product');
-                    if (tabBtn) tabBtn.style.display = 'none';
-                    switchAuditTab('order');
-                    generateProductSelects();
-                    showToast('新增产品成功，已关联到待确认单据');
-                } else {
-                    const message = (result && (result.message || result.msg || result.error)) || ('HTTP ' + response.status);
-                    alert('产品创建失败: ' + message);
-                }
-            } catch (error) {
-                console.error('保存产品失败:', error);
-                // 检查是否为 401 错误
-                if (error.status === 401 && !loginExpiredShown) {
-                    loginExpiredShown = true;
-                    // 引导至登录页
-                    window.location.href = '../../login.html';
-                } else {
-                    alert('保存产品失败，请重试');
-                }
-            }
+            await window.ProductModule.openCreateProductModal({
+                name: name,
+                sku: sku,
+                baseUnit: baseUnit
+            });
         }
 
         // 跳过新产品创建
@@ -2343,6 +2315,11 @@
 
         // 关闭语音模态框
         function closeVoiceModal() {
+            if (voiceAbortController) {
+                try { voiceAbortController.abort(); } catch (abortErr) { /* ignore */ }
+                voiceAbortController = null;
+            }
+            voiceUploadInFlight = false;
             document.getElementById('voice-modal').classList.add('hidden');
             var ready = document.getElementById('voice-ready-ui');
             var active = document.getElementById('voice-active-ui');
@@ -2490,7 +2467,7 @@
 
                 voiceStopInProgress = true;
                 setVoiceStopButtonLoading(true);
-                showVoiceProcessingPanel();
+                showVoiceProcessingPanel('正在结束录音…');
                 console.log('[Voice] 用户点击停止, recorder.state=', recorder.state);
 
                 await new Promise(function (resolve, reject) {
@@ -2505,7 +2482,7 @@
                         voiceStopInProgress = false;
                         setVoiceStopButtonLoading(false);
                         reject(new Error('录音停止超时'));
-                    }, 20000);
+                    }, 12000);
 
                     var wrapResolve = function () {
                         if (finished) return;
@@ -2537,7 +2514,6 @@
                         }
                         console.log('[Voice] 调用 mediaRecorder.stop()');
                         rec.stop();
-                        stopAllVoiceTracks();
                         setTimeout(function () {
                             if (!voiceOnstopHandled && audioChunks.length > 0) {
                                 console.warn('[Voice] onstop 未触发，使用 chunks 回退合成');
@@ -2585,6 +2561,9 @@
 
         // 处理语音数据
         async function processVoiceWithAIService(audioBlob) {
+            if (voiceUploadInFlight) return;
+            voiceUploadInFlight = true;
+            voiceAbortController = new AbortController();
             try {
                 console.log('[Voice] processVoiceWithAIService 开始, size=', audioBlob && audioBlob.size);
                 if (!audioBlob || audioBlob.size < VOICE_MIN_BLOB_BYTES) {
@@ -2592,6 +2571,7 @@
                     resetVoiceUIAfterFailure();
                     return;
                 }
+                setVoiceProcessingText('正在上传音频…');
                 // 确保 OSS 服务已初始化
                 if (!OSSService) {
                     await initOSSService();
@@ -2616,18 +2596,14 @@
                     throw new Error('上传成功但未获得音频访问地址，请检查 OSS 配置');
                 }
                 
-                // 隐藏模态框
-                closeVoiceModal();
-                
-                // 显示通知
-                showToast('已提交AI订单提取，正在识别中...');
-                
+                setVoiceProcessingText('正在提交 AI 解析…');
                 console.log('[Voice] AI /execute 请求开始, url=', audioUrl);
                 const response = await window.wrappedFetch('/api/v1/ai/execute', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
+                    signal: voiceAbortController.signal,
                     body: JSON.stringify({
                         taskType: 'ORDER_EXTRACT',
                         inputType: 'VOICE',
@@ -2652,15 +2628,27 @@
                     return;
                 }
                 console.log('[Voice] AI 受理成功');
-                schedulePendingOrdersRefresh(3, 2000);
-                if (typeof TM_refreshDashboardPendingOrders === 'function') {
-                    TM_refreshDashboardPendingOrders();
+                closeVoiceModal();
+                showToast('已提交AI订单提取，正在识别中...');
+                if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.scheduleAfterSubmit === 'function') {
+                    window.TM_PendingOrdersStore.scheduleAfterSubmit();
+                } else {
+                    schedulePendingOrdersRefresh(3, 2000);
+                    if (typeof TM_refreshDashboardPendingOrders === 'function') {
+                        TM_refreshDashboardPendingOrders();
+                    }
                 }
             } catch (error) {
                 console.error('[AI-ORDER][VOICE] 处理语音失败:', error);
-                tmVoiceNotify('处理语音失败，请重试', 'error');
+                if (error && error.name === 'AbortError') {
+                    tmVoiceNotify('已取消语音提交', 'info');
+                } else {
+                    tmVoiceNotify('处理语音失败，请重试', 'error');
+                }
                 resetVoiceUIAfterFailure();
-                closeVoiceModal();
+            } finally {
+                voiceUploadInFlight = false;
+                voiceAbortController = null;
             }
         }
 
@@ -2929,9 +2917,13 @@
                 if (!execImg) {
                     return;
                 }
-                schedulePendingOrdersRefresh(3, 2000);
-                if (typeof TM_refreshDashboardPendingOrders === 'function') {
-                    TM_refreshDashboardPendingOrders();
+                if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.scheduleAfterSubmit === 'function') {
+                    window.TM_PendingOrdersStore.scheduleAfterSubmit();
+                } else {
+                    schedulePendingOrdersRefresh(3, 2000);
+                    if (typeof TM_refreshDashboardPendingOrders === 'function') {
+                        TM_refreshDashboardPendingOrders();
+                    }
                 }
             } catch (error) {
                 console.error('[AI-ORDER][IMAGE] 处理图片失败:', error);
@@ -2996,9 +2988,13 @@
                     return;
                 }
                 showToast('文本已提交，正在识别中...');
-                schedulePendingOrdersRefresh(3, 2000);
-                if (typeof TM_refreshDashboardPendingOrders === 'function') {
-                    TM_refreshDashboardPendingOrders();
+                if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.scheduleAfterSubmit === 'function') {
+                    window.TM_PendingOrdersStore.scheduleAfterSubmit();
+                } else {
+                    schedulePendingOrdersRefresh(3, 2000);
+                    if (typeof TM_refreshDashboardPendingOrders === 'function') {
+                        TM_refreshDashboardPendingOrders();
+                    }
                 }
             } catch (error) {
                 console.error('[AI-ORDER][TEXT] 处理文本失败:', error);
@@ -3040,7 +3036,18 @@
             closeVoiceModal: closeVoiceModal
         };
         bindVoiceStopButton();
+
+        window.parseAiEnvelope = parseAiEnvelope;
+        window.getStructuredCustomerName = getStructuredCustomerName;
+        window.hasNewCustomers = hasNewCustomers;
+        window.hasNewProducts = hasNewProducts;
+        window.getProductId = getProductId;
+        window.getProductName = getProductName;
+        window.getProductSku = getProductSku;
+        window.getTodayDateInput = getTodayDateInput;
+        window.persistAuditResult = persistAuditResult;
     </script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260621wb"></script>
 </body>
 </html>
 

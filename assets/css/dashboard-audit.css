@@ -1,0 +1,234 @@
+/* 工作台 · 待确认单据核对弹窗（对齐 UI 工程） */
+@media (max-width: 767px) {
+    .tm-audit-modal {
+        align-items: flex-end;
+    }
+
+    .tm-audit-panel {
+        max-height: 94vh;
+        border-radius: 1rem 1rem 0 0 !important;
+    }
+}
+
+.tm-audit-modal {
+    align-items: flex-end;
+}
+
+@media (min-width: 768px) {
+    .tm-audit-modal {
+        align-items: center;
+    }
+}
+
+.tm-audit-label {
+    display: block;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.35rem;
+    margin-left: 0.15rem;
+}
+
+.tm-audit-input {
+    width: 100%;
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+}
+
+.tm-audit-date-input {
+    display: block;
+    width: 100%;
+    min-height: 2.75rem;
+    line-height: 1.25;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.tm-audit-field {
+    min-width: 0;
+}
+
+.tm-audit-lines-scroll-hint {
+    font-size: 0.625rem;
+    color: #94a3b8;
+}
+
+.tm-audit-lines-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+}
+
+.tm-audit-lines-table {
+    width: max-content;
+    min-width: 40rem;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.tm-audit-th {
+    padding: 0.55rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 800;
+    color: #64748b;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.tm-audit-td {
+    padding: 0.45rem 0.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+}
+
+.tm-audit-th--product,
+.tm-audit-td--product {
+    width: 14rem;
+    min-width: 14rem;
+    text-align: left;
+}
+
+.tm-audit-th--qty,
+.tm-audit-td--qty {
+    width: 4.5rem;
+    min-width: 4.5rem;
+    text-align: center;
+}
+
+.tm-audit-th--price,
+.tm-audit-td--price {
+    width: 5.5rem;
+    min-width: 5.5rem;
+    text-align: center;
+}
+
+.tm-audit-th--sub,
+.tm-audit-td--sub {
+    width: 5.5rem;
+    min-width: 5.5rem;
+    text-align: right;
+}
+
+.tm-audit-th--action,
+.tm-audit-td--action {
+    width: 3.25rem;
+    min-width: 3.25rem;
+    text-align: center;
+}
+
+.tm-audit-cell-input {
+    width: 100%;
+    min-height: 2.5rem;
+    font-size: 0.8125rem;
+}
+
+.tm-audit-td--product .tm-audit-cell-input {
+    min-width: 12rem;
+}
+
+.tm-audit-row-delete {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: #fff1f2;
+    color: #f43f5e;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.tm-audit-row-delete:hover {
+    background: #ffe4e6;
+}
+
+.tm-audit-total-block {
+    background: linear-gradient(100deg, #0f172a 0%, #1e3a8a 55%, #172554 100%);
+}
+
+.tm-audit-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.tm-audit-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-left: auto;
+    width: 100%;
+}
+
+.tm-audit-footer-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.tm-audit-footer-btn--primary {
+    min-width: 9rem;
+}
+
+.price-input--history {
+    border-color: #99f6e4;
+    background: #f0fdfa;
+}
+
+/* 待确认列表 */
+.pending-draft-card {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;
+}
+
+.pending-draft-card.tm-pending-new {
+    animation: tm-pending-fade-in 0.28s ease;
+}
+
+@keyframes tm-pending-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.pending-draft-card .tm-pending-delete {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    color: #94a3b8;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s;
+}
+
+.pending-draft-card .tm-pending-delete:hover {
+    color: #f43f5e;
+    background: #fff1f2;
+}
+
+#pending-orders-list.tm-pending-list-refreshing {
+    opacity: 0.92;
+}
+
+@media (min-width: 768px) {
+    .tm-audit-lines-table {
+        width: 100%;
+        min-width: 100%;
+    }
+}
+
+#voice-processing-status {
+    min-height: 1.25rem;
+}

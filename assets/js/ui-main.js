@@ -20,6 +20,34 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
 /**
  * 将 dashboard 模块里的弹窗节点同步到壳层页面，避免继续使用 index-app 里的旧弹窗DOM。
  */
+/**
+ * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
+ */
+function TM_syncProductCenterOverlays() {
+    var url = '/modules/product-center/product-overlays.html?v=20260620pc';
+    return fetch(url, { cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var ids = ['product-detail-modal', 'product-unit-modal', 'warehouse-transfer-modal'];
+            ids.forEach(function (id) {
+                var nextNode = doc.getElementById(id);
+                if (!nextNode) return;
+                document.querySelectorAll('#' + id).forEach(function (old) {
+                    if (old && old.parentNode) old.parentNode.removeChild(old);
+                });
+                document.body.appendChild(nextNode.cloneNode(true));
+            });
+            document.querySelectorAll('#unit-modal').forEach(function (el) {
+                el.parentNode.removeChild(el);
+            });
+        })
+        .catch(function (e) {
+            console.warn('[TM] 同步产品中心弹窗失败:', e);
+        });
+}
+
 function TM_syncDashboardOverlays(htmlString) {
     try {
         const parser = new DOMParser();
@@ -92,6 +120,11 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                         return;
                     }
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
+                    return;
+                }
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js/i.test(srcAttr)) {
+                    queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
+                    return;
                 }
                 return;
             }
@@ -269,6 +302,9 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
  * 工作台「待确认单据」：AIService GET /api/v1/ai/records 直接返回数组，字段为 camelCase（见 AIController#getRecords）。
  */
 function TM_refreshDashboardPendingOrders() {
+    if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.refresh === 'function') {
+        return window.TM_PendingOrdersStore.refresh(false);
+    }
     const pendingOrdersList = document.getElementById('pending-orders-list');
     if (!pendingOrdersList) {
         return;
@@ -467,6 +503,9 @@ function loadDashboard() {
                     }
                 });
             }
+            if (typeof window.TM_syncAppShellMetrics === 'function') {
+                window.TM_syncAppShellMetrics();
+            }
         })
         .catch(function (error) {
             console.error('Error loading dashboard:', error);
@@ -497,14 +536,20 @@ function loadCRM() {
 
 function loadProductCenter() {
     console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
-    fetch('/modules/product-center/product-center.html?v=20260508r4', { cache: 'no-store' })
+    var overlayPromise = typeof TM_syncProductCenterOverlays === 'function'
+        ? TM_syncProductCenterOverlays()
+        : Promise.resolve();
+    overlayPromise.then(function () {
+        return fetch('/modules/product-center/product-center.html?v=20260620pc', { cache: 'no-store' });
+    })
         .then(function (response) { return response.text(); })
         .then(function (html) {
-            // 产品中心的类别/仓库编辑依赖 #content-area 内的弹窗与抽屉 DOM，
-            // 仅注入主内容会导致“编辑图标点击无反应”。
             var inner = TM_extractInnerFromModuleHtml(html, '#content-area');
-            document.getElementById('view-supply').innerHTML = inner || html;
             var vs = document.getElementById('view-supply');
+            if (vs) {
+                vs.innerHTML = inner || html;
+                vs.classList.add('tm-view-supply-scroll');
+            }
             if (vs && window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
                 window.TM_UI.injectSlots(vs).then(function () {
                     if (window.TM_RoleGate && typeof window.TM_RoleGate.apply === 'function') {
@@ -692,6 +737,9 @@ function TM_bootIndexAppShell() {
     initNavigationFromConfig();
     TM_bindAppShellTabbar();
     TM_syncAppShellMetrics();
+    if (typeof TM_syncProductCenterOverlays === 'function') {
+        TM_syncProductCenterOverlays();
+    }
     switchTab(getInitialTabFromHash());
 }
 
@@ -708,8 +756,23 @@ function TM_scheduleAppShellTabbarBind() {
 }
 TM_scheduleAppShellTabbarBind();
 
+function TM_scheduleAppShellBoot() {
+    function boot() {
+        if (document.getElementById('tm-app-tabbar')) {
+            TM_bootIndexAppShell();
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+}
+TM_scheduleAppShellBoot();
 window.addEventListener('load', function () {
-    TM_bootIndexAppShell();
+    if (typeof window.TM_syncAppShellMetrics === 'function') {
+        window.TM_syncAppShellMetrics();
+    }
 });
 
 function switchTab(tabId) {
@@ -761,6 +824,12 @@ function switchTab(tabId) {
     else if (tabId === 'crm') loadCRM();
     else if (tabId === 'supply') loadProductCenter();
     else if (tabId === 'supplier') loadSupplier();
+
+    if (typeof window.TM_syncAppShellMetrics === 'function') {
+        requestAnimationFrame(function () {
+            window.TM_syncAppShellMetrics();
+        });
+    }
 }
 
 window.TM_shellSwitchTab = switchTab;

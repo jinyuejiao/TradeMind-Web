@@ -1214,13 +1214,15 @@ window.ProductModule = {
     },
 
     getBaseUnitLabel: function() {
-        var el = document.getElementById('product-base-unit-input');
-        var v = el && el.value ? String(el.value).trim() : '';
-        if (!v) {
-            var alt = document.getElementById('product-base-unit');
-            if (alt && alt.value) v = String(alt.value).trim();
+        var ids = ['detail-product-base-unit', 'product-base-unit-input', 'product-base-unit'];
+        for (var i = 0; i < ids.length; i++) {
+            var el = document.getElementById(ids[i]);
+            if (el && el.value) {
+                var v = String(el.value).trim();
+                if (v) return v;
+            }
         }
-        return v || '件';
+        return '件';
     },
 
     normalizeUnitDraft: function(rows) {
@@ -1241,10 +1243,17 @@ window.ProductModule = {
     MAX_UNIT_CONVERSION_ROWS: 2,
 
     queryUnitModalRoots: function() {
-        return document.querySelectorAll('#unit-modal');
+        var modern = document.getElementById('product-unit-modal');
+        if (modern) return [modern];
+        return Array.prototype.slice.call(document.querySelectorAll('#unit-modal'));
     },
 
     getActiveUnitRowsContainer: function() {
+        var modern = document.getElementById('product-unit-modal');
+        if (modern && !modern.classList.contains('hidden')) {
+            var rows = modern.querySelector('#unit-conversion-rows');
+            if (rows) return rows;
+        }
         var openModal = document.querySelector('#unit-modal:not(.hidden)');
         if (openModal) {
             var inOpen = openModal.querySelector('.tm-unit-conversion-rows');
@@ -1253,19 +1262,24 @@ window.ProductModule = {
         var roots = this.queryUnitModalRoots();
         for (var i = 0; i < roots.length; i++) {
             if (!roots[i].classList.contains('hidden')) {
-                var c = roots[i].querySelector('.tm-unit-conversion-rows');
+                var c = roots[i].querySelector('#unit-conversion-rows') || roots[i].querySelector('.tm-unit-conversion-rows');
                 if (c) return c;
             }
         }
         var first = roots[0];
-        return first ? first.querySelector('.tm-unit-conversion-rows') : null;
+        return first ? (first.querySelector('#unit-conversion-rows') || first.querySelector('.tm-unit-conversion-rows')) : null;
     },
 
     setUnitModalRowsHtml: function(html) {
+        var c = this.getActiveUnitRowsContainer();
+        if (c) {
+            c.innerHTML = html;
+            return;
+        }
         var roots = this.queryUnitModalRoots();
         for (var i = 0; i < roots.length; i++) {
-            var c = roots[i].querySelector('.tm-unit-conversion-rows');
-            if (c) c.innerHTML = html;
+            var box = roots[i].querySelector('#unit-conversion-rows') || roots[i].querySelector('.tm-unit-conversion-rows');
+            if (box) box.innerHTML = html;
         }
     },
 
@@ -1360,7 +1374,7 @@ window.ProductModule = {
             html += '</div>';
         }
         this.setUnitModalRowsHtml(html);
-        document.querySelectorAll('#unit-modal .uc-base-suffix').forEach(function (el) {
+        document.querySelectorAll('#product-unit-modal .uc-base-suffix, #unit-modal .uc-base-suffix').forEach(function (el) {
             el.textContent = base;
         });
         this.updateUnitModalAddRemoveButtons();
@@ -1369,8 +1383,8 @@ window.ProductModule = {
     onBaseUnitChanged: function() {
         var modal = document.getElementById('product-detail-modal');
         if (!modal || modal.classList.contains('hidden')) return;
-        var pu = document.getElementById('product-purchase-unit-select');
-        var su = document.getElementById('product-sales-unit-select');
+        var pu = document.getElementById('detail-product-purchase-unit') || document.getElementById('product-purchase-unit-select');
+        var su = document.getElementById('detail-product-sales-unit') || document.getElementById('product-sales-unit-select');
         var pv = pu ? pu.value : null;
         var sv = su ? su.value : null;
         this.rebuildPurchaseSalesUnitSelects(pv, sv);

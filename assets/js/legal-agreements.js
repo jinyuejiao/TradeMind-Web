@@ -175,13 +175,7 @@
 
     function initRegisterCompliance() {
         var cb = document.getElementById('tmAgreeTerms');
-        var btn = document.getElementById('registerSubmitBtn');
-        if (!cb || !btn) return;
-        function syncBtn() {
-            btn.disabled = !cb.checked;
-        }
-        cb.addEventListener('change', syncBtn);
-        syncBtn();
+        if (!cb) return;
         global.tmRegisterTermsAccepted = function () {
             return !!cb.checked;
         };
@@ -192,7 +186,15 @@
         bindLegalLinks: bindLegalLinks,
         initRegisterCompliance: initRegisterCompliance,
         toastTermsRequired: function () {
-            toast('请先阅读并同意相关协议', 'warning');
+            toast('请先阅读并同意《用户服务协议》与《隐私协议》', 'warning');
+            var cb = document.getElementById('tmAgreeTerms');
+            if (cb) {
+                cb.focus();
+                cb.classList.add('ring-2', 'ring-brand-500', 'ring-offset-1');
+                setTimeout(function () {
+                    cb.classList.remove('ring-2', 'ring-brand-500', 'ring-offset-1');
+                }, 2000);
+            }
         }
     };
 

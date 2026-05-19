@@ -1,0 +1,7 @@
+/**
+ * Phosphor Icons Web 2.x：勿使用 unpkg 上的「聚合脚本」——该脚本会向 jsDelivr 拉取 6 份样式，
+ * 在国内网络或 Edge 跟踪防护下易失败。此处统一从 unpkg 固定版本加载常用字重。
+ */
+@import url('https://unpkg.com/@phosphor-icons/web@2.1.2/src/regular/style.css');
+@import url('https://unpkg.com/@phosphor-icons/web@2.1.2/src/bold/style.css');
+@import url('https://unpkg.com/@phosphor-icons/web@2.1.2/src/fill/style.css');

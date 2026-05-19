@@ -5,208 +5,141 @@
     <script src="./assets/js/api-client.js?v=20260506r3"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TradeMind - 注册</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { 50: '#F0FDFA', 100: '#CCFBF1', 500: '#14B8A6', 600: '#0D9488', 900: '#134E4A' },
-                        slate: { 50: '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0', 800: '#1E293B', 900: '#0F172A' }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body { font-family: 'Inter', -apple-system, "Microsoft YaHei", sans-serif; }
-    </style>
+    <title>注册 — TradeMind 商贸智脑</title>
+    <link rel="stylesheet" href="./assets/css/auth.css?v=20260619ui3">
+    <link rel="stylesheet" href="./assets/css/phosphor-icons.css?v=20260619ui3">
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col">
-    <main class="flex-1 w-full flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-        <div class="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-8">
-            <div class="flex items-center justify-center mb-4">
-                <div class="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 256 256" fill="white">
-                        <path d="M128 24a104 104 0 1 0 104 104A104.11 104.11 0 0 0 128 24Zm35.31 120.3a8 8 0 0 1 0 11.31l-28.28 28.29l-11.3-11.3a8 8 0 0 1 11.32-11.32l5.99 5.99l22.93-22.93a8 8 0 0 1 11.31 0Zm-70.62 0a8 8 0 0 1 11.32 0l22.93 22.93l5.99-5.99a8 8 0 0 1 11.32 11.32l-11.3 11.3l-28.28-28.29a8 8 0 0 1 0-11.31ZM216 128a87.61 87.61 0 0 1-14.45 46.61l-22.76-22.76a8 8 0 0 0-11.31 0l-2.54 2.54a32 32 0 0 1-45.25 0l-37.93-37.93a32 32 0 0 1 0-45.26l2.54-2.54a8 8 0 0 0 0-11.31L54.45 64.46A87.67 87.67 0 0 1 128 40a88 88 0 0 1 88 88Zm-30.06 0a64 64 0 1 1-90.51-90.51l14.14 14.14a8 8 0 0 0 11.31 0l2.54-2.54a48 48 0 0 0 67.88 0l2.54 2.54a8 8 0 0 0 11.31 0l14.14-14.14A63.73 63.73 0 0 1 185.94 128Z"></path>
-                    </svg>
+<body class="auth-body auth-body--center auth-page-register">
+    <main class="auth-main auth-main--register">
+        <div class="auth-card auth-register-card">
+            <header class="auth-card-header">
+                <div class="auth-logo" aria-hidden="true">
+                    <i class="ph-bold ph-brain"></i>
                 </div>
-            </div>
-            <h1 class="text-2xl font-bold text-center mb-1">TradeMind</h1>
-            <p class="text-center text-white text-sm mb-1">商贸智脑</p>
-            <p class="text-center text-slate-400 text-xs">杭州巨猿科技有限公司</p>
-        </div>
-        
-        <div class="p-8">
-            <form id="registerForm" class="space-y-4">
-                <div class="space-y-3">
-                    <label id="tm-mt-label" class="block text-sm font-bold text-slate-700">商户类型 <span class="text-red-500">*</span></label>
-                    <p id="tm-register-merchant-summary" class="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2" aria-live="polite">当前选择：批发商户（WHOLESALE）</p>
-                    <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="tm-mt-label">
-                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-                            <input type="radio" name="tmMerchantType" value="WHOLESALE" class="shrink-0 text-brand-600 focus:ring-brand-500">
-                            <span class="text-sm font-medium text-slate-800">批发</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-                            <input type="radio" name="tmMerchantType" value="FOREIGN_TRADE" class="shrink-0 text-brand-600 focus:ring-brand-500">
-                            <span class="text-sm font-medium text-slate-800">外贸</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-                            <input type="radio" name="tmMerchantType" value="ECOM" class="shrink-0 text-brand-600 focus:ring-brand-500">
-                            <span class="text-sm font-medium text-slate-800">电商</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
-                            <input type="radio" name="tmMerchantType" value="FACTORY_TRADE" class="shrink-0 text-brand-600 focus:ring-brand-500">
-                            <span class="text-sm font-medium text-slate-800">工贸</span>
-                        </label>
-                    </div>
-                    <p class="text-xs text-slate-400">与字典 D013 一致；带参数访问（如 <code class="text-slate-500">?merchantType=ECOM</code>）时将默认勾选对应类型。</p>
-                </div>
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">用户名 <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-user">
-                                <path fill="currentColor" d="M128 32a56 56 0 1 0 56 56A56 56 0 0 0 128 32Zm0 96a32 32 0 1 1 32-32a32 32 0 0 1-32 32Zm72 88H56a24 24 0 0 0-24 24v24a128 128 0 0 0 248 0v-24a24 24 0 0 0-24-24Z"></path>
-                            </svg>
+                <h1 class="auth-title">TradeMind</h1>
+                <p class="auth-subtitle auth-subtitle--stacked">
+                    <span class="auth-subtitle-brand">商贸智脑</span>
+                    <span class="auth-subtitle-company">杭州巨猿科技有限公司</span>
+                </p>
+            </header>
+            <div class="auth-card-body auth-register-body">
+                <form id="registerForm" class="auth-register-form" novalidate>
+                    <input type="hidden" name="tmMerchantType" value="WHOLESALE" id="tmMerchantTypeHidden">
+
+                    <div class="auth-field">
+                        <label class="auth-label" for="regCompany">商户名称<span class="auth-required">*</span></label>
+                        <div class="auth-input-wrap">
+                            <i class="ph ph-storefront"></i>
+                            <input class="auth-input" type="text" id="regCompany" name="company" maxlength="80" placeholder="请输入企业或店铺名称" autocomplete="organization" />
                         </div>
-                        <input type="text" id="regUsername" name="username" class="w-full pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入用户名">
                     </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">邮箱 <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-envelope">
-                                <path fill="currentColor" d="M231.93 78.26A8 8 0 0 0 224 72h-40.91a56 56 0 0 0-110.18 0H32a8 8 0 0 0-7.93 6.26A172.28 172.28 0 0 0 16 184v40a16 16 0 0 0 16 16h208a16 16 0 0 0 16-16v-40a172.28 172.28 0 0 0-8.07-105.74ZM208 160H48v-32l88-56 72 46.38V160Zm-88-93.62L32 96v-8a40 40 0 0 1 88 0v8Zm88 61.62L48 160v-40l80-51.38a24 24 0 0 1 32 0L208 120v40Z"></path>
-                            </svg>
+
+                    <div class="auth-field">
+                        <label class="auth-label" for="regUsername">登录名<span class="auth-required">*</span></label>
+                        <div class="auth-input-wrap">
+                            <i class="ph ph-user"></i>
+                            <input class="auth-input" type="text" id="regUsername" name="username" autocomplete="username" maxlength="64" placeholder="用于登录" />
                         </div>
-                        <input type="email" id="regEmail" name="email" class="w-full pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入邮箱">
                     </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">手机号 <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-phone">
-                                <path fill="currentColor" d="M229.17 183.18a15.9 15.9 0 0 1-12.13 12.13c-35.73 10.58-82.45-11.8-154.48-83.83S8.33 31.8 18.91 5.08a15.9 15.9 0 0 1 12.12-12.13a176.14 176.14 0 0 1 63.16-1.08c19.32 1.91 53.62 14.3 74.26 34.95C223.84 82.24 240.69 142.2 229.17 183.18Zm-54.65-43.34a4 4 0 0 0-6.25.15l-14.17 19.14a4 4 0 0 1-6.13.14l-17.41-17.41a4 4 0 0 0-5.66 0l-18.34 18.34a144.42 144.42 0 0 1-49.59-36.12c-19.34-20.3-30.58-49.91-31.93-68.86a160.14 160.14 0 0 0-1 57.75c9.9 31.29 36.74 73.76 83.87 120.89s89.6 73.97 120.89 83.87a160.14 160.14 0 0 0 57.75-1c-18.95-1.35-48.56-12.59-68.86-31.93a144.42 144.42 0 0 1-36.12-49.59l18.34-18.34a4 4 0 0 0 0-5.66Z"></path>
-                            </svg>
-                        </div>
-                        <div class="flex">
-                            <input type="tel" id="regPhone" name="phone" class="flex-1 pr-3 py-3 border border-slate-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入手机号">
-                            <button type="button" id="sendCodeBtn" class="ml-2 px-4 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-r-lg transition-all duration-200 whitespace-nowrap">
-                                发送验证码
+
+                    <div class="auth-field">
+                        <label class="auth-label" for="regPassword">登录密码<span class="auth-required">*</span></label>
+                        <div class="auth-input-wrap">
+                            <i class="ph ph-lock-key"></i>
+                            <input class="auth-input" type="password" id="regPassword" name="password" autocomplete="new-password" minlength="6" maxlength="64" placeholder="至少 6 位" />
+                            <button type="button" class="auth-toggle-pwd" onclick="tmRegisterTogglePwd('regPassword', this)" aria-label="显示密码">
+                                <i class="ph ph-eye"></i>
                             </button>
                         </div>
                     </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">短信验证码 <span class="text-red-500">*</span></label>
-                    <input type="text" id="regSmsCode" name="smsCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" class="w-full px-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" placeholder="请先点击发送验证码，再填写收到的验证码">
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">公司名称 <span class="text-slate-400 text-xs font-normal">(选填)</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-building">
-                                <path fill="currentColor" d="M208 24H48a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V40a16 16 0 0 0-16-16Zm-64 144h-32v-16h32Zm32 0h-16v-16h16Zm0-32h-48v-16h48Zm0-32h-48v-16h48Zm0-32h-48v-16h48Zm-16-16H80v-16h80Z"></path>
-                            </svg>
-                        </div>
-                        <input type="text" id="regCompany" name="company" class="w-full pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入公司名称">
-                    </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">社会信用代码 <span class="text-slate-400 text-xs font-normal">(选填)</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-id-card">
-                                <path fill="currentColor" d="M216 40H40a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16Zm-16 144H40V56h160v128Zm-32-80a32 32 0 1 1-32-32a32 32 0 0 1 32 32Zm-96 48h96a8 8 0 0 1 0 16h-96a8 8 0 0 1 0-16Zm0-32h96a8 8 0 0 1 0 16h-96a8 8 0 0 1 0-16Zm0-32h96a8 8 0 0 1 0 16h-96a8 8 0 0 1 0-16Z"></path>
-                            </svg>
-                        </div>
-                        <input type="text" id="regCreditCode" name="creditCode" class="w-full pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入社会信用代码">
-                    </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">密码 <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-lock-keyhole">
-                                <path fill="currentColor" d="M208 80h-24V56a48 48 0 0 0-96 0v24H48a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16Zm-80 0v24a8 8 0 0 1-16 0V80a8 8 0 0 1 16 0Zm80 128H48V96h160v112Zm-48-64a32 32 0 1 1-32 32a32 32 0 0 1 32-32Z"></path>
-                            </svg>
-                        </div>
-                        <input type="password" id="regPassword" name="password" class="w-full pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入密码">
-                    </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">确认密码 <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-lock-keyhole">
-                                <path fill="currentColor" d="M208 80h-24V56a48 48 0 0 0-96 0v24H48a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16V96a16 16 0 0 0-16-16Zm-80 0v24a8 8 0 0 1-16 0V80a8 8 0 0 1 16 0Zm80 128H48V96h160v112Zm-48-64a32 32 0 1 1-32 32a32 32 0 0 1 32-32Z"></path>
-                            </svg>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="password" id="regConfirmPassword" name="confirm_password" class="flex-1 pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请再次输入密码">
-                            <div id="passwordMatchIndicator" class="ml-3 text-lg"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="block text-sm font-bold text-slate-700">邀请码 <span class="text-slate-400 text-xs font-normal">(选填)</span></label>
-                    <div class="relative">
-                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" class="ph-ticket">
-                                <path fill="currentColor" d="M224 128a16 16 0 0 1-16 16H48a16 16 0 0 1 0-32h160a16 16 0 0 1 16 16Zm-192 0a48 48 0 1 1 48-48a48 48 0 0 1-48 48Zm192 0a48 48 0 1 1-48-48a48 48 0 0 1 48 48Z"></path>
-                            </svg>
-                        </div>
-                        <input type="text" id="inviteCode" name="invite_code" class="w-full pr-3 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all" style="padding-left: 40px !important;" placeholder="请输入邀请码（选填）">
-                    </div>
-                </div>
-                
-                <div class="tm-legal-row">
-                    <input type="checkbox" id="tmAgreeTerms" name="tmAgreeTerms" class="tm-legal-checkbox" aria-describedby="tm-legal-register-desc">
-                    <label id="tm-legal-register-desc" for="tmAgreeTerms" class="text-xs text-slate-500 cursor-pointer select-none">
-                        我已阅读并同意
-                        <a href="#" class="tm-legal-link" data-tm-legal="service" id="show-service">《用户服务协议》</a>
-                        与
-                        <a href="#" class="tm-legal-link" data-tm-legal="privacy" id="show-privacy">《隐私协议》</a>
-                    </label>
-                </div>
 
-                <button type="submit" id="registerSubmitBtn" disabled class="tm-register-submit w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-lg transition-all duration-200">
-                    立即注册
-                </button>
-            </form>
-            
-            <div class="mt-6 pt-6 border-t border-slate-200">
-                <p class="text-center text-sm text-slate-600">
-                    已有账号？ <a href="login.html" class="text-brand-600 hover:text-brand-700 font-bold">立即登录</a>
-                </p>
-                <p class="text-center text-xs text-slate-500 mt-3">
-                    <a href="https://www.juyuankeji.xin" target="_blank" class="hover:text-teal-500 transition-colors">
-                        关于我们
-                    </a>
+                    <div class="auth-field">
+                        <label class="auth-label" for="regConfirmPassword">确认密码<span class="auth-required">*</span></label>
+                        <div class="auth-input-wrap">
+                            <i class="ph ph-lock-key"></i>
+                            <input class="auth-input" type="password" id="regConfirmPassword" name="confirm_password" autocomplete="new-password" minlength="6" maxlength="64" placeholder="请再次输入密码" />
+                            <button type="button" class="auth-toggle-pwd" onclick="tmRegisterTogglePwd('regConfirmPassword', this)" aria-label="显示密码">
+                                <i class="ph ph-eye"></i>
+                            </button>
+                        </div>
+                        <span id="passwordMatchIndicator" class="auth-hint" aria-live="polite"></span>
+                    </div>
+
+                    <div class="auth-field-divider" aria-hidden="true"></div>
+
+                    <div class="auth-field">
+                        <label class="auth-label" for="regPhone">手机号<span class="auth-required">*</span></label>
+                        <div class="auth-input-row auth-input-row--phone">
+                            <div class="auth-input-wrap auth-input-wrap--grow">
+                                <i class="ph ph-phone"></i>
+                                <input class="auth-input" type="tel" id="regPhone" name="phone" autocomplete="tel" inputmode="numeric" maxlength="11" placeholder="请输入手机号" />
+                            </div>
+                            <button type="button" id="sendCodeBtn" class="auth-btn-sms">发送验证码</button>
+                        </div>
+                    </div>
+
+                    <div class="auth-field">
+                        <label class="auth-label" for="regSmsCode">验证码<span class="auth-required">*</span></label>
+                        <div class="auth-input-wrap">
+                            <i class="ph ph-chat-circle-text"></i>
+                            <input class="auth-input" type="text" id="regSmsCode" name="smsCode" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="请输入短信验证码" />
+                        </div>
+                    </div>
+
+                    <details class="auth-optional-block">
+                        <summary class="auth-optional-summary">
+                            <span>选填：邮箱、社会信用码、推荐码</span>
+                        </summary>
+                        <div class="auth-optional-inner">
+                            <div class="auth-field auth-field--last">
+                                <label class="auth-label" for="regEmail">邮箱<span class="auth-required">*</span></label>
+                                <div class="auth-input-wrap">
+                                    <i class="ph ph-envelope-simple"></i>
+                                    <input class="auth-input" type="email" id="regEmail" name="email" autocomplete="email" placeholder="请输入邮箱" />
+                                </div>
+                            </div>
+                            <div class="auth-field auth-field--last">
+                                <label class="auth-label" for="regCreditCode">社会信用代码</label>
+                                <div class="auth-input-wrap">
+                                    <i class="ph ph-identification-card"></i>
+                                    <input class="auth-input" type="text" id="regCreditCode" name="creditCode" maxlength="32" placeholder="选填" />
+                                </div>
+                            </div>
+                            <div class="auth-field auth-field--last">
+                                <label class="auth-label" for="inviteCode">推荐码</label>
+                                <div class="auth-input-wrap">
+                                    <i class="ph ph-gift"></i>
+                                    <input class="auth-input" type="text" id="inviteCode" name="invite_code" maxlength="32" placeholder="选填" />
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="tm-legal-row">
+                        <input type="checkbox" id="tmAgreeTerms" name="tmAgreeTerms" class="tm-legal-checkbox" aria-describedby="tm-legal-register-desc">
+                        <label id="tm-legal-register-desc" for="tmAgreeTerms" class="auth-legal-label">
+                            我已阅读并同意
+                            <a href="#" class="tm-legal-link" data-tm-legal="service" id="show-service">《用户服务协议》</a>
+                            与
+                            <a href="#" class="tm-legal-link" data-tm-legal="privacy" id="show-privacy">《隐私协议》</a>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="registerSubmitBtn" class="auth-btn-primary tm-register-submit">完成注册</button>
+                </form>
+
+                <p class="auth-footer-links">
+                    已有账号？<a class="auth-link" href="login.html">立即登录</a>
                 </p>
             </div>
         </div>
-    </div>
     </main>
-    <footer class="w-full text-center text-slate-500 text-xs pb-6 px-4 leading-6 mt-auto">
-        <div class="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-x-4 gap-y-2">
+    <footer class="auth-page-footer">
+        <div class="auth-page-footer-inner">
             <span>© 2026 杭州巨猿科技有限公司</span>
-            <a class="hover:text-teal-600 underline decoration-slate-200 underline-offset-4 transition-colors" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2026010267号-1</a>
-            <a href="https://beian.mps.gov.cn/#/query/webSearch?code=33010802014468" rel="noreferrer" target="_blank" class="tm-beian-link flex items-center gap-1 hover:text-teal-600 transition-colors sm:ml-0">
-                <img src="./assets/img/ghs.png" class="w-4 h-4 object-contain" alt="公安备案图标" width="16" height="16">
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2026010267号-1</a>
+            <a href="https://beian.mps.gov.cn/#/query/webSearch?code=33010802014468" rel="noreferrer" target="_blank" class="tm-beian-link">
+                <img src="./assets/img/ghs.png" width="16" height="16" alt="公安备案图标">
                 <span>浙公网安备33010802014468号</span>
             </a>
         </div>
@@ -214,59 +147,31 @@
     <script src="./assets/js/main-app.js"></script>
     <script src="./assets/js/tm-ui-loader.js"></script>
     <script src="./assets/js/legal-agreements.js?v=20260518"></script>
-    <script src="./assets/js/auth.js?v=20260507r2"></script>
+    <script src="./assets/js/auth.js?v=20260619ui3"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.injectCommonUI) {
-                window.injectCommonUI();
-            }
-            var TM_MT_LABELS = { WHOLESALE: '批发', FOREIGN_TRADE: '外贸', ECOM: '电商', FACTORY_TRADE: '工贸' };
-            function tmUpdateMerchantSummary() {
-                var el = document.querySelector('#registerForm input[name="tmMerchantType"]:checked');
-                var code = el ? el.value : 'WHOLESALE';
-                var zh = TM_MT_LABELS[code] || code;
-                var sum = document.getElementById('tm-register-merchant-summary');
-                if (sum) {
-                    sum.textContent = '当前选择：' + zh + '商户（' + code + '）';
-                }
-                document.documentElement.setAttribute('data-merchant-type', code);
-                try {
-                    sessionStorage.setItem('tm_merchant_intent', code);
-                } catch (e) { /* ignore */ }
-            }
-            document.querySelectorAll('#registerForm input[name="tmMerchantType"]').forEach(function(r) {
-                r.addEventListener('change', tmUpdateMerchantSummary);
-            });
-            var initial = typeof window.tmResolveMerchantIntent === 'function' ? window.tmResolveMerchantIntent() : 'WHOLESALE';
-            var radio = document.querySelector('#registerForm input[name="tmMerchantType"][value="' + initial + '"]');
-            if (radio) {
-                radio.checked = true;
+        function tmRegisterTogglePwd(inputId, btn) {
+            var input = document.getElementById(inputId);
+            if (!input || !btn) return;
+            var ic = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.setAttribute('aria-label', '隐藏密码');
+                if (ic) { ic.classList.remove('ph-eye'); ic.classList.add('ph-eye-slash'); }
             } else {
-                var fb = document.querySelector('#registerForm input[name="tmMerchantType"][value="WHOLESALE"]');
-                if (fb) fb.checked = true;
+                input.type = 'password';
+                btn.setAttribute('aria-label', '显示密码');
+                if (ic) { ic.classList.remove('ph-eye-slash'); ic.classList.add('ph-eye'); }
             }
-            tmUpdateMerchantSummary();
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            document.documentElement.setAttribute('data-merchant-type', 'WHOLESALE');
+            try { sessionStorage.setItem('tm_merchant_intent', 'WHOLESALE'); } catch (e) { /* ignore */ }
             try {
                 var params = new URLSearchParams(window.location.search);
                 var ref = params.get('ref');
                 if (ref) {
                     var ic = document.getElementById('inviteCode');
                     if (ic) ic.value = ref.trim();
-                }
-                if (!params.get('merchantType') && ref) {
-                    var gw = typeof getApiUrl === 'function' ? getApiUrl('gateway') : '';
-                    if (gw && window.wrappedFetch) {
-                        window.wrappedFetch(gw + '/api/v1/tenant/referral/validate', {
-                            skipAuth: true,
-                            method: 'POST',
-                            body: JSON.stringify({ code: ref.trim() })
-                        }).then(function (r) { return r.json(); }).then(function (v) {
-                            if (v && v.valid && v.referrerMerchantType) {
-                                var r2 = document.querySelector('#registerForm input[name="tmMerchantType"][value="' + v.referrerMerchantType + '"]');
-                                if (r2) { r2.checked = true; tmUpdateMerchantSummary(); }
-                            }
-                        }).catch(function () { /* ignore */ });
-                    }
                 }
             } catch (eRef) { /* ignore */ }
         });

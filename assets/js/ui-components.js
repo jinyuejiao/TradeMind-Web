@@ -199,6 +199,11 @@
             const isAppShellPage = !!document.getElementById('tm-app-tabbar');
 
             if (isAppShellPage || isPublicAuthPage) {
+                if (isAppShellPage) {
+                    document.querySelectorAll('.tm-mobile-nav, .tm-mobile-header').forEach(function (el) {
+                        el.remove();
+                    });
+                }
                 return;
             }
 

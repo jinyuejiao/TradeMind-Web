@@ -145,6 +145,10 @@ window.tmGetSelectedMerchantType = function () {
     try {
         var form = document.getElementById('registerForm');
         var scope = form || document;
+        var hidden = scope.querySelector('input[name="tmMerchantType"][type="hidden"]');
+        if (hidden && hidden.value) {
+            return hidden.value;
+        }
         var r = scope.querySelector('input[name="tmMerchantType"]:checked');
         if (r && r.value) {
             return r.value;
@@ -541,9 +545,13 @@ window.tmGetSelectedMerchantType = function () {
                     }
                 }
 
-                /* 登录注册页输入框特殊样式 - 防止图标和文字重叠 */
-                .login-register-input {
+                /* 登录注册页输入框特殊样式 - 防止图标和文字重叠（auth-input-wrap 内由 auth.css 控制） */
+                .login-register-input:not(.auth-input) {
                     padding-left: 40px !important;
+                }
+                .auth-input-wrap .login-register-input,
+                .auth-input-wrap .auth-input {
+                    padding-left: 0 !important;
                 }
                 
                 /* 隐藏移动端元素在 PC 端 */
@@ -572,29 +580,31 @@ window.tmGetSelectedMerchantType = function () {
         const isRegisterPage = path.endsWith('register.html');
         
         if (isLoginPage || isRegisterPage) {
-            console.log('TradeMindUI: 检测到登录/注册页面，调整输入框样式');
-            
-            // 给所有输入框添加左侧padding
-            const adjustInputPadding = function() {
-                const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"], input[type="tel"]');
-                inputs.forEach(input => {
-                    input.style.paddingLeft = '40px';
-                    input.classList.add('login-register-input');
-                });
-            };
-            
-            // 立即执行一次
-            adjustInputPadding();
-            
-            // DOM加载完成后再执行一次
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', adjustInputPadding);
+            const usesAuthInputWrap = isRegisterPage && document.querySelector('.auth-register-form');
+            if (usesAuthInputWrap) {
+                console.log('TradeMindUI: 注册页使用 auth.css 输入框结构，跳过 legacy padding 注入');
+            } else {
+                console.log('TradeMindUI: 检测到登录/注册页面，调整输入框样式');
+
+                const adjustInputPadding = function() {
+                    const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"], input[type="tel"]');
+                    inputs.forEach(input => {
+                        if (input.closest('.auth-input-wrap')) {
+                            return;
+                        }
+                        input.style.paddingLeft = '40px';
+                        input.classList.add('login-register-input');
+                    });
+                };
+
+                adjustInputPadding();
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', adjustInputPadding);
+                }
+                setTimeout(adjustInputPadding, 100);
+                setTimeout(adjustInputPadding, 500);
+                setTimeout(adjustInputPadding, 1000);
             }
-            
-            // 延迟执行，确保样式生效
-            setTimeout(adjustInputPadding, 100);
-            setTimeout(adjustInputPadding, 500);
-            setTimeout(adjustInputPadding, 1000);
         }
     } catch (e) {
         console.warn('TradeMindUI: 调整输入框样式时出错', e);
@@ -658,15 +668,16 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '                            <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励。</p>' +
 '                        </div>' +
 '                    </div>' +
-'                    <div class="flex items-center gap-3 w-full md:w-auto">' +
-'                        <div class="bg-white/70 backdrop-blur-sm px-5 py-2 rounded-xl border border-amber-300 text-center flex-1 md:flex-none">' +
+'                    <div class="flex flex-col gap-3 w-full md:flex-row md:items-stretch md:w-auto">' +
+'                        <div class="bg-white/70 backdrop-blur-sm px-5 py-3 rounded-xl border border-amber-300 text-center w-full md:flex-none md:min-w-[140px]">' +
 '                            <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>' +
 '                            <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">TM-100001</p>' +
 '                        </div>' +
-'                        <button type="button" onclick="openReferralListModal()" class="px-4 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-2"><i class="ph ph-gift text-lg"></i> 推荐奖励</button>' +
-'                        <button type="button" onclick="showPoster()" class="px-6 py-4 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-2 hover:bg-amber-700 active:scale-95 transition-all">' +
-'                            <i class="ph ph-image-square-bold text-lg"></i> 生成海报' +
-'                        </button>' +
+'                        <div class="grid grid-cols-2 gap-2 w-full md:flex md:gap-3">' +
+'                        <button type="button" onclick="openReferralListModal()" class="w-full px-3 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph ph-users-three text-base shrink-0"></i><span>推荐名单</span></button>' +
+'                        <button type="button" onclick="showPoster()" class="w-full px-3 py-3 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-1.5 hover:bg-amber-700 active:scale-95 transition-all whitespace-nowrap">' +
+'                            <i class="ph ph-image-square-bold text-base shrink-0"></i><span>生成海报</span></button>' +
+'                        </div>' +
 '                    </div>' +
 '                </div>' +
 '            </div>' +
@@ -675,17 +686,17 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '    </div>' +
 '</div>' +
 '<!-- ================= [2. 品牌推荐海报弹窗] ================= -->' +
-'<div id="poster-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden p-4">' +
+'<div id="poster-modal" class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center hidden p-0 sm:p-4">' +
 '    <!-- 遮罩 -->' +
 '    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePoster()"></div>' +
 '    <!-- 弹窗主体 (已移除左侧，仅保留推荐页，宽度调整为 max-w-lg) -->' +
-'    <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-[460px] overflow-hidden relative z-10 animate-in fade-in zoom-in duration-300">' +
+'    <div class="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-[460px] max-h-[92dvh] flex flex-col overflow-hidden relative z-10">' +
 '        <!-- 关闭按钮 -->' +
 '        <button onclick="closePoster()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 z-20 transition-colors">' +
 '            <i class="ph ph-x text-2xl font-bold"></i>' +
 '        </button>' +
 '        <!-- 推荐海报区域 -->' +
-'        <div class="w-full bg-white p-6 md:p-8 flex flex-col items-center">' +
+'        <div class="flex-1 overflow-y-auto min-h-0 w-full bg-white p-4 sm:p-6 flex flex-col items-center">' +
 '            <div class="text-center mb-6">' +
 '                <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">专属推荐海报</h3>' +
 '                <p class="text-xs text-slate-500 mt-1">分享您的专属名片，邀好友加入</p>' +
@@ -693,7 +704,7 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '            <!-- 海报快照区域 (html2canvas 将截取此处) -->' +
 '            <div id="poster-capture-area" class="w-full p-2 bg-white rounded-[2.8rem] shadow-xl">' +
 '                <!-- 海报主体：内联样式确保渐变生效 -->' +
-'                <div class="w-full aspect-[3/4.2] rounded-[2.2rem] p-8 flex flex-col relative overflow-hidden text-white" style="background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);">' +
+'                <div class="w-full max-h-[42dvh] sm:max-h-[48dvh] aspect-[3/4] rounded-[2.2rem] p-6 sm:p-8 flex flex-col relative overflow-hidden text-white" style="background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);">' +
 '                    <!-- 装饰光晕 -->' +
 '                    <div class="absolute top-[-10%] right-[-10%] w-40 h-40 bg-white/20 rounded-full blur-[40px]"></div>' +
 '                    <div class="absolute bottom-[20%] left-[-20%] w-32 h-32 bg-teal-300/20 rounded-full blur-[30px]"></div>' +
@@ -734,16 +745,15 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '                    </div>' +
 '                </div>' +
 '            </div>' +
-'            <div class="mt-6 text-center">' +
-'                <p class="text-[11px] text-slate-400 leading-relaxed">' +
-'                    扫码或访问 <a id="poster-landing-link" href="https://trademind.com.cn/register.html" target="_blank" rel="noopener" class="text-teal-600 font-bold underline">trademind.com.cn</a> 注册' +
-'                </p>' +
-'                <!-- 生成并保存海报按钮 -->' +
-'                <button onclick="downloadPoster()" class="flex items-center gap-2 text-teal-600 text-xs font-black mt-4 hover:text-teal-700 transition-colors group mx-auto">' +
-'                    <i class="ph ph-download-simple-bold text-lg group-hover:translate-y-0.5 transition-transform"></i>' +
-'                    保存高清海报到相册' +
-'                </button>' +
-'            </div>' +
+'            <p class="mt-4 text-center text-[11px] text-slate-400 leading-relaxed">' +
+'                扫码或访问 <a id="poster-landing-link" href="https://trademind.com.cn/register.html" target="_blank" rel="noopener" class="text-teal-600 font-bold underline">trademind.com.cn</a> 注册' +
+'            </p>' +
+'        </div>' +
+'        <div class="shrink-0 border-t border-slate-100 bg-white p-4 pb-safe text-center">' +
+'            <button type="button" onclick="downloadPoster()" class="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-teal-600 text-white text-sm font-black py-3.5 rounded-2xl hover:bg-teal-700 transition-colors shadow-lg">' +
+'                <i class="ph ph-download-simple-bold text-lg"></i>' +
+'                保存海报到相册' +
+'            </button>' +
 '        </div>' +
 '    </div>' +
 '</div>';
@@ -1506,7 +1516,7 @@ function tmFmtSubEnd(iso) {
     try {
         var d = new Date(iso);
         if (Number.isNaN(d.getTime())) return String(iso);
-        return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
     } catch (e) {
         return String(iso);
     }
@@ -2226,6 +2236,7 @@ function closePoster() {
         if (modal) {
             console.log('closePoster: 找到弹窗元素，添加 hidden 类');
             modal.classList.add('hidden');
+            document.body.style.overflow = '';
             console.log('closePoster: 弹窗已隐藏');
         } else {
             console.error('closePoster: 未找到弹窗元素');
@@ -2250,19 +2261,29 @@ window.injectCommonUI = function() {
         document.title = '杭州巨猿科技有限公司 - TradeMind商贸智脑';
         console.log('TradeMindUI.injectCommonUI: 页面标题已设置');
         
-        // 1. 弹窗注入
+        const pathLower = (window.location.pathname || '').toLowerCase();
+        const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
+
+        // 1. 弹窗注入（登录/注册页不注入，避免无 Tailwind 时 .hidden 失效导致会员中心等内容露出）
         console.log('TradeMindUI.injectCommonUI: 步骤1 - 检查并注入弹窗模板');
-        const existingSubModal = document.getElementById('subscription-modal');
-        const existingMemberShell = document.getElementById('member-modal');
-        if (!existingSubModal && !existingMemberShell) {
-            console.log('TradeMindUI.injectCommonUI: 未找到会员/订阅弹窗壳，开始注入 MODAL_TEMPLATE');
-            document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
-            console.log('TradeMindUI.injectCommonUI: 弹窗模板注入成功');
-            if (typeof window.injectMemberAuxModals === 'function') {
-                window.injectMemberAuxModals().catch(function (e) { console.warn('injectMemberAuxModals', e); });
-            }
+        if (isPublicAuthPage) {
+            document.querySelectorAll('#subscription-modal, #poster-modal, #member-accounts-manage-modal, #referral-rewards-modal').forEach(function (el) {
+                el.remove();
+            });
+            console.log('TradeMindUI.injectCommonUI: 公开认证页，跳过会员/订阅弹窗注入');
         } else {
-            console.log('TradeMindUI.injectCommonUI: 页面已含 member-modal 或 subscription-modal，跳过重复注入');
+            const existingSubModal = document.getElementById('subscription-modal');
+            const existingMemberShell = document.getElementById('member-modal');
+            if (!existingSubModal && !existingMemberShell) {
+                console.log('TradeMindUI.injectCommonUI: 未找到会员/订阅弹窗壳，开始注入 MODAL_TEMPLATE');
+                document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
+                console.log('TradeMindUI.injectCommonUI: 弹窗模板注入成功');
+                if (typeof window.injectMemberAuxModals === 'function') {
+                    window.injectMemberAuxModals().catch(function (e) { console.warn('injectMemberAuxModals', e); });
+                }
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 页面已含 member-modal 或 subscription-modal，跳过重复注入');
+            }
         }
         
         // 2. 检测环境并适配移动端
@@ -2284,7 +2305,7 @@ window.injectCommonUI = function() {
             } catch (e2) { /* ignore */ }
         }
         
-        if (isMobile) {
+        if (isMobile && !isPublicAuthPage) {
             console.log('TradeMindUI.injectCommonUI: 检测到移动设备，开始移动端适配');
             
             // 给 body 添加移动端类名（嵌入 iframe 的模块页不加，避免全局移动端样式干扰子页布局）
@@ -2295,9 +2316,12 @@ window.injectCommonUI = function() {
 
             /** index-app 等主壳页已内置顶栏与 .mobile-nav-btn 底栏（方案 A），禁止再注入 tm-mobile-header / tm-mobile-nav */
             const isAppShellPage = !!document.getElementById('tm-app-tabbar');
-            /** 登录/注册等公开页：不注入底部模块切换栏，避免干扰登录操作 */
-            const pathLower = (window.location.pathname || '').toLowerCase();
-            const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
+
+            if (isAppShellPage) {
+                document.querySelectorAll('.tm-mobile-nav, .tm-mobile-header').forEach(function (el) {
+                    el.remove();
+                });
+            }
             
             // 移动端布局适配
             if (!isAppShellPage && !isEmbeddedModule) {
@@ -2395,8 +2419,6 @@ window.injectCommonUI = function() {
                 } else {
                     console.log('TradeMindUI.injectCommonUI: 移动端底部导航已存在，跳过注入');
                 }
-            } else {
-                console.log('TradeMindUI.injectCommonUI: 公开认证页，跳过移动端底部模块栏');
             }
             
             // 高亮当前页的导航项（仅当存在注入式底栏时）
@@ -2421,8 +2443,10 @@ window.injectCommonUI = function() {
             } else {
                 console.log('TradeMindUI.injectCommonUI: 主壳页面 (tm-app-tabbar) 已含内置导航，跳过注入式顶栏/底栏与侧栏覆盖');
             }
-        } else {
+        } else if (!isPublicAuthPage) {
             console.log('TradeMindUI.injectCommonUI: 检测到桌面设备，跳过移动端适配');
+        } else {
+            console.log('TradeMindUI.injectCommonUI: 公开认证页，跳过移动端壳层注入');
         }
         
         // 3. 动态数据绑定
@@ -3090,11 +3114,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     referralCode: inviteCode,
                     smsToken: registerSmsToken || '',
                     smsCode: smsCode,
-                    merchantType: typeof window.tmGetSelectedMerchantType === 'function'
-                        ? window.tmGetSelectedMerchantType()
-                        : (typeof window.tmResolveMerchantIntent === 'function'
-                            ? window.tmResolveMerchantIntent()
-                            : 'WHOLESALE')
+                    merchantType: 'WHOLESALE'
                 };
                 
                 // 发送注册请求

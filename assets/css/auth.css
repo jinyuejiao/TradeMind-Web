@@ -1,0 +1,827 @@
+/**
+ * 登录 / 注册页 — 依赖 theme.css 令牌
+ */
+@import url('./auth-theme.css');
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.auth-body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: 'Inter', -apple-system, 'Microsoft YaHei', sans-serif;
+    background: var(--tm-surface-page);
+    color: var(--tm-text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 1rem;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* 登录页表单较短时在竖屏足够高度下垂直居中 */
+.auth-body.auth-body--center {
+    justify-content: center;
+}
+
+@media (min-width: 768px) {
+    .auth-body.auth-body--center {
+        justify-content: center;
+    }
+}
+
+.auth-main {
+    width: 100%;
+    max-width: 26rem;
+    flex: 0 0 auto;
+}
+
+@media (min-width: 768px) {
+    .auth-main {
+        max-width: 28rem;
+    }
+
+    .auth-register-wide {
+        max-width: 26rem;
+    }
+}
+
+.auth-card {
+    background: var(--tm-surface-card);
+    border-radius: var(--tm-radius-3xl);
+    overflow: hidden;
+    box-shadow: var(--tm-shadow-md), 0 24px 48px -12px rgba(15, 23, 42, 0.12);
+}
+
+.auth-card-header {
+    background: var(--tm-brand-dark-surface);
+    padding: 1.75rem 1.5rem 1.5rem;
+    text-align: center;
+}
+
+.auth-logo {
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.35rem;
+}
+
+.auth-title {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+.auth-subtitle {
+    margin: 0.35rem 0 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.45;
+}
+
+/* 品牌头：TradeMind + 商贸智脑 + 公司名（与登录/注册参考稿一致） */
+.auth-subtitle--stacked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    margin-top: 0.5rem;
+}
+
+.auth-subtitle-brand {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    letter-spacing: 0.04em;
+}
+
+.auth-subtitle-company {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.auth-card-header .auth-title {
+    font-size: 1.625rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.auth-card-header .auth-logo {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: var(--tm-radius-xl);
+    margin-bottom: 0.85rem;
+}
+
+.auth-card-body {
+    padding: 1.5rem 1.25rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+    .auth-card-body {
+        padding: 1.75rem 1.75rem 1.5rem;
+    }
+}
+
+.auth-field {
+    margin-bottom: 1rem;
+}
+
+.auth-field:last-of-type {
+    margin-bottom: 0;
+}
+
+.auth-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 0.35rem;
+}
+
+.auth-required {
+    color: var(--tm-risk-high);
+    margin-left: 2px;
+}
+
+.auth-optional-tag {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-left: 4px;
+}
+
+.auth-input-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 380px) {
+    .auth-btn-sms {
+        width: 100%;
+        min-height: 2.75rem;
+    }
+}
+
+.auth-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.85rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--tm-radius-3xl);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-input-wrap:focus-within {
+    border-color: var(--tm-brand-500);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+.auth-input-wrap .ph {
+    flex-shrink: 0;
+    font-size: 1.125rem;
+    color: #94a3b8;
+}
+
+.auth-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 0.875rem;
+    color: #1e293b;
+    outline: none;
+}
+
+.auth-input::placeholder {
+    color: #94a3b8;
+}
+
+.auth-toggle-pwd {
+    flex-shrink: 0;
+    padding: 0.25rem;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: var(--tm-radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-toggle-pwd:hover {
+    color: var(--tm-brand-600);
+}
+
+.auth-btn-sms {
+    flex-shrink: 0;
+    padding: 0 0.85rem;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--tm-brand-500);
+    border: none;
+    border-radius: var(--tm-radius-3xl);
+    cursor: pointer;
+    transition: filter 0.2s, transform 0.1s;
+}
+
+.auth-btn-sms:hover {
+    filter: brightness(1.06);
+}
+
+.auth-btn-sms:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.auth-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+.auth-row-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.auth-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8125rem;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+}
+
+.auth-checkbox input {
+    accent-color: var(--tm-brand-500);
+    width: 1rem;
+    height: 1rem;
+}
+
+.auth-link {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--tm-brand-600);
+    text-decoration: none;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
+
+.auth-btn-primary {
+    width: 100%;
+    min-height: 2.85rem;
+    margin-top: 0.25rem;
+    font-size: 0.9375rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--tm-brand-500);
+    border: none;
+    border-radius: var(--tm-radius-3xl);
+    cursor: pointer;
+    box-shadow: var(--tm-shadow-brand);
+    transition: filter 0.2s, transform 0.1s;
+}
+
+.auth-btn-primary:hover {
+    filter: brightness(1.05);
+}
+
+.auth-btn-primary:active {
+    transform: scale(0.99);
+}
+
+.auth-footer-links {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 0.8125rem;
+    color: #64748b;
+}
+
+.auth-about {
+    text-align: center;
+    margin-top: 1.25rem;
+}
+
+.auth-about a {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-decoration: none;
+}
+
+.auth-about a:hover {
+    color: var(--tm-brand-600);
+}
+
+.auth-page-footer {
+    width: 100%;
+    margin-top: auto;
+    padding: 0 1rem 1.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.auth-page-footer-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    max-width: 36rem;
+    margin: 0 auto;
+}
+
+@media (min-width: 640px) {
+    .auth-page-footer-inner {
+        flex-direction: row;
+    }
+}
+
+.auth-page-footer a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: #e2e8f0;
+    transition: color 0.2s;
+}
+
+.auth-page-footer a:hover {
+    color: #0d9488;
+}
+
+.auth-page-footer .tm-beian-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    text-decoration: none;
+}
+
+.auth-page-footer .tm-beian-link:hover {
+    color: #0d9488;
+}
+
+.auth-page-footer .tm-beian-link img {
+    width: 1rem;
+    height: 1rem;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* 认证页兜底：勿展示误注入的会员/海报弹窗 */
+body.auth-page-register #subscription-modal,
+body.auth-page-register #poster-modal,
+body.auth-page-register #member-accounts-manage-modal,
+body.auth-page-register #referral-rewards-modal {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+select.auth-select {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 0.875rem;
+    color: #1e293b;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    padding-right: 1.25rem;
+}
+
+.auth-body.auth-page-register {
+    justify-content: flex-start;
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+}
+
+@media (min-height: 52rem) {
+    .auth-body.auth-page-register {
+        justify-content: center;
+    }
+}
+
+.auth-main--register {
+    max-width: 26rem;
+}
+
+@media (min-width: 768px) {
+    .auth-main--register {
+        max-width: 27.5rem;
+    }
+}
+
+.auth-register-card {
+    box-shadow: var(--tm-shadow-md), 0 20px 40px -16px rgba(15, 23, 42, 0.14);
+}
+
+.auth-register-body {
+    padding-top: 1.35rem;
+}
+
+.auth-form-title {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: #0f172a;
+    text-align: center;
+    letter-spacing: -0.01em;
+}
+
+.auth-form-desc {
+    margin: 0.35rem 0 1.1rem;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.45;
+}
+
+.auth-merchant-banner--register {
+    margin-bottom: 1.1rem;
+    font-size: 0.6875rem;
+}
+
+.auth-register-form .auth-field {
+    margin-bottom: 0.9rem;
+}
+
+.auth-field-divider {
+    height: 1px;
+    margin: 0.35rem 0 1rem;
+    background: linear-gradient(90deg, transparent, #e2e8f0 12%, #e2e8f0 88%, transparent);
+}
+
+.auth-input-row--phone {
+    flex-wrap: nowrap;
+}
+
+.auth-input-row--phone .auth-btn-sms {
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    font-size: 0.6875rem;
+}
+
+@media (max-width: 380px) {
+    .auth-input-row--phone {
+        flex-wrap: wrap;
+    }
+
+    .auth-input-row--phone .auth-btn-sms {
+        width: 100%;
+    }
+}
+
+.auth-register-form .auth-btn-primary {
+    margin-top: 1.15rem;
+}
+
+.auth-footer-dot {
+    color: #cbd5e1;
+    margin: 0 0.25rem;
+}
+
+.auth-field--last {
+    margin-bottom: 0.75rem;
+}
+
+.auth-field--last:last-child {
+    margin-bottom: 0;
+}
+
+.auth-register-body .auth-card-body {
+    padding-bottom: 1.5rem;
+}
+
+.auth-card-header--compact {
+    padding: 1.35rem 1.25rem 1.15rem;
+}
+
+.auth-section-title {
+    margin: 0 0 0.65rem;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.auth-section-title--spaced {
+    margin-top: 1.15rem;
+}
+
+.auth-field--tight {
+    margin-bottom: 0.75rem;
+}
+
+.auth-password-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+@media (min-width: 640px) {
+    .auth-password-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 0.75rem;
+    }
+}
+
+.auth-input-wrap--grow {
+    flex: 1;
+    min-width: 0;
+}
+
+.auth-optional-block {
+    margin: 1rem 0 0.25rem;
+    border: 1px dashed #e2e8f0;
+    border-radius: var(--tm-radius-3xl);
+    background: #f8fafc;
+    overflow: hidden;
+}
+
+.auth-optional-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #64748b;
+    user-select: none;
+}
+
+.auth-optional-summary::-webkit-details-marker {
+    display: none;
+}
+
+.auth-optional-summary::before {
+    content: '▸ ';
+    color: var(--tm-brand-600);
+}
+
+.auth-optional-block[open] .auth-optional-summary::before {
+    content: '▾ ';
+}
+
+.auth-optional-inner {
+    padding: 0 0.9rem 0.85rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.auth-btn-primary--register {
+    margin-top: 1rem;
+}
+
+.auth-register-form .auth-hint {
+    display: none;
+}
+
+/* 登录页：已登记租户商户类型时的通道提示 */
+.auth-merchant-banner {
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--tm-brand-600);
+    background: var(--tm-brand-50);
+    border: 1px solid rgba(var(--tm-brand-500-rgb), 0.25);
+    border-radius: var(--tm-radius-3xl);
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.auth-merchant-banner strong {
+    font-weight: 800;
+}
+
+.auth-merchant-hint {
+    margin: -0.35rem 0 1rem;
+    font-size: 0.6875rem;
+    line-height: 1.45;
+    color: #64748b;
+}
+
+/* ========== 商户类型门户 gateway.html ========== */
+.gateway-body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: 'Inter', -apple-system, 'Microsoft YaHei', sans-serif;
+    background: var(--tm-surface-page);
+    color: var(--tm-text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.25rem;
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.gateway-wrap {
+    width: 100%;
+    max-width: 42rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.gateway-header {
+    text-align: center;
+    margin-bottom: 1.75rem;
+}
+
+.gateway-logo {
+    width: 3.25rem;
+    height: 3.25rem;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background: var(--tm-brand-500);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: var(--tm-shadow-brand-lg);
+}
+
+.gateway-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--tm-brand-dark-surface);
+    letter-spacing: -0.02em;
+}
+
+.gateway-lead {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: #64748b;
+    line-height: 1.5;
+    max-width: 22rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.gateway-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+@media (min-width: 520px) {
+    .gateway-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+}
+
+.gateway-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 1.15rem 1.25rem;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--tm-radius-3xl);
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    font-family: inherit;
+    color: inherit;
+    box-shadow: var(--tm-shadow-sm);
+}
+
+.gateway-tile:hover {
+    border-color: rgba(var(--tm-brand-500-rgb), 0.45);
+    box-shadow: var(--tm-shadow-brand);
+    transform: translateY(-2px);
+}
+
+.gateway-tile:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--tm-brand-500-rgb), 0.25);
+}
+
+.gateway-tile--current {
+    border-color: var(--tm-brand-500);
+    box-shadow: var(--tm-shadow-brand);
+}
+
+.gateway-tile-icon {
+    font-size: 1.75rem;
+    color: var(--tm-brand-600);
+    margin-bottom: 0.5rem;
+}
+
+.gateway-tile-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.gateway-tile-desc {
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    line-height: 1.35;
+}
+
+.gateway-hint {
+    margin: 1.25rem 0 0;
+    text-align: center;
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    line-height: 1.45;
+}
+
+.gateway-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 1.5rem;
+    font-size: 0.8125rem;
+}
+
+.gateway-nav a {
+    color: var(--tm-brand-600);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.gateway-nav a:hover {
+    text-decoration: underline;
+}
+
+.gateway-nav-dot {
+    color: #cbd5e1;
+}
+
+.gateway-footer {
+    margin-top: 1.5rem;
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    text-align: center;
+}
+
+/* TradeMind-Web：覆盖 auth.js 旧版 login-register-input，保持 UI 工程胶囊输入框 */
+.auth-register-form .auth-input-wrap .auth-input,
+.auth-register-form .auth-input-wrap input.login-register-input {
+    padding: 0 !important;
+    padding-left: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    min-height: auto;
+    box-shadow: none !important;
+}
+
+.auth-register-form .tm-legal-row {
+    margin-top: 0.75rem;
+}
+
+.auth-register-form .auth-legal-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+    line-height: 1.5;
+}

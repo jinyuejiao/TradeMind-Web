@@ -1,0 +1,193 @@
+<!-- 产品中心弹窗片段：由 ui-main TM_syncProductCenterOverlays 挂到 document.body -->
+
+<div id="product-detail-modal" class="tm-product-edit-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6">
+    <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="closeProductDetail()"></div>
+    <div class="relative bg-white w-full max-w-lg md:max-w-2xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
+        <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 md:w-10 md:h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-package text-lg md:text-xl"></i></div>
+                <div class="min-w-0">
+                    <h2 class="text-sm md:text-base font-black text-slate-800 truncate" id="detail-title">编辑产品</h2>
+                    <p class="text-[10px] text-slate-400 mt-0.5 truncate" id="detail-sku-hint">填写必填项即可保存</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeProductDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+        </div>
+        <div id="product-form-errors" class="hidden mx-4 mt-3 md:mx-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed shrink-0" role="alert"></div>
+        <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-4">
+            <section class="tm-product-edit-section">
+                <h3 class="tm-product-edit-section__title">基本信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
+                <div class="tm-product-edit-grid">
+                    <div class="tm-product-field tm-product-field--full">
+                        <label class="tm-product-label" for="detail-product-name">产品名称<span class="tm-product-required">*</span></label>
+                        <input id="detail-product-name" type="text" class="form-input" placeholder="如：东北大板原味" autocomplete="off" />
+                    </div>
+                    <div class="tm-product-field tm-product-field--full">
+                        <label class="tm-product-label" for="detail-product-base-unit">基本单位<span class="tm-product-required">*</span></label>
+                        <div class="flex gap-2">
+                            <input type="text" id="detail-product-base-unit" class="form-input flex-1 min-w-0" placeholder="件、箱、吨" autocomplete="off" oninput="window.ProductModule.onBaseUnitChanged()" />
+                            <button type="button" onclick="openProductUnitModal()" class="tm-product-unit-btn shrink-0" title="配置包装单位换算">换算</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="tm-product-edit-section tm-product-edit-section--advanced">
+                <button type="button" onclick="toggleAdvanced()" class="tm-product-advanced-toggle w-full" aria-expanded="false" aria-controls="product-advanced-drawer">
+                    <span class="flex items-center gap-2">
+                        <i class="ph ph-sliders-horizontal text-brand-500"></i>
+                        <span class="font-bold text-slate-700">高级配置</span>
+                        <span class="text-[10px] text-slate-400 font-normal">选填</span>
+                    </span>
+                    <i id="product-detail-advanced-icon" class="ph ph-caret-down text-slate-400 transition-transform"></i>
+                </button>
+                <div id="product-advanced-drawer" class="tm-product-advanced-drawer" aria-hidden="true">
+                    <div class="tm-product-edit-grid tm-product-edit-grid--advanced">
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-category">商品类别</label>
+                            <select id="detail-product-category" class="form-input w-full" aria-label="商品类别"></select>
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-price">预设销售价</label>
+                            <div class="tm-product-input-suffix">
+                                <input id="detail-product-price" type="number" min="0" step="0.01" class="form-input font-mono font-bold text-brand-600" placeholder="0.00" />
+                                <span class="tm-product-suffix">元</span>
+                            </div>
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-stock">当前库存总量</label>
+                            <input id="detail-product-stock" type="number" min="0" step="1" class="form-input font-mono" placeholder="基本单位数量" />
+                            <p class="tm-product-hint">按基本单位统计；分仓填写将自动汇总</p>
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-sku-input">产品 SKU</label>
+                            <input id="detail-product-sku-input" type="text" class="form-input font-mono text-sm" placeholder="留空将自动生成" autocomplete="off" />
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-supplier">关联供应商</label>
+                            <select id="detail-product-supplier" class="form-input"></select>
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-purchase-unit">默认入库单位</label>
+                            <select id="detail-product-purchase-unit" class="form-input"></select>
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-sales-unit">默认出库单位</label>
+                            <select id="detail-product-sales-unit" class="form-input"></select>
+                        </div>
+                        <div class="tm-product-field">
+                            <label class="tm-product-label" for="detail-product-warning-stock">预警库存下限</label>
+                            <input id="detail-product-warning-stock" type="number" min="0" step="1" class="form-input border-red-100 font-mono" placeholder="基本单位" />
+                        </div>
+                        <div class="tm-product-field tm-product-field--full">
+                            <label class="tm-product-label">各仓库库存</label>
+                            <div id="detail-product-warehouse-stock" class="tm-product-warehouse-panel"></div>
+                        </div>
+                        <div class="tm-product-field tm-product-field--full">
+                            <label class="tm-product-label" for="detail-product-description">产品详情描述</label>
+                            <textarea id="detail-product-description" class="form-input tm-product-textarea no-scrollbar" rows="3" placeholder="规格、卖点、存储说明等"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <div class="tm-product-edit-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+            <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存后同步库存与开单识别</p>
+            <div class="flex gap-2 md:gap-3">
+                <button type="button" onclick="closeProductDetail()" class="flex-1 md:flex-none md:px-6 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
+                <button type="button" onclick="saveProduct()" class="flex-[1.4] md:flex-none md:px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/25 hover:bg-brand-700 transition active:scale-[0.98] flex items-center justify-center gap-2">
+                    <i class="ph ph-floppy-disk-back"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="product-unit-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeProductUnitModal()"></div>
+    <div class="relative bg-white w-full max-w-md rounded-2xl p-5 md:p-6 shadow-2xl fade-in text-left">
+        <div id="unit-form-errors" class="hidden mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed" role="alert"></div>
+        <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2 text-[15px]"><i class="ph ph-scales text-brand-500 text-lg"></i> 单位换算配置</h3>
+        <div class="flex gap-2 items-start mb-3">
+            <p class="text-[10px] text-slate-400 leading-snug flex-1 min-w-0">最多配置 2 个包装单位；1 包装单位 = 折合基本数量（基本单位见编辑表单）。</p>
+            <div class="flex items-center gap-0.5 shrink-0 pt-0.5">
+                <button type="button" id="unit-modal-add-btn" onclick="window.ProductModule.addUnitConversionRow()" title="添加一行" class="unit-modal-add-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors disabled:opacity-35 disabled:pointer-events-none">
+                    <i class="ph-bold ph-plus text-lg"></i>
+                </button>
+                <button type="button" id="unit-modal-remove-btn" onclick="window.ProductModule.removeUnitConversionRow()" title="删除末行" class="unit-modal-remove-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-35 disabled:pointer-events-none">
+                    <i class="ph-bold ph-trash text-base"></i>
+                </button>
+            </div>
+        </div>
+        <div id="unit-conversion-rows" class="space-y-3"></div>
+        <button type="button" onclick="window.ProductModule.saveUnitConversionModal()" class="w-full mt-4 bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold shadow-lg active:scale-[0.98] transition-transform">保存单位配置</button>
+        <button type="button" onclick="closeProductUnitModal()" class="w-full mt-2 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
+    </div>
+</div>
+
+<div id="warehouse-transfer-modal" class="tm-transfer-modal hidden fixed inset-0 z-[150] flex items-end md:items-center justify-center p-0 md:p-4 modal-blur">
+    <div class="absolute inset-0" onclick="window.ProductModule.closeTransferModal()"></div>
+    <div class="relative bg-white w-full max-w-4xl h-[min(92dvh,100%)] md:h-auto md:max-h-[88vh] rounded-t-[1.75rem] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+        <header class="tm-transfer-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-white shrink-0">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+                            <i class="ph ph-swap text-lg"></i>
+                        </div>
+                        <h2 class="text-base md:text-lg font-black text-slate-800 leading-snug">仓库产品调拨</h2>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-mono tracking-widest uppercase hidden md:block mt-1">Warehouse Transfer</p>
+                    <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                        <span class="text-slate-400">源仓库</span>
+                        <span class="mx-1 text-slate-300">·</span>
+                        <span id="source-warehouse-name" class="font-bold text-slate-700">主仓库</span>
+                    </p>
+                </div>
+                <button type="button" onclick="window.ProductModule.closeTransferModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭">
+                    <i class="ph ph-x text-xl text-slate-400"></i>
+                </button>
+            </div>
+        </header>
+        <div id="transfer-form-errors" class="hidden mx-4 mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 leading-relaxed shrink-0" role="alert"></div>
+        <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 space-y-4 no-scrollbar">
+            <div class="tm-transfer-field">
+                <label class="tm-transfer-label" for="target-warehouse-select">目标仓库</label>
+                <select id="target-warehouse-select" class="form-input w-full text-sm">
+                    <option value="">请选择目标仓库</option>
+                </select>
+            </div>
+            <div class="tm-transfer-products-block">
+                <div class="flex justify-between items-center gap-2 mb-2">
+                    <label class="tm-transfer-label mb-0">产品清单</label>
+                    <button type="button" onclick="window.ProductModule.addProductRow()" class="tm-transfer-add-btn shrink-0">
+                        <i class="ph ph-plus"></i> 新增行
+                    </button>
+                </div>
+                <div class="tm-transfer-table-wrap">
+                    <table class="tm-transfer-table w-full text-left text-xs">
+                        <thead>
+                            <tr>
+                                <th class="tm-transfer-th tm-transfer-th--product">产品名称</th>
+                                <th class="tm-transfer-th tm-transfer-th--price">单价（元）</th>
+                                <th class="tm-transfer-th tm-transfer-th--qty">数量</th>
+                                <th class="tm-transfer-th tm-transfer-th--total">总价（元）</th>
+                                <th class="tm-transfer-th tm-transfer-th--action" aria-label="操作"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="transfer-product-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <footer class="tm-transfer-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+            <div class="flex justify-between items-center mb-3">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">调拨总价值</p>
+                <p class="tm-transfer-total"><span id="transfer-total-value">0.00</span><span class="tm-transfer-total__unit">元</span></p>
+            </div>
+            <div class="flex gap-2 md:gap-3">
+                <button type="button" onclick="window.ProductModule.closeTransferModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
+                <button type="button" onclick="window.ProductModule.confirmTransfer()" class="flex-[1.4] md:flex-[2] py-3 rounded-2xl bg-brand-500 text-white text-xs font-black hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20 active:scale-[0.98]">确认调拨</button>
+            </div>
+        </footer>
+    </div>
+</div>
