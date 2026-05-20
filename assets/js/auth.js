@@ -553,6 +553,16 @@ window.tmGetSelectedMerchantType = function () {
                 .auth-input-wrap .auth-input {
                     padding-left: 0 !important;
                 }
+                .auth-input-wrap input[type="text"],
+                .auth-input-wrap input[type="password"],
+                .auth-input-wrap input[type="email"],
+                .auth-input-wrap input[type="tel"] {
+                    width: auto !important;
+                    flex: 1 1 0%;
+                    min-width: 0;
+                    max-width: 100%;
+                    box-sizing: border-box;
+                }
                 
                 /* 隐藏移动端元素在 PC 端 */
                 @media (min-width: 768px) {
@@ -3041,16 +3051,12 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
 
             if (typeof window.tmRegisterTermsAccepted === 'function' && !window.tmRegisterTermsAccepted()) {
-                if (window.TM_Legal && typeof window.TM_Legal.toastTermsRequired === 'function') {
-                    window.TM_Legal.toastTermsRequired();
-                } else {
-                    showModal('请先阅读并同意相关协议', true);
-                }
+                showModal('请先阅读并同意《用户服务协议》与《隐私协议》', true);
                 return;
             }
             
-            const username = document.getElementById('regUsername').value;
-            const email = document.getElementById('regEmail').value;
+            const username = document.getElementById('regUsername').value.trim();
+            const email = (document.getElementById('regEmail').value || '').trim();
             const phone = document.getElementById('regPhone').value;
             const company = document.getElementById('regCompany').value || '';
             const creditCode = document.getElementById('regCreditCode').value || '';
@@ -3060,8 +3066,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const smsCodeEl = document.getElementById('regSmsCode');
             const smsCode = smsCodeEl ? smsCodeEl.value.trim() : '';
             
-            // 验证必填字段
-            if (!username || !email || !phone || !password || !confirmPassword) {
+            // 验证必填字段（邮箱选填）
+            if (!username || !phone || !password || !confirmPassword) {
                 showModal('请填写所有必填字段', true);
                 return;
             }
@@ -3070,9 +3076,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // 验证邮箱格式
+            // 邮箱选填：仅在有内容时校验格式
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
+            if (email && !emailRegex.test(email)) {
                 showModal('请输入有效的邮箱地址', true);
                 return;
             }
@@ -3106,7 +3112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 构建注册数据
                 const registerData = {
                     username: username,
-                    email: email,
+                    email: email || null,
                     phone: phone,
                     tenantName: company, // 公司名称
                     tenantCode: creditCode, // 社会信用代码

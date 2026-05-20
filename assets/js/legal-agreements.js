@@ -186,7 +186,11 @@
         bindLegalLinks: bindLegalLinks,
         initRegisterCompliance: initRegisterCompliance,
         toastTermsRequired: function () {
-            toast('请先阅读并同意《用户服务协议》与《隐私协议》', 'warning');
+            if (typeof global.showModal === 'function') {
+                global.showModal('请先阅读并同意《用户服务协议》与《隐私协议》', true);
+            } else {
+                toast('请先阅读并同意《用户服务协议》与《隐私协议》', 'warning');
+            }
             var cb = document.getElementById('tmAgreeTerms');
             if (cb) {
                 cb.focus();

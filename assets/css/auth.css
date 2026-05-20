@@ -804,10 +804,20 @@ select.auth-select {
 }
 
 /* TradeMind-Web：覆盖 auth.js 旧版 login-register-input，保持 UI 工程胶囊输入框 */
+.auth-register-form .auth-input-wrap > i.ph {
+    flex-shrink: 0;
+    width: 1.125rem;
+    text-align: center;
+}
+
 .auth-register-form .auth-input-wrap .auth-input,
 .auth-register-form .auth-input-wrap input.login-register-input {
-    padding: 0 !important;
-    padding-left: 0 !important;
+    width: auto !important;
+    flex: 1 1 0%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 0 0 0.125rem !important;
     border: none !important;
     background: transparent !important;
     min-height: auto;
