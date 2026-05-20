@@ -32,17 +32,47 @@
 @media (max-width: 767px) {
     :root {
         --tm-header-h: 3.5rem;
-        --tm-tabbar-h: 4.5rem;
+        --tm-tabbar-h: 4.25rem;
+        --tm-mobile-header-h: 3.5rem;
+        --tm-mobile-nav-h: 4.25rem;
     }
 
-    /* 与 UI 工程 index.html 一致：滚动内容区紧贴顶栏下沿，勿额外 padding-top */
-    #content-area.tm-app-content-area {
-        padding-top: 0 !important;
-    }
-
-    .tm-app-content-area {
+    /* 顶栏/底栏留白由 body.tm-layout-mobile + MobileAdapt/mobile.css 统一处理 */
+    body:not(.tm-layout-mobile) .tm-app-content-area {
         padding-bottom: calc(var(--tm-tabbar-h) + var(--tm-safe-b) + 0.25rem) !important;
     }
+}
+
+/* 顶栏图标按钮（通知 / 会员 / 退出，对齐 UI 工程） */
+.tm-header-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0.35rem;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+}
+
+.tm-header-icon-btn:active {
+    transform: scale(0.94);
+}
+
+.tm-header-icon-btn--logout {
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.tm-header-icon-btn--logout:hover,
+.tm-header-icon-btn--logout:focus-visible {
+    color: #e11d48;
+    background: #fff1f2;
+    border-color: #fecdd3;
 }
 
 @media (min-width: 768px) {

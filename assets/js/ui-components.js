@@ -110,15 +110,22 @@
             const pageTitle = options.pageTitle || '商贸智脑';
             
             return `
-                <div class="tm-mobile-header">
-                    <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <i class="ph ph-brain text-xl"></i>
+                <header class="tm-mobile-header">
+                    <div class="flex items-center min-w-0 flex-1">
+                        <div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2 shrink-0">
+                            <i class="ph ph-brain text-lg"></i>
+                        </div>
+                        <span class="font-bold text-slate-800 truncate">${pageTitle}</span>
                     </div>
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-                    <div class="w-10 h-10 rounded-full bg-[#14B8A6] text-white flex items-center justify-center cursor-pointer" data-action="openSubscriptionModal" id="mobile-user-avatar">
-                        <i class="ph ph-user text-lg"></i>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof openMemberModal==='function'&&openMemberModal()" title="会员中心" aria-label="会员中心">
+                            <i class="ph ph-user-circle text-xl"></i>
+                        </button>
+                        <button type="button" class="tm-header-icon-btn tm-header-icon-btn--logout" onclick="typeof tmLogout==='function'?tmLogout():(typeof logout==='function'&&logout())" title="退出登录" aria-label="退出登录">
+                            <i class="ph ph-sign-out text-xl"></i>
+                        </button>
                     </div>
-                </div>
+                </header>
             `;
         }
     };
@@ -132,6 +139,10 @@
          */
         init: function() {
             console.log('[UI-Components] 初始化响应式布局...');
+
+            if (window.TM_Responsive && typeof window.TM_Responsive.init === 'function') {
+                window.TM_Responsive.init();
+            }
             
             // 检测当前布局模式
             this.checkLayoutMode();

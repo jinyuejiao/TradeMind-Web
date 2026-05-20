@@ -132,6 +132,9 @@
     };
 
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.TM_Responsive && typeof window.TM_Responsive.init === 'function') {
+            window.TM_Responsive.init();
+        }
         var token = localStorage.getItem('token');
         if (token) {
             window.TM_UI.applyContextFromToken(token);

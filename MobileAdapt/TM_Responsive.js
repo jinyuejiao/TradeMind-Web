@@ -1,155 +1,137 @@
 /**
- * TradeMind - 移动端适配统一模块
- * 
- * 功能说明：
- * - 统一判断设备类型
- * - 统一管理移动端和桌面端的视图切换
- * - 提供公共的响应式辅助函数
- * 
- * @version 1.0.0
+ * TradeMind - 移动端适配统一模块（与 UI 工程 Tailwind md=768px 对齐）
+ * @version 1.1.0
  */
+(function () {
+    'use strict';
 
-console.log('[TM_Responsive] 移动端适配模块已加载');
+    var BP = 768;
 
-window.TM_Responsive = {
-    /**
-     * 判断当前是否为移动设备
-     * @returns {boolean}
-     */
-    isMobile: function() {
-        return window.innerWidth < 768;
-    },
+    var api = {
+        MOBILE_MAX_WIDTH: BP,
 
-    /**
-     * 判断当前是否为桌面设备
-     * @returns {boolean}
-     */
-    isDesktop: function() {
-        return !this.isMobile();
-    },
+        isMobile: function () {
+            return window.matchMedia('(max-width: ' + (BP - 1) + 'px)').matches;
+        },
 
-    /** 与 UI 规范一致：移动端为宽度小于 768px；CSS max-width 使用 767px */
-    isMobileView: function() {
-        return this.isMobile();
-    },
+        isDesktop: function () {
+            return !this.isMobile();
+        },
 
-    /**
-     * 安全判断是否显示某元素
-     * @param {string} id - 元素ID
-     * @param {boolean} mobileOnly - 是否仅移动端显示
-     */
-    shouldShow: function(id, mobileOnly = false) {
-        if (mobileOnly) {
+        isMobileView: function () {
             return this.isMobile();
-        }
-        return true;
-    },
+        },
 
-    /**
-     * 统一的移动端/桌面端视图渲染
-     * @param {any} data - 要渲染的数据
-     * @param {string} containerId - 容器ID
-     * @param {function} mobileRenderer - 移动端渲染函数
-     * @param {function} desktopRenderer - 桌面端渲染函数
-     */
-    render: function(data, containerId, mobileRenderer, desktopRenderer) {
-        const container = document.getElementById(containerId);
-        if (!container) {
-            console.error('[TM_Responsive] 容器未找到:', containerId);
-            return;
-        }
+        syncBodyLayoutMode: function () {
+            var m = this.isMobileView();
+            document.body.classList.toggle('tm-layout-mobile', m);
+            document.body.classList.toggle('tm-layout-desktop', !m);
+        },
 
-        if (this.isMobile()) {
-            if (typeof mobileRenderer === 'function') {
-                mobileRenderer(data, container);
+        init: function () {
+            var self = this;
+            this.syncBodyLayoutMode();
+            window.addEventListener('resize', function () {
+                self.syncBodyLayoutMode();
+            });
+        },
+
+        shouldShow: function (id, mobileOnly) {
+            if (mobileOnly) {
+                return this.isMobile();
             }
-        } else {
-            if (typeof desktopRenderer === 'function') {
+            return true;
+        },
+
+        render: function (data, containerId, mobileRenderer, desktopRenderer) {
+            var container = document.getElementById(containerId);
+            if (!container) {
+                console.error('[TM_Responsive] 容器未找到:', containerId);
+                return;
+            }
+            if (this.isMobile()) {
+                if (typeof mobileRenderer === 'function') {
+                    mobileRenderer(data, container);
+                }
+            } else if (typeof desktopRenderer === 'function') {
                 desktopRenderer(data, container);
             }
-        }
-    },
+        },
 
-    /**
-     * 窗口大小变化监听
-     * @param {function} callback - 回调函数
-     */
-    onResize: function(callback) {
-        let lastWidth = window.innerWidth;
-        const handler = () => {
-            if (window.innerWidth !== lastWidth) {
-                lastWidth = window.innerWidth;
-                if (typeof callback === 'function') {
-                    callback(this.isMobile());
+        onResize: function (callback) {
+            var lastWidth = window.innerWidth;
+            var handler = function () {
+                if (window.innerWidth !== lastWidth) {
+                    lastWidth = window.innerWidth;
+                    if (typeof callback === 'function') {
+                        callback(api.isMobile());
+                    }
+                }
+            };
+            window.addEventListener('resize', handler);
+            return handler;
+        },
+
+        crmViewToggle: function (showDetail) {
+            var listPane = document.getElementById('crm-list-pane');
+            var detailPane = document.getElementById('crm-detail-pane');
+            var viewCrm = document.getElementById('view-crm');
+            if (listPane && detailPane && viewCrm) {
+                if (showDetail) {
+                    listPane.classList.add('hidden');
+                    detailPane.classList.remove('hidden');
+                    viewCrm.classList.add('crm-detail-active');
+                } else {
+                    listPane.classList.remove('hidden');
+                    detailPane.classList.add('hidden');
+                    viewCrm.classList.remove('crm-detail-active');
                 }
             }
-        };
+        },
 
-        window.addEventListener('resize', handler);
-        return handler;
-    },
-
-    /**
-     * 移动端CRM详情视图切换
-     * @param {boolean} showDetail - 是否显示详情页
-     */
-    crmViewToggle: function(showDetail) {
-        const listPane = document.getElementById('crm-list-pane');
-        const detailPane = document.getElementById('crm-detail-pane');
-        const viewCrm = document.getElementById('view-crm');
-
-        if (listPane && detailPane && viewCrm) {
-            if (showDetail) {
-                listPane.classList.add('hidden');
-                detailPane.classList.remove('hidden');
-                viewCrm.classList.add('crm-detail-active');
-            } else {
-                listPane.classList.remove('hidden');
-                detailPane.classList.add('hidden');
-                viewCrm.classList.remove('crm-detail-active');
+        showCrmDetail: function () {
+            if (this.isMobile()) {
+                this.crmViewToggle(true);
             }
-        }
-    },
+        },
 
-    /**
-     * 显示客户详情页（仅移动端）
-     * @param {string} customerName - 客户名称
-     */
-    showCrmDetail: function(customerName) {
-        if (this.isMobile()) {
-            this.crmViewToggle(true);
-        }
-    },
-
-    /**
-     * 隐藏客户详情页，返回列表（仅移动端）
-     */
-    hideCrmDetail: function() {
-        if (this.isMobile()) {
-            this.crmViewToggle(false);
-        }
-    },
-
-    /**
-     * 同步手机端导航激活状态
-     * @param {string} tabId - 当前激活的 tab
-     */
-    syncMobileNav: function(tabId) {
-        document.querySelectorAll('#tm-app-tabbar .mobile-nav-btn').forEach((btn) => {
-            btn.classList.remove('text-brand-600', 'active-nav');
-            btn.classList.add('text-slate-400');
-            const dataTab = btn.getAttribute('data-tab');
-            const oc = btn.getAttribute('onclick') || '';
-            const on =
-                dataTab === tabId ||
-                new RegExp('switchTab\\(\\s*[\'"]' + String(tabId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\'"]\\s*\\)').test(oc);
-            if (on) {
-                btn.classList.remove('text-slate-400');
-                btn.classList.add('text-brand-600', 'active-nav');
+        hideCrmDetail: function () {
+            if (this.isMobile()) {
+                this.crmViewToggle(false);
             }
-        });
+        },
+
+        syncMobileNav: function (tabId) {
+            document.querySelectorAll('#tm-app-tabbar .mobile-nav-btn').forEach(function (btn) {
+                btn.classList.remove('text-brand-600', 'active-nav');
+                btn.classList.add('text-slate-400');
+                var dataTab = btn.getAttribute('data-tab');
+                var oc = btn.getAttribute('onclick') || '';
+                var on =
+                    dataTab === tabId ||
+                    new RegExp('switchTab\\(\\s*[\'"]' + String(tabId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\'"]\\s*\\)').test(oc);
+                if (on) {
+                    btn.classList.remove('text-slate-400');
+                    btn.classList.add('text-brand-600', 'active-nav');
+                }
+            });
+        }
+    };
+
+    window.TM_Responsive = api;
+    Object.freeze(window.TM_Responsive);
+
+    function bootLayoutMode() {
+        if (window.TM_Responsive && typeof window.TM_Responsive.init === 'function') {
+            window.TM_Responsive.init();
+        }
     }
-};
 
-// 导出到全局，方便其他模块调用
-Object.freeze(window.TM_Responsive);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootLayoutMode);
+    } else {
+        bootLayoutMode();
+    }
+
+    console.log('[TM_Responsive] 移动端适配模块已加载');
+})();

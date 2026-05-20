@@ -180,3 +180,53 @@
         padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
 }
+
+/* ================= 主应用壳层：顶栏固定 + 内容区留白（对齐 UI 工程） ================= */
+@media (max-width: 767px) {
+    :root {
+        --tm-mobile-header-h: 3.5rem;
+        --tm-mobile-nav-h: 4.25rem;
+        --tm-header-h: 3.5rem;
+        --tm-tabbar-h: 4.25rem;
+    }
+
+    body.tm-layout-mobile main {
+        min-height: 0;
+    }
+
+    body.tm-layout-mobile .tm-app-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 35;
+        min-height: var(--tm-mobile-header-h);
+        height: auto;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: 0.125rem;
+        box-shadow: 0 1px 0 rgba(226, 232, 240, 0.9);
+    }
+
+    body.tm-layout-mobile .tm-content-area,
+    body.tm-layout-mobile .tm-app-content-area {
+        padding-top: calc(var(--tm-mobile-header-h) + env(safe-area-inset-top, 0px) + 0.5rem) !important;
+        padding-bottom: calc(var(--tm-mobile-nav-h) + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.tm-layout-mobile .view-section {
+        scroll-margin-top: calc(var(--tm-mobile-header-h) + env(safe-area-inset-top, 0px) + 0.5rem);
+    }
+
+    /* auth.js 注入的独立模块顶栏 */
+    body.tm-layout-mobile .tm-mobile-header {
+        min-height: calc(var(--tm-mobile-header-h) + env(safe-area-inset-top, 0px));
+        height: auto;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: 0.125rem;
+    }
+
+    body.tm-layout-mobile #content-area:not(.tm-app-content-area) {
+        padding-top: calc(var(--tm-mobile-header-h) + env(safe-area-inset-top, 0px) + 0.5rem) !important;
+    }
+}

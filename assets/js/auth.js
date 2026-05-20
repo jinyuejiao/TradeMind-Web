@@ -415,8 +415,8 @@ window.tmGetSelectedMerchantType = function () {
                     .main-content-section,
                     .page-content,
                     #content-area:not(.tm-app-content-area) {
-                        padding-top: 4rem;
-                        padding-bottom: 5rem;
+                        padding-top: calc(var(--tm-mobile-header-h, 3.5rem) + env(safe-area-inset-top, 0px) + 0.5rem);
+                        padding-bottom: calc(var(--tm-mobile-nav-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.75rem);
                     }
 
                     /*
@@ -429,21 +429,26 @@ window.tmGetSelectedMerchantType = function () {
                     }
                 }
 
-                /* 移动端顶部导航 */
+                /* 移动端顶部导航（高度含 safe-area，与 MobileAdapt/mobile.css 一致） */
                 .tm-mobile-header {
                     position: fixed;
                     top: 0;
                     left: 0;
                     right: 0;
-                    height: 4rem;
-                    background: rgba(255, 255, 255, 0.8);
+                    min-height: calc(var(--tm-mobile-header-h, 3.5rem) + env(safe-area-inset-top, 0px));
+                    height: auto;
+                    padding-top: env(safe-area-inset-top, 0px);
+                    padding-bottom: 0.125rem;
+                    background: rgba(255, 255, 255, 0.9);
                     backdrop-filter: blur(12px);
                     border-bottom: 1px solid #e2e8f0;
                     z-index: 900;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 0 1.5rem;
+                    padding-left: 1rem;
+                    padding-right: 1rem;
+                    box-shadow: 0 1px 0 rgba(226, 232, 240, 0.9);
                 }
 
                 .tm-mobile-logo {
@@ -1282,6 +1287,15 @@ function logout() {
     // 重定向到登录页面（使用绝对路径，防止加入历史记录堆栈）
     tmSafeReplace('/login.html');
 }
+
+/** 退出登录（对齐 UI 工程：确认后清会话并跳转登录页） */
+function tmLogout() {
+    if (!confirm('确定要退出登录吗？')) {
+        return;
+    }
+    logout();
+}
+window.tmLogout = tmLogout;
 
 // 检查认证状态
 function checkAuth() {
@@ -2258,6 +2272,49 @@ function closePoster() {
 }
 
 // 统一注入公共 UI 组件
+/** 独立模块页加载移动壳层 CSS / TM_Responsive（主壳 index-app 在 HTML 中已引入） */
+function ensureMobileShellAssets() {
+    var cssId = 'tm-mobile-adapt-css';
+    if (!document.getElementById(cssId)) {
+        var cssHref = '/MobileAdapt/mobile.css?v=20260520shell';
+        if (typeof resolveStaticPageUrl === 'function') {
+            try {
+                cssHref = resolveStaticPageUrl('MobileAdapt/mobile.css?v=20260520shell');
+            } catch (eCss) { /* ignore */ }
+        }
+        var link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = cssHref;
+        document.head.appendChild(link);
+    }
+    function bootResponsive() {
+        if (!window.TM_Responsive) return;
+        if (typeof window.TM_Responsive.init === 'function') {
+            window.TM_Responsive.init();
+        } else if (typeof window.TM_Responsive.syncBodyLayoutMode === 'function') {
+            window.TM_Responsive.syncBodyLayoutMode();
+        }
+    }
+    if (window.TM_Responsive) {
+        bootResponsive();
+        return;
+    }
+    var jsId = 'tm-responsive-js';
+    if (document.getElementById(jsId)) return;
+    var jsSrc = '/MobileAdapt/TM_Responsive.js';
+    if (typeof resolveStaticPageUrl === 'function') {
+        try {
+            jsSrc = resolveStaticPageUrl('MobileAdapt/TM_Responsive.js');
+        } catch (eJs) { /* ignore */ }
+    }
+    var script = document.createElement('script');
+    script.id = jsId;
+    script.src = jsSrc;
+    script.onload = bootResponsive;
+    document.head.appendChild(script);
+}
+
 window.injectCommonUI = function() {
     console.log('========== TradeMindUI: injectCommonUI 开始执行 ==========');
     console.log('TradeMindUI.injectCommonUI: 函数被调用');
@@ -2317,6 +2374,10 @@ window.injectCommonUI = function() {
         
         if (isMobile && !isPublicAuthPage) {
             console.log('TradeMindUI.injectCommonUI: 检测到移动设备，开始移动端适配');
+
+            if (!document.getElementById('tm-app-tabbar')) {
+                ensureMobileShellAssets();
+            }
             
             // 给 body 添加移动端类名（嵌入 iframe 的模块页不加，避免全局移动端样式干扰子页布局）
             if (!isEmbeddedModule) {
@@ -2633,13 +2694,16 @@ window.TradeMindUI = {
                     </div>
                     <span class="font-bold text-slate-800">${pageTitle}</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button class="relative text-slate-400 hover:text-brand-600 transition">
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" class="tm-header-icon-btn relative text-slate-400 hover:text-brand-600 transition" title="通知" aria-label="通知">
                         <i class="ph ph-bell text-xl"></i>
                     </button>
-                    <div class="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px] cursor-pointer" id="mobile-user-avatar" onclick="openSubscriptionModal()">
-                        ${userInitial}
-                    </div>
+                    <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof openMemberModal==='function'&&openMemberModal()" title="会员中心" aria-label="会员中心">
+                        <i class="ph ph-user-circle text-xl"></i>
+                    </button>
+                    <button type="button" class="tm-header-icon-btn tm-header-icon-btn--logout" onclick="typeof tmLogout==='function'?tmLogout():(typeof logout==='function'&&logout())" title="退出登录" aria-label="退出登录">
+                        <i class="ph ph-sign-out text-xl"></i>
+                    </button>
                 </div>
             </header>
         `;
