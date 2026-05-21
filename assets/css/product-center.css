@@ -286,7 +286,11 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
-#view-supply.tm-view-supply-scroll {
+#view-supply.hidden {
+    display: none !important;
+}
+
+#view-supply.tm-view-supply-scroll:not(.hidden) {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -294,7 +298,7 @@
     overflow: hidden;
 }
 
-#view-supply.tm-view-supply-scroll #content-area {
+#view-supply.tm-view-supply-scroll #supply-inner-scroll {
     flex: 1;
     min-height: 0;
     overflow-y: auto;

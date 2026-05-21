@@ -14,13 +14,37 @@
     PM.auditSaveCallback = null;
     PM._bodyScrollLock = 0;
 
+    PM.isAuditProductFormActive = function () {
+        var pane = document.getElementById('confirm-product-tab');
+        return !!(pane && !pane.classList.contains('hidden'));
+    };
+
     PM.el = function () {
         var ids = Array.prototype.slice.call(arguments);
-        for (var i = 0; i < ids.length; i++) {
-            var node = document.getElementById(ids[i]);
+        var useAudit = PM.isAuditProductFormActive();
+        if (useAudit) {
+            var mapped = [];
+            ids.forEach(function (id) {
+                if (id && id.indexOf('detail-') === 0) {
+                    mapped.push('audit-' + id);
+                } else {
+                    mapped.push(id);
+                }
+            });
+            for (var i = 0; i < mapped.length; i++) {
+                var auditNode = document.getElementById(mapped[i]);
+                if (auditNode) return auditNode;
+            }
+        }
+        for (var j = 0; j < ids.length; j++) {
+            var node = document.getElementById(ids[j]);
             if (node) return node;
         }
         return null;
+    };
+
+    PM.formErrorBoxId = function () {
+        return PM.isAuditProductFormActive() ? 'audit-product-form-errors' : 'product-form-errors';
     };
 
     PM.lockBodyScroll = function (on) {
@@ -47,7 +71,7 @@
     };
 
     PM.getBaseUnitLabel = function () {
-        var inp = PM.el('detail-product-base-unit', 'product-base-unit-input');
+        var inp = PM.el('detail-product-base-unit', 'audit-detail-product-base-unit', 'product-base-unit-input');
         var v = inp ? String(inp.value || '').trim() : '';
         return v || '件';
     };
@@ -55,15 +79,47 @@
     PM.validateProductForm = function () {
         var errors = [];
         var nameEl = PM.el('detail-product-name', 'product-name-input');
+        var catEl = PM.el('detail-product-category', 'product-category-select');
+        var priceEl = PM.el('detail-product-price', 'product-price-input');
         var baseEl = PM.el('detail-product-base-unit', 'product-base-unit-input');
+        var stockEl = PM.el('detail-product-stock', 'product-stock-input');
         var name = nameEl ? nameEl.value.trim() : '';
+        var cat = catEl ? catEl.value : '';
+        var priceRaw = priceEl ? priceEl.value : '';
         var base = baseEl ? baseEl.value.trim() : '';
+        var stockRaw = stockEl ? stockEl.value : '';
         if (!name) errors.push('请填写产品名称');
+        if (priceRaw === '' || priceRaw == null) {
+            errors.push('请填写预设销售价');
+        } else {
+            var priceNum = parseFloat(priceRaw);
+            if (isNaN(priceNum) || priceNum < 0) errors.push('预设销售价须为不小于 0 的数字');
+        }
         if (!base) errors.push('请填写基本单位');
-        PM.showFormErrors('product-form-errors', errors);
+        if (stockRaw !== '' && stockRaw != null) {
+            var stockNum = parseInt(stockRaw, 10);
+            if (isNaN(stockNum) || stockNum < 0) errors.push('当前库存总量须为不小于 0 的整数');
+        }
+        PM.showFormErrors(PM.formErrorBoxId(), errors);
         if (errors.length && nameEl && !name) nameEl.focus();
+        else if (errors.length && priceEl && (priceRaw === '' || isNaN(parseFloat(priceRaw)))) priceEl.focus();
         else if (errors.length && baseEl && !base) baseEl.focus();
+        else if (errors.length && stockEl && stockRaw !== '' && isNaN(parseInt(stockRaw, 10))) stockEl.focus();
         return errors.length === 0;
+    };
+
+    PM.collapseAdvancedDrawer = function () {
+        var drawer = PM.el('product-advanced-drawer', 'advanced-drawer');
+        var icon = PM.el('product-detail-advanced-icon', 'advanced-icon');
+        var btn = document.querySelector('.tm-product-advanced-toggle');
+        if (!drawer) return;
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        if (icon) {
+            icon.classList.add('ph-caret-down');
+            icon.classList.remove('ph-caret-up');
+        }
     };
 
     PM.resolveUnitConversionsForSave = function () {
@@ -118,7 +174,7 @@
             productId: cp.id || null,
             name: nm,
             sku: sk,
-            categoryId: catRaw != null && !isNaN(catRaw) ? catRaw : null,
+            categoryId: catRaw != null && !isNaN(catRaw) ? catRaw : 0,
             supplierId: supRaw != null && !isNaN(supRaw) ? supRaw : null,
             price: priceInput && priceInput.value !== '' ? parseFloat(priceInput.value) : 0,
             stock: stockVal,
@@ -380,7 +436,7 @@
     PM.populateCategorySelect = function (selectedCategoryId) {
         var select = PM.el('detail-product-category', 'product-category-select');
         if (!select) return;
-        select.innerHTML = '<option value="">请选择商品类别</option>';
+        select.innerHTML = '<option value="">未分类</option>';
         (PM.categories || []).forEach(function (cat) {
             var option = document.createElement('option');
             option.value = cat.categoryId;
@@ -432,6 +488,7 @@
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
         await _openProductDetail.call(PM, productId);
+        PM.collapseAdvancedDrawer();
         var hint = PM.el('detail-sku-hint', 'detail-sku');
         var sku = PM.currentProduct && PM.currentProduct.sku;
         if (hint) hint.textContent = sku ? ('SKU: ' + sku) : '填写必填项即可保存';
@@ -457,15 +514,26 @@
         PM.populateCategorySelect(null);
         PM.populateSupplierSelect(null);
         if (prefill && typeof prefill === 'object') {
-            var n = PM.el('detail-product-name', 'product-name-input');
-            var s = PM.el('detail-product-sku-input', 'product-sku-input');
-            var b = PM.el('detail-product-base-unit', 'product-base-unit-input');
-            if (n && prefill.name) n.value = prefill.name;
-            if (s && prefill.sku) s.value = prefill.sku;
-            if (b && prefill.baseUnit) b.value = prefill.baseUnit;
+            PM.populateProductForm({
+                name: prefill.name || '',
+                sku: prefill.sku || '',
+                price: prefill.price != null ? prefill.price : (prefill.salePrice != null ? prefill.salePrice : ''),
+                stock: prefill.stock != null ? prefill.stock : (prefill.stockQuantity != null ? prefill.stockQuantity : ''),
+                baseUnit: prefill.baseUnit || '',
+                warningStock: prefill.warningStock != null ? prefill.warningStock : '',
+                description: prefill.description || '',
+                purchaseUnit: prefill.purchaseUnit || null,
+                salesUnit: prefill.salesUnit || null
+            });
+            if (prefill.categoryId != null) PM.populateCategorySelect(prefill.categoryId);
+            if (prefill.supplierId != null) PM.populateSupplierSelect(prefill.supplierId);
+            if (Array.isArray(prefill.unitConversions) && prefill.unitConversions.length) {
+                PM.syncDraftFromApiConversions(prefill.unitConversions);
+            }
         }
+        PM.collapseAdvancedDrawer();
         var hint = PM.el('detail-sku-hint');
-        if (hint) hint.textContent = '请填写产品名称与基本单位';
+        if (hint) hint.textContent = '请填写名称、类别、售价、基本单位与库存';
         await PM.loadProductWarehouseStocks(null);
         PM.lockBodyScroll(true);
     };
@@ -702,6 +770,112 @@
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('调拨失败: ' + error.message, 'error');
             }
+        }
+    };
+
+    PM.populateAuditCategorySelect = function (selectedCategoryId) {
+        var select = document.getElementById('audit-detail-product-category');
+        if (!select) return;
+        select.innerHTML = '<option value="">未分类</option>';
+        (PM.categories || []).forEach(function (cat) {
+            var option = document.createElement('option');
+            option.value = cat.categoryId;
+            option.textContent = cat.name;
+            if (selectedCategoryId != null && String(selectedCategoryId) === String(cat.categoryId)) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+    };
+
+    window.TM_initAuditProductForm = async function (np) {
+        np = np || {};
+        try {
+            await Promise.all([PM.loadCategories(), PM.loadSuppliers()]);
+        } catch (e) { /* ignore */ }
+        PM.currentProduct = {};
+        PM.unitConversionDraft = [{ unitName: '', ratio: '' }];
+        PM.populateAuditCategorySelect(np.category_id != null ? np.category_id : np.categoryId);
+        var set = function (id, val) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.value = val != null && val !== undefined ? val : '';
+        };
+        var price = np.price != null ? np.price : (np.sale_price != null ? np.sale_price : np.unit_price);
+        var stock = np.stock != null ? np.stock : np.stock_quantity;
+        set('audit-detail-product-name', np.name || np.product_name || '');
+        set('audit-detail-product-sku-input', np.sku || np.product_sku || '');
+        set('audit-detail-product-price', price != null && price !== '' ? price : '');
+        set('audit-detail-product-base-unit', np.base_unit || np.baseUnit || np.unit || '件');
+        set('audit-detail-product-stock', stock != null && stock !== '' ? stock : '');
+        set('audit-detail-product-description', np.description || np.summary || '');
+        if (Array.isArray(np.unit_conversions || np.unitConversions)) {
+            PM.syncDraftFromApiConversions(np.unit_conversions || np.unitConversions);
+        }
+        var drawer = document.getElementById('audit-product-advanced-drawer');
+        var icon = document.getElementById('audit-product-detail-advanced-icon');
+        var btn = document.querySelector('#confirm-product-tab .tm-product-advanced-toggle');
+        if (drawer) {
+            drawer.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+        }
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        if (icon) {
+            icon.classList.add('ph-caret-down');
+            icon.classList.remove('ph-caret-up');
+        }
+        PM.showFormErrors('audit-product-form-errors', []);
+    };
+
+    PM.saveAuditNewProduct = async function () {
+        PM.showFormErrors('audit-product-form-errors', []);
+        if (!PM.validateProductForm()) return;
+        PM.currentProduct = PM.currentProduct || {};
+        var validUnitConv = PM.resolveUnitConversionsForSave();
+        var built = PM.buildProductSaveBodyWithUnits(validUnitConv);
+        if (built.error) {
+            if (built.error !== '__validation__' && window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification(built.error, 'error');
+            }
+            return;
+        }
+        try {
+            if (window.checkAuth && !window.checkAuth()) return;
+            var response = await window.wrappedFetch('/api/v1/rd/products/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(built.body)
+            });
+            var data = await window.handleApiResponse(response);
+            if (!data) return;
+            var saved = data.data || {};
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('产品保存成功！', 'success');
+            }
+            if (typeof PM.auditSaveCallback === 'function') {
+                var cb = PM.auditSaveCallback;
+                PM.auditSaveCallback = null;
+                await cb(saved, built.body.product);
+            }
+            await PM.loadProducts();
+        } catch (error) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('保存产品失败: ' + error.message, 'error');
+            }
+        }
+    };
+
+    window.toggleAuditProductAdvanced = function () {
+        var drawer = document.getElementById('audit-product-advanced-drawer');
+        var icon = document.getElementById('audit-product-detail-advanced-icon');
+        var btn = document.querySelector('#confirm-product-tab .tm-product-advanced-toggle');
+        if (!drawer) return;
+        var open = drawer.classList.toggle('open');
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+        if (icon) {
+            icon.classList.toggle('ph-caret-down', !open);
+            icon.classList.toggle('ph-caret-up', open);
         }
     };
 

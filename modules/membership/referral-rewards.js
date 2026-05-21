@@ -2,7 +2,7 @@
  * 推荐奖励弹窗：名单 + 收款信息（对接 TenantService /referral/rewards、/user/payout-profile）
  */
 (function () {
-    var FRAGMENT_URL = '/modules/membership/referral-rewards-modal.html';
+    var FRAGMENT_URL = '/modules/membership/referral-rewards-modal.html?v=20260521ref';
     var _htmlCache = null;
     var _panelData = null;
     var _payeeEditing = false;

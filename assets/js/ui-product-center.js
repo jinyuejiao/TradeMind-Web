@@ -716,8 +716,8 @@ window.ProductModule = {
                     $${(product.purchasePrice || 0).toFixed(2)}
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <p class="font-mono font-bold ${window.ProductModule.getStockColor(product.stockStatus)} tracking-tighter">
-                        ${(product.stock || 0).toLocaleString()} <span class="text-[9px] text-slate-400 uppercase">Pcs</span>
+                    <p class="font-mono font-bold ${window.ProductModule.getStockColor(product.stockStatus)} tracking-tighter text-sm">
+                        ${window.ProductModule.formatCompoundStockDisplay(product)}
                     </p>
                     <div class="w-16 h-1 bg-slate-100 rounded-full mt-1.5 ml-auto overflow-hidden md:block hidden">
                         <div class="w-[${window.ProductModule.getStockPercentage(product.stock || 0)}%] ${window.ProductModule.getStockBgColor(product.stockStatus)} h-full ${product.stockStatus === '缺货' ? 'animate-pulse' : ''}"></div>
@@ -769,7 +769,7 @@ window.ProductModule = {
             <div class="flex-1 min-w-0 py-0">
                 <div class="flex justify-between gap-2 items-start">
                     <p class="font-bold text-slate-800 text-[12px] leading-tight line-clamp-2">${product.name}</p>
-                    <span class="font-mono text-[9px] text-slate-500 shrink-0">${(product.stock || 0).toLocaleString()} Pcs</span>
+                    <span class="font-mono text-[9px] text-slate-500 shrink-0">${window.ProductModule.formatCompoundStockDisplay(product)}</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-0 mt-0.5 text-[10px]">
                     <span class="text-slate-600">销售 <span class="font-mono font-bold">$${(product.price || 0).toFixed(2)}</span></span>
@@ -1194,14 +1194,44 @@ window.ProductModule = {
     },
 
     toggleAdvanced: function() {
-        console.log('[ProductModule] toggleAdvanced 被调用 ===');
-        const drawer = document.getElementById('advanced-drawer');
-        const icon = document.getElementById('advanced-icon');
-        if (drawer && icon) {
-            drawer.classList.toggle('hidden');
-            icon.classList.toggle('ph-caret-down');
-            icon.classList.toggle('ph-caret-up');
+        var drawer = document.getElementById('product-advanced-drawer') || document.getElementById('advanced-drawer');
+        var icon = document.getElementById('product-detail-advanced-icon') || document.getElementById('advanced-icon');
+        var btn = document.querySelector('.tm-product-advanced-toggle');
+        if (!drawer) return;
+        var open = drawer.classList.toggle('open');
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+        if (icon) {
+            icon.classList.toggle('ph-caret-down', !open);
+            icon.classList.toggle('ph-caret-up', open);
         }
+    },
+
+    formatCompoundStockDisplay: function(product) {
+        var baseQty = Math.max(0, Math.floor(Number(product && product.stock != null ? product.stock : 0) || 0));
+        var baseUnit = (product && product.baseUnit ? String(product.baseUnit).trim() : '') || '件';
+        var convs = (product && product.unitConversions) || [];
+        if (!convs.length) return baseQty.toLocaleString() + baseUnit;
+        var units = convs.map(function(c) {
+            var ratio = Number(c.ratio != null ? c.ratio : c.perBase);
+            var name = (c.unitName || c.unit || '').trim();
+            if (!name || !ratio || ratio <= 0 || isNaN(ratio)) return null;
+            return { unitName: name, ratio: ratio };
+        }).filter(Boolean);
+        if (!units.length) return baseQty.toLocaleString() + baseUnit;
+        units.sort(function(a, b) { return b.ratio - a.ratio; });
+        var remain = baseQty;
+        var parts = [];
+        units.forEach(function(u) {
+            var count = Math.floor(remain / u.ratio);
+            if (count > 0) {
+                parts.push(count + u.unitName);
+                remain -= count * u.ratio;
+            }
+        });
+        if (remain > 0) parts.push(remain + baseUnit);
+        if (!parts.length) parts.push('0' + baseUnit);
+        return parts.join('');
     },
 
     // ---------- 单位换算（unitConversion 表） ----------
@@ -2650,15 +2680,20 @@ window.saveProduct = function() { window.ProductModule.saveProduct(); };
 window.toggleAdvanced = function(type) {
     if (type === 'prod' || type === 'cust') {
         var drawer = document.getElementById('drawer-' + type);
-        var icon = document.getElementById('icon-' + type);
-        if (drawer && icon) {
-            drawer.classList.toggle('open');
-            icon.classList.toggle('ph-caret-down');
-            icon.classList.toggle('ph-caret-up');
+        var icon = document.getElementById('icon-' + type) || document.getElementById('advanced-icon-' + type);
+        if (!drawer) return;
+        var open = drawer.classList.toggle('open');
+        if (open) drawer.classList.remove('hidden');
+        else drawer.classList.add('hidden');
+        if (icon) {
+            icon.classList.toggle('ph-caret-down', !open);
+            icon.classList.toggle('ph-caret-up', open);
         }
         return;
     }
-    window.ProductModule.toggleAdvanced();
+    if (window.ProductModule && window.ProductModule.toggleAdvanced) {
+        window.ProductModule.toggleAdvanced();
+    }
 };
 window.openUnitModal = function() { window.ProductModule.openUnitModal(); };
 window.closeUnitModal = function() { window.ProductModule.closeUnitModal(); };

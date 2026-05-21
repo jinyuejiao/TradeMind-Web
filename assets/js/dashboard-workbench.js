@@ -657,6 +657,209 @@
         });
     }
 
+    /* ---------- 手动添加订单（进行中业务） ---------- */
+    function tmManualOrderShowErrors(messages) {
+        var box = document.getElementById('manual-order-form-errors');
+        if (!box) return;
+        if (!messages || !messages.length) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+        box.classList.remove('hidden');
+        box.innerHTML = '<ul class="list-disc pl-4 space-y-0.5">' +
+            messages.map(function (m) { return '<li>' + String(m) + '</li>'; }).join('') +
+            '</ul>';
+    }
+
+    function tmBuildManualProductOptions() {
+        var list = window.productList || [];
+        var opts = '<option value="">请选择产品</option>';
+        list.forEach(function (p) {
+            var pid = p.productId || p.id;
+            var name = p.productName || p.name || ('产品#' + pid);
+            var sku = p.productSku || p.sku || '';
+            var price = p.salePrice != null ? p.salePrice : (p.price != null ? p.price : 0);
+            if (!pid) return;
+            opts += '<option value="' + pid + '" data-price="' + price + '">' +
+                name + (sku ? ' (' + sku + ')' : '') + '</option>';
+        });
+        return opts;
+    }
+
+    function tmRecalcManualOrderTotal() {
+        var tbody = document.getElementById('manual-order-tbody');
+        var totalEl = document.getElementById('manual-order-grand-total');
+        if (!tbody || !totalEl) return;
+        var sum = 0;
+        tbody.querySelectorAll('tr').forEach(function (row) {
+            var qty = parseFloat(row.querySelector('.manual-qty') && row.querySelector('.manual-qty').value) || 0;
+            var price = parseFloat(row.querySelector('.manual-price') && row.querySelector('.manual-price').value) || 0;
+            var sub = qty * price;
+            var subEl = row.querySelector('.manual-row-total');
+            if (subEl) subEl.textContent = '¥' + sub.toFixed(2);
+            sum += sub;
+        });
+        totalEl.textContent = '¥' + sum.toFixed(2);
+    }
+
+    function tmBindManualOrderRow(row) {
+        if (!row) return;
+        var sel = row.querySelector('.manual-product-select');
+        var priceInp = row.querySelector('.manual-price');
+        var qtyInp = row.querySelector('.manual-qty');
+        if (sel) {
+            sel.addEventListener('change', function () {
+                var opt = sel.options[sel.selectedIndex];
+                var p = opt && opt.getAttribute('data-price');
+                if (priceInp && p != null && p !== '') priceInp.value = p;
+                tmRecalcManualOrderTotal();
+            });
+        }
+        [priceInp, qtyInp].forEach(function (inp) {
+            if (inp) inp.addEventListener('input', tmRecalcManualOrderTotal);
+        });
+        var del = row.querySelector('.manual-row-delete');
+        if (del) {
+            del.addEventListener('click', function () {
+                row.remove();
+                tmRecalcManualOrderTotal();
+            });
+        }
+    }
+
+    function tmCreateManualOrderRow() {
+        var tbody = document.getElementById('manual-order-tbody');
+        if (!tbody) return null;
+        var tr = document.createElement('tr');
+        tr.className = 'border-t border-slate-100';
+        tr.innerHTML =
+            '<td class="px-4 py-3"><select class="form-input font-bold text-slate-700 manual-product-select w-full min-w-[10rem]">' +
+            tmBuildManualProductOptions() + '</select></td>' +
+            '<td class="px-4 py-3 text-center"><input type="number" min="1" step="1" value="1" class="manual-qty w-20 text-center form-input py-1 font-bold" /></td>' +
+            '<td class="px-4 py-3 text-center"><input type="number" min="0" step="0.01" value="0" class="manual-price w-24 text-center form-input py-1 font-mono font-bold" /></td>' +
+            '<td class="px-4 py-3 text-right font-mono font-bold manual-row-total">¥0.00</td>' +
+            '<td class="px-2 py-3 text-center"><button type="button" class="manual-row-delete text-slate-400 hover:text-red-500" title="删除行"><i class="ph ph-trash"></i></button></td>';
+        tbody.appendChild(tr);
+        tmBindManualOrderRow(tr);
+        return tr;
+    }
+
+    function tmFillManualOrderCustomers() {
+        var sel = document.getElementById('manual-order-customer');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">请选择客户</option>';
+        var map = typeof customerLookupById !== 'undefined' ? customerLookupById : {};
+        Object.keys(map).forEach(function (cid) {
+            var c = map[cid];
+            if (!c || !c.name) return;
+            var opt = document.createElement('option');
+            opt.value = cid;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+        });
+    }
+
+    window.TM_openManualOrderModal = async function () {
+        var modal = document.getElementById('manual-order-modal');
+        if (!modal) {
+            notify('添加订单弹窗未加载', 'error');
+            return;
+        }
+        tmManualOrderShowErrors([]);
+        if (typeof window.loadCustomerList === 'function') await window.loadCustomerList();
+        if (typeof window.loadProductList === 'function') await window.loadProductList();
+        tmFillManualOrderCustomers();
+        var tbody = document.getElementById('manual-order-tbody');
+        if (tbody) {
+            tbody.innerHTML = '';
+            tmCreateManualOrderRow();
+        }
+        var dateEl = document.getElementById('manual-order-delivery-date');
+        if (dateEl && typeof window.getTodayDateInput === 'function') {
+            dateEl.value = window.getTodayDateInput();
+        }
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        tmRecalcManualOrderTotal();
+    };
+
+    window.TM_closeManualOrderModal = function () {
+        var modal = document.getElementById('manual-order-modal');
+        if (modal) modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+
+    window.TM_addManualOrderRow = function () {
+        tmCreateManualOrderRow();
+        tmRecalcManualOrderTotal();
+    };
+
+    window.TM_saveManualOrder = async function () {
+        var errors = [];
+        var custSel = document.getElementById('manual-order-customer');
+        var statusSel = document.getElementById('manual-order-status');
+        var dateEl = document.getElementById('manual-order-delivery-date');
+        var custId = custSel && custSel.value ? parseInt(custSel.value, 10) : NaN;
+        if (!custId || isNaN(custId)) errors.push('请选择客户');
+        var items = [];
+        var tbody = document.getElementById('manual-order-tbody');
+        if (tbody) {
+            tbody.querySelectorAll('tr').forEach(function (row) {
+                var sel = row.querySelector('.manual-product-select');
+                var pid = sel && sel.value ? parseInt(sel.value, 10) : NaN;
+                var qty = parseInt(row.querySelector('.manual-qty') && row.querySelector('.manual-qty').value, 10) || 0;
+                var unitPrice = parseFloat(row.querySelector('.manual-price') && row.querySelector('.manual-price').value) || 0;
+                if (!pid || isNaN(pid) || qty <= 0) return;
+                var lineTotal = Math.round(unitPrice * qty * 100) / 100;
+                items.push({
+                    productId: pid,
+                    quantity: qty,
+                    unitPrice: unitPrice,
+                    totalAmount: lineTotal,
+                    itemStatus: statusSel && statusSel.value ? statusSel.value : 'D010002'
+                });
+            });
+        }
+        if (!items.length) errors.push('请至少添加一行有效商品');
+        tmManualOrderShowErrors(errors);
+        if (errors.length) return;
+
+        var grand = items.reduce(function (s, it) { return s + (it.totalAmount || 0); }, 0);
+        var orderPayload = {
+            order: {
+                custId: custId,
+                totalAmount: grand,
+                orderStatus: statusSel && statusSel.value ? statusSel.value : 'D010002',
+                deliveryDate: dateEl && dateEl.value ? (dateEl.value + 'T12:00:00') : null
+            },
+            orderItems: items
+        };
+
+        try {
+            if (window.checkAuth && !window.checkAuth()) return;
+            var response = await window.wrappedFetch('/api/v1/rd/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderPayload)
+            });
+            var data = await window.handleApiResponse(response);
+            if (!data) return;
+            notify('订单创建成功', 'success');
+            TM_closeManualOrderModal();
+            if (typeof window.loadInProgressOrders === 'function') {
+                window.loadInProgressOrders();
+            }
+        } catch (e) {
+            notify(e.message || '创建订单失败', 'error');
+        }
+    };
+
+    window.openManualOrderModal = window.TM_openManualOrderModal;
+    window.closeManualOrderModal = window.TM_closeManualOrderModal;
+    window.addOrderRow = window.TM_addManualOrderRow;
+    window.saveManualOrder = window.TM_saveManualOrder;
+
     function boot() {
         patchAuditAndPending();
         console.log('[DashboardWorkbench] 工作台增强已加载');

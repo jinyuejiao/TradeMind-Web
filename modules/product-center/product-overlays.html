@@ -22,12 +22,28 @@
                         <label class="tm-product-label" for="detail-product-name">产品名称<span class="tm-product-required">*</span></label>
                         <input id="detail-product-name" type="text" class="form-input" placeholder="如：东北大板原味" autocomplete="off" />
                     </div>
-                    <div class="tm-product-field tm-product-field--full">
+                    <div class="tm-product-field">
+                        <label class="tm-product-label" for="detail-product-category">商品类别</label>
+                        <select id="detail-product-category" class="form-input w-full" aria-label="商品类别"></select>
+                    </div>
+                    <div class="tm-product-field">
+                        <label class="tm-product-label" for="detail-product-price">预设销售价<span class="tm-product-required">*</span></label>
+                        <div class="tm-product-input-suffix">
+                            <input id="detail-product-price" type="number" min="0" step="0.01" class="form-input font-mono font-bold text-brand-600" placeholder="0.00" />
+                            <span class="tm-product-suffix">元</span>
+                        </div>
+                    </div>
+                    <div class="tm-product-field">
                         <label class="tm-product-label" for="detail-product-base-unit">基本单位<span class="tm-product-required">*</span></label>
                         <div class="flex gap-2">
                             <input type="text" id="detail-product-base-unit" class="form-input flex-1 min-w-0" placeholder="件、箱、吨" autocomplete="off" oninput="window.ProductModule.onBaseUnitChanged()" />
                             <button type="button" onclick="openProductUnitModal()" class="tm-product-unit-btn shrink-0" title="配置包装单位换算">换算</button>
                         </div>
+                    </div>
+                    <div class="tm-product-field">
+                        <label class="tm-product-label" for="detail-product-stock">当前库存总量</label>
+                        <input id="detail-product-stock" type="number" min="0" step="1" class="form-input font-mono" placeholder="留空视为 0" />
+                        <p class="tm-product-hint">按基本单位统计；分仓填写将自动汇总</p>
                     </div>
                 </div>
             </section>
@@ -42,22 +58,6 @@
                 </button>
                 <div id="product-advanced-drawer" class="tm-product-advanced-drawer" aria-hidden="true">
                     <div class="tm-product-edit-grid tm-product-edit-grid--advanced">
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-category">商品类别</label>
-                            <select id="detail-product-category" class="form-input w-full" aria-label="商品类别"></select>
-                        </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-price">预设销售价</label>
-                            <div class="tm-product-input-suffix">
-                                <input id="detail-product-price" type="number" min="0" step="0.01" class="form-input font-mono font-bold text-brand-600" placeholder="0.00" />
-                                <span class="tm-product-suffix">元</span>
-                            </div>
-                        </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-stock">当前库存总量</label>
-                            <input id="detail-product-stock" type="number" min="0" step="1" class="form-input font-mono" placeholder="基本单位数量" />
-                            <p class="tm-product-hint">按基本单位统计；分仓填写将自动汇总</p>
-                        </div>
                         <div class="tm-product-field">
                             <label class="tm-product-label" for="detail-product-sku-input">产品 SKU</label>
                             <input id="detail-product-sku-input" type="text" class="form-input font-mono text-sm" placeholder="留空将自动生成" autocomplete="off" />

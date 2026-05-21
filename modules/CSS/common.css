@@ -511,6 +511,18 @@ textarea {
         font-size: 10px;
         padding: 0.5rem 0.25rem;
     }
+
+    #referral-rewards-modal .tm-referral-modal-header {
+        padding-top: max(0.75rem, env(safe-area-inset-top));
+    }
+
+    #referral-rewards-modal.tm-referral-modal-root {
+        padding-top: env(safe-area-inset-top);
+    }
+}
+
+.tm-referral-modal-header {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
 .member-payee-type-btn.border-\[\#14B8A6\] {

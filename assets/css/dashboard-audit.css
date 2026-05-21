@@ -232,3 +232,51 @@
 #voice-processing-status {
     min-height: 1.25rem;
 }
+
+/* 审核弹窗：产品/客户高级配置折叠 */
+#audit-modal .advanced-drawer:not(.open) {
+    display: none;
+}
+
+#audit-modal .advanced-drawer.open {
+    display: grid;
+}
+
+#audit-modal #drawer-cust.advanced-drawer.open {
+    display: grid;
+}
+
+.tm-audit-product-summary {
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    padding: 1rem 1.25rem;
+}
+
+.tm-audit-product-summary dt {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tm-audit-product-summary dd {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    margin: 0 0 0.75rem;
+}
+
+.tm-audit-product-summary dd:last-child {
+    margin-bottom: 0;
+}
+
+#audit-product-advanced-drawer:not(.open) {
+    display: none;
+}
+
+#audit-product-advanced-drawer.open {
+    display: block;
+    padding-top: 0.85rem;
+}

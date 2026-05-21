@@ -9,7 +9,7 @@
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260621wb">
+    <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260519wb">
 
     <style>
         body {
@@ -470,33 +470,66 @@
                     </div>
                 </div>
 
-                <!-- 2. 产品信息 Pane (包含多单位换算) -->
-                <div id="confirm-product-tab" class="sub-pane hidden space-y-6">
-                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3 mb-6">
-                        <i class="ph ph-info text-blue-600 text-lg"></i>
-                        <p class="text-[11px] text-blue-700 leading-relaxed">检测到该订单包含新产品名称，建议补全基础信息后自动录入产品库。</p>
+                <!-- 2. 新产品：内嵌产品编辑（与产品中心字段一致） -->
+                <div id="confirm-product-tab" class="sub-pane hidden space-y-4">
+                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
+                        <i class="ph ph-info text-blue-600 text-lg shrink-0"></i>
+                        <p class="text-[11px] text-blue-700 leading-relaxed">请补全下方产品信息后点击右下角「新建产品信息」，保存后将自动关联本单明细。</p>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div class="space-y-2 col-span-full"><label class="text-[11px] font-bold text-slate-500 ml-1">产品全称</label><input type="text" id="product-name" class="form-input"></div>
-                        <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">SKU 编码</label><input type="text" id="product-sku" class="form-input font-mono"></div>
-                        <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预设销售价 (USD)</label><input type="number" id="product-price" step="0.01" class="form-input font-mono font-bold text-brand-600"></div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">基本单位 (结算底数)</label>
-                            <div class="flex gap-2">
-                                <input type="text" id="product-base-unit" value="个" class="form-input flex-1" placeholder="如：根">
-                                <button onclick="openUnitModal()" class="px-3 bg-brand-50 text-brand-600 rounded-xl text-[10px] font-bold border border-brand-100 hover:bg-brand-100 transition-colors whitespace-nowrap">配置单位换算</button>
+                    <div id="audit-product-form-errors" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed" role="alert"></div>
+                    <section class="tm-product-edit-section rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+                        <h3 class="tm-product-edit-section__title">基本信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
+                        <div class="tm-product-edit-grid">
+                            <div class="tm-product-field tm-product-field--full">
+                                <label class="tm-product-label" for="audit-detail-product-name">产品名称<span class="tm-product-required">*</span></label>
+                                <input id="audit-detail-product-name" type="text" class="form-input" placeholder="如：东北大板原味" autocomplete="off" />
+                            </div>
+                            <div class="tm-product-field">
+                                <label class="tm-product-label" for="audit-detail-product-category">商品类别</label>
+                                <select id="audit-detail-product-category" class="form-input w-full" aria-label="商品类别"></select>
+                            </div>
+                            <div class="tm-product-field">
+                                <label class="tm-product-label" for="audit-detail-product-price">预设销售价<span class="tm-product-required">*</span></label>
+                                <div class="tm-product-input-suffix">
+                                    <input id="audit-detail-product-price" type="number" min="0" step="0.01" class="form-input font-mono font-bold text-brand-600" placeholder="0.00" />
+                                    <span class="tm-product-suffix">元</span>
+                                </div>
+                            </div>
+                            <div class="tm-product-field">
+                                <label class="tm-product-label" for="audit-detail-product-base-unit">基本单位<span class="tm-product-required">*</span></label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="audit-detail-product-base-unit" class="form-input flex-1 min-w-0" placeholder="件、箱、吨" autocomplete="off" oninput="window.ProductModule && window.ProductModule.onBaseUnitChanged()" />
+                                    <button type="button" onclick="openProductUnitModal()" class="tm-product-unit-btn shrink-0" title="配置包装单位换算">换算</button>
+                                </div>
+                            </div>
+                            <div class="tm-product-field">
+                                <label class="tm-product-label" for="audit-detail-product-stock">当前库存总量</label>
+                                <input id="audit-detail-product-stock" type="number" min="0" step="1" class="form-input font-mono" placeholder="留空视为 0" />
                             </div>
                         </div>
-                    </div>
-                    <!-- 产品高级信息 -->
-                    <div class="pt-4 border-t border-slate-50 mt-6">
-                        <button onclick="toggleAdvanced('prod')" class="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-slate-600 transition">高级配置信息 <i id="icon-prod" class="ph ph-caret-down"></i></button>
-                        <div id="drawer-prod" class="advanced-drawer mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品分类</label><select id="product-category" class="form-input"><option>户外照明</option><option>家居装饰</option></select></div>
-                            <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">预警库存</label><input type="number" id="product-warning-stock" value="100" class="form-input"></div>
-                            <div class="space-y-2 md:col-span-2"><label class="text-[11px] font-bold text-slate-500 ml-1">产品详细描述</label><textarea id="product-description" class="form-input h-24 no-scrollbar"></textarea></div>
+                    </section>
+                    <section class="tm-product-edit-section tm-product-edit-section--advanced rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
+                        <button type="button" onclick="toggleAuditProductAdvanced()" class="tm-product-advanced-toggle w-full" aria-expanded="false" aria-controls="audit-product-advanced-drawer">
+                            <span class="flex items-center gap-2">
+                                <i class="ph ph-sliders-horizontal text-brand-500"></i>
+                                <span class="font-bold text-slate-700">高级配置</span>
+                                <span class="text-[10px] text-slate-400 font-normal">选填</span>
+                            </span>
+                            <i id="audit-product-detail-advanced-icon" class="ph ph-caret-down text-slate-400 transition-transform"></i>
+                        </button>
+                        <div id="audit-product-advanced-drawer" class="tm-product-advanced-drawer" aria-hidden="true">
+                            <div class="tm-product-edit-grid tm-product-edit-grid--advanced">
+                                <div class="tm-product-field">
+                                    <label class="tm-product-label" for="audit-detail-product-sku-input">产品 SKU</label>
+                                    <input id="audit-detail-product-sku-input" type="text" class="form-input font-mono text-sm" placeholder="留空将自动生成" autocomplete="off" />
+                                </div>
+                                <div class="tm-product-field tm-product-field--full">
+                                    <label class="tm-product-label" for="audit-detail-product-description">产品详情描述</label>
+                                    <textarea id="audit-detail-product-description" class="form-input tm-product-textarea no-scrollbar" rows="3" placeholder="规格、卖点、存储说明等"></textarea>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
 
                 <!-- 3. 客户资料 Tab 页 -->
@@ -568,7 +601,7 @@
                     </div>
                     <div id="audit-footer-product-actions" class="hidden contents">
                         <button onclick="skipNewProduct()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
-                        <button onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">打开产品编辑并保存</button>
+                        <button onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建产品信息</button>
                     </div>
                     <div id="audit-footer-customer-actions" class="hidden contents">
                         <button onclick="skipNewCustomer()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增客户</button>
@@ -740,77 +773,69 @@
         </div>
     </div>
 
-    <!-- 添加订单弹窗 -->
-    <div id="manual-order-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeManualOrderModal()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-full max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-                <h2 class="text-sm font-black text-slate-800 flex items-center gap-2"><i class="ph ph-plus-circle text-brand-600"></i> 新建业务订单</h2>
-                <button onclick="closeManualOrderModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
-                <!-- 基础信息 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">选择客户</label>
-                        <select class="form-input font-bold text-slate-700">
-                            <option>--- 请选择现有客户 ---</option>
-                            <option>Ahmed Al-Fayed (Dubai)</option>
-                            <option>John Smith (New York)</option>
-                            <option>+ 新增客户资料</option>
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">当前订单状态</label>
-                        <select class="form-input font-bold text-brand-600">
-                            <option>待支付</option>
-                            <option selected>处理中</option>
-                            <option>已发货</option>
-                        </select>
+    <!-- 添加订单弹窗（UI 对齐审核/产品弹窗） -->
+    <div id="manual-order-modal" class="hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6">
+        <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="TM_closeManualOrderModal()"></div>
+        <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
+            <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 md:w-10 md:h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-plus-circle text-lg"></i></div>
+                    <div class="min-w-0">
+                        <h2 class="text-sm md:text-base font-black text-slate-800 truncate">新建业务订单</h2>
+                        <p class="text-[10px] text-slate-400 mt-0.5">选择客户与商品明细后提交</p>
                     </div>
                 </div>
-
-                <!-- 商品列表 -->
-                <div class="space-y-4">
-                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
-                        <span>订单商品明细</span>
-                        <button onclick="addOrderRow()" class="text-brand-600 hover:underline">+ 添加商品行</button>
-                    </h3>
-                    <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                        <table class="w-full text-xs" id="manual-order-table">
+                <button type="button" onclick="TM_closeManualOrderModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+            <div id="manual-order-form-errors" class="hidden mx-4 mt-3 md:mx-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed shrink-0" role="alert"></div>
+            <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-customer">选择客户<span class="text-red-500">*</span></label>
+                        <select id="manual-order-customer" class="form-input font-bold text-slate-700"></select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-status">订单状态</label>
+                        <select id="manual-order-status" class="form-input font-bold text-brand-600">
+                            <option value="D010002">处理中</option>
+                            <option value="D010001">待支付</option>
+                            <option value="D010003">已发货</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2 md:col-span-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-delivery-date">交货日期</label>
+                        <input type="date" id="manual-order-delivery-date" class="form-input" />
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center gap-2">
+                        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">订单商品明细</h3>
+                        <button type="button" onclick="TM_addManualOrderRow()" class="text-brand-600 text-[11px] font-bold hover:underline">+ 添加商品行</button>
+                    </div>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-x-auto">
+                        <table class="w-full text-xs min-w-[32rem]" id="manual-order-table">
                             <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
                                 <tr>
-                                    <th class="px-4 py-3 text-left">产品名 / SKU</th>
+                                    <th class="px-4 py-3 text-left">产品</th>
                                     <th class="px-4 py-3 text-center w-24">数量</th>
-                                    <th class="px-4 py-3 text-center w-24">单价($)</th>
-                                    <th class="px-4 py-3 text-right">小计</th>
+                                    <th class="px-4 py-3 text-center w-28">单价(元)</th>
+                                    <th class="px-4 py-3 text-right w-28">小计</th>
+                                    <th class="px-2 py-3 w-10"></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr class="border-t border-slate-100">
-                                    <td class="px-4 py-3">
-                                        <select class="form-input font-bold text-slate-700 product-select">
-                                            <option>金色镂空户外灯 (G-8821)</option>
-                                            <option>便携无叶挂脖扇 (V2)</option>
-                                            <option>-- 重新匹配现有产品 --</option>
-                                        </select>
-                                    </td>
-                                    <td class="px-4 py-3 text-center"><input type="number" value="100" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold"></td>
-                                    <td class="px-4 py-3 text-center"><input type="number" value="12.50" class="w-20 text-center bg-white border border-slate-200 rounded-lg py-1 font-bold font-mono"></td>
-                                    <td class="px-4 py-3 text-right font-mono font-bold">$1,250.00</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="manual-order-tbody"></tbody>
                         </table>
                     </div>
                 </div>
+                <div class="p-4 md:p-5 bg-slate-900 rounded-2xl text-white flex justify-between items-center">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">订单总计</p>
+                    <p class="text-2xl font-mono font-black text-brand-400" id="manual-order-grand-total">¥0.00</p>
+                </div>
             </div>
-
-            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
-                <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
-                <div class="flex gap-3 w-full md:w-auto">
-                    <button onclick="closeManualOrderModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
-                    <button onclick="alert('订单已确认，库存已实时扣减。')" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+            <div class="tm-product-edit-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+                <div class="flex gap-2 md:gap-3">
+                    <button type="button" onclick="TM_closeManualOrderModal()" class="flex-1 md:flex-none md:px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
+                    <button type="button" onclick="TM_saveManualOrder()" class="flex-[1.4] md:flex-none md:px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/25 hover:bg-brand-700 transition active:scale-[0.98]">确认创建订单</button>
                 </div>
             </div>
         </div>
@@ -1703,12 +1728,10 @@
             setInputValueIfExists('customer-address', firstNewCustomer.address || '');
             setInputValueIfExists('customer-summary', firstNewCustomer.summary || '');
 
-            // 预填新增产品tab
             const firstNewProduct = newProducts[0] || {};
-            setInputValueIfExists('product-name', firstNewProduct.name || '');
-            setInputValueIfExists('product-sku', firstNewProduct.sku || '');
-            setInputValueIfExists('product-price', firstNewProduct.price || '');
-            setInputValueIfExists('product-description', firstNewProduct.description || '');
+            if (typeof window.TM_initAuditProductForm === 'function') {
+                window.TM_initAuditProductForm(firstNewProduct);
+            }
 
             const auditModal = document.getElementById('audit-modal');
             if (!auditModal) {
@@ -1881,6 +1904,11 @@
             if (tabName === 'product') {
                 const pane = document.getElementById('confirm-product-tab');
                 if (pane) pane.classList.remove('hidden');
+                const np = (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found))
+                    ? auditState.aiStructured.new_products_found[0] : {};
+                if (typeof window.TM_initAuditProductForm === 'function') {
+                    window.TM_initAuditProductForm(np);
+                }
             } else if (tabName === 'customer') {
                 const pane = document.getElementById('confirm-customer-tab');
                 if (pane) pane.classList.remove('hidden');
@@ -1916,6 +1944,20 @@
             orderActions.classList.remove('hidden');
         }
 
+        function renderAuditNewProductSummary(np) {
+            const item = np || {};
+            const set = function (id, text) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = (text != null && String(text).trim() !== '') ? String(text).trim() : '—';
+            };
+            set('audit-np-name', item.name || item.product_name);
+            set('audit-np-sku', item.sku || item.product_sku);
+            const price = item.price != null ? item.price : (item.sale_price != null ? item.sale_price : item.unit_price);
+            set('audit-np-price', price != null && price !== '' ? (Number(price).toFixed(2) + ' 元') : '');
+            set('audit-np-unit', item.base_unit || item.baseUnit || item.unit || '件');
+            set('audit-np-desc', item.description || item.summary || '');
+        }
+
         // 切换高级配置抽屉
         function toggleAdvanced(type, event) {
             if (event) event.preventDefault();
@@ -1939,9 +1981,8 @@
             }
         }
 
-        // 保存新产品：复用产品中心编辑弹窗（ProductModule + enhance）
         async function saveNewProduct() {
-            if (!window.ProductModule || typeof window.ProductModule.openCreateProductModal !== 'function') {
+            if (!window.ProductModule || typeof window.ProductModule.saveAuditNewProduct !== 'function') {
                 showToast('产品中心模块未加载，请刷新后重试');
                 return;
             }
@@ -1950,14 +1991,12 @@
             }
             const firstNewProduct = (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found))
                 ? auditState.aiStructured.new_products_found[0] : {};
-            const name = (document.getElementById('product-name') && document.getElementById('product-name').value || firstNewProduct.name || '').trim();
-            const sku = (document.getElementById('product-sku') && document.getElementById('product-sku').value || firstNewProduct.sku || '').trim();
-            const baseUnit = (document.getElementById('product-base-unit') && document.getElementById('product-base-unit').value || '件').trim();
+            const name = (firstNewProduct.name || firstNewProduct.product_name || '').trim();
 
             window.ProductModule.auditSaveCallback = async function (saved, productPayload) {
                 const productId = saved && (saved.productId || saved.product_id || saved.id);
                 const productName = (productPayload && productPayload.name) || (saved && saved.name) || name;
-                const productSku = (productPayload && productPayload.sku) || (saved && saved.sku) || sku;
+                const productSku = (productPayload && productPayload.sku) || (saved && saved.sku) || '';
                 if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items) && productId) {
                     auditState.aiStructured.order_data.items.forEach(function (item) {
                         if (!item.matched_product_id || Number(item.matched_product_id) === 0) {
@@ -1987,11 +2026,7 @@
                 window.ProductModule.auditSaveCallback = null;
             };
 
-            await window.ProductModule.openCreateProductModal({
-                name: name,
-                sku: sku,
-                baseUnit: baseUnit
-            });
+            await window.ProductModule.saveAuditNewProduct();
         }
 
         // 跳过新产品创建
@@ -2254,11 +2289,13 @@
             document.getElementById('order-detail-modal').classList.add('hidden');
         }
 
-        // 打开手动订单模态框
-        function openManualOrderModal() {
-            // 这里可以添加打开手动订单模态框的逻辑
-            alert('手动订单功能开发中');
-        }
+        window.openManualOrderModal = function () {
+            if (typeof window.TM_openManualOrderModal === 'function') {
+                window.TM_openManualOrderModal();
+            } else {
+                alert('添加订单模块未加载，请刷新后重试');
+            }
+        };
 
         // 切换主标签页
         function switchTab(tabName) {
@@ -3046,8 +3083,11 @@
         window.getProductSku = getProductSku;
         window.getTodayDateInput = getTodayDateInput;
         window.persistAuditResult = persistAuditResult;
+        window.loadInProgressOrders = loadInProgressOrders;
+        window.loadCustomerList = loadCustomerList;
+        window.loadProductList = loadProductList;
     </script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260621wb"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260521all"></script>
 </body>
 </html>
 

@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260620pc';
+    var url = '/modules/product-center/product-overlays.html?v=20260519pc';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -488,7 +488,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260508r4', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260521all', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -540,7 +540,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260620pc', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260519pc', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
@@ -549,6 +549,10 @@ function loadProductCenter() {
             if (vs) {
                 vs.innerHTML = inner || html;
                 vs.classList.add('tm-view-supply-scroll');
+                var nestedContent = vs.querySelector('#content-area');
+                if (nestedContent) {
+                    nestedContent.id = 'supply-inner-scroll';
+                }
             }
             if (vs && window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
                 window.TM_UI.injectSlots(vs).then(function () {
@@ -786,6 +790,10 @@ function switchTab(tabId) {
     }
 
     document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+    const viewSupply = document.getElementById('view-supply');
+    if (viewSupply && tabId !== 'supply') {
+        viewSupply.classList.remove('tm-view-supply-scroll');
+    }
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
 
