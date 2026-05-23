@@ -424,6 +424,85 @@ textarea {
     }
 }
 
+/* 手机端 embed 场景：底栏上方固定备案条 */
+#tm-compliance-sticky.tm-compliance-sticky {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    #tm-compliance-sticky.tm-compliance-sticky.tm-compliance-sticky--visible {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--tm-tabbar-h, 4.25rem);
+        z-index: 90;
+        padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+        background: rgba(248, 250, 252, 0.96);
+        border-top: 1px solid #e2e8f0;
+        font-size: 10px;
+        line-height: 1.5;
+    }
+
+    #tm-compliance-sticky.tm-compliance-sticky .tm-compliance-footer-inner {
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0;
+    }
+
+    body.tm-layout-mobile #view-biz iframe.tm-module-frame,
+    body.tm-layout-mobile #view-supplier iframe.tm-module-frame {
+        margin-bottom: 2.75rem;
+    }
+}
+
+.tm-shell-chrome-hidden {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* 模块弹窗 — 手机端底 sheet（对齐 UI 工程） */
+@media (max-width: 767px) {
+    .tm-mobile-sheet-modal {
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 0 !important;
+        z-index: 110 !important;
+    }
+
+    .tm-mobile-sheet-modal .tm-mobile-sheet-panel,
+    .tm-mobile-sheet-modal > .tm-mobile-sheet-panel {
+        width: 100%;
+        max-width: 100%;
+        max-height: min(
+            88dvh,
+            calc(100dvh - env(safe-area-inset-top, 0px) - var(--tm-tabbar-h, 4.25rem))
+        ) !important;
+        height: auto !important;
+        border-radius: 1rem 1rem 0 0 !important;
+        margin: 0;
+    }
+
+    .tm-modal-footer-safe {
+        flex-shrink: 0;
+        padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
+    }
+
+    #supplier-modal.tm-mobile-sheet-modal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    #supplier-modal .tm-mobile-sheet-panel {
+        max-width: 100%;
+        border-radius: 1rem 1rem 0 0 !important;
+    }
+}
+
+.tm-product-advanced-toggle {
+    touch-action: manipulation;
+}
+
 /* 供应商管理（iframe 内无 #view-supplier）：横向排版 + 列宽 + 过长省略，对齐 UI/MobileAdapt/mobile.css */
 @media (max-width: 767px) {
 

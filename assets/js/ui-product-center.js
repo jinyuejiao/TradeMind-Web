@@ -1047,9 +1047,11 @@ window.ProductModule = {
         this.currentProduct = null;
     },
 
-    confirmDeleteProduct: async function(productId, productName) {
+    confirmDeleteProduct: function(productId, productName) {
         console.log('[ProductModule] confirmDeleteProduct 被调用，产品ID:', productId, '产品名:', productName);
-        if (confirm('确定要删除产品 "' + productName + '" 吗？')) {
+        var self = this;
+        var msg = '确定要删除产品「' + (productName || '') + '」吗？此操作无法撤销。';
+        var runDelete = async function () {
             try {
                 if (window.checkAuth && !window.checkAuth()) {
                     console.error('[ProductModule] checkAuth failed');
@@ -1067,14 +1069,25 @@ window.ProductModule = {
                 if (window.TM_UI && window.TM_UI.showNotification) {
                     window.TM_UI.showNotification('产品删除成功！', 'success');
                 }
-                
-                await this.loadProducts();
+
+                await self.loadProducts();
             } catch (error) {
                 console.error('[ProductModule] 删除产品异常:', error);
                 if (window.TM_UI && window.TM_UI.showNotification) {
                     window.TM_UI.showNotification('删除产品失败: ' + error.message, 'error');
                 }
             }
+        };
+        if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
+            window.TmConfirm.open({
+                title: '确认删除',
+                message: msg,
+                confirmLabel: '确认删除',
+                danger: true,
+                onConfirm: runDelete
+            });
+        } else if (confirm(msg)) {
+            runDelete();
         }
     },
 

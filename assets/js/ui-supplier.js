@@ -570,12 +570,14 @@ window.SupplierModule = {
         document.getElementById('supplier-address').value = '';
         document.getElementById('supplier-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
 
     closeSupplierModal: function() {
         document.getElementById('supplier-modal').classList.add('hidden');
         document.body.style.overflow = '';
         this.currentSupplier = null;
+        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
     },
 
     editSupplier: async function(supplierId) {
@@ -590,6 +592,7 @@ window.SupplierModule = {
         document.getElementById('supplier-address').value = supplier.address || '';
         document.getElementById('supplier-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
 
     saveSupplier: async function() {
@@ -646,33 +649,52 @@ window.SupplierModule = {
         }
     },
 
-    deleteSupplier: async function(supplierId) {
-        if (!confirm('确定要删除这个供应商吗？')) return;
+    deleteSupplier: function(supplierId) {
+        var self = this;
+        var supplier = (self.suppliers || []).find(function (s) {
+            return String(s.supplierId || s.id) === String(supplierId);
+        });
+        var label = supplier ? (supplier.supplierName || supplier.name || '') : '';
+        var msg = label
+            ? ('确定要删除供应商「' + label + '」吗？此操作无法撤销。')
+            : '确定要删除这个供应商吗？此操作无法撤销。';
+        var runDelete = async function () {
+            try {
+                const response = await window.wrappedFetch('/api/v1/supp/suppliers/' + supplierId, {
+                    method: 'DELETE'
+                });
 
-        try {
-            const response = await window.wrappedFetch('/api/v1/supp/suppliers/' + supplierId, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    await this.loadAllSuppliers();
-                    await this.loadSuppliers(this.supplierCurrentPage);
-                    if (this.suppliers.length === 0 && this.supplierCurrentPage > 1) {
-                        await this.loadSuppliers(this.supplierCurrentPage - 1);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        await self.loadAllSuppliers();
+                        await self.loadSuppliers(self.supplierCurrentPage);
+                        if (self.suppliers.length === 0 && self.supplierCurrentPage > 1) {
+                            await self.loadSuppliers(self.supplierCurrentPage - 1);
+                        }
+                        self.renderSuppliers();
+                        self.showToast('删除成功');
+                    } else {
+                        alert('删除失败: ' + (result.message || '未知错误'));
                     }
-                    this.renderSuppliers();
-                    alert('删除成功');
                 } else {
-                    alert('删除失败: ' + (result.message || '未知错误'));
+                    alert('删除失败');
                 }
-            } else {
-                alert('删除失败');
+            } catch (error) {
+                console.error('Error deleting supplier:', error);
+                alert('删除失败: ' + error.message);
             }
-        } catch (error) {
-            console.error('Error deleting supplier:', error);
-            alert('删除失败: ' + error.message);
+        };
+        if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
+            window.TmConfirm.open({
+                title: '确认删除',
+                message: msg,
+                confirmLabel: '确认删除',
+                danger: true,
+                onConfirm: runDelete
+            });
+        } else if (confirm(msg)) {
+            runDelete();
         }
     },
 
@@ -695,12 +717,14 @@ window.SupplierModule = {
         this.resetPurchaseForm();
         document.getElementById('purchase-modal').classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
 
     closePurchaseModal: function() {
         document.getElementById('purchase-modal').classList.add('hidden');
         document.body.style.overflow = '';
         this.currentPurchase = null;
+        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
     },
 
     resetPurchaseForm: function() {

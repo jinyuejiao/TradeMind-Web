@@ -246,7 +246,12 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
 
             var content = doc.getElementById('content-area');
             if (content) {
-                content.style.setProperty('padding-bottom', '0', 'important');
+                content.style.setProperty('padding-top', '0.5rem', 'important');
+                content.style.setProperty(
+                    'padding-bottom',
+                    'calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.25rem)',
+                    'important'
+                );
             }
         } catch (e) {
             console.warn('[TM] iframe 壳层裁剪失败:', frameKey, e);
@@ -755,6 +760,32 @@ function TM_syncAppShellMetrics() {
 
 window.TM_syncAppShellMetrics = TM_syncAppShellMetrics;
 
+/** 弹窗打开时隐藏主壳底栏，避免 iframe 内弹窗被遮挡 */
+function TM_setShellChromeHidden(hidden) {
+    var tabbar = document.getElementById('tm-app-tabbar');
+    var compliance = document.getElementById('tm-compliance-sticky');
+    if (tabbar) {
+        tabbar.classList.toggle('tm-shell-chrome-hidden', !!hidden);
+    }
+    if (compliance) {
+        compliance.classList.toggle('tm-shell-chrome-hidden', !!hidden);
+    }
+    document.body.classList.toggle('tm-embed-modal-open', !!hidden);
+}
+
+window.TM_setShellChromeHidden = TM_setShellChromeHidden;
+
+if (!window.__tmEmbedModalListenerBound) {
+    window.__tmEmbedModalListenerBound = true;
+    window.addEventListener('message', function (ev) {
+        var data = ev.data;
+        if (!data || data.type !== 'TM_EMBED_MODAL') return;
+        if (typeof TM_setShellChromeHidden === 'function') {
+            TM_setShellChromeHidden(!!data.open);
+        }
+    });
+}
+
 function TM_bootIndexAppShell() {
     initNavigationFromConfig();
     TM_bindAppShellTabbar();
@@ -814,6 +845,12 @@ function switchTab(tabId) {
     }
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
+
+    var stickyCompliance = document.getElementById('tm-compliance-sticky');
+    if (stickyCompliance) {
+        var showSticky = window.innerWidth < 768 && (tabId === 'biz' || tabId === 'supplier');
+        stickyCompliance.classList.toggle('tm-compliance-sticky--visible', showSticky);
+    }
 
     document.querySelectorAll('aside .nav-btn, #tm-app-tabbar .mobile-nav-btn').forEach(btn => {
         btn.classList.remove('active-nav', 'bg-slate-800', 'text-brand-500', 'text-brand-600');
@@ -1864,8 +1901,7 @@ function toggleAdvancedLegacy() {
     icon.classList.toggle('ph-caret-down');
 }
 
-function confirmDeleteClient(name) { if (confirm(`确定删除客户 [${name}] 吗？`)) alert('删除成功'); }
-function saveClient() { alert('客户资料已更新。'); closeClientEditModal(); }
+/* 客户 CRM 由 modules/crm/crm.html 内联脚本提供，勿在此使用 confirm 占位 */
 
 // --- 产品中心交互逻辑 ---
 function openWorkshopModal() {
@@ -1970,12 +2006,7 @@ function switchSupplierView(mode) {
     }
 }
 
-function confirmDeleteSupplier(supplierName) {
-    if (confirm(`确定要删除供应商 "${supplierName}" 吗？`)) {
-        // 模拟删除操作
-        showToast(`供应商 "${supplierName}" 已删除`);
-    }
-}
+/* 供应商删除由 ui-supplier.js + TmConfirm 提供 */
 
 // --- 进货单详情弹窗 ---
 function openPurchaseDetail(id) {

@@ -53,6 +53,9 @@
         try {
             document.body.style.overflow = PM._bodyScrollLock > 0 ? 'hidden' : '';
         } catch (e) { /* ignore */ }
+        if (typeof window.TM_setShellChromeHidden === 'function') {
+            window.TM_setShellChromeHidden(PM._bodyScrollLock > 0);
+        }
     };
 
     PM.showFormErrors = function (boxId, messages) {
@@ -89,6 +92,7 @@
         var base = baseEl ? baseEl.value.trim() : '';
         var stockRaw = stockEl ? stockEl.value : '';
         if (!name) errors.push('请填写产品名称');
+        if (!cat || cat === '') errors.push('请选择商品类别');
         if (priceRaw === '' || priceRaw == null) {
             errors.push('请填写预设销售价');
         } else {
@@ -102,6 +106,7 @@
         }
         PM.showFormErrors(PM.formErrorBoxId(), errors);
         if (errors.length && nameEl && !name) nameEl.focus();
+        else if (errors.length && catEl && (!cat || cat === '')) catEl.focus();
         else if (errors.length && priceEl && (priceRaw === '' || isNaN(parseFloat(priceRaw)))) priceEl.focus();
         else if (errors.length && baseEl && !base) baseEl.focus();
         else if (errors.length && stockEl && stockRaw !== '' && isNaN(parseInt(stockRaw, 10))) stockEl.focus();
@@ -174,7 +179,7 @@
             productId: cp.id || null,
             name: nm,
             sku: sk,
-            categoryId: catRaw != null && !isNaN(catRaw) ? catRaw : 0,
+            categoryId: catRaw != null && !isNaN(catRaw) && catRaw > 0 ? catRaw : null,
             supplierId: supRaw != null && !isNaN(supRaw) ? supRaw : null,
             price: priceInput && priceInput.value !== '' ? parseFloat(priceInput.value) : 0,
             stock: stockVal,
@@ -436,7 +441,7 @@
     PM.populateCategorySelect = function (selectedCategoryId) {
         var select = PM.el('detail-product-category', 'product-category-select');
         if (!select) return;
-        select.innerHTML = '<option value="">未分类</option>';
+        select.innerHTML = '<option value="">请选择商品类别</option>';
         (PM.categories || []).forEach(function (cat) {
             var option = document.createElement('option');
             option.value = cat.categoryId;
@@ -567,8 +572,22 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(built.body)
             });
+            if (!response.ok) {
+                var errBody = await response.json().catch(function () { return {}; });
+                var errMsg = (errBody && (errBody.message || errBody.error)) || ('保存失败 (' + response.status + ')');
+                PM.showFormErrors('product-form-errors', [errMsg]);
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification(errMsg, 'error');
+                }
+                return;
+            }
             var data = await window.handleApiResponse(response);
-            if (!data) return;
+            if (!data) {
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('保存产品失败，请稍后重试', 'error');
+                }
+                return;
+            }
             var saved = data.data || {};
             if (saved.productId != null && !PM.currentProduct.id) {
                 PM.currentProduct.id = saved.productId;

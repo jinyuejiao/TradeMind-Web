@@ -677,7 +677,7 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '                <div class="absolute -right-8 -top-8 opacity-10 rotate-12"><i class="ph ph-medal text-[10rem] text-amber-600"></i></div>' +
 '                <div class="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">' +
 '                    <div class="flex items-center gap-4">' +
-'                        <div class="w-12 h-12 bg-white/50 rounded-full flex items-center justify-center text-amber-700 shrink-0 shadow-sm"><i class="ph ph-users-plus text-2xl"></i></div>' +
+'                        <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-[0_8px_24px_rgba(30,64,175,0.35)] bg-gradient-to-br from-indigo-600 via-blue-500 to-cyan-400 text-white"><i class="ph ph-rocket-launch text-2xl"></i></div>' +
 '                        <div class="text-left">' +
 '                            <h3 class="text-base font-black text-amber-900 flex items-center gap-2">巨猿推荐官计划 <i class="ph ph-sparkle-fill text-amber-500 text-xs"></i></h3>' +
 '                            <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励。</p>' +

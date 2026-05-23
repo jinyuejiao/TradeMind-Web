@@ -4,7 +4,7 @@
     <script src="../../assets/js/env-config.js"></script>
     <script src="../../assets/js/api-client.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script>
         (function () {
             try {
@@ -30,9 +30,11 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css?v=20260508r4">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260524shell">
     <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260521all">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
+    <script src="../../assets/js/tm-confirm.js?v=20260524"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/ui-supplier.js?v=20260508r6"></script>
     <style>
@@ -109,9 +111,9 @@
         </div>
     </main>
 
-    <div id="supplier-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div id="supplier-modal" class="tm-mobile-sheet-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-4">
         <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeSupplierModal()"></div>
-        <div class="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl fade-in text-left">
+        <div class="tm-mobile-sheet-panel relative bg-white w-full max-w-sm rounded-t-2xl md:rounded-[2.5rem] p-6 md:p-8 shadow-2xl fade-in text-left">
             <h3 class="font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph ph-user-circle text-brand-500"></i><span id="supplier-modal-title">供应商编辑</span></h3>
             <div class="space-y-6">
                 <div><label class="text-[9px] font-black text-slate-400 uppercase block mb-1">供应商名称</label><input type="text" id="supplier-name" class="form-input w-full" placeholder="请输入供应商名称"></div>

@@ -4,7 +4,7 @@
     <script src="../../assets/js/env-config.js"></script>
     <script src="../../assets/js/api-client.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <script>
         (function () {
             try {
@@ -70,6 +70,13 @@
             pointer-events: auto;
         }
 
+        @media (max-width: 767px) {
+            .crm-action-btn {
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
+
         /* 字母索引条：加大触控热区（手机），避免遮挡滚动 */
         .crm-alpha-rail {
             z-index: 15;
@@ -123,9 +130,11 @@
         };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css?v=20260508r4">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260524shell">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <!-- 确保 auth.js 加载完成后再执行页面代码 -->
+    <script src="../../assets/js/tm-confirm.js?v=20260524"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
@@ -331,9 +340,9 @@
         </div>
     </main>
 
-    <div id="client-edit-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+    <div id="client-edit-modal" class="tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeClientEditModal()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+        <div class="tm-mobile-sheet-panel relative bg-white w-full max-w-4xl h-full max-h-[90vh] md:max-h-[90vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -358,19 +367,6 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label><input type="text" id="cust-name" class="form-input font-bold" required></div>
                         <div class="space-y-2"><label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label><input type="text" id="cust-phone" class="form-input font-mono" required></div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
-                            <select id="cust-source" class="form-input font-bold text-slate-700">
-                                <option value="WECHAT">WECHAT (微信)</option>
-                                <option value="ALIPAY">ALIPAY (支付宝)</option>
-                                <option value="PHONE">PHONE (电话)</option>
-                                <option value="OTHER">OTHER (其他)</option>
-                            </select>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
-                            <select id="cust-status" class="form-input font-bold text-brand-600"></select>
-                        </div>
                     </div>
                 </section>
 
@@ -390,7 +386,7 @@
                 </section>
             </form>
 
-            <div class="p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+            <div class="tm-modal-footer-safe p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
                 <p class="text-[10px] text-slate-400 italic">保存后将同步更新客户画像并自动分析采购周期</p>
                 <div class="flex gap-3 w-full md:w-auto">
                     <button onclick="closeClientEditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
@@ -511,7 +507,7 @@
 
         function normalizeCustomer(item) {
             return {
-                id: item.id,
+                id: item.id != null ? item.id : (item.custId != null ? item.custId : item.cust_id),
                 name: item.name || '未命名客户',
                 phone: item.phone || '',
                 email: item.email || '',
@@ -531,7 +527,8 @@
 
         function getStatusChip(statusCode) {
             if (statusCode === 'ACTIVE') return 'bg-brand-50 text-brand-700 border-brand-100';
-            if (statusCode === 'INACTIVE' || statusCode === 'DORMANT') return 'bg-slate-100 text-slate-600 border-slate-200';
+            if (statusCode === 'SLEEPING' || statusCode === 'DORMANT' || statusCode === 'INACTIVE') return 'bg-slate-100 text-slate-600 border-slate-200';
+            if (statusCode === 'LOST') return 'bg-rose-50 text-rose-600 border-rose-100';
             return 'bg-blue-50 text-blue-700 border-blue-100';
         }
 
@@ -715,7 +712,7 @@
                 state.customers = sortCustomersAlphabetically((Array.isArray(result) ? result : []).map(normalizeCustomer));
                 state.filteredCustomers = state.customers.slice();
                 renderCustomerList();
-                if (!state.currentCustomer && state.filteredCustomers.length) {
+                if (!state.currentCustomer && state.filteredCustomers.length && window.innerWidth >= 768) {
                     selectCustomer(state.filteredCustomers[0].id);
                 } else if (!state.filteredCustomers.length) {
                     clearCustomerDetail();
@@ -871,21 +868,20 @@
                 document.getElementById('cust-name').value = customer.name || '';
                 document.getElementById('cust-phone').value = customer.phone || '';
                 document.getElementById('cust-email').value = customer.email || '';
-                document.getElementById('cust-source').value = customer.source || 'OTHER';
-                document.getElementById('cust-status').value = customer.status || 'ACTIVE';
                 document.getElementById('cust-region').value = customer.region || '';
                 document.getElementById('cust-address').value = customer.address || '';
                 document.getElementById('cust-summary').value = customer.summary || '';
             } else {
                 document.getElementById('client-modal-title').textContent = '新增客户档案';
                 document.getElementById('client-modal-icon').className = 'ph ph-plus-circle text-xl';
-                document.getElementById('cust-status').value = 'ACTIVE';
             }
             document.getElementById('client-edit-modal').classList.remove('hidden');
+            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
         }
 
         function closeClientEditModal() {
             document.getElementById('client-edit-modal').classList.add('hidden');
+            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
         }
 
         async function saveClient(event) {
@@ -894,8 +890,6 @@
                 name: document.getElementById('cust-name').value.trim(),
                 phone: document.getElementById('cust-phone').value.trim(),
                 email: document.getElementById('cust-email').value.trim(),
-                source: document.getElementById('cust-source').value,
-                status: document.getElementById('cust-status').value,
                 region: document.getElementById('cust-region').value.trim(),
                 address: document.getElementById('cust-address').value.trim(),
                 summary: document.getElementById('cust-summary').value.trim()
@@ -940,10 +934,12 @@
             state.currentCustomer = customer;
             document.getElementById('delete-confirm-message').textContent = '确定删除客户 ' + customer.name + ' 吗？';
             document.getElementById('delete-confirm-modal').classList.remove('hidden');
+            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
         }
 
         function closeDeleteConfirmModal() {
             document.getElementById('delete-confirm-modal').classList.add('hidden');
+            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
         }
 
         async function deleteCustomer() {
@@ -952,7 +948,7 @@
                 return;
             }
             try {
-                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/customers/' + state.currentCustomer.id, {
+                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/customers/' + state.currentCustomer.id, {
                     method: 'DELETE'
                 });
                 const result = await response.json().catch(function() { return {}; });
