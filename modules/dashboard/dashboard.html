@@ -910,6 +910,14 @@
             voiceStopFallbackTimers = [];
         }
 
+        /** 浏览器直传 OSS 不可使用 -internal 域名（手机/公网无法解析） */
+        function tmNormalizeOssEndpointForBrowser(endpoint) {
+            if (!endpoint || typeof endpoint !== 'string') {
+                return endpoint;
+            }
+            return endpoint.replace(/-internal\.aliyuncs\.com/gi, '.aliyuncs.com');
+        }
+
         function tmVoiceScheduleStopFallbacks() {
             tmVoiceClearStopFallbackTimers();
             var delays = tmVoiceUseMobileRecorderStrategy()
@@ -1075,16 +1083,20 @@
                             if (baseConfigData.success && baseConfigData.data) {
                                 const baseConfig = baseConfigData.data;
                                 const stsCredentials = stsData.data;
+                                var ossEndpoint = tmNormalizeOssEndpointForBrowser(baseConfig.endpoint);
+                                if (ossEndpoint !== baseConfig.endpoint) {
+                                    console.warn('[Voice] OSS endpoint 已由 internal 转为公网:', ossEndpoint);
+                                }
                                 OSSService = new OSS({
                                     region: baseConfig.region || 'oss-cn-hongkong',
                                     accessKeyId: stsCredentials.accessKeyId,
                                     accessKeySecret: stsCredentials.accessKeySecret,
                                     stsToken: stsCredentials.securityToken,
                                     bucket: baseConfig.bucketName || 'trademind-ai',
-                                    endpoint: baseConfig.endpoint,
+                                    endpoint: ossEndpoint,
                                     secure: true
                                 });
-                                console.log('OSS 服务初始化成功');
+                                console.log('OSS 服务初始化成功, endpoint=', ossEndpoint);
                             }
                         }
                     }
@@ -2529,8 +2541,9 @@
                     if (done) done();
                 })
                 .catch(function (err) {
-                    console.error('[Voice] onstop 后续处理失败:', err);
-                    if (fail) fail(err);
+                    console.error('[Voice] 上传/AI 阶段失败（停录已成功）:', err);
+                    /* 上传/AI 错误已在 processVoiceWithAIService 内提示，勿 reject 停止 Promise，避免误报「处理录音失败」 */
+                    if (done) done();
                 });
         }
 
@@ -2699,10 +2712,13 @@
                 });
             } catch (error) {
                 console.error('[Voice] 停止录音失败:', error);
-                tmVoiceNotify('处理录音失败，请重试', 'error');
+                var stopMsg = (error && error.message && error.message.indexOf('超时') !== -1)
+                    ? '录音停止超时，请重试'
+                    : '处理录音失败，请重试';
+                tmVoiceNotify(stopMsg, 'error');
                 voiceStopInProgress = false;
                 setVoiceStopButtonLoading(false);
-                closeVoiceModal();
+                resetVoiceUIAfterFailure();
             }
         }
 
@@ -2819,7 +2835,12 @@
                 if (error && error.name === 'AbortError') {
                     tmVoiceNotify('已取消语音提交', 'info');
                 } else {
-                    tmVoiceNotify('处理语音失败，请重试', 'error');
+                    var errText = (error && error.message) ? String(error.message) : '';
+                    var voiceMsg = '处理语音失败，请重试';
+                    if (/internal|Network|network|XHR|timeout|AccessDenied|403/i.test(errText)) {
+                        voiceMsg = '音频上传失败，请检查网络或稍后重试';
+                    }
+                    tmVoiceNotify(voiceMsg, 'error');
                 }
                 resetVoiceUIAfterFailure();
             } finally {
