@@ -48,6 +48,22 @@ function TM_syncProductCenterOverlays() {
         });
 }
 
+/** overlay 替换后重新绑定语音停止按钮（避免切 Tab 后 click 监听丢失） */
+function TM_rebindVoiceStopAfterOverlaySync() {
+    try {
+        if (typeof window.__TM_bindVoiceStopButton === 'function') {
+            window.__TM_bindVoiceStopButton();
+            return;
+        }
+        var impl = window.__TM_dashboardVoice;
+        if (impl && typeof impl.bindVoiceStopButton === 'function') {
+            impl.bindVoiceStopButton();
+        }
+    } catch (e) {
+        console.warn('[TM] 重新绑定 voice-stop 失败:', e);
+    }
+}
+
 function TM_syncDashboardOverlays(htmlString) {
     try {
         const parser = new DOMParser();
@@ -64,6 +80,7 @@ function TM_syncDashboardOverlays(htmlString) {
                 document.body.appendChild(cloned);
             }
         });
+        TM_rebindVoiceStopAfterOverlaySync();
     } catch (e) {
         console.warn('[TM] 同步 dashboard 弹窗节点失败:', e);
     }
@@ -84,6 +101,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
         if (window.__TM_DASHBOARD_INLINE_LOADED) {
             TM_restoreShellNavigationGlobals();
             TM_refreshDashboardPendingOrders();
+            TM_rebindVoiceStopAfterOverlaySync();
             try {
                 if (typeof window.loadPendingOrders === 'function') {
                     window.loadPendingOrders();
@@ -488,7 +506,7 @@ function TM_refreshDashboardPendingOrders() {
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
     console.log('[TM] 加载 dashboard 内容片段');
-    fetch('/modules/dashboard/dashboard.html?v=20260521all', { cache: 'no-store' })
+    fetch('/modules/dashboard/dashboard.html?v=20260523voice', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -930,13 +948,22 @@ async function downloadPoster() {
     function tmVoiceImpl() {
         return window.__TM_dashboardVoice;
     }
+    function tmVoiceReady() {
+        var impl = tmVoiceImpl();
+        if (impl && typeof impl.isReady === 'function') {
+            return impl.isReady();
+        }
+        return !!(impl && typeof impl.startVoiceRecording === 'function');
+    }
     window.openVoiceModal = function () {
         var impl = tmVoiceImpl();
         if (impl && typeof impl.openVoiceModal === 'function') {
+            if (!tmVoiceReady()) {
+                tmVoiceToast('工作台语音功能加载中，请稍候再试');
+                return;
+            }
             return impl.openVoiceModal();
         }
-        var m = document.getElementById('voice-modal');
-        if (m) m.classList.remove('hidden');
         tmVoiceToast('工作台正在加载，请稍后再试语音提单');
     };
     window.closeVoiceModal = function () {
@@ -950,6 +977,10 @@ async function downloadPoster() {
     window.startVoiceRecording = function () {
         var impl = tmVoiceImpl();
         if (impl && typeof impl.startVoiceRecording === 'function') {
+            if (!tmVoiceReady()) {
+                tmVoiceToast('工作台语音功能加载中，请稍候再试');
+                return;
+            }
             return impl.startVoiceRecording();
         }
         tmVoiceToast('工作台正在加载，请稍后再试语音提单');

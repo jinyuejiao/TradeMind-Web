@@ -649,7 +649,7 @@
                 <div id="voice-pulse-icon" class="w-24 h-24 bg-brand-500 rounded-full mx-auto flex items-center justify-center text-white mb-8"><i class="ph ph-microphone text-5xl"></i></div>
                 <div class="flex items-center justify-center gap-2 mb-2"><span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span><span class="text-lg font-black text-slate-800">正在录音...</span></div>
                 <p class="text-2xl font-mono font-bold text-brand-600 mb-10" id="voice-timer">00:00</p>
-                <button type="button" id="voice-stop-btn" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl touch-manipulation select-none" aria-label="停止并提交解析">停止并提交解析</button>
+                <button type="button" id="voice-stop-btn" onclick="stopVoiceRecording()" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl touch-manipulation select-none" aria-label="停止并提交解析">停止并提交解析</button>
             </div>
 
             <!-- 核心修复：AI 处理加载态容器 -->
@@ -859,6 +859,77 @@
         let voiceAbortController = null;
         let voiceUploadInFlight = false;
         const VOICE_MIN_BLOB_BYTES = 1000;
+        const VOICE_STOP_FALLBACK_DELAYS_DESKTOP = [400];
+        const VOICE_STOP_FALLBACK_DELAYS_MOBILE = [400, 1500, 2500];
+        var voiceStopFallbackTimers = [];
+
+        function tmVoiceIsIosWebKit() {
+            return /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+        }
+
+        function tmVoiceIsWeChatInApp() {
+            return /MicroMessenger/i.test(navigator.userAgent || '');
+        }
+
+        /** 移动/WebKit 录音策略；桌面默认 false。localStorage TM_VOICE_MOBILE_STRATEGY=0 可关闭 */
+        function tmVoiceUseMobileRecorderStrategy() {
+            if (window.TM_VOICE_MOBILE_STRATEGY === false) {
+                return false;
+            }
+            try {
+                if (localStorage.getItem('TM_VOICE_MOBILE_STRATEGY') === '0') {
+                    return false;
+                }
+            } catch (lsErr) { /* ignore */ }
+            if (tmVoiceIsIosWebKit()) {
+                return true;
+            }
+            var ua = navigator.userAgent || '';
+            if (/Android/i.test(ua) && !/Chrome\/[\d.]+ Mobile/i.test(ua) && /wv/i.test(ua)) {
+                return true;
+            }
+            return false;
+        }
+
+        function tmVoiceIsDashboardReady() {
+            var impl = window.__TM_dashboardVoice;
+            if (!impl ||
+                typeof impl.startVoiceRecording !== 'function' ||
+                typeof impl.stopVoiceRecording !== 'function') {
+                return false;
+            }
+            var inIndexAppShell = !!document.getElementById('tm-app-tabbar');
+            if (inIndexAppShell && !window.__TM_DASHBOARD_INLINE_LOADED) {
+                return false;
+            }
+            return true;
+        }
+
+        function tmVoiceClearStopFallbackTimers() {
+            voiceStopFallbackTimers.forEach(function (tid) { clearTimeout(tid); });
+            voiceStopFallbackTimers = [];
+        }
+
+        function tmVoiceScheduleStopFallbacks() {
+            tmVoiceClearStopFallbackTimers();
+            var delays = tmVoiceUseMobileRecorderStrategy()
+                ? VOICE_STOP_FALLBACK_DELAYS_MOBILE
+                : VOICE_STOP_FALLBACK_DELAYS_DESKTOP;
+            delays.forEach(function (ms) {
+                var timerId = setTimeout(function () {
+                    if (voiceOnstopHandled) {
+                        return;
+                    }
+                    if (audioChunks.length > 0) {
+                        console.warn('[Voice] onstop 未触发 (' + ms + 'ms)，使用 chunks 回退合成');
+                        handleVoiceRecorderStop();
+                    } else if (ms === delays[delays.length - 1]) {
+                        console.warn('[Voice] 回退结束仍无 chunks, recording=', recording, 'state=', recorder && recorder.state);
+                    }
+                }, ms);
+                voiceStopFallbackTimers.push(timerId);
+            });
+        }
 
         function setVoiceProcessingText(text) {
             var el = document.getElementById('voice-processing-status');
@@ -945,15 +1016,36 @@
 
         function bindVoiceStopButton() {
             var btn = document.getElementById('voice-stop-btn');
-            if (!btn || btn.getAttribute('data-voice-stop-bound') === '1') return;
-            btn.setAttribute('data-voice-stop-bound', '1');
+            if (!btn) {
+                return;
+            }
+            if (btn.__tmVoiceStopHandler) {
+                btn.removeEventListener('click', btn.__tmVoiceStopHandler);
+            }
+            if (btn.__tmVoicePointerHandler) {
+                btn.removeEventListener('pointerup', btn.__tmVoicePointerHandler);
+            }
             var fireStop = function (e) {
-                if (e && e.cancelable) e.preventDefault();
-                if (voiceStopInProgress) return;
+                if (e && e.cancelable) {
+                    e.preventDefault();
+                }
+                if (voiceStopInProgress) {
+                    return;
+                }
+                console.log('[Voice] 用户触发停止, event=', e && e.type);
                 stopVoiceRecording();
             };
+            btn.__tmVoiceStopHandler = fireStop;
+            btn.__tmVoicePointerHandler = function (e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) {
+                    return;
+                }
+                fireStop(e);
+            };
             btn.addEventListener('click', fireStop);
-            console.log('[Voice] 停止按钮已绑定 (click)');
+            btn.addEventListener('pointerup', btn.__tmVoicePointerHandler);
+            btn.setAttribute('data-voice-stop-bound', '1');
+            console.log('[Voice] 停止按钮已绑定 (click + pointerup + onclick)');
         }
 
         // 初始化 OSS 服务
@@ -2330,6 +2422,21 @@
 
         // 打开语音模态框
         function openVoiceModal() {
+            if (!tmVoiceIsDashboardReady()) {
+                console.warn('[Voice] openVoiceModal: dashboard 语音模块未就绪');
+                tmVoiceNotify('工作台语音功能加载中，请稍候再试', 'info');
+                return;
+            }
+            if (typeof MediaRecorder === 'undefined' ||
+                !navigator.mediaDevices ||
+                typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                if (tmVoiceIsWeChatInApp()) {
+                    tmVoiceNotify('当前微信内浏览器可能不支持录音，请使用系统浏览器打开本页', 'error');
+                } else {
+                    tmVoiceNotify('当前浏览器不支持录音，请使用 Chrome / Safari 最新版', 'error');
+                }
+                return;
+            }
             document.getElementById('voice-modal').classList.remove('hidden');
             var ready = document.getElementById('voice-ready-ui');
             var active = document.getElementById('voice-active-ui');
@@ -2357,6 +2464,7 @@
                 voiceAbortController = null;
             }
             voiceUploadInFlight = false;
+            tmVoiceClearStopFallbackTimers();
             document.getElementById('voice-modal').classList.add('hidden');
             var ready = document.getElementById('voice-ready-ui');
             var active = document.getElementById('voice-active-ui');
@@ -2386,6 +2494,7 @@
                 return;
             }
             voiceOnstopHandled = true;
+            tmVoiceClearStopFallbackTimers();
             console.log('[Voice] onstop 开始, chunks=', audioChunks.length);
             stopVoiceTimer();
             stopAllVoiceTracks();
@@ -2428,6 +2537,20 @@
         // 开始录音
         async function startVoiceRecording() {
             try {
+                if (!tmVoiceIsDashboardReady()) {
+                    tmVoiceNotify('工作台语音功能加载中，请稍候再试', 'info');
+                    return;
+                }
+                if (typeof MediaRecorder === 'undefined' ||
+                    !navigator.mediaDevices ||
+                    typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                    if (tmVoiceIsWeChatInApp()) {
+                        tmVoiceNotify('当前微信内浏览器可能不支持录音，请使用系统浏览器打开', 'error');
+                    } else {
+                        tmVoiceNotify('当前浏览器不支持录音', 'error');
+                    }
+                    return;
+                }
                 if (recording || voiceStopInProgress) {
                     return;
                 }
@@ -2471,8 +2594,13 @@
                     handleVoiceRecorderStop();
                 };
 
-                recorder.start(500);
-                console.log('[Voice] 开始录音, state=', recorder.state, 'mime=', voiceRecorderMime);
+                if (tmVoiceUseMobileRecorderStrategy()) {
+                    recorder.start();
+                    console.log('[Voice] 开始录音 (mobile/WebKit 不分片), state=', recorder.state, 'mime=', voiceRecorderMime);
+                } else {
+                    recorder.start(500);
+                    console.log('[Voice] 开始录音 (desktop 分片 500ms), state=', recorder.state, 'mime=', voiceRecorderMime);
+                }
 
                 var pulseIcon = document.getElementById('voice-pulse-icon');
                 if (pulseIcon) pulseIcon.classList.add('recording-pulse');
@@ -2498,7 +2626,18 @@
                     return;
                 }
                 if (recorder.state === 'inactive') {
-                    console.warn('[Voice] recorder 已为 inactive');
+                    console.warn('[Voice] recorder 已为 inactive，尝试回退收尾');
+                    voiceStopInProgress = true;
+                    showVoiceProcessingPanel('正在结束录音…');
+                    if (audioChunks.length > 0) {
+                        handleVoiceRecorderStop();
+                        return;
+                    }
+                    tmVoiceNotify('录音已被系统中断，请重新录制', 'error');
+                    recording = false;
+                    stopAllVoiceTracks();
+                    recorder = null;
+                    resetVoiceUIAfterFailure();
                     return;
                 }
 
@@ -2525,6 +2664,7 @@
                         if (finished) return;
                         finished = true;
                         clearTimeout(t);
+                        tmVoiceClearStopFallbackTimers();
                         voiceStopInProgress = false;
                         resolve();
                     };
@@ -2532,6 +2672,7 @@
                         if (finished) return;
                         finished = true;
                         clearTimeout(t);
+                        tmVoiceClearStopFallbackTimers();
                         voiceStopInProgress = false;
                         setVoiceStopButtonLoading(false);
                         reject(err);
@@ -2551,12 +2692,7 @@
                         }
                         console.log('[Voice] 调用 mediaRecorder.stop()');
                         rec.stop();
-                        setTimeout(function () {
-                            if (!voiceOnstopHandled && audioChunks.length > 0) {
-                                console.warn('[Voice] onstop 未触发，使用 chunks 回退合成');
-                                handleVoiceRecorderStop();
-                            }
-                        }, 400);
+                        tmVoiceScheduleStopFallbacks();
                     } catch (err) {
                         wrapReject(err);
                     }
@@ -2609,11 +2745,14 @@
                     return;
                 }
                 setVoiceProcessingText('正在上传音频…');
+                if (typeof OSS === 'undefined') {
+                    throw new Error('上传组件未就绪，请刷新页面后重试');
+                }
                 // 确保 OSS 服务已初始化
                 if (!OSSService) {
                     await initOSSService();
                     if (!OSSService) {
-                        throw new Error('OSS 服务初始化失败');
+                        throw new Error('OSS 服务初始化失败，请检查网络后重试');
                     }
                 }
                 
@@ -3065,13 +3204,50 @@
             }
         }
 
+        function tmVoiceOnPageHidden() {
+            if (!recording && !voiceStopInProgress) {
+                return;
+            }
+            console.warn('[Voice] 页面进入后台/卸载，尝试安全停止录音');
+            if (recorder && recorder.state === 'recording') {
+                stopVoiceRecording().catch(function () {
+                    recording = false;
+                    voiceStopInProgress = false;
+                    stopAllVoiceTracks();
+                    tmVoiceNotify('录音已中断，请回到页面后重新录制', 'info');
+                    resetVoiceUIAfterFailure();
+                });
+                return;
+            }
+            if (recording) {
+                recording = false;
+                voiceStopInProgress = false;
+                stopAllVoiceTracks();
+                tmVoiceNotify('录音已中断，请重新录制', 'info');
+                resetVoiceUIAfterFailure();
+            }
+        }
+
+        if (!window.__TM_VOICE_VISIBILITY_BOUND) {
+            window.__TM_VOICE_VISIBILITY_BOUND = true;
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    tmVoiceOnPageHidden();
+                }
+            });
+            window.addEventListener('pagehide', tmVoiceOnPageHidden);
+        }
+
         // 供 index-app 壳层委托：window.startVoiceRecording 等始终指向此处实现
         window.__TM_dashboardVoice = {
             openVoiceModal: openVoiceModal,
             startVoiceRecording: startVoiceRecording,
             stopVoiceRecording: stopVoiceRecording,
-            closeVoiceModal: closeVoiceModal
+            closeVoiceModal: closeVoiceModal,
+            bindVoiceStopButton: bindVoiceStopButton,
+            isReady: tmVoiceIsDashboardReady
         };
+        window.__TM_bindVoiceStopButton = bindVoiceStopButton;
         bindVoiceStopButton();
 
         window.parseAiEnvelope = parseAiEnvelope;
