@@ -874,7 +874,9 @@
         const VOICE_STOP_TIMEOUT_MS_DESKTOP = 12000;
         const VOICE_STOP_TIMEOUT_MS_MOBILE = 22000;
         const VOICE_STOP_FALLBACK_DELAYS_DESKTOP = [400];
-        const VOICE_STOP_FALLBACK_DELAYS_MOBILE = [400, 1500, 2500, 5000, 8000];
+        const VOICE_STOP_FALLBACK_DELAYS_MOBILE = [800, 2000, 4000, 6000];
+        const VOICE_IOS_FINALIZE_RETRY_MS = 200;
+        const VOICE_IOS_FINALIZE_MAX_RETRIES = 25;
         var voiceStopFallbackTimers = [];
 
         function tmVoiceIsIosWebKit() {
@@ -955,11 +957,20 @@
                     if (voiceOnstopHandled) {
                         return;
                     }
+                    /* iOS：dataavailable 常在 stop() 之后才写入，不在无 onstop 时用空 chunks 提前收尾 */
+                    if (tmVoiceUseMobileRecorderStrategy()) {
+                        if (ms === delays[delays.length - 1]) {
+                            console.warn('[Voice] 移动端 onstop 长时间未收尾, chunks=', audioChunks.length);
+                            handleVoiceRecorderStop();
+                        }
+                        return;
+                    }
                     if (audioChunks.length > 0) {
                         console.warn('[Voice] onstop 未触发 (' + ms + 'ms)，使用 chunks 回退合成');
                         handleVoiceRecorderStop();
                     } else if (ms === delays[delays.length - 1]) {
-                        console.warn('[Voice] 回退结束仍无 chunks, recording=', recording, 'state=', recorder && recorder.state);
+                        console.warn('[Voice] 回退结束仍无 chunks');
+                        handleVoiceRecorderStop();
                     }
                 }, ms);
                 voiceStopFallbackTimers.push(timerId);
@@ -2544,43 +2555,78 @@
                 console.log('[Voice] onstop 已处理，跳过重复');
                 return;
             }
-            voiceOnstopHandled = true;
             tmVoiceClearStopFallbackTimers();
-            console.log('[Voice] onstop 开始, chunks=', audioChunks.length);
             stopVoiceTimer();
-            stopAllVoiceTracks();
+            console.log('[Voice] 开始收尾, chunks=', audioChunks.length, 'timerSec=', voiceTimerSeconds);
 
             var mime = voiceRecorderMime || (recorder && recorder.mimeType) || 'audio/webm';
-            var audioBlob = new Blob(audioChunks, { type: mime });
-            console.log('[Voice] Blob 已生成, size=', audioBlob.size, 'type=', audioBlob.type);
-
-            recording = false;
-            recorder = null;
-            audioChunks = [];
-
             var minBytes = tmVoiceMinBlobBytes();
-            if (audioBlob.size < minBytes) {
-                console.warn('[Voice] Blob 过小, size=', audioBlob.size, 'min=', minBytes);
+            var maxRetries = tmVoiceUseMobileRecorderStrategy() ? VOICE_IOS_FINALIZE_MAX_RETRIES : 3;
+            var retryMs = tmVoiceUseMobileRecorderStrategy() ? VOICE_IOS_FINALIZE_RETRY_MS : 150;
+
+            function attemptFinalize(retryIndex) {
+                if (voiceOnstopHandled) {
+                    return;
+                }
+                var audioBlob = new Blob(audioChunks, { type: mime });
+                var totalChunkBytes = audioChunks.reduce(function (sum, c) {
+                    return sum + (c && c.size ? c.size : 0);
+                }, 0);
+                console.log('[Voice] 收尾尝试 #' + retryIndex +
+                    ', blobSize=', audioBlob.size, 'chunkBytes=', totalChunkBytes,
+                    ', chunks=', audioChunks.length, ', timerSec=', voiceTimerSeconds);
+
+                if (audioBlob.size >= minBytes) {
+                    voiceOnstopHandled = true;
+                    recording = false;
+                    recorder = null;
+                    stopAllVoiceTracks();
+                    var done = voiceStopResolve;
+                    voiceStopResolve = null;
+                    voiceStopReject = null;
+                    voiceLastCapturedBlob = audioBlob;
+                    audioChunks = [];
+
+                    Promise.resolve(processVoiceWithAIService(audioBlob))
+                        .then(function () {
+                            if (done) done();
+                        })
+                        .catch(function (err) {
+                            console.error('[Voice] 上传/AI 阶段失败（停录已成功）:', err);
+                            if (done) done();
+                        });
+                    return;
+                }
+
+                if (retryIndex < maxRetries) {
+                    if (retryIndex === 0 || retryIndex % 5 === 0) {
+                        setVoiceProcessingText('正在写入录音数据…');
+                    }
+                    setTimeout(function () {
+                        attemptFinalize(retryIndex + 1);
+                    }, retryMs);
+                    return;
+                }
+
+                voiceOnstopHandled = true;
+                recording = false;
+                recorder = null;
+                stopAllVoiceTracks();
+                audioChunks = [];
                 voiceLastCapturedBlob = null;
-                showVoiceErrorPanel('录音过短或未采集到有效音频，请点击「重新录制」并至少录制 2 秒');
+
+                var errHint = '录音过短或未采集到有效音频，请点击「重新录制」并至少录制 2 秒';
+                if (voiceTimerSeconds >= 2 && audioBlob.size > 0) {
+                    errHint = '已录制约 ' + voiceTimerSeconds + ' 秒，但浏览器未写出完整音频（' + audioBlob.size + ' 字节），请点击「重新录制」';
+                } else if (voiceTimerSeconds >= 2) {
+                    errHint = '已录制约 ' + voiceTimerSeconds + ' 秒，但未采集到音频数据，请换 Safari 或关闭其它占用麦克风的应用后重试';
+                }
+                console.warn('[Voice] 收尾失败, finalBlobSize=', audioBlob.size, 'min=', minBytes);
+                showVoiceErrorPanel(errHint);
                 tmVoiceFinishStopPromiseOk();
-                return;
             }
 
-            voiceLastCapturedBlob = audioBlob;
-
-            var done = voiceStopResolve;
-            voiceStopResolve = null;
-            voiceStopReject = null;
-
-            Promise.resolve(processVoiceWithAIService(audioBlob))
-                .then(function () {
-                    if (done) done();
-                })
-                .catch(function (err) {
-                    console.error('[Voice] 上传/AI 阶段失败（停录已成功）:', err);
-                    if (done) done();
-                });
+            attemptFinalize(0);
         }
 
         // 开始录音
