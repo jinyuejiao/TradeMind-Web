@@ -267,10 +267,13 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
 
             if (parentMobile && window.TM_Compliance) {
                 if (typeof window.TM_Compliance.applyEmbedDocumentForFlow === 'function') {
-                    window.TM_Compliance.applyEmbedDocumentForFlow(doc, frame);
+                    window.TM_Compliance.applyEmbedDocumentForFlow(doc);
                 }
                 if (typeof window.TM_Compliance.syncIframeHeight === 'function') {
                     window.TM_Compliance.syncIframeHeight(frame);
+                }
+                if (typeof window.TM_Compliance.bindIframeAutoHeight === 'function') {
+                    window.TM_Compliance.bindIframeAutoHeight(frame);
                 }
             } else if (window.TM_ShellInsets && typeof window.TM_ShellInsets.initEmbeddedDocument === 'function') {
                 window.TM_ShellInsets.initEmbeddedDocument(doc);
@@ -324,22 +327,14 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
             return;
         }
         cleanupFrame(existed);
-        if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
-            window.TM_Compliance.prepareEmbeddedFrameView(host);
-        }
         revealFrame(existed);
         return;
     }
 
     host.innerHTML =
-        '<div class="tm-view-compliance-body tm-view-compliance-body--flow">' +
-        '<iframe data-tm-embed="' + frameKey + '" class="tm-module-frame" src="' + src + '" title="' + (title || frameKey) + '"></iframe>' +
-        '</div>';
+        '<iframe data-tm-embed="' + frameKey + '" class="tm-module-frame" src="' + src + '" title="' + (title || frameKey) + '"></iframe>';
 
     var frame = host.querySelector('iframe[data-tm-embed="' + frameKey + '"]');
-    if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
-        window.TM_Compliance.prepareEmbeddedFrameView(host);
-    }
     if (!frame) return;
     frame.style.visibility = 'hidden';
     frame.style.opacity = '0';
@@ -347,15 +342,9 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
 
     frame.addEventListener('load', function () {
         cleanupFrame(frame);
-        if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
-            window.TM_Compliance.prepareEmbeddedFrameView(host);
-        }
         // 某些模块会在 load 后异步注入公共壳层，延迟再清一次
         setTimeout(function () {
             cleanupFrame(frame);
-            if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
-                window.TM_Compliance.prepareEmbeddedFrameView(host);
-            }
             revealFrame(frame);
         }, 120);
     });
@@ -575,8 +564,8 @@ function loadDashboard() {
                     }
                 });
             }
-            if (window.TM_Compliance && typeof window.TM_Compliance.prepareFlowView === 'function') {
-                window.TM_Compliance.prepareFlowView(vd);
+            if (window.TM_Compliance && typeof window.TM_Compliance.applyMobileScheme === 'function') {
+                window.TM_Compliance.applyMobileScheme();
             }
             if (typeof window.TM_syncAppShellMetrics === 'function') {
                 window.TM_syncAppShellMetrics();
@@ -627,7 +616,13 @@ function loadProductCenter() {
             var vs = document.getElementById('view-supply');
             if (vs) {
                 vs.innerHTML = inner || html;
-                vs.classList.add('tm-view-supply-scroll');
+                var mobileSupply = window.innerWidth < 768 ||
+                    (document.body && document.body.classList.contains('tm-layout-mobile'));
+                if (mobileSupply) {
+                    vs.classList.remove('tm-view-supply-scroll');
+                } else {
+                    vs.classList.add('tm-view-supply-scroll');
+                }
                 var nestedContent = vs.querySelector('#content-area');
                 if (nestedContent) {
                     nestedContent.id = 'supply-inner-scroll';
@@ -640,8 +635,8 @@ function loadProductCenter() {
                     }
                 });
             }
-            if (window.TM_Compliance && typeof window.TM_Compliance.prepareSupplyView === 'function') {
-                window.TM_Compliance.prepareSupplyView(vs);
+            if (window.TM_Compliance && typeof window.TM_Compliance.applyMobileScheme === 'function') {
+                window.TM_Compliance.applyMobileScheme();
             }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {

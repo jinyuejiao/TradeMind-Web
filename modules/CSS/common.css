@@ -446,10 +446,6 @@ textarea {
     display: none !important;
 }
 
-body.tm-layout-mobile .tm-compliance-footer--shell-global {
-    display: none !important;
-}
-
 @media (min-width: 768px) {
     footer.tm-compliance-footer[data-tm-compliance-slot] {
         display: none !important;

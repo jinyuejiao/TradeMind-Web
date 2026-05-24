@@ -33,11 +33,8 @@
             }
         }
 
-        var bottomReserve = 0;
-        if (document.getElementById('tm-onboarding-fab')) {
-            bottomReserve = 64;
-        }
-        root.style.setProperty('--tm-shell-bottom-reserve', bottomReserve + 'px');
+        /* 导览 FAB 为悬浮层，不占用主内容区底部留白（备案与布局与工作台一致） */
+        root.style.setProperty('--tm-shell-bottom-reserve', '0px');
     }
 
     function applyContentArea(el, mode) {
