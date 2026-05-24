@@ -260,7 +260,19 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
                 // 不强改 display/flex，避免破坏模块原生布局（尤其 CRM 左右双栏）
             }
 
-            if (window.TM_ShellInsets && typeof window.TM_ShellInsets.initEmbeddedDocument === 'function') {
+            var parentMobile = false;
+            try {
+                parentMobile = window.innerWidth < 768;
+            } catch (ePm) { /* ignore */ }
+
+            if (parentMobile && window.TM_Compliance) {
+                if (typeof window.TM_Compliance.applyEmbedDocumentForFlow === 'function') {
+                    window.TM_Compliance.applyEmbedDocumentForFlow(doc, frame);
+                }
+                if (typeof window.TM_Compliance.syncIframeHeight === 'function') {
+                    window.TM_Compliance.syncIframeHeight(frame);
+                }
+            } else if (window.TM_ShellInsets && typeof window.TM_ShellInsets.initEmbeddedDocument === 'function') {
                 window.TM_ShellInsets.initEmbeddedDocument(doc);
             } else {
                 var content = doc.getElementById('content-area');
@@ -312,14 +324,22 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
             return;
         }
         cleanupFrame(existed);
+        if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
+            window.TM_Compliance.prepareEmbeddedFrameView(host);
+        }
         revealFrame(existed);
         return;
     }
 
     host.innerHTML =
-        '<iframe data-tm-embed="' + frameKey + '" class="tm-module-frame" src="' + src + '" title="' + (title || frameKey) + '"></iframe>';
+        '<div class="tm-view-compliance-body tm-view-compliance-body--flow">' +
+        '<iframe data-tm-embed="' + frameKey + '" class="tm-module-frame" src="' + src + '" title="' + (title || frameKey) + '"></iframe>' +
+        '</div>';
 
     var frame = host.querySelector('iframe[data-tm-embed="' + frameKey + '"]');
+    if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
+        window.TM_Compliance.prepareEmbeddedFrameView(host);
+    }
     if (!frame) return;
     frame.style.visibility = 'hidden';
     frame.style.opacity = '0';
@@ -327,9 +347,15 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
 
     frame.addEventListener('load', function () {
         cleanupFrame(frame);
+        if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
+            window.TM_Compliance.prepareEmbeddedFrameView(host);
+        }
         // 某些模块会在 load 后异步注入公共壳层，延迟再清一次
         setTimeout(function () {
             cleanupFrame(frame);
+            if (window.TM_Compliance && typeof window.TM_Compliance.prepareEmbeddedFrameView === 'function') {
+                window.TM_Compliance.prepareEmbeddedFrameView(host);
+            }
             revealFrame(frame);
         }, 120);
     });
@@ -549,6 +575,9 @@ function loadDashboard() {
                     }
                 });
             }
+            if (window.TM_Compliance && typeof window.TM_Compliance.prepareFlowView === 'function') {
+                window.TM_Compliance.prepareFlowView(vd);
+            }
             if (typeof window.TM_syncAppShellMetrics === 'function') {
                 window.TM_syncAppShellMetrics();
             }
@@ -610,6 +639,9 @@ function loadProductCenter() {
                         window.TM_RoleGate.apply(vs);
                     }
                 });
+            }
+            if (window.TM_Compliance && typeof window.TM_Compliance.prepareSupplyView === 'function') {
+                window.TM_Compliance.prepareSupplyView(vs);
             }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
@@ -881,7 +913,7 @@ function switchTab(tabId) {
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
 
-  if (typeof window.TM_syncAppShellMetrics === 'function') {
+    if (typeof window.TM_syncAppShellMetrics === 'function') {
         window.TM_syncAppShellMetrics();
     }
 
@@ -920,6 +952,12 @@ function switchTab(tabId) {
     else if (tabId === 'crm') loadCRM();
     else if (tabId === 'supply') loadProductCenter();
     else if (tabId === 'supplier') loadSupplier();
+
+    if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
+        setTimeout(function () {
+            window.TM_Compliance.onTabChange(tabId);
+        }, 200);
+    }
 
     if (typeof window.TM_syncAppShellMetrics === 'function') {
         requestAnimationFrame(function () {

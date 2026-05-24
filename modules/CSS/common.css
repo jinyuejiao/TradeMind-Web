@@ -441,9 +441,54 @@ textarea {
     }
 }
 
-/* 手机端不再使用底栏上方固定备案条（已改为 content-area 内流式 footer） */
+/* 手机端备案由各 Tab 内 data-tm-compliance-slot 展示；主壳全局 footer 在 mobile.css 隐藏 */
 #tm-compliance-sticky {
     display: none !important;
+}
+
+body.tm-layout-mobile .tm-compliance-footer--shell-global {
+    display: none !important;
+}
+
+@media (min-width: 768px) {
+    footer.tm-compliance-footer[data-tm-compliance-slot] {
+        display: none !important;
+    }
+}
+
+/* 手机 embed：子页文档流展开，由主壳 content-area 统一滚动（备案与工作台一致） */
+@media (max-width: 767px) {
+    html.tm-embedded.tm-embed-parent-flow,
+    html.tm-embedded.tm-embed-parent-flow body {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow body {
+        display: block !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow main {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow #content-area {
+        overflow: visible !important;
+        height: auto !important;
+        flex: none !important;
+        padding-bottom: 0 !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow #view-crm,
+    html.tm-embedded.tm-embed-parent-flow #crm-list-pane,
+    html.tm-embedded.tm-embed-parent-flow #customer-list-container {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
 }
 
 .tm-shell-chrome-hidden {

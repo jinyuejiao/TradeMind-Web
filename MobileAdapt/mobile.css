@@ -232,41 +232,65 @@
         display: none !important;
     }
 
-    body.tm-layout-mobile #view-biz.view-section:not(.hidden),
-    body.tm-layout-mobile #view-crm.view-section:not(.hidden),
-    body.tm-layout-mobile #view-supplier.view-section:not(.hidden) {
-        flex: 1 1 auto;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        padding: 0 !important;
-        margin: 0;
-        overflow: hidden;
+    /* 手机端：主壳全局备案由 tm-compliance.js 注入到各 Tab，此处隐藏避免叠在底栏上方 */
+    body.tm-layout-mobile #content-area > footer.tm-compliance-footer.tm-compliance-footer--shell-global {
+        display: none !important;
     }
 
-    body.tm-layout-mobile #view-biz.view-section:not(.hidden) iframe.tm-module-frame,
-    body.tm-layout-mobile #view-crm.view-section:not(.hidden) iframe.tm-module-frame,
-    body.tm-layout-mobile #view-supplier.view-section:not(.hidden) iframe.tm-module-frame {
-        flex: 1 1 auto;
-        width: 100%;
-        height: 100% !important;
-        min-height: 0;
-        margin-bottom: 0;
-        border: 0;
-    }
-
-    /* 备案信息随内容流式排在底部（与 PC 一致），不固定在底栏上方 */
     body.tm-layout-mobile .tm-app-content-area {
         display: flex;
         flex-direction: column;
         min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem));
     }
 
-    body.tm-layout-mobile #content-area > footer.tm-compliance-footer {
+    /* —— 各 Tab 内备案（tm-compliance.js 统一挂载） —— */
+    body.tm-layout-mobile .view-section.tm-view-with-compliance:not(.hidden) {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    /* 与工作台一致：主壳 content-area 滚动，备案在 Tab 内容流末尾 */
+    body.tm-layout-mobile .view-section.tm-view-with-compliance--flow:not(.hidden) {
+        display: flex;
+        flex-direction: column;
+        flex: none;
+        width: 100%;
+        min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 2rem);
+        overflow: visible;
+        padding-bottom: 0.5rem;
+    }
+
+    body.tm-layout-mobile #view-biz.tm-view-with-compliance--flow:not(.hidden),
+    body.tm-layout-mobile #view-crm.tm-view-with-compliance--flow:not(.hidden),
+    body.tm-layout-mobile #view-supplier.tm-view-with-compliance--flow:not(.hidden) {
+        padding: 0 !important;
+        margin: 0;
+    }
+
+    body.tm-layout-mobile .tm-view-compliance-body--flow {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: visible;
+        width: 100%;
+    }
+
+    body.tm-layout-mobile .tm-view-compliance-body--flow iframe.tm-module-frame {
         display: block;
+        width: 100%;
+        height: auto;
+        min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 9rem);
+        border: 0;
+        flex: 1 1 auto;
+    }
+
+    body.tm-layout-mobile .view-section.tm-view-with-compliance--flow > footer.tm-compliance-footer[data-tm-compliance-slot] {
         flex-shrink: 0;
+        display: block;
         margin-top: auto;
-        padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+        padding: 1rem 1rem 0.5rem;
         text-align: center;
         font-size: 10px;
         color: #94a3b8;
@@ -274,29 +298,20 @@
         border-top: none;
     }
 
-    body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll:not(.hidden) {
+    body.tm-layout-mobile #view-supply.tm-view-with-compliance--supply.tm-view-supply-scroll:not(.hidden) {
         flex: 1 1 auto;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
         overflow: hidden;
     }
 
-    body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll:not(.hidden) #supply-inner-scroll {
+    body.tm-layout-mobile #view-supply.tm-view-with-compliance--supply:not(.hidden) #supply-inner-scroll {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
 
-    body.tm-layout-mobile #view-supply .tm-compliance-footer {
-        display: none !important;
-    }
-
-    body.tm-layout-mobile #view-dashboard.view-section:not(.hidden) {
-        flex: none;
-        min-height: min-content;
-        display: block;
+    body.tm-layout-mobile #view-supply #supply-inner-scroll > footer.tm-compliance-footer[data-tm-compliance-slot] {
+        margin-top: 1.5rem;
         padding-bottom: 0.5rem;
     }
 
