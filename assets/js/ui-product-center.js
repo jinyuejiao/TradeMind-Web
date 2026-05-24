@@ -1002,10 +1002,10 @@ window.ProductModule = {
     },
     
     populateCategorySelect: function(selectedCategoryId) {
-        const select = document.getElementById('product-category-select');
+        const select = document.getElementById('detail-product-category') || document.getElementById('product-category-select');
         if (!select) return;
         
-        select.innerHTML = '<option value="">请选择商品类别</option>';
+        select.innerHTML = '<option value="">未分类（可选）</option>';
         
         this.categories.forEach(cat => {
             const option = document.createElement('option');
@@ -1207,9 +1207,10 @@ window.ProductModule = {
     },
 
     toggleAdvanced: function() {
-        var drawer = document.getElementById('product-advanced-drawer') || document.getElementById('advanced-drawer');
-        var icon = document.getElementById('product-detail-advanced-icon') || document.getElementById('advanced-icon');
-        var btn = document.querySelector('.tm-product-advanced-toggle');
+        var root = document.getElementById('product-detail-modal');
+        var drawer = root ? root.querySelector('#product-advanced-drawer') : document.getElementById('product-advanced-drawer');
+        var icon = root ? root.querySelector('#product-detail-advanced-icon') : document.getElementById('product-detail-advanced-icon');
+        var btn = root ? root.querySelector('.tm-product-advanced-toggle') : null;
         if (!drawer) return;
         var open = drawer.classList.toggle('open');
         if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -1217,6 +1218,12 @@ window.ProductModule = {
         if (icon) {
             icon.classList.toggle('ph-caret-down', !open);
             icon.classList.toggle('ph-caret-up', open);
+        }
+        if (open) {
+            var section = drawer.closest('.tm-product-edit-section--advanced');
+            if (section) {
+                try { section.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* ignore */ }
+            }
         }
     },
 
