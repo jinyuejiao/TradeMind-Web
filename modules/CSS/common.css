@@ -86,23 +86,29 @@
     }
 }
 
-/* 主壳内嵌 iframe：可视高度 = 动态视口 - 顶栏 - 底栏（底栏高度可由 JS 写入 --tm-tabbar-h 覆盖） */
+/* 主壳内嵌 iframe：桌面端按视口计算；移动端由 flex 父级撑满（见 mobile.css） */
 #view-biz iframe.tm-module-frame,
 #view-crm iframe.tm-module-frame,
 #view-supplier iframe.tm-module-frame {
     width: 100%;
-    height: calc(100dvh - var(--tm-header-h) - var(--tm-tabbar-h));
-    min-height: var(--tm-iframe-min-h);
     border: 0;
     background: #f8fafc;
 }
 
-@supports not (height: 100dvh) {
-
+@media (min-width: 768px) {
     #view-biz iframe.tm-module-frame,
     #view-crm iframe.tm-module-frame,
     #view-supplier iframe.tm-module-frame {
-        height: calc(100vh - var(--tm-header-h) - var(--tm-tabbar-h));
+        height: calc(100dvh - var(--tm-header-h) - var(--tm-tabbar-h));
+        min-height: var(--tm-iframe-min-h);
+    }
+
+    @supports not (height: 100dvh) {
+        #view-biz iframe.tm-module-frame,
+        #view-crm iframe.tm-module-frame,
+        #view-supplier iframe.tm-module-frame {
+            height: calc(100vh - var(--tm-header-h) - var(--tm-tabbar-h));
+        }
     }
 }
 
@@ -450,9 +456,8 @@ textarea {
         padding: 0;
     }
 
-    body.tm-layout-mobile #view-biz iframe.tm-module-frame,
-    body.tm-layout-mobile #view-supplier iframe.tm-module-frame {
-        margin-bottom: 2.75rem;
+    body.tm-layout-mobile.tm-compliance-visible {
+        --tm-shell-bottom-reserve: max(var(--tm-shell-bottom-reserve, 0px), var(--tm-compliance-sticky-h, 0px));
     }
 }
 
@@ -711,7 +716,24 @@ textarea {
     .tm-dialog-root[data-tm-dialog-variant="center"] {
         align-items: center !important;
         justify-content: center !important;
-        padding: 1rem !important;
+        padding: max(0.75rem, env(safe-area-inset-top, 0px)) 1rem max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+        z-index: 110 !important;
+    }
+
+    .tm-dialog-root[data-tm-dialog-variant="center"] > div:not(.absolute) {
+        width: 100%;
+        max-width: min(24rem, calc(100vw - 2rem));
+        max-height: min(
+            86dvh,
+            calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem)
+        );
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: auto;
+    }
+
+    body.tm-embed-modal-open .tm-dialog-root[data-tm-dialog-variant="center"] {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
     }
 
     .tm-dialog-root[data-tm-dialog-variant="sheet"],

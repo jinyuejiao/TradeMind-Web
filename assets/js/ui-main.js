@@ -791,11 +791,22 @@ function TM_setShellChromeHidden(hidden) {
 
 window.TM_setShellChromeHidden = TM_setShellChromeHidden;
 
-function TM_applyDialogShell(modalEl) {
+function TM_applyDialogShell(modalEl, opts) {
     if (!modalEl) return;
+    opts = opts || {};
+    var variant = opts.variant;
+    if (!variant) {
+        if (modalEl.getAttribute('data-tm-dialog-variant') === 'center') {
+            variant = 'center';
+        } else if (modalEl.id === 'voice-modal' || modalEl.id === 'photo-modal') {
+            variant = 'center';
+        } else {
+            variant = 'sheet';
+        }
+    }
     if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
-        window.TM_ShellInsets.applyModalRoot(modalEl, { variant: 'sheet' });
-    } else {
+        window.TM_ShellInsets.applyModalRoot(modalEl, { variant: variant });
+    } else if (variant === 'sheet') {
         modalEl.classList.add('tm-mobile-sheet-modal');
     }
 }
@@ -876,6 +887,10 @@ function switchTab(tabId) {
     if (stickyCompliance) {
         var showSticky = window.innerWidth < 768 && (tabId === 'biz' || tabId === 'supplier');
         stickyCompliance.classList.toggle('tm-compliance-sticky--visible', showSticky);
+        document.body.classList.toggle('tm-compliance-visible', showSticky);
+    }
+    if (typeof window.TM_syncAppShellMetrics === 'function') {
+        window.TM_syncAppShellMetrics();
     }
 
     document.querySelectorAll('aside .nav-btn, #tm-app-tabbar .mobile-nav-btn').forEach(btn => {

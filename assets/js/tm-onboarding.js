@@ -737,6 +737,9 @@
             showChecklistPanel(!checklistOpen);
         });
         document.body.appendChild(fab);
+        if (typeof window.TM_syncAppShellMetrics === 'function') {
+            window.TM_syncAppShellMetrics();
+        }
     }
 
     function renderChecklistPanel(open) {
@@ -777,6 +780,9 @@
             showChecklistPanel(false);
             var fab = $('tm-onboarding-fab');
             if (fab) fab.remove();
+            if (typeof window.TM_syncAppShellMetrics === 'function') {
+                window.TM_syncAppShellMetrics();
+            }
         });
     }
 

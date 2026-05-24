@@ -191,7 +191,11 @@
     }
 
     body.tm-layout-mobile main {
+        display: flex;
+        flex-direction: column;
         min-height: 0;
+        height: 100%;
+        min-height: 100dvh;
     }
 
     body.tm-layout-mobile .tm-app-header {
@@ -204,18 +208,65 @@
         height: auto;
         padding-top: env(safe-area-inset-top, 0px);
         padding-bottom: 0.125rem;
+        box-sizing: border-box;
         box-shadow: 0 1px 0 rgba(226, 232, 240, 0.9);
     }
 
     body.tm-layout-mobile .tm-content-area,
     body.tm-layout-mobile .tm-app-content-area {
-        padding-top: calc(var(--tm-mobile-header-h) + env(safe-area-inset-top, 0px) + 0.5rem) !important;
-        padding-bottom: calc(var(--tm-mobile-nav-h) + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+        flex: 1;
+        min-height: 0;
+        /* --tm-header-h 由 tm-shell-insets 实测（已含 safe-area） */
+        padding-top: calc(var(--tm-header-h, 3.5rem) + 0.5rem) !important;
+        padding-bottom: calc(
+            var(--tm-tabbar-h, 4.25rem) + var(--tm-safe-b) + var(--tm-shell-bottom-reserve, 0px) + 0.75rem
+        ) !important;
         -webkit-overflow-scrolling: touch;
     }
 
     body.tm-layout-mobile .view-section {
-        scroll-margin-top: calc(var(--tm-mobile-header-h) + env(safe-area-inset-top, 0px) + 0.5rem);
+        scroll-margin-top: calc(var(--tm-header-h, 3.5rem) + 0.5rem);
+    }
+
+    body.tm-layout-mobile #view-biz.view-section,
+    body.tm-layout-mobile #view-crm.view-section,
+    body.tm-layout-mobile #view-supplier.view-section {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0 !important;
+        margin: 0;
+    }
+
+    body.tm-layout-mobile #view-biz iframe.tm-module-frame,
+    body.tm-layout-mobile #view-crm iframe.tm-module-frame,
+    body.tm-layout-mobile #view-supplier iframe.tm-module-frame {
+        flex: 1;
+        width: 100%;
+        height: auto !important;
+        min-height: 0;
+        margin-bottom: 0;
+    }
+
+    body.tm-layout-mobile #content-area > footer.tm-compliance-footer {
+        display: none !important;
+    }
+
+    body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    body.tm-layout-mobile #view-supply .tm-compliance-footer {
+        display: none !important;
+    }
+
+    body.tm-layout-mobile #view-dashboard.view-section {
+        flex: none;
+        min-height: min-content;
     }
 
     /* auth.js 注入的独立模块顶栏 */
