@@ -153,8 +153,8 @@
         var a = local || defaultState();
         var b = remote && typeof remote === 'object' ? remote : {};
         var out = defaultState();
-        out.welcomed = !!(a.welcomed || b.welcomed);
         out.mandatoryDone = !!(a.mandatoryDone || b.mandatoryDone);
+        out.welcomed = out.mandatoryDone || !!(a.welcomed || b.welcomed);
         out.celebrated = !!(a.celebrated || b.celebrated);
         out.dismissed = !!(a.dismissed && b.dismissed);
         out.checklist = {};
@@ -185,11 +185,21 @@
             isFirstLogin = bootstrap.isFirstLogin;
         }
         var local = loadStateLocalOnly();
+        if (bootstrap && bootstrap.mandatoryDone) {
+            local = mergeSnapshot(local, {
+                mandatoryDone: true,
+                welcomed: true,
+                celebrated: !!bootstrap.celebrated
+            });
+            isFirstLogin = false;
+        }
         if (!sync || typeof sync.fetchState !== 'function') {
             state = local;
+            serverHydrated = true;
             return Promise.resolve();
         }
-        return sync.fetchState(true).then(function (resp) {
+        var markFirstLogin = !local.mandatoryDone;
+        return sync.fetchState(markFirstLogin).then(function (resp) {
             if (resp && typeof resp.isFirstLogin === 'boolean') {
                 isFirstLogin = resp.isFirstLogin;
             }
@@ -886,13 +896,18 @@
     function tryStartOnboarding() {
         if (!roleUiReady || !serverHydrated) return;
         if (onboardingBootstrapped) return;
-        onboardingBootstrapped = true;
         state = loadState();
         refreshRoleContext();
-        if (!shouldRun()) {
-            if (state.mandatoryDone && !state.dismissed) renderChecklistFab();
+        if (state.mandatoryDone) {
+            onboardingBootstrapped = true;
+            if (!state.dismissed) renderChecklistFab();
             return;
         }
+        if (!shouldRun()) {
+            onboardingBootstrapped = true;
+            return;
+        }
+        onboardingBootstrapped = true;
         bindVoiceTipsUi();
         if (!state.mandatoryDone) {
             if (!state.welcomed && isFirstLogin) {
@@ -1004,17 +1019,26 @@
         }
         patchSwitchTab();
         patchNavClicks();
-        document.addEventListener('tm-role-ui-ready', markRoleUiReady);
-        hydrateFromServer().then(function () {
-            return waitMs(300);
+        document.addEventListener('tm-role-ui-ready', function () {
+            if (serverHydrated) markRoleUiReady();
+        });
+        var hydrateDone = hydrateFromServer();
+        var hydrateTimeout = waitMs(5000).then(function () {
+            if (!serverHydrated) {
+                if (!state) state = loadStateLocalOnly();
+                serverHydrated = true;
+            }
+        });
+        Promise.all([hydrateDone, hydrateTimeout]).then(function () {
+            return waitMs(200);
         }).then(function () {
             if (!roleUiReady) {
                 markRoleUiReady();
             } else {
+                onboardingBootstrapped = false;
                 tryStartOnboarding();
             }
         });
-        waitMs(500).then(markRoleUiReady);
     }
 
     if (document.readyState === 'loading') {

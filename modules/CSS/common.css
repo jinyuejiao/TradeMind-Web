@@ -835,3 +835,19 @@ html.tm-embedded #content-area {
     padding-top: 0.5rem !important;
     padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.25rem) !important;
 }
+
+/* 工作台订单详情/新建：手机端表单单列，避免 date/select 在双列 grid 中挤压重叠 */
+#order-detail-modal .tm-product-edit-section > .grid,
+#manual-order-modal .tm-product-edit-section > .grid {
+    grid-template-columns: 1fr;
+}
+@media (min-width: 768px) {
+    #order-detail-modal .tm-product-edit-section > .grid,
+    #manual-order-modal .tm-product-edit-section > .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+#order-detail-modal .tm-product-field,
+#manual-order-modal .tm-product-field {
+    min-width: 0;
+}
