@@ -11,6 +11,7 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260519wb">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260524od">
 
     <style>
         body {
@@ -754,26 +755,27 @@
                 <button onclick="closeOrderDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-10">
-                <section>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">客户名称</label>
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-8">
+                <section class="tm-product-edit-section">
+                    <div class="grid grid-cols-2 gap-3 md:gap-4">
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="detail-customer-name">客户名称</label>
                             <input id="detail-customer-name" type="text" class="form-input font-bold text-slate-700" disabled>
                         </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">交货日期</label>
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="detail-order-status">订单状态</label>
+                            <select id="detail-order-status" class="form-input w-full font-bold text-brand-600" aria-label="订单状态"></select>
+                        </div>
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="detail-delivery-date">交货日期</label>
                             <input id="detail-delivery-date" type="date" class="form-input" disabled>
                         </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">订单状态</label>
-                            <input id="detail-order-status" type="text" class="form-input font-bold text-brand-600" disabled>
-                        </div>
-                        <div class="space-y-2 md:col-span-1">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">收款账户</label>
-                            <input id="detail-receipt-account" type="text" class="form-input font-bold text-slate-700" readonly placeholder="—">
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="detail-receipt-account">收款账户</label>
+                            <select id="detail-receipt-account" class="form-input w-full font-bold text-slate-700" aria-label="收款账户"></select>
                         </div>
                     </div>
+                    <p id="detail-order-status-hint" class="tm-product-hint mt-2 hidden" role="status"></p>
                 </section>
                 <!-- 详情内容区 -->
                 <section>
@@ -805,8 +807,9 @@
                     </div>
                 </div>
             </div>
-            <div class="tm-modal-footer-safe pb-safe p-5 border-t border-slate-100 bg-white flex gap-3 shrink-0">
-                <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs">返回工作台</button>
+            <div class="tm-modal-footer-safe pb-safe p-4 md:p-5 border-t border-slate-100 bg-white flex gap-2 md:gap-3 shrink-0">
+                <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">返回工作台</button>
+                <button type="button" id="detail-order-status-save" onclick="saveOrderDetailStatus()" class="tm-btn-primary flex-1 py-3 text-xs font-black min-h-[44px] shadow-lg shadow-brand-500/20 active:scale-[0.98]">保存</button>
             </div>
         </div>
     </div>
@@ -827,23 +830,26 @@
             </div>
             <div id="manual-order-form-errors" class="hidden mx-4 mt-3 md:mx-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed shrink-0" role="alert"></div>
             <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-5">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-customer">选择客户<span class="text-red-500">*</span></label>
-                        <select id="manual-order-customer" class="form-input font-bold text-slate-700"></select>
+                <section class="tm-product-edit-section">
+                    <div class="grid grid-cols-2 gap-3 md:gap-4">
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="manual-order-customer">客户名称<span class="tm-product-required">*</span></label>
+                            <select id="manual-order-customer" class="form-input w-full font-bold text-slate-700"></select>
+                        </div>
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="manual-order-status">订单状态</label>
+                            <select id="manual-order-status" class="form-input w-full font-bold text-brand-600"></select>
+                        </div>
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="manual-order-delivery-date">交货日期</label>
+                            <input type="date" id="manual-order-delivery-date" class="form-input w-full" />
+                        </div>
+                        <div class="tm-product-field min-w-0">
+                            <label class="tm-product-label" for="manual-order-account">收款账户</label>
+                            <select id="manual-order-account" class="form-input w-full font-bold text-slate-700"></select>
+                        </div>
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-status">订单状态</label>
-                        <select id="manual-order-status" class="form-input font-bold text-brand-600">
-                            <option value="D010001" selected>待支付</option>
-                            <option value="D010002">出货中</option>
-                        </select>
-                    </div>
-                    <div class="space-y-2 md:col-span-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-delivery-date">交货日期</label>
-                        <input type="date" id="manual-order-delivery-date" class="form-input" />
-                    </div>
-                </div>
+                </section>
                 <div class="space-y-3">
                     <div class="flex justify-between items-center gap-2">
                         <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">订单商品明细</h3>
@@ -877,11 +883,9 @@
                     </div>
                 </div>
             </div>
-            <div class="tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
-                <div class="flex gap-2 md:gap-3">
-                    <button type="button" onclick="TM_closeManualOrderModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3 text-xs">取消</button>
-                    <button type="button" onclick="TM_saveManualOrder()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3 text-xs shadow-lg shadow-brand-500/25 active:scale-[0.98]">确认创建订单</button>
-                </div>
+            <div class="tm-modal-footer-safe pb-safe p-4 md:p-5 border-t border-slate-100 bg-white flex gap-2 md:gap-3 shrink-0">
+                <button type="button" onclick="TM_closeManualOrderModal()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">取消</button>
+                <button type="button" onclick="TM_saveManualOrder()" class="tm-btn-primary flex-1 py-3 text-xs font-black min-h-[44px] shadow-lg shadow-brand-500/20 active:scale-[0.98]">确认创建</button>
             </div>
         </div>
     </div>
@@ -1237,8 +1241,9 @@
             loadCustomerList();
             // 加载产品列表
             loadProductList();
-            // 加载订单状态字典
+            // 加载订单状态字典、收款账户
             loadOrderStatusDict();
+            loadBizAccounts();
             // 加载进行中业务单据
             loadInProgressOrders();
             // 加载顶部概览数据
@@ -1269,8 +1274,110 @@
         let productLookupByName = {};
         let productLookupById = {};
         let orderStatusDictMap = {};
+        let orderStatusDictList = [];
+        let currentDetailOrderId = null;
         let inProgressOrdersCache = [];
         let inProgressOrdersCacheFull = [];
+
+        var TM_ORDER_TERMINAL_STATUSES = ['D010003', 'D010004', 'D010_003', 'D010_004', 'COMPLETED', 'CANCELLED'];
+
+        var TM_ORDER_STATUS_FALLBACK = {
+            D010001: '待支付',
+            D010002: '出货中',
+            D010003: '已完成',
+            D010004: '已取消'
+        };
+
+        let bizAccountById = {};
+        let bizAccountsList = [];
+
+        function normalizeOrderStatusCode(statusCode) {
+            return String(statusCode || '').trim().toUpperCase().replace(/_/g, '');
+        }
+
+        /** 规范为 orders 表存储码 D010001…（兼容字典 PENDING/PROCESSING 与 dict_id D010_001） */
+        function toCanonicalOrderStatusCode(statusCode) {
+            var raw = String(statusCode || '').trim().toUpperCase();
+            if (!raw) return '';
+            if (raw === 'PENDING') return 'D010001';
+            if (raw === 'PROCESSING') return 'D010002';
+            if (raw === 'COMPLETED') return 'D010003';
+            if (raw === 'CANCELLED' || raw === 'CANCELED') return 'D010004';
+            var m = raw.match(/^D010[_-]?0*(\d{1,3})$/);
+            if (m) {
+                var n = m[1];
+                while (n.length < 3) n = '0' + n;
+                return 'D010' + n;
+            }
+            if (raw.indexOf('D010') === 0) return normalizeOrderStatusCode(raw);
+            return normalizeOrderStatusCode(raw);
+        }
+
+        function dictItemToStorageStatusCode(item) {
+            var dictId = String((item && (item.dictId || item.dict_id)) || '').trim().toUpperCase();
+            var dictCode = String((item && (item.dictCode || item.code)) || '').trim().toUpperCase();
+            if (dictId) {
+                var fromId = toCanonicalOrderStatusCode(dictId);
+                if (fromId.indexOf('D010') === 0 && fromId.length >= 7) return fromId;
+            }
+            return toCanonicalOrderStatusCode(dictCode);
+        }
+
+        function isValidOrderStatusCanonical(code) {
+            return /^D01000[1-4]$/.test(toCanonicalOrderStatusCode(code));
+        }
+
+        function isInProgressOrderStatus(statusCode) {
+            var s = toCanonicalOrderStatusCode(statusCode);
+            return s === 'D010001' || s === 'D010002';
+        }
+
+        function getInProgressStatusOptions() {
+            var opts = orderStatusDictList.filter(function (item) {
+                return isInProgressOrderStatus(item.code);
+            });
+            if (opts.length) return opts;
+            return [
+                { code: 'D010001', name: TM_ORDER_STATUS_FALLBACK.D010001 },
+                { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 }
+            ];
+        }
+
+        /** 新建/编辑订单：展示 D010 下全部状态（非仅进行中） */
+        function getAllOrderStatusOptions() {
+            if (orderStatusDictList && orderStatusDictList.length) {
+                return orderStatusDictList.slice();
+            }
+            return [
+                { code: 'D010001', name: TM_ORDER_STATUS_FALLBACK.D010001 },
+                { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 },
+                { code: 'D010003', name: TM_ORDER_STATUS_FALLBACK.D010003 },
+                { code: 'D010004', name: TM_ORDER_STATUS_FALLBACK.D010004 }
+            ];
+        }
+
+        function fillManualOrderStatusSelect(preferredCode) {
+            var manualSel = document.getElementById('manual-order-status');
+            if (!manualSel) return;
+            var opts = getAllOrderStatusOptions();
+            manualSel.innerHTML = opts.map(function (item) {
+                return '<option value="' + item.code + '">' + item.name + '</option>';
+            }).join('');
+            var canon = toCanonicalOrderStatusCode(preferredCode);
+            if (canon && manualSel.querySelector('option[value="' + canon + '"]')) {
+                manualSel.value = canon;
+            } else if (manualSel.options.length) {
+                manualSel.selectedIndex = 0;
+            }
+        }
+        window.fillManualOrderStatusSelect = fillManualOrderStatusSelect;
+
+        function isTerminalOrderStatus(statusCode) {
+            var s = toCanonicalOrderStatusCode(statusCode);
+            if (s === 'D010003' || s === 'D010004') return true;
+            var raw = String(statusCode || '').trim().toUpperCase();
+            return TM_ORDER_TERMINAL_STATUSES.indexOf(raw) >= 0;
+        }
 
         function parseTokenPayloadSafe(token) {
             try {
@@ -1605,8 +1712,91 @@
 
         function getOrderStatusLabel(statusCode) {
             const key = String(statusCode || '').trim().toUpperCase();
-            return orderStatusDictMap[key] || statusCode || '--';
+            const canon = toCanonicalOrderStatusCode(key);
+            return orderStatusDictMap[key]
+                || orderStatusDictMap[canon]
+                || TM_ORDER_STATUS_FALLBACK[canon]
+                || statusCode
+                || '--';
         }
+
+        window.loadBizAccounts = function loadBizAccounts() {
+            return window.wrappedFetch('/api/v1/im/accounts', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (result) {
+                var list = (result && result.success && Array.isArray(result.data)) ? result.data : [];
+                bizAccountsList = list;
+                bizAccountById = {};
+                list.forEach(function (a) {
+                    if (a.accountId == null) return;
+                    bizAccountById[String(a.accountId)] = a;
+                });
+            })
+            .catch(function (err) {
+                console.warn('加载收款账户列表失败:', err);
+                bizAccountsList = [];
+                bizAccountById = {};
+            });
+        }
+
+        function getOrderReceiptAccountDisplay(order) {
+            if (!order) return '—';
+            var direct = order.receiptAccountName || order.bizAccountName || order.accountName;
+            if (direct && String(direct).trim() && direct !== '默认收款账户') {
+                return String(direct).trim();
+            }
+            var accountId = order.accountId != null ? order.accountId : order.account_id;
+            if (accountId != null && accountId !== '') {
+                var hit = bizAccountById[String(accountId)];
+                if (hit && hit.accountName) return hit.accountName;
+            }
+            var def = bizAccountsList.find(function (a) {
+                return a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't';
+            });
+            if (def && def.accountName) return def.accountName;
+            if (accountId != null && accountId !== '') return '账户#' + accountId;
+            return '—';
+        }
+
+        function fillBizAccountSelect(selectEl, preferredAccountId) {
+            if (!selectEl) return;
+            var list = bizAccountsList || [];
+            var pick = preferredAccountId;
+            selectEl.innerHTML = '<option value="">— 请选择收款账户 —</option>';
+            list.forEach(function (a) {
+                if (a.accountId == null) return;
+                var opt = document.createElement('option');
+                opt.value = String(a.accountId);
+                opt.textContent = (a.accountName && String(a.accountName).trim())
+                    ? String(a.accountName).trim()
+                    : ('账户#' + a.accountId);
+                selectEl.appendChild(opt);
+            });
+            if (pick == null || pick === '') {
+                var def = list.find(function (a) {
+                    return a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't';
+                });
+                if (def) pick = def.accountId;
+            }
+            if (pick != null && pick !== '') {
+                var s = String(pick);
+                if (selectEl.querySelector('option[value="' + s + '"]')) {
+                    selectEl.value = s;
+                }
+            }
+        }
+
+        function fillDetailReceiptAccountSelect(order) {
+            var sel = document.getElementById('detail-receipt-account');
+            if (!sel) return;
+            var accountId = order && (order.accountId != null ? order.accountId : order.account_id);
+            fillBizAccountSelect(sel, accountId);
+        }
+
+        window.fillBizAccountSelect = fillBizAccountSelect;
 
         function getCustomerNameById(custId) {
             if (!custId && custId !== 0) return '--';
@@ -1738,7 +1928,7 @@
             });
         }
 
-        function loadOrderStatusDict() {
+        window.loadOrderStatusDict = function loadOrderStatusDict() {
             return window.wrappedFetch('/api/v1/rd/dictionaries/list/D010', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
@@ -1747,16 +1937,122 @@
             .then(result => {
                 const list = result && Array.isArray(result.data) ? result.data : [];
                 const map = {};
+                const normalized = [];
+                const seenCanonical = {};
                 list.forEach(item => {
-                    const code = String(item.dictCode || item.code || '').trim().toUpperCase();
+                    var level = Number(item.dictLevel != null ? item.dictLevel : (item.dict_level != null ? item.dict_level : 2));
+                    if (level === 1) return;
+                    const rawCode = String(item.dictCode || item.code || '').trim().toUpperCase();
                     const name = String(item.dictName || item.dictname || item.name || '').trim();
-                    if (code && name) map[code] = name;
+                    const canonical = dictItemToStorageStatusCode(item);
+                    if (!canonical || !name || !isValidOrderStatusCanonical(canonical)) return;
+                    if (seenCanonical[canonical]) return;
+                    seenCanonical[canonical] = true;
+                    map[rawCode] = name;
+                    map[canonical] = name;
+                    normalized.push({
+                        code: canonical,
+                        rawCode: rawCode,
+                        name: name,
+                        sort: Number(item.sortOrder || item.sort || 0)
+                    });
                 });
+                normalized.sort(function (a, b) { return a.sort - b.sort; });
                 orderStatusDictMap = map;
+                orderStatusDictList = normalized;
+                populateOrderStatusSelects();
             })
             .catch(error => {
                 console.warn('加载订单状态字典失败，使用状态码显示:', error);
+                orderStatusDictMap = Object.assign({}, TM_ORDER_STATUS_FALLBACK);
+                orderStatusDictList = getAllOrderStatusOptions();
+                populateOrderStatusSelects();
             });
+        }
+        window.populateOrderStatusSelects = populateOrderStatusSelects;
+
+        function syncDetailOrderStatusSelectValue(preferredCode) {
+            var sel = document.getElementById('detail-order-status');
+            if (!sel) return;
+            var canon = toCanonicalOrderStatusCode(preferredCode || sel.value);
+            if (!canon) return;
+            var matched = false;
+            for (var i = 0; i < sel.options.length; i++) {
+                if (toCanonicalOrderStatusCode(sel.options[i].value) === canon) {
+                    sel.selectedIndex = i;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched && canon) {
+                var opt = document.createElement('option');
+                opt.value = canon;
+                opt.textContent = getOrderStatusLabel(canon);
+                sel.appendChild(opt);
+                sel.value = canon;
+            }
+        }
+
+        function populateOrderStatusSelects() {
+            var detailSel = document.getElementById('detail-order-status');
+            if (detailSel && orderStatusDictList.length) {
+                var cur = detailSel.value;
+                detailSel.innerHTML = orderStatusDictList.map(function (item) {
+                    return '<option value="' + item.code + '">' + item.name + '</option>';
+                }).join('');
+                syncDetailOrderStatusSelectValue(cur);
+            }
+            var manualSel = document.getElementById('manual-order-status');
+            fillManualOrderStatusSelect(manualSel ? manualSel.value : null);
+            var filterSel = document.getElementById('inprogress-status-filter');
+            if (filterSel) {
+                var curF = filterSel.value;
+                var filterOpts = getInProgressStatusOptions();
+                filterSel.innerHTML = '<option value="">全部</option>' + filterOpts.map(function (item) {
+                    return '<option value="' + item.code + '">' + item.name + '</option>';
+                }).join('');
+                if (curF) {
+                    var cf = toCanonicalOrderStatusCode(curF);
+                    if (cf && filterSel.querySelector('option[value="' + cf + '"]')) {
+                        filterSel.value = cf;
+                    }
+                }
+            }
+            var manualAcct = document.getElementById('manual-order-account');
+            if (manualAcct && bizAccountsList.length) {
+                var curA = manualAcct.value;
+                fillBizAccountSelect(manualAcct, curA || null);
+            }
+        }
+
+        function fillDetailOrderStatusSelect(currentStatus) {
+            var sel = document.getElementById('detail-order-status');
+            if (!sel) return;
+            var canon = toCanonicalOrderStatusCode(currentStatus);
+            if (!orderStatusDictList.length) {
+                sel.innerHTML = '<option value="' + (canon || '') + '">' + getOrderStatusLabel(currentStatus) + '</option>';
+                if (canon) sel.value = canon;
+                return;
+            }
+            sel.innerHTML = orderStatusDictList.map(function (item) {
+                return '<option value="' + item.code + '">' + item.name + '</option>';
+            }).join('');
+            syncDetailOrderStatusSelectValue(canon);
+        }
+
+        function mergeInProgressOrdersFromList(orders, fromFallbackApi) {
+            var list = Array.isArray(orders) ? orders : [];
+            var inProgress = list.filter(function (order) {
+                return isInProgressOrderStatus(order.orderStatus);
+            });
+            inProgress.sort(function (a, b) {
+                return new Date(b.createTime || 0) - new Date(a.createTime || 0);
+            });
+            inProgressOrdersCacheFull = inProgress;
+            if (fromFallbackApi && inProgress.length === 0 && list.length > 0) {
+                console.warn('[进行中单据] 全量订单中无匹配 D010001/D010002/PROCESSING/PENDING 的记录，请检查 order_status 字段');
+            }
+            filterInProgressOrders();
         }
 
         function loadInProgressOrders() {
@@ -1777,9 +2073,7 @@
             .then(response => response.json())
             .then(result => {
                 const orders = result && result.success && Array.isArray(result.data) ? result.data : [];
-                const inProgress = orders.sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0));
-                inProgressOrdersCacheFull = inProgress;
-                filterInProgressOrders();
+                mergeInProgressOrdersFromList(orders, false);
             })
             .catch(error => {
                 console.warn('in-progress接口不可用，回退全量订单筛选:', error);
@@ -1790,12 +2084,7 @@
                 .then(response => response.json())
                 .then(result => {
                     const orders = result && result.success && Array.isArray(result.data) ? result.data : [];
-                    const inProgress = orders.filter(order => {
-                        const s = String(order.orderStatus || '').toUpperCase();
-                        return s === 'D010001' || s === 'D010002';
-                    }).sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0));
-                    inProgressOrdersCacheFull = inProgress;
-                    filterInProgressOrders();
+                    mergeInProgressOrdersFromList(orders, true);
                 })
                 .catch(innerError => {
                     console.error('加载进行中订单失败:', innerError);
@@ -1813,12 +2102,12 @@
 
         function filterInProgressOrders() {
             const filterEl = document.getElementById('inprogress-status-filter');
-            const code = filterEl ? String(filterEl.value || '').trim().toUpperCase() : '';
+            const code = filterEl ? toCanonicalOrderStatusCode(filterEl.value) : '';
             if (!code) {
                 inProgressOrdersCache = inProgressOrdersCacheFull.slice();
             } else {
                 inProgressOrdersCache = inProgressOrdersCacheFull.filter(function (o) {
-                    return String(o.orderStatus || '').toUpperCase() === code;
+                    return toCanonicalOrderStatusCode(o.orderStatus) === code;
                 });
             }
             renderInProgressOrders();
@@ -2602,14 +2891,101 @@
             if (m) m.classList.add('hidden');
         }
 
+        function saveOrderDetailStatus() {
+            if (!currentDetailOrderId) {
+                showToast('未选择订单');
+                return;
+            }
+            var statusEl = document.getElementById('detail-order-status');
+            var accountEl = document.getElementById('detail-receipt-account');
+            var saveBtn = document.getElementById('detail-order-status-save');
+            var hintEl = document.getElementById('detail-order-status-hint');
+            var status = toCanonicalOrderStatusCode(statusEl ? statusEl.value : '');
+            if (!status) {
+                showToast('请选择订单状态');
+                return;
+            }
+            var accountRaw = accountEl ? String(accountEl.value || '').trim() : '';
+            var accountId = accountRaw ? parseInt(accountRaw, 10) : null;
+            if (accountRaw && Number.isNaN(accountId)) {
+                showToast('请选择有效的收款账户');
+                return;
+            }
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.classList.add('opacity-60');
+            }
+            if (hintEl) {
+                hintEl.classList.add('hidden');
+                hintEl.textContent = '';
+            }
+            var url = '/api/v1/rd/orders/' + encodeURIComponent(currentDetailOrderId)
+                + '/status?status=' + encodeURIComponent(status);
+            if (accountId != null) {
+                url += '&accountId=' + encodeURIComponent(accountId);
+            }
+            window.wrappedFetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (result) {
+                if (!result || !result.success) {
+                    throw new Error((result && result.message) || '保存失败');
+                }
+                var terminal = isTerminalOrderStatus(status);
+                var oid = String(currentDetailOrderId);
+                if (terminal) {
+                    inProgressOrdersCacheFull = inProgressOrdersCacheFull.filter(function (o) {
+                        return String(o.orderId || o.id) !== oid;
+                    });
+                    closeOrderDetail();
+                    filterInProgressOrders();
+                    showToast('订单已' + getOrderStatusLabel(status) + '，已从进行中列表移除');
+                    return;
+                }
+                inProgressOrdersCacheFull.forEach(function (o) {
+                    if (String(o.orderId || o.id) === oid) {
+                        o.orderStatus = status;
+                        if (accountId != null) o.accountId = accountId;
+                    }
+                });
+                closeOrderDetail();
+                filterInProgressOrders();
+                showToast('订单已保存');
+            })
+            .catch(function (err) {
+                console.error('更新订单状态失败:', err);
+                if (hintEl) {
+                    hintEl.textContent = err.message || '保存失败，请重试';
+                    hintEl.classList.remove('hidden');
+                }
+                showToast(err.message || '保存失败');
+            })
+            .finally(function () {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.classList.remove('opacity-60');
+                }
+            });
+        }
+        window.saveOrderDetailStatus = saveOrderDetailStatus;
+
         // 打开订单详情模态框
-        function openOrderDetail(orderId) {
+        async function openOrderDetail(orderId) {
             const order = inProgressOrdersCache.find(item => String(item.orderId || item.id) === String(orderId));
             if (!order) {
                 showToast('订单不存在或已不在进行中列表');
                 loadInProgressOrders();
                 return;
             }
+            if (!orderStatusDictList.length) {
+                await loadOrderStatusDict();
+            }
+            if (!bizAccountsList.length) {
+                await loadBizAccounts();
+            }
+            currentDetailOrderId = order.orderId || order.id;
             var detailModal = document.getElementById('order-detail-modal');
             if (detailModal && typeof window.TM_applyDialogShell === 'function') {
                 window.TM_applyDialogShell(detailModal);
@@ -2619,14 +2995,33 @@
             if (typeof window.TM_setShellChromeHidden === 'function') {
                 window.TM_setShellChromeHidden(true);
             }
+            var hintEl = document.getElementById('detail-order-status-hint');
+            if (hintEl) {
+                hintEl.classList.add('hidden');
+                hintEl.textContent = '';
+            }
             document.getElementById('detail-order-id').textContent = order.orderCode || ('ORD-' + orderId);
             const dateLabel = order.createTime ? normalizeDateInput(order.createTime) : '--';
             const sub = document.getElementById('detail-order-meta');
             if (sub) sub.textContent = '创建时间: ' + dateLabel;
             setInputValueIfExists('detail-customer-name', getCustomerNameById(order.custId));
             setInputValueIfExists('detail-delivery-date', normalizeDateInput(order.deliveryDate));
-            setInputValueIfExists('detail-order-status', getOrderStatusLabel(order.orderStatus));
-            setInputValueIfExists('detail-receipt-account', order.receiptAccountName || order.bizAccountName || '默认收款账户');
+            fillDetailOrderStatusSelect(order.orderStatus);
+            fillDetailReceiptAccountSelect(order);
+
+            window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (result) {
+                if (result && result.success && result.data) {
+                    Object.assign(order, result.data);
+                    fillDetailOrderStatusSelect(order.orderStatus);
+                    fillDetailReceiptAccountSelect(order);
+                }
+            })
+            .catch(function () { /* 列表数据已展示 */ });
 
             window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/items', {
                 method: 'GET',
@@ -2664,6 +3059,7 @@
 
         // 关闭订单详情模态框
         function closeOrderDetail() {
+            currentDetailOrderId = null;
             document.getElementById('order-detail-modal').classList.add('hidden');
             document.body.style.overflow = '';
             if (typeof window.TM_setShellChromeHidden === 'function') {

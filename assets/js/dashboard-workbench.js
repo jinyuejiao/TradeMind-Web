@@ -828,7 +828,18 @@
         tmManualOrderShowErrors([]);
         if (typeof window.loadCustomerList === 'function') await window.loadCustomerList();
         if (typeof window.loadProductList === 'function') await window.loadProductList();
+        if (typeof window.loadOrderStatusDict === 'function') await window.loadOrderStatusDict();
+        if (typeof window.loadBizAccounts === 'function') await window.loadBizAccounts();
+        if (typeof window.populateOrderStatusSelects === 'function') {
+            window.populateOrderStatusSelects();
+        } else if (typeof window.fillManualOrderStatusSelect === 'function') {
+            window.fillManualOrderStatusSelect('D010001');
+        }
         tmFillManualOrderCustomers();
+        var acctSel = document.getElementById('manual-order-account');
+        if (acctSel && typeof window.fillBizAccountSelect === 'function') {
+            window.fillBizAccountSelect(acctSel, null);
+        }
         var custSel = document.getElementById('manual-order-customer');
         if (custSel && !custSel.__tmManualCustBound) {
             custSel.__tmManualCustBound = true;
@@ -892,6 +903,14 @@
         if (errors.length) return;
 
         var grand = items.reduce(function (s, it) { return s + (it.totalAmount || 0); }, 0);
+        var accountSel = document.getElementById('manual-order-account');
+        var accountRaw = accountSel && accountSel.value ? String(accountSel.value).trim() : '';
+        var accountId = accountRaw ? parseInt(accountRaw, 10) : null;
+        if (accountRaw && Number.isNaN(accountId)) {
+            errors.push('请选择有效的收款账户');
+            tmManualOrderShowErrors(errors);
+            return;
+        }
         var orderPayload = {
             order: {
                 custId: custId,
@@ -901,6 +920,9 @@
             },
             orderItems: items
         };
+        if (accountId != null) {
+            orderPayload.order.accountId = accountId;
+        }
 
         try {
             if (window.checkAuth && !window.checkAuth()) return;
