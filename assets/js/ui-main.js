@@ -564,8 +564,8 @@ function loadDashboard() {
                     }
                 });
             }
-            if (window.TM_Compliance && typeof window.TM_Compliance.applyMobileScheme === 'function') {
-                window.TM_Compliance.applyMobileScheme();
+            if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
+                window.TM_Compliance.onTabChange('dashboard');
             }
             if (typeof window.TM_syncAppShellMetrics === 'function') {
                 window.TM_syncAppShellMetrics();
@@ -635,13 +635,16 @@ function loadProductCenter() {
                     }
                 });
             }
-            if (window.TM_Compliance && typeof window.TM_Compliance.applyMobileScheme === 'function') {
-                window.TM_Compliance.applyMobileScheme();
+            if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
+                window.TM_Compliance.onTabChange('supply');
             }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
                     console.log('[ui-main] 初始化 ProductModule');
                     window.ProductModule.init();
+                }
+                if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
+                    window.TM_Compliance.onTabChange('supply');
                 }
             }, 100);
         })
@@ -659,6 +662,11 @@ function loadSupplier() {
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
+    if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
+        setTimeout(function () {
+            window.TM_Compliance.onTabChange('supplier');
+        }, 200);
+    }
 }
 
 const TM_NAV_CONFIG = [

@@ -1,16 +1,29 @@
 /**
  * TradeMind — 手机端备案展示（与工作台一致）
  *
- * 方案：#content-area 纵向 flex + overflow 滚动 + 底部唯一全局 footer（mt-auto）
- * 导览为悬浮层，不参与备案布局计算。
+ * 方案：#content-area 纵向 flex + 滚动 + 全局 footer（mt-auto）
+ * footer 紧跟当前 Tab 内容节点之后（避免被中间弹窗层与 flex 布局挤没）
+ * 导览为悬浮层，不参与备案布局。
  */
 (function (window, document) {
     'use strict';
+
+    var TAB_VIEW_IDS = {
+        dashboard: 'view-dashboard',
+        biz: 'view-biz',
+        crm: 'view-crm',
+        supply: 'view-supply',
+        supplier: 'view-supplier'
+    };
 
     var iframeBindings = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 
     function isMobile() {
         return window.innerWidth < 768 || document.body.classList.contains('tm-layout-mobile');
+    }
+
+    function contentArea() {
+        return document.getElementById('content-area');
     }
 
     function globalFooter() {
@@ -38,18 +51,40 @@
         });
     }
 
+    /** 桌面端：footer 回到 content-area 末尾 */
+    function restoreFooterToShellEnd() {
+        var foot = globalFooter();
+        var content = contentArea();
+        if (!foot || !content) return;
+        content.appendChild(foot);
+    }
+
+    /**
+     * 手机端：footer 紧跟当前 Tab，与工作台同一文档流位置关系
+     */
+    function relocateGlobalFooter(tabId) {
+        if (!isMobile()) {
+            restoreFooterToShellEnd();
+            return;
+        }
+        var foot = globalFooter();
+        var content = contentArea();
+        var viewId = TAB_VIEW_IDS[tabId] || TAB_VIEW_IDS.dashboard;
+        var view = document.getElementById(viewId);
+        if (!foot || !content || !view) return;
+
+        if (view.nextElementSibling !== foot) {
+            content.insertBefore(foot, view.nextSibling);
+        }
+    }
+
     function syncGlobalFooterForMobile() {
         var foot = globalFooter();
         if (!foot) return;
-        if (isMobile()) {
-            foot.classList.remove('tm-compliance-footer--shell-global');
-            foot.removeAttribute('aria-hidden');
-            if (!foot.classList.contains('mt-auto')) {
-                foot.classList.add('mt-auto');
-            }
-        } else {
-            foot.classList.remove('tm-compliance-footer--shell-global');
-            foot.removeAttribute('aria-hidden');
+        foot.classList.remove('tm-compliance-footer--shell-global');
+        foot.removeAttribute('aria-hidden');
+        if (!foot.classList.contains('mt-auto')) {
+            foot.classList.add('mt-auto');
         }
     }
 
@@ -61,14 +96,15 @@
         return n;
     }
 
+    /** 为 iframe 内容预留备案 + 底栏空间 */
     function minIframeViewportHeight() {
         var styles = window.getComputedStyle(document.documentElement);
         var headerH = parseLengthToPx(styles.getPropertyValue('--tm-header-h'), 56);
         var tabH = parseLengthToPx(styles.getPropertyValue('--tm-tabbar-h'), 68);
-        return Math.max(240, window.innerHeight - headerH - tabH - 100);
+        var footerReserve = 88;
+        return Math.max(200, window.innerHeight - headerH - tabH - footerReserve);
     }
 
-    /** 子页展开为文档流，供主壳 content-area 统一滚动 */
     function applyEmbedDocumentForFlow(doc) {
         if (!doc || !isMobile()) return;
         var html = doc.documentElement;
@@ -100,6 +136,15 @@
             content.style.setProperty('flex', 'none', 'important');
             content.style.setProperty('padding-bottom', '0', 'important');
         }
+
+        doc.querySelectorAll(
+            '#view-crm, #crm-list-pane, #customer-list-container, ' +
+            '#orders-list-view, #suppliers-list-view, #sup-list-view, #sup-supplier-view'
+        ).forEach(function (el) {
+            el.style.setProperty('height', 'auto', 'important');
+            el.style.setProperty('max-height', 'none', 'important');
+            el.style.setProperty('overflow', 'visible', 'important');
+        });
     }
 
     function syncIframeHeight(iframe) {
@@ -117,7 +162,7 @@
             iframe.style.display = 'block';
             iframe.style.width = '100%';
             iframe.style.height = h + 'px';
-            iframe.style.minHeight = minH + 'px';
+            iframe.style.minHeight = '0';
             iframe.style.border = '0';
         } catch (e) { /* ignore */ }
     }
@@ -144,7 +189,7 @@
                 applyEmbedDocumentForFlow(iframe.contentDocument);
             } catch (e) { /* ignore */ }
             remeasure();
-            [100, 400, 1000].forEach(function (ms) {
+            [120, 400, 1000, 2000].forEach(function (ms) {
                 setTimeout(remeasure, ms);
             });
 
@@ -166,45 +211,62 @@
         } catch (e3) { /* ignore */ }
     }
 
+    function getActiveTabId() {
+        try {
+            var m = (window.location.hash || '').match(/tab=([^&]+)/);
+            if (m && m[1]) return decodeURIComponent(m[1]);
+        } catch (e) { /* ignore */ }
+        var active = document.querySelector(
+            '#tm-app-tabbar .mobile-nav-btn.active-nav, #tm-app-tabbar .mobile-nav-btn.text-brand-600'
+        );
+        if (active && active.getAttribute('data-tab')) {
+            return active.getAttribute('data-tab');
+        }
+        return 'dashboard';
+    }
+
     function syncTabIframe(tabId) {
         if (!isMobile()) return;
-        var map = { biz: 'view-biz', crm: 'view-crm', supplier: 'view-supplier' };
-        var viewId = map[tabId];
+        var viewId = TAB_VIEW_IDS[tabId];
         if (!viewId) return;
-        var host = document.getElementById(viewId);
-        if (!host) return;
-        var iframe = host.querySelector('iframe.tm-module-frame');
+        var iframe = document.querySelector('#' + viewId + ' iframe.tm-module-frame');
         if (iframe) bindIframeAutoHeight(iframe);
     }
 
-    function applyMobileScheme() {
+    function applyMobileScheme(tabId) {
+        tabId = tabId || getActiveTabId();
         removePerTabFooters();
         syncGlobalFooterForMobile();
         if (!isMobile()) return;
+        relocateGlobalFooter(tabId);
         ['view-biz', 'view-crm', 'view-supplier'].forEach(function (id) {
-            var iframe = document.querySelector('#' + id + ' iframe.tm-module-frame');
-            if (iframe) bindIframeAutoHeight(iframe);
+            var frame = document.querySelector('#' + id + ' iframe.tm-module-frame');
+            if (frame) bindIframeAutoHeight(frame);
         });
     }
 
     function onTabChange(tabId) {
-        applyMobileScheme();
+        applyMobileScheme(tabId);
         syncTabIframe(tabId);
     }
 
     function init() {
-        applyMobileScheme();
+        applyMobileScheme('dashboard');
     }
 
     var resizeTimer;
     window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(applyMobileScheme, 120);
+        resizeTimer = setTimeout(function () {
+            applyMobileScheme();
+        }, 120);
     });
 
     window.TM_Compliance = {
         isMobile: isMobile,
+        getActiveTabId: getActiveTabId,
         applyMobileScheme: applyMobileScheme,
+        relocateGlobalFooter: relocateGlobalFooter,
         applyEmbedDocumentForFlow: applyEmbedDocumentForFlow,
         syncIframeHeight: syncIframeHeight,
         bindIframeAutoHeight: bindIframeAutoHeight,

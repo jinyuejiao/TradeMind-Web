@@ -480,7 +480,11 @@ textarea {
 
     html.tm-embedded.tm-embed-parent-flow #view-crm,
     html.tm-embedded.tm-embed-parent-flow #crm-list-pane,
-    html.tm-embedded.tm-embed-parent-flow #customer-list-container {
+    html.tm-embedded.tm-embed-parent-flow #customer-list-container,
+    html.tm-embedded.tm-embed-parent-flow #orders-list-view,
+    html.tm-embedded.tm-embed-parent-flow #suppliers-list-view,
+    html.tm-embedded.tm-embed-parent-flow #sup-list-view,
+    html.tm-embedded.tm-embed-parent-flow #sup-supplier-view {
         height: auto !important;
         max-height: none !important;
         overflow: visible !important;

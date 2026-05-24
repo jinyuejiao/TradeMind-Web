@@ -282,19 +282,30 @@
         display: block;
         width: 100%;
         height: auto;
-        min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 10rem);
+        min-height: 0;
         border: 0;
     }
 
     body.tm-layout-mobile #view-supply.view-section:not(.hidden) {
         padding-bottom: 0.5rem;
+        min-height: min-content;
     }
 
-    body.tm-layout-mobile #view-supply.view-section:not(.hidden) #supply-inner-scroll {
-        overflow: visible;
-        height: auto;
-        flex: none;
+    body.tm-layout-mobile #view-supply.view-section:not(.hidden) #supply-inner-scroll,
+    body.tm-layout-mobile #view-supply.view-section:not(.hidden) #mobile-product-shell {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+        flex: none !important;
         min-height: 0;
+    }
+
+    /* 桌面产品中心滚动壳：手机端强制走主壳流式滚动 */
+    body.tm-layout-mobile #view-supply.tm-view-supply-scroll:not(.hidden) {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        flex: none !important;
     }
 
     /* auth.js 注入的独立模块顶栏 */
