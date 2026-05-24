@@ -138,8 +138,11 @@
                 var recognitionTime = record.createTime
                     ? new Date(record.createTime).toLocaleString('zh-CN')
                     : '--';
-                var statusLabel = record.status === 'SUCCESS' ? '已提取' : '提取中';
+                var isExtracting = record.status === 'EXTRACTING';
+                var statusLabel = record.status === 'SUCCESS' ? '已提取' : (isExtracting ? '提取中' : (record.status || '处理中'));
                 var statusClass = record.status === 'SUCCESS' ? 'text-brand-600' : 'text-orange-500';
+                var deleteBtnClass = 'tm-pending-delete' + (isExtracting ? ' opacity-35 pointer-events-none cursor-not-allowed' : '');
+                var deleteTitle = isExtracting ? 'AI 识别中，暂不可删除' : '删除';
 
                 card.innerHTML =
                     '<div class="flex-1 min-w-0" data-open-audit="1">' +
@@ -151,7 +154,7 @@
                     '</div></div>' +
                     '<div class="flex items-center gap-2 shrink-0">' +
                     '<div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">' + orderItems.length + '</div>' +
-                    '<button type="button" class="tm-pending-delete" title="删除" aria-label="删除待确认单据" data-delete-id="' + escapeHtml(id) + '">' +
+                    '<button type="button" class="' + deleteBtnClass + '" title="' + escapeHtml(deleteTitle) + '" aria-label="删除待确认单据" aria-disabled="' + (isExtracting ? 'true' : 'false') + '" data-delete-id="' + escapeHtml(id) + '">' +
                     '<i class="ph ph-trash text-base"></i></button></div>';
 
                 card.onclick = function (e) {
@@ -161,7 +164,7 @@
                     }
                 };
                 var delBtn = card.querySelector('.tm-pending-delete');
-                if (delBtn) {
+                if (delBtn && !isExtracting) {
                     delBtn.onclick = function (e) {
                         e.stopPropagation();
                         e.preventDefault();
@@ -222,15 +225,26 @@
 
     window.deletePendingOrder = async function (recordId) {
         var rec = TM_PendingOrdersStore.records.find(function (r) { return String(r.id) === String(recordId); });
-        var msg = rec && rec.status === 'EXTRACTING'
-            ? 'AI 仍在解析该单据，确定要删除吗？'
-            : '确认删除该待确认单据？删除后不可恢复。';
-        if (!confirm(msg)) return;
+        if (rec && rec.status === 'EXTRACTING') {
+            notify('AI 正在识别该单据，请稍后再删除', 'error');
+            return;
+        }
+        var msg = '确认删除该待确认单据？删除后不可恢复。';
+        if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {
+            var ok = await window.TM_UI.confirm({ title: '确认', message: msg, confirmLabel: '确定' });
+            if (!ok) return;
+        } else if (!confirm(msg)) {
+            return;
+        }
         try {
             var resp = await window.wrappedFetch('/api/v1/ai/records/' + recordId, { method: 'DELETE' });
             if (!resp.ok) {
                 var err = await resp.json().catch(function () { return {}; });
-                throw new Error(err.message || '删除失败');
+                var errMsg = err.message || err.msg || '删除失败';
+                if (resp.status === 409) {
+                    errMsg = errMsg || 'AI 正在识别该单据，请稍后再删除';
+                }
+                throw new Error(errMsg);
             }
             notify('已删除待确认单据', 'success');
             await TM_PendingOrdersStore.refresh(false);
@@ -254,8 +268,12 @@
             if (subEl) subEl.textContent = sub.toFixed(2);
             total += sub;
         });
-        var totalEl = document.getElementById('order-total-amount');
-        if (totalEl) totalEl.textContent = total.toFixed(2);
+        var totalEl = document.getElementById('audit-order-total') || document.getElementById('order-total-amount');
+        if (totalEl) {
+            totalEl.textContent = typeof window.TM_formatCNY === 'function'
+                ? window.TM_formatCNY(total)
+                : ('¥' + total.toFixed(2));
+        }
     };
 
     window.auditFormAddLine = function () {
@@ -689,7 +707,7 @@
 
     function tmRecalcManualOrderTotal() {
         var tbody = document.getElementById('manual-order-tbody');
-        var totalEl = document.getElementById('manual-order-grand-total');
+        var totalEl = document.getElementById('manual-grand-total') || document.getElementById('manual-order-grand-total');
         if (!tbody || !totalEl) return;
         var sum = 0;
         tbody.querySelectorAll('tr').forEach(function (row) {

@@ -1,0 +1,19 @@
+{
+  "name": "trademind-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "商贸智脑批发商户版 E2E / API 自动化（对应用例见 .trae/docs/test-plan-wholesale.csv）",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:ui": "playwright test --project=ui-chromium",
+    "test:ui:mobile": "playwright test --project=ui-mobile",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "codegen": "playwright codegen http://localhost:9013/login.html"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "dotenv": "^16.4.5"
+  }
+}

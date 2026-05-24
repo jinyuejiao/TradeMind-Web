@@ -609,3 +609,126 @@ textarea {
     background: #f0fdfa;
     color: #0d9488;
 }
+
+/* —— UI 对齐：订单/进货总计卡片 —— */
+.tm-order-total-card {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: 1rem;
+    background: #0f172a;
+    color: #fff;
+    box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+.tm-order-total-card__watermark {
+    position: absolute;
+    right: -0.5rem;
+    top: -0.75rem;
+    opacity: 0.05;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.tm-order-total-card__watermark i {
+    font-size: 5rem;
+}
+
+.tm-order-total-card__text {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+}
+
+.tm-order-total-card__title {
+    margin: 0;
+    font-size: 0.625rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.tm-order-total-card__subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.5625rem;
+    font-style: italic;
+    color: #64748b;
+}
+
+.tm-order-total-card__amount-wrap {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.tm-order-total-card__amount {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.75rem;
+    font-weight: 900;
+    line-height: 1.1;
+    color: rgb(var(--tm-brand-500-rgb, 20 184 166));
+}
+
+@media (min-width: 768px) {
+    .tm-order-total-card__amount {
+        font-size: 1.875rem;
+    }
+}
+
+/* —— 统一弹窗壳（tm-dialog-root + sheet） —— */
+.tm-btn-primary {
+    background-color: #0d9488 !important;
+    color: #fff !important;
+    font-weight: 800;
+    border-radius: 1rem;
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.tm-btn-primary:hover {
+    background-color: #0f766e !important;
+}
+
+.tm-btn-secondary {
+    background: #fff;
+    color: #64748b;
+    font-weight: 700;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+.tm-btn-secondary:hover {
+    background: #f8fafc;
+}
+
+@media (max-width: 767px) {
+    .tm-dialog-root[data-tm-dialog-variant="sheet"],
+    .tm-dialog-root.tm-mobile-sheet-modal {
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 0 !important;
+    }
+
+    .tm-dialog-root .tm-dialog-panel,
+    .tm-dialog-root .tm-mobile-sheet-panel,
+    .tm-dialog-root > .modal-content-box {
+        width: 100%;
+        max-width: 100%;
+        max-height: min(
+            88dvh,
+            calc(100dvh - env(safe-area-inset-top, 0px) - var(--tm-tabbar-h, 4.25rem))
+        ) !important;
+        border-radius: 1rem 1rem 0 0 !important;
+    }
+}
+
+html.tm-embedded #content-area {
+    padding-top: 0.5rem !important;
+    padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.25rem) !important;
+}

@@ -19,3 +19,14 @@ logs/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# E2E / Playwright（tests/e2e，勿提交运行产物与账号）
+tests/e2e/node_modules/
+tests/e2e/.env
+tests/e2e/.env.local
+tests/e2e/reports/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+tests/e2e/blob-report/
+tests/e2e/.playwright/
+tests/e2e/**/trace.zip

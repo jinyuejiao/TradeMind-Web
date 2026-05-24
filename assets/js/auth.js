@@ -1290,6 +1290,17 @@ function logout() {
 
 /** 退出登录（对齐 UI 工程：确认后清会话并跳转登录页） */
 function tmLogout() {
+    var run = function () {
+        if (typeof logout === 'function') logout();
+    };
+    if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {
+        window.TM_UI.confirm({
+            title: '退出登录',
+            message: '确定要退出登录吗？',
+            confirmLabel: '退出'
+        }).then(function (ok) { if (ok) run(); });
+        return;
+    }
     if (!confirm('确定要退出登录吗？')) {
         return;
     }

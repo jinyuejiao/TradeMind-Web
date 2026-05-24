@@ -404,7 +404,7 @@
     </main>
 
     <!-- AI 单据核对中心 (订单/产品/客户) -->
-    <div id="audit-modal" class="tm-audit-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8">
+    <div id="audit-modal" class="tm-dialog-root tm-audit-modal tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuditModal()"></div>
         <div class="relative bg-white w-full max-w-5xl max-h-[94vh] md:max-h-[95vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box tm-audit-panel min-h-0">
 
@@ -464,9 +464,17 @@
                         </div>
                     </div>
 
-                    <div class="tm-audit-total-block flex justify-between items-center p-5 md:p-6 rounded-2xl text-white shadow-xl">
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计</p>
-                        <p class="text-2xl font-mono font-black text-brand-400" id="order-total-amount">0.00</p>
+                    <div id="audit-order-total-mount" class="tm-audit-total-block">
+                        <div class="tm-order-total-card">
+                            <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
+                            <div class="tm-order-total-card__text">
+                                <p class="tm-order-total-card__title">订单预计总计</p>
+                                <p class="tm-order-total-card__subtitle">提取源：AI 识别</p>
+                            </div>
+                            <div class="tm-order-total-card__amount-wrap">
+                                <span class="tm-order-total-card__amount" id="audit-order-total">¥0.00</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -591,13 +599,13 @@
             </div>
 
             <!-- 弹窗底部操作 -->
-            <div class="tm-audit-footer p-4 md:p-6 border-t border-slate-100 bg-white shrink-0">
+            <div class="tm-audit-footer tm-modal-footer-safe pb-safe p-4 md:p-6 border-t border-slate-100 bg-white shrink-0">
                 <div class="tm-audit-footer-actions">
                 <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
                 <div class="flex gap-3 w-full md:w-auto">
                     <div id="audit-footer-order-actions" class="contents">
-                        <button onclick="closeAuditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">存为草稿</button>
-                        <button onclick="confirmAuditOrder()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">确认入库并下单</button>
+                        <button type="button" onclick="closeAuditModal()" class="tm-audit-footer-btn tm-audit-footer-btn--secondary tm-btn-secondary flex-1 md:flex-none px-8 py-3 text-xs">存为草稿</button>
+                        <button type="button" onclick="confirmAuditOrder()" class="tm-audit-footer-btn tm-audit-footer-btn--primary tm-btn-primary flex-[2] md:flex-none px-10 py-3 text-xs shadow-xl shadow-brand-500/30 active:scale-95">确认入库并下单</button>
                     </div>
                     <div id="audit-footer-product-actions" class="hidden contents">
                         <button onclick="skipNewProduct()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
@@ -639,6 +647,12 @@
     <div id="voice-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur">
         <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center fade-in">
             <div id="voice-ready-ui">
+                <div id="voice-onboarding-tips" class="hidden">
+                    <p class="voice-tip-title">推荐说法格式</p>
+                    <p class="voice-tip-formula">客户名 + 产品 + 数量 + 总价</p>
+                    <p id="voice-tip-example-text" class="voice-tip-example">示例：华强北李总批发矿泉水 200 箱，总价 8600 元</p>
+                    <div class="voice-tip-dots"></div>
+                </div>
                 <div class="w-24 h-24 bg-slate-100 rounded-full mx-auto flex items-center justify-center text-slate-300 mb-8"><i class="ph ph-microphone-stage text-5xl"></i></div>
                 <h3 class="text-xl font-black text-slate-800 mb-2">语音提单助手</h3>
                 <p class="text-xs text-slate-400 leading-relaxed mb-10 px-4">请点击下方按钮开始描述您的订单内容</p>
@@ -725,9 +739,9 @@
 
 
     <!-- 进行中业务弹窗 -->
-    <div id="order-detail-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-8">
+    <div id="order-detail-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeOrderDetail()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-full max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
+        <div class="tm-dialog-panel relative bg-white w-full max-w-4xl h-full max-h-[85vh] md:max-h-[85vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
 
             <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3">
@@ -755,6 +769,10 @@
                             <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">订单状态</label>
                             <input id="detail-order-status" type="text" class="form-input font-bold text-brand-600" disabled>
                         </div>
+                        <div class="space-y-2 md:col-span-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">收款账户</label>
+                            <input id="detail-receipt-account" type="text" class="form-input font-bold text-slate-700" readonly placeholder="—">
+                        </div>
                     </div>
                 </section>
                 <!-- 详情内容区 -->
@@ -766,7 +784,7 @@
                                 <tr>
                                     <th class="px-5 py-4">产品名称 / 规格</th>
                                     <th class="px-5 py-4 text-center">数量</th>
-                                    <th class="px-5 py-4 text-right">分项金额 (USD)</th>
+                                            <th class="px-5 py-4 text-right">分项金额 (CNY)</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-slate-700" id="detail-order-items-body"></tbody>
@@ -774,11 +792,21 @@
                     </div>
                 </section>
 
-                <div class="flex justify-between items-center p-6 bg-slate-900 rounded-2xl text-white shadow-xl relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 opacity-5"><i class="ph ph-currency-dollar text-8xl"></i></div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">订单总计 (Total Amount)</p>
-                    <p class="text-2xl font-mono font-black text-brand-500" id="detail-total-amount">$0.00</p>
+                <div id="detail-order-total-mount">
+                    <div class="tm-order-total-card">
+                        <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
+                        <div class="tm-order-total-card__text">
+                            <p class="tm-order-total-card__title">订单总计</p>
+                            <p class="tm-order-total-card__subtitle">系统自动计算</p>
+                        </div>
+                        <div class="tm-order-total-card__amount-wrap">
+                            <span class="tm-order-total-card__amount" id="detail-order-total">¥0.00</span>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            <div class="tm-modal-footer-safe pb-safe p-5 border-t border-slate-100 bg-white flex gap-3 shrink-0">
+                <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs">返回工作台</button>
             </div>
         </div>
     </div>
@@ -837,15 +865,23 @@
                         </table>
                     </div>
                 </div>
-                <div class="p-4 md:p-5 bg-slate-900 rounded-2xl text-white flex justify-between items-center">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">订单总计</p>
-                    <p class="text-2xl font-mono font-black text-brand-400" id="manual-order-grand-total">¥0.00</p>
+                <div id="manual-order-total-mount">
+                    <div class="tm-order-total-card">
+                        <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
+                        <div class="tm-order-total-card__text">
+                            <p class="tm-order-total-card__title">订单预计总计</p>
+                            <p class="tm-order-total-card__subtitle">提取源：手动添加</p>
+                        </div>
+                        <div class="tm-order-total-card__amount-wrap">
+                            <span class="tm-order-total-card__amount" id="manual-grand-total">¥0.00</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="tm-product-edit-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+            <div class="tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
                 <div class="flex gap-2 md:gap-3">
-                    <button type="button" onclick="TM_closeManualOrderModal()" class="flex-1 md:flex-none md:px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
-                    <button type="button" onclick="TM_saveManualOrder()" class="flex-[1.4] md:flex-none md:px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/25 hover:bg-brand-700 transition active:scale-[0.98]">确认创建订单</button>
+                    <button type="button" onclick="TM_closeManualOrderModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3 text-xs">取消</button>
+                    <button type="button" onclick="TM_saveManualOrder()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3 text-xs shadow-lg shadow-brand-500/25 active:scale-[0.98]">确认创建订单</button>
                 </div>
             </div>
         </div>
@@ -905,6 +941,22 @@
                 return true;
             }
             return false;
+        }
+
+        function tmOnboardingPrepareVoiceComplete() {
+            try {
+                if (window.TmOnboarding && typeof window.TmOnboarding.prepareVoiceComplete === 'function') {
+                    window.TmOnboarding.prepareVoiceComplete();
+                }
+            } catch (e) { /* ignore */ }
+        }
+
+        function tmOnboardingNotifyVoiceComplete() {
+            try {
+                if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceComplete === 'function') {
+                    window.TmOnboarding.onVoiceComplete();
+                }
+            } catch (e) { /* ignore */ }
         }
 
         function tmVoiceIsDashboardReady() {
@@ -2405,7 +2457,15 @@
                 loadInProgressOrders();
                 return;
             }
+            var detailModal = document.getElementById('order-detail-modal');
+            if (detailModal && typeof window.TM_applyDialogShell === 'function') {
+                window.TM_applyDialogShell(detailModal);
+            }
             document.getElementById('order-detail-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            if (typeof window.TM_setShellChromeHidden === 'function') {
+                window.TM_setShellChromeHidden(true);
+            }
             document.getElementById('detail-order-id').textContent = order.orderCode || ('ORD-' + orderId);
             const dateLabel = order.createTime ? normalizeDateInput(order.createTime) : '--';
             const sub = document.getElementById('detail-order-meta');
@@ -2413,6 +2473,7 @@
             setInputValueIfExists('detail-customer-name', getCustomerNameById(order.custId));
             setInputValueIfExists('detail-delivery-date', normalizeDateInput(order.deliveryDate));
             setInputValueIfExists('detail-order-status', getOrderStatusLabel(order.orderStatus));
+            setInputValueIfExists('detail-receipt-account', order.receiptAccountName || order.bizAccountName || '默认收款账户');
 
             window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/items', {
                 method: 'GET',
@@ -2440,7 +2501,7 @@
                         `;
                     }).join('');
                 }
-                const totalEl = document.getElementById('detail-total-amount');
+                const totalEl = document.getElementById('detail-order-total');
                 if (totalEl) totalEl.textContent = formatCurrency(order.totalAmount || 0);
             })
             .catch(error => {
@@ -2451,7 +2512,14 @@
         // 关闭订单详情模态框
         function closeOrderDetail() {
             document.getElementById('order-detail-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            if (typeof window.TM_setShellChromeHidden === 'function') {
+                window.TM_setShellChromeHidden(false);
+            }
         }
+
+        window.__TM_dashboardOpenOrderDetail = openOrderDetail;
+        window.__TM_dashboardCloseOrderDetail = closeOrderDetail;
 
         window.openManualOrderModal = function () {
             if (typeof window.TM_openManualOrderModal === 'function') {
@@ -2970,7 +3038,9 @@
                     return;
                 }
                 console.log('[Voice] AI 受理成功');
+                tmOnboardingPrepareVoiceComplete();
                 closeVoiceModal();
+                tmOnboardingNotifyVoiceComplete();
                 showToast('已提交AI订单提取，正在识别中...');
                 if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.scheduleAfterSubmit === 'function') {
                     window.TM_PendingOrdersStore.scheduleAfterSubmit();

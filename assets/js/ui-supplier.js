@@ -883,7 +883,9 @@ window.SupplierModule = {
             row.querySelector('.row-total').textContent = '¥' + rowTotal.toFixed(2);
         });
         
-        document.getElementById('purchase-grand-total').textContent = '¥' + total.toFixed(2);
+        var fmt = typeof window.TM_formatCNY === 'function' ? window.TM_formatCNY(total) : ('¥' + total.toFixed(2));
+        var totalEl = document.getElementById('po-form-total-display') || document.getElementById('purchase-grand-total');
+        if (totalEl) totalEl.textContent = fmt;
     },
 
     editPurchase: async function(purchaseId) {
@@ -1051,8 +1053,8 @@ window.SupplierModule = {
     },
 
     deletePurchase: async function(purchaseId) {
-        if (!confirm('确定要删除这个进货单吗？')) return;
-
+        var self = this;
+        var runDelete = async function () {
         try {
             const response = await window.wrappedFetch('/api/v1/supp/purchases/' + purchaseId, {
                 method: 'DELETE'
@@ -1077,6 +1079,69 @@ window.SupplierModule = {
         } catch (error) {
             console.error('Error deleting purchase:', error);
             alert('删除失败: ' + error.message);
+        }
+        };
+        if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {
+            window.TM_UI.confirm({
+                title: '确认删除',
+                message: '确定要删除这个进货单吗？',
+                confirmLabel: '确认删除',
+                danger: true
+            }).then(function (ok) { if (ok) runDelete(); });
+        } else if (confirm('确定要删除这个进货单吗？')) {
+            runDelete();
+        }
+    },
+
+    openPurchaseDetail: async function(purchaseId) {
+        if (!purchaseId) return;
+        var editBtn = document.getElementById('detail-purchase-edit-btn');
+        if (editBtn) {
+            editBtn.onclick = function () {
+                closePurchaseDetail();
+                window.SupplierModule.editPurchase(purchaseId);
+            };
+        }
+        try {
+            var resp = await window.wrappedFetch('/api/v1/supp/purchases/' + purchaseId, { method: 'GET' });
+            if (!resp.ok) throw new Error('加载失败');
+            var result = await resp.json();
+            if (!result.success || !result.data) throw new Error(result.message || '无数据');
+            var po = result.data;
+            var idEl = document.getElementById('detail-purchase-id');
+            var metaEl = document.getElementById('detail-purchase-meta');
+            if (idEl) idEl.textContent = po.purchaseCode || ('PO-' + purchaseId);
+            if (metaEl) metaEl.textContent = (po.supplierName || '') + ' · ' + (po.purchaseDate || '');
+            var tbody = document.getElementById('detail-purchase-items-body');
+            var items = po.items || po.purchaseItems || [];
+            var total = 0;
+            if (tbody) {
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400">暂无明细</td></tr>';
+                } else {
+                    tbody.innerHTML = items.map(function (it) {
+                        var sub = Number(it.totalAmount != null ? it.totalAmount : (it.quantity || 0) * (it.unitPrice || 0));
+                        total += sub;
+                        var fmt = typeof window.TM_formatCNY === 'function' ? window.TM_formatCNY : function (v) { return '¥' + Number(v).toFixed(2); };
+                        return '<tr><td class="px-5 py-3 font-bold">' + (it.productName || '—') + '</td>' +
+                            '<td class="px-5 py-3 text-center font-mono">' + fmt(it.unitPrice || 0) + '</td>' +
+                            '<td class="px-5 py-3 text-center font-mono">' + (it.quantity || 0) + '</td>' +
+                            '<td class="px-5 py-3 text-right font-mono font-bold">' + fmt(sub) + '</td></tr>';
+                    }).join('');
+                }
+            }
+            if (po.totalAmount != null) total = Number(po.totalAmount);
+            var totEl = document.getElementById('detail-purchase-total');
+            if (totEl) totEl.textContent = typeof window.TM_formatCNY === 'function' ? window.TM_formatCNY(total) : ('¥' + total.toFixed(2));
+            var modal = document.getElementById('purchase-detail-modal');
+            if (modal) {
+                if (typeof window.TM_applyDialogShell === 'function') window.TM_applyDialogShell(modal);
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        } catch (e) {
+            console.error(e);
+            this.editPurchase(purchaseId);
         }
     }
 };
