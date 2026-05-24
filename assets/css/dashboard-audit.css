@@ -184,6 +184,17 @@
     background: #f0fdfa;
 }
 
+/* 核对弹窗 · 多个新产品子 Tab */
+.tm-audit-np-tab {
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.tm-audit-np-tab--active {
+    border-color: #14b8a6 !important;
+    background: #f0fdfa !important;
+    color: #0d9488 !important;
+}
+
 /* 待确认列表 */
 .pending-draft-card {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease;

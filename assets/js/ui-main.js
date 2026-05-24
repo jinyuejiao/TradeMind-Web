@@ -118,6 +118,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (typeof window.loadPendingOrders === 'function') {
                     window.loadPendingOrders();
                 }
+                if (typeof window.loadInProgressOrders === 'function') {
+                    window.loadInProgressOrders();
+                }
             } catch (e0) { /* ignore */ }
             if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
                 window.__TM_VOICE_RELOAD_HINT_SHOWN = true;
@@ -1298,25 +1301,15 @@ document.querySelectorAll('.product-select').forEach(s => {
     });
 });
 
-// 确认入库逻辑
 function saveManualOrder() {
-    const grandTotal = document.getElementById('manual-grand-total').innerText;
-    if (grandTotal === "$0.00") return alert("请添加有效商品和金额");
-
-    // 模拟入库：在右侧列表新增一项
-    const list = document.getElementById('inprogress-list');
-    const newItem = document.createElement('div');
-    newItem.className = "p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group fade-in";
-    const newId = "INV-MANUAL-" + Math.floor(Math.random() * 9000 + 1000);
-    newItem.onclick = function () { openViewDetail('新录入客户', 'MANUAL'); };
-    newItem.innerHTML = `
-                                            <div><p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">${newId}</p>
-                                            <div class="flex items-center gap-2 mt-1"><span class="text-[9px] text-slate-400 uppercase tracking-tighter">手动录入单据</span><span class="w-1 h-1 bg-brand-500 rounded-full"></span><span class="text-[9px] text-brand-600 font-bold">待发货</span></div></div>
-                                            <div class="text-[11px] font-mono font-bold text-slate-900">${grandTotal}</div>`;
-    list.prepend(newItem);
-
-    closeManualOrderModal();
-    alert("订单已成功入库并生成履约任务。");
+    if (typeof window.TM_saveManualOrder === 'function') {
+        return window.TM_saveManualOrder();
+    }
+    if (window.TM_UI && window.TM_UI.showNotification) {
+        window.TM_UI.showNotification('添加订单模块未加载，请刷新后重试', 'error');
+    } else {
+        alert('添加订单模块未加载，请刷新后重试');
+    }
 }
 
 // --- 详情查看逻辑 (包含来源标识) ---

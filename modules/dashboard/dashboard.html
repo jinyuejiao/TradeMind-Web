@@ -305,7 +305,7 @@
                 <!-- 待确认单据和进行中业务单据 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- 待核对单据 (Pending) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[450px]">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none">
                         <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-orange-500"></i> 待确认单据 (AI 草稿)</h3>
                             <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
@@ -321,24 +321,21 @@
                     </div>
 
                     <!-- 进行中业务单据 (扩展部分) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[480px]">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none">
                         <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center gap-3 bg-white sticky top-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-1"><i class="ph ph-truck text-blue-500 font-bold shrink-0"></i><span class="truncate">进行中业务单据</span></h3>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95 whitespace-nowrap">
                                     <i class="ph ph-plus-circle text-lg shrink-0 leading-none"></i><span>添加订单</span>
                                 </button>
-                                <select class="text-[10px] bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-slate-600 max-w-[7.5rem] sm:max-w-none">
-                                    <option>全部状态</option>
-                                    <option>待支付</option>
-                                    <option>已发货</option>
-                                    <option>已完成</option>
-                                    <option>已退货</option>
-                                    <option>已退款</option>
+                                <select id="inprogress-status-filter" onchange="filterInProgressOrders()" class="text-[10px] bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-slate-600 max-w-[7.5rem] sm:max-w-none">
+                                    <option value="">全部</option>
+                                    <option value="D010001">待支付</option>
+                                    <option value="D010002">出货中</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar max-h-[360px]" id="inprogress-list">
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar min-h-0" id="inprogress-list">
                             <div class="flex items-center justify-center h-full text-slate-400 text-sm">
                                 <div class="text-center">
                                     <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
@@ -421,7 +418,7 @@
             <!-- 子 Tab 导航 -->
             <div id="audit-tabs-nav" class="flex px-6 border-b border-slate-100 bg-slate-50/30 shrink-0 overflow-x-auto no-scrollbar">
                 <button onclick="switchAuditTab('order')" id="tab-order" class="sub-tab-btn active">订单详情</button>
-                <button onclick="switchAuditTab('product')" id="tab-product" class="sub-tab-btn relative">产品信息 <span class="absolute top-2 right-1 w-2 h-2 bg-risk-high rounded-full border-2 border-white"></span></button>
+                <button onclick="switchAuditTab('product')" id="tab-product" class="sub-tab-btn relative hidden">产品信息 <span id="tab-product-badge" class="absolute top-2 right-1 min-w-[1rem] h-4 px-0.5 bg-risk-high text-white text-[8px] font-black rounded-full border-2 border-white flex items-center justify-center"></span></button>
                 <button onclick="switchAuditTab('customer')" id="tab-customer" class="sub-tab-btn">客户资料</button>
             </div>
 
@@ -483,8 +480,10 @@
                 <div id="confirm-product-tab" class="sub-pane hidden space-y-4">
                     <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
                         <i class="ph ph-info text-blue-600 text-lg shrink-0"></i>
-                        <p class="text-[11px] text-blue-700 leading-relaxed">请补全下方产品信息后点击右下角「新建产品信息」，保存后将自动关联本单明细。</p>
+                        <p class="text-[11px] text-blue-700 leading-relaxed">请补全下方产品信息后点击「保存当前产品」；多个新产品时请切换上方标签逐项保存，全部保存后可返回订单详情确认下单。</p>
                     </div>
+                    <div id="audit-new-product-subtabs" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+                    <p id="audit-new-product-progress" class="hidden text-[10px] font-bold text-slate-500"></p>
                     <div id="audit-product-form-errors" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed" role="alert"></div>
                     <section class="tm-product-edit-section rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
                         <h3 class="tm-product-edit-section__title">基本信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
@@ -610,7 +609,7 @@
                     </div>
                     <div id="audit-footer-product-actions" class="hidden contents">
                         <button onclick="skipNewProduct()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增产品</button>
-                        <button onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">新建产品信息</button>
+                        <button type="button" id="audit-save-new-product-btn" onclick="saveNewProduct()" class="flex-[2] md:flex-none px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-xl shadow-brand-500/30 hover:bg-brand-700 transition active:scale-95">保存当前产品</button>
                     </div>
                     <div id="audit-footer-customer-actions" class="hidden contents">
                         <button onclick="skipNewCustomer()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">非新增客户</button>
@@ -836,9 +835,8 @@
                     <div class="space-y-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1" for="manual-order-status">订单状态</label>
                         <select id="manual-order-status" class="form-input font-bold text-brand-600">
-                            <option value="D010002">处理中</option>
-                            <option value="D010001">待支付</option>
-                            <option value="D010003">已发货</option>
+                            <option value="D010001" selected>待支付</option>
+                            <option value="D010002">出货中</option>
                         </select>
                     </div>
                     <div class="space-y-2 md:col-span-2">
@@ -1259,7 +1257,10 @@
         const auditState = {
             currentRecordId: null,
             aiEnvelope: null,
-            aiStructured: null
+            aiStructured: null,
+            activeNewProductIndex: 0,
+            newProductDrafts: {},
+            savedNewProductIds: {}
         };
         window.auditState = auditState;
         let pendingRecordsCache = [];
@@ -1269,6 +1270,7 @@
         let productLookupById = {};
         let orderStatusDictMap = {};
         let inProgressOrdersCache = [];
+        let inProgressOrdersCacheFull = [];
 
         function parseTokenPayloadSafe(token) {
             try {
@@ -1465,6 +1467,105 @@
 
         function hasNewProducts(aiData) {
             return Array.isArray(aiData && aiData.new_products_found) && aiData.new_products_found.length > 0;
+        }
+
+        function getAuditNewProductsList() {
+            if (!auditState.aiStructured || !Array.isArray(auditState.aiStructured.new_products_found)) {
+                return [];
+            }
+            return auditState.aiStructured.new_products_found;
+        }
+
+        function normalizeAuditOrderItem(item) {
+            if (!item || typeof item !== 'object') return item;
+            if (item.price_at_time == null || item.price_at_time === '' || Number(item.price_at_time) === 0) {
+                var p = item.unit_price != null ? item.unit_price : (item.price != null ? item.price : item.sale_price);
+                if (p != null && p !== '') item.price_at_time = Number(p);
+            }
+            if (item.quantity == null || item.quantity === '') {
+                item.quantity = item.qty != null ? item.qty : 1;
+            }
+            if (item.total_amount == null || item.total_amount === '') {
+                var q = Number(item.quantity) || 0;
+                var pr = Number(item.price_at_time) || 0;
+                if (q > 0 && pr > 0) item.total_amount = Math.round(q * pr * 100) / 100;
+            }
+            return item;
+        }
+
+        function readAuditProductFormToDraft(index) {
+            var draft = auditState.newProductDrafts[index] || {};
+            var nameEl = document.getElementById('audit-detail-product-name');
+            draft.name = nameEl ? nameEl.value.trim() : (draft.name || '');
+            draft.sku = (document.getElementById('audit-detail-product-sku-input') || {}).value || draft.sku || '';
+            draft.price = (document.getElementById('audit-detail-product-price') || {}).value || draft.price || '';
+            draft.base_unit = (document.getElementById('audit-detail-product-base-unit') || {}).value || draft.base_unit || '件';
+            draft.stock = (document.getElementById('audit-detail-product-stock') || {}).value || draft.stock || '';
+            draft.description = (document.getElementById('audit-detail-product-description') || {}).value || draft.description || '';
+            var catEl = document.getElementById('audit-detail-product-category');
+            if (catEl && catEl.value) draft.category_id = catEl.value;
+            auditState.newProductDrafts[index] = draft;
+        }
+
+        function syncAuditNewProductSubtabs() {
+            var container = document.getElementById('audit-new-product-subtabs');
+            var progressEl = document.getElementById('audit-new-product-progress');
+            var tabProductBtn = document.getElementById('tab-product');
+            var badge = document.getElementById('tab-product-badge');
+            var list = getAuditNewProductsList();
+            if (!container) return;
+            if (!list.length) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                if (progressEl) progressEl.classList.add('hidden');
+                if (tabProductBtn) tabProductBtn.classList.add('hidden');
+                if (badge) badge.textContent = '';
+                return;
+            }
+            if (tabProductBtn) tabProductBtn.classList.remove('hidden');
+            if (badge) badge.textContent = String(list.length);
+            container.classList.remove('hidden');
+            container.innerHTML = list.map(function (np, idx) {
+                var label = (np.name || np.product_name || ('新产品 ' + (idx + 1))).trim();
+                var active = idx === auditState.activeNewProductIndex ? ' tm-audit-np-tab--active' : '';
+                return '<button type="button" class="tm-audit-np-tab shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 bg-white text-slate-600' + active + '" data-np-index="' + idx + '" onclick="switchAuditNewProductIndex(' + idx + ')">' + label + '</button>';
+            }).join('');
+            if (progressEl) {
+                progressEl.classList.remove('hidden');
+                progressEl.textContent = '当前：产品 ' + (auditState.activeNewProductIndex + 1) + ' / ' + list.length;
+            }
+        }
+
+        async function switchAuditNewProductIndex(index) {
+            var list = getAuditNewProductsList();
+            if (!list.length || index < 0 || index >= list.length) return;
+            readAuditProductFormToDraft(auditState.activeNewProductIndex);
+            auditState.activeNewProductIndex = index;
+            syncAuditNewProductSubtabs();
+            var np = Object.assign({}, list[index], auditState.newProductDrafts[index] || {});
+            if (typeof window.TM_initAuditProductForm === 'function') {
+                await window.TM_initAuditProductForm(np, index);
+            }
+            var saveBtn = document.getElementById('audit-save-new-product-btn');
+            if (saveBtn) {
+                saveBtn.textContent = (index < list.length - 1) ? '保存当前产品并继续' : '保存当前产品';
+            }
+        }
+        window.switchAuditNewProductIndex = switchAuditNewProductIndex;
+
+        function linkOrderItemsToSavedProduct(productId, productName, productSku, matchNames) {
+            if (!auditState.aiStructured || !auditState.aiStructured.order_data || !Array.isArray(auditState.aiStructured.order_data.items)) return;
+            var names = matchNames || [productName];
+            auditState.aiStructured.order_data.items.forEach(function (item) {
+                var raw = (item.product_name_raw || item.matched_product_name || '').trim();
+                var hit = names.some(function (n) { return n && raw === String(n).trim(); });
+                if (hit || !item.matched_product_id || Number(item.matched_product_id) === 0) {
+                    item.matched_product_id = Number(productId);
+                    item.matched_product_name = productName;
+                    item.product_name_raw = productName;
+                    if (productSku) item.sku = productSku;
+                }
+            });
         }
 
         function normalizeDateInput(value) {
@@ -1677,8 +1778,8 @@
             .then(result => {
                 const orders = result && result.success && Array.isArray(result.data) ? result.data : [];
                 const inProgress = orders.sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0));
-                inProgressOrdersCache = inProgress;
-                renderInProgressOrders();
+                inProgressOrdersCacheFull = inProgress;
+                filterInProgressOrders();
             })
             .catch(error => {
                 console.warn('in-progress接口不可用，回退全量订单筛选:', error);
@@ -1691,10 +1792,10 @@
                     const orders = result && result.success && Array.isArray(result.data) ? result.data : [];
                     const inProgress = orders.filter(order => {
                         const s = String(order.orderStatus || '').toUpperCase();
-                        return s === 'D010001' || s === 'D010002' || s === 'PENDING' || s === 'PROCESSING';
+                        return s === 'D010001' || s === 'D010002';
                     }).sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0));
-                    inProgressOrdersCache = inProgress;
-                    renderInProgressOrders();
+                    inProgressOrdersCacheFull = inProgress;
+                    filterInProgressOrders();
                 })
                 .catch(innerError => {
                     console.error('加载进行中订单失败:', innerError);
@@ -1709,6 +1810,20 @@
                 });
             });
         }
+
+        function filterInProgressOrders() {
+            const filterEl = document.getElementById('inprogress-status-filter');
+            const code = filterEl ? String(filterEl.value || '').trim().toUpperCase() : '';
+            if (!code) {
+                inProgressOrdersCache = inProgressOrdersCacheFull.slice();
+            } else {
+                inProgressOrdersCache = inProgressOrdersCacheFull.filter(function (o) {
+                    return String(o.orderStatus || '').toUpperCase() === code;
+                });
+            }
+            renderInProgressOrders();
+        }
+        window.filterInProgressOrders = filterInProgressOrders;
 
         function renderInProgressOrders() {
             const listEl = document.getElementById('inprogress-list');
@@ -1884,6 +1999,9 @@
 
         // 打开审核弹窗
         async function openAuditModal(recordId) {
+            if (typeof loadCustomerList === 'function' && typeof loadProductList === 'function') {
+                await Promise.all([loadCustomerList(), loadProductList()]);
+            }
             let record = pendingRecordsCache.find(item => String(item.id) === String(recordId));
             if (!record && Array.isArray(window.__TM_PENDING_RECORDS)) {
                 record = window.__TM_PENDING_RECORDS.find(item => String(item.id) === String(recordId));
@@ -1905,10 +2023,20 @@
                 alert('未找到待确认单据，请刷新重试');
                 return;
             }
+            if (String(record.status || '').toUpperCase() === 'EXTRACTING') {
+                alert('该单据仍在 AI 识别中，请稍后再确认');
+                return;
+            }
             const parsed = parseAiEnvelope(record.aiResult || record.ai_result || '');
             auditState.currentRecordId = record.id;
             auditState.aiEnvelope = parsed.envelope;
             auditState.aiStructured = parsed.data;
+            auditState.activeNewProductIndex = 0;
+            auditState.newProductDrafts = {};
+            auditState.savedNewProductIds = {};
+            if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items)) {
+                auditState.aiStructured.order_data.items = auditState.aiStructured.order_data.items.map(normalizeAuditOrderItem);
+            }
 
             const orderData = auditState.aiStructured.order_data || {};
             const customerData = auditState.aiStructured.customer_data || {};
@@ -1950,9 +2078,12 @@
             setInputValueIfExists('customer-address', firstNewCustomer.address || '');
             setInputValueIfExists('customer-summary', firstNewCustomer.summary || '');
 
-            const firstNewProduct = newProducts[0] || {};
-            if (typeof window.TM_initAuditProductForm === 'function') {
-                window.TM_initAuditProductForm(firstNewProduct);
+            syncAuditNewProductSubtabs();
+            if (hasNewProducts(auditState.aiStructured)) {
+                const firstNewProduct = newProducts[0] || {};
+                if (typeof window.TM_initAuditProductForm === 'function') {
+                    await window.TM_initAuditProductForm(firstNewProduct, 0);
+                }
             }
 
             const auditModal = document.getElementById('audit-modal');
@@ -1961,13 +2092,19 @@
                 return;
             }
             auditModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
             generateProductSelects();
 
-            // 按需显示tab
             const customerTabBtn = document.getElementById('tab-customer');
             const productTabBtn = document.getElementById('tab-product');
             if (customerTabBtn) customerTabBtn.style.display = hasNewCustomers(auditState.aiStructured) ? '' : 'none';
-            if (productTabBtn) productTabBtn.style.display = hasNewProducts(auditState.aiStructured) ? '' : 'none';
+            if (productTabBtn) {
+                if (hasNewProducts(auditState.aiStructured)) {
+                    productTabBtn.classList.remove('hidden');
+                } else {
+                    productTabBtn.classList.add('hidden');
+                }
+            }
             switchAuditTab('order');
         }
         window.__TM_DASHBOARD_OPEN_AUDIT = openAuditModal;
@@ -1983,6 +2120,7 @@
             const items = Array.isArray(orderData.items) ? orderData.items : [];
 
             items.forEach((item, index) => {
+                normalizeAuditOrderItem(item);
                 const displayMatchedName = (item.matched_product_name || '').trim();
                 const productNameValue = (displayMatchedName || item.product_name_raw || '').trim();
                 const matchedProductId = item.matched_product_id ? Number(item.matched_product_id) : 0;
@@ -2105,9 +2243,13 @@
         // 关闭审核弹窗
         function closeAuditModal() {
             document.getElementById('audit-modal').classList.add('hidden');
+            document.body.style.overflow = '';
             auditState.currentRecordId = null;
             auditState.aiEnvelope = null;
             auditState.aiStructured = null;
+            auditState.activeNewProductIndex = 0;
+            auditState.newProductDrafts = {};
+            auditState.savedNewProductIds = {};
         }
 
         // 切换审核标签页
@@ -2126,11 +2268,8 @@
             if (tabName === 'product') {
                 const pane = document.getElementById('confirm-product-tab');
                 if (pane) pane.classList.remove('hidden');
-                const np = (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found))
-                    ? auditState.aiStructured.new_products_found[0] : {};
-                if (typeof window.TM_initAuditProductForm === 'function') {
-                    window.TM_initAuditProductForm(np);
-                }
+                syncAuditNewProductSubtabs();
+                switchAuditNewProductIndex(auditState.activeNewProductIndex || 0);
             } else if (tabName === 'customer') {
                 const pane = document.getElementById('confirm-customer-tab');
                 if (pane) pane.classList.remove('hidden');
@@ -2211,56 +2350,64 @@
             if (typeof TM_syncProductCenterOverlays === 'function') {
                 await TM_syncProductCenterOverlays();
             }
-            const firstNewProduct = (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found))
-                ? auditState.aiStructured.new_products_found[0] : {};
-            const name = (firstNewProduct.name || firstNewProduct.product_name || '').trim();
+            var list = getAuditNewProductsList();
+            var idx = auditState.activeNewProductIndex || 0;
+            readAuditProductFormToDraft(idx);
+            var currentNp = Object.assign({}, list[idx] || {}, auditState.newProductDrafts[idx] || {});
+            var name = (currentNp.name || currentNp.product_name || '').trim();
 
             window.ProductModule.auditSaveCallback = async function (saved, productPayload) {
                 const productId = saved && (saved.productId || saved.product_id || saved.id);
                 const productName = (productPayload && productPayload.name) || (saved && saved.name) || name;
                 const productSku = (productPayload && productPayload.sku) || (saved && saved.sku) || '';
-                if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items) && productId) {
-                    auditState.aiStructured.order_data.items.forEach(function (item) {
-                        if (!item.matched_product_id || Number(item.matched_product_id) === 0) {
-                            item.matched_product_id = Number(productId);
-                            item.matched_product_name = productName;
-                            item.product_name_raw = productName;
-                            if (productSku) item.sku = productSku;
-                        }
-                    });
+                if (productId) {
+                    linkOrderItemsToSavedProduct(productId, productName, productSku, [name, currentNp.name, currentNp.product_name]);
                 }
-                if (window.productList) {
+                if (window.productList && productId) {
                     window.productList.unshift({
                         productId: Number(productId),
                         name: productName,
                         sku: productSku
                     });
                 }
-                auditState.aiStructured.new_products_found = [];
+                if (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found)) {
+                    auditState.aiStructured.new_products_found.splice(idx, 1);
+                    auditState.activeNewProductIndex = Math.min(idx, Math.max(0, auditState.aiStructured.new_products_found.length - 1));
+                }
                 await persistAuditResult();
-                var pane = document.getElementById('confirm-product-tab');
-                if (pane) pane.classList.add('hidden');
-                var tabBtn = document.getElementById('tab-product');
-                if (tabBtn) tabBtn.style.display = 'none';
-                switchAuditTab('order');
-                generateProductSelects();
-                showToast('新增产品成功，已关联到待确认单据');
+                syncAuditNewProductSubtabs();
+                if (!hasNewProducts(auditState.aiStructured)) {
+                    var tabBtn = document.getElementById('tab-product');
+                    if (tabBtn) tabBtn.classList.add('hidden');
+                    switchAuditTab('order');
+                    generateProductSelects();
+                    showToast('全部新产品已保存，请确认订单明细');
+                } else {
+                    await switchAuditNewProductIndex(auditState.activeNewProductIndex);
+                    showToast('产品「' + productName + '」已保存，请继续补全其余新产品');
+                }
                 window.ProductModule.auditSaveCallback = null;
             };
 
             await window.ProductModule.saveAuditNewProduct();
         }
 
-        // 跳过新产品创建
         async function skipNewProduct() {
-            if (auditState.aiStructured) {
-                auditState.aiStructured.new_products_found = [];
+            var list = getAuditNewProductsList();
+            var idx = auditState.activeNewProductIndex || 0;
+            if (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found)) {
+                auditState.aiStructured.new_products_found.splice(idx, 1);
+                auditState.activeNewProductIndex = Math.min(idx, Math.max(0, auditState.aiStructured.new_products_found.length - 1));
                 await persistAuditResult();
             }
-            document.getElementById('confirm-product-tab').classList.add('hidden');
-            const tabBtn = document.getElementById('tab-product');
-            if (tabBtn) tabBtn.style.display = 'none';
-            switchAuditTab('order');
+            syncAuditNewProductSubtabs();
+            if (!hasNewProducts(auditState.aiStructured)) {
+                var tabBtn = document.getElementById('tab-product');
+                if (tabBtn) tabBtn.classList.add('hidden');
+                switchAuditTab('order');
+            } else {
+                await switchAuditNewProductIndex(auditState.activeNewProductIndex);
+            }
         }
 
         // 保存新客户信息
@@ -2412,7 +2559,7 @@
                     if (auditState.currentRecordId) {
                         await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId, { method: 'DELETE' });
                     }
-                    showToast('订单确认成功，已转正式订单');
+                    showToast('订单确认成功，已生成待支付订单');
                     closeAuditModal();
                     // 重新加载待确认单据列表
                     loadPendingOrders();
@@ -3491,6 +3638,8 @@
         bindVoiceStopButton();
 
         window.parseAiEnvelope = parseAiEnvelope;
+        window.normalizeAuditOrderItem = normalizeAuditOrderItem;
+        window.syncAuditNewProductSubtabs = syncAuditNewProductSubtabs;
         window.getStructuredCustomerName = getStructuredCustomerName;
         window.hasNewCustomers = hasNewCustomers;
         window.hasNewProducts = hasNewProducts;
@@ -3503,7 +3652,7 @@
         window.loadCustomerList = loadCustomerList;
         window.loadProductList = loadProductList;
     </script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260521all"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260524wb"></script>
 </body>
 </html>
 

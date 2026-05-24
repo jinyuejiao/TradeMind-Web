@@ -836,8 +836,11 @@
         });
     };
 
-    window.TM_initAuditProductForm = async function (np) {
+    window.TM_initAuditProductForm = async function (np, index) {
         np = np || {};
+        if (window.auditState && window.auditState.newProductDrafts && index != null && window.auditState.newProductDrafts[index]) {
+            np = Object.assign({}, np, window.auditState.newProductDrafts[index]);
+        }
         try {
             await Promise.all([PM.loadCategories(), PM.loadSuppliers()]);
         } catch (e) { /* ignore */ }

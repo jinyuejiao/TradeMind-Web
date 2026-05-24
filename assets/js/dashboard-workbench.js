@@ -77,7 +77,10 @@
                     self.initialLoaded = true;
                     self.syncPolling(filtered);
                     var countEl = document.getElementById('dashboard-pending-recognition-count');
-                    if (countEl) countEl.textContent = String(filtered.length);
+                    if (countEl) {
+                        var extractingN = filtered.filter(function (r) { return r.status === 'EXTRACTING'; }).length;
+                        countEl.textContent = String(extractingN);
+                    }
                 })
                 .catch(function (err) {
                     list.classList.remove('tm-pending-list-refreshing');
@@ -507,18 +510,7 @@
         if (window.auditState && window.hasNewProducts && window.hasNewProducts(window.auditState.aiStructured)) {
             var np = window.auditState.aiStructured.new_products_found;
             if (Array.isArray(np) && np.length) {
-                var first = np[0];
-                var nameInp = document.getElementById('product-name');
-                var skuInp = document.getElementById('product-sku');
-                var baseInp = document.getElementById('product-base-unit');
-                var nm = nameInp && nameInp.value ? nameInp.value.trim() : (first.name || '');
-                var sk = skuInp && skuInp.value ? skuInp.value.trim() : (first.sku || '');
-                var bu = baseInp && baseInp.value ? baseInp.value.trim() : '件';
-                await quickSaveProduct(nm, sk, bu);
-                window.auditState.aiStructured.new_products_found = [];
-                if (typeof window.persistAuditResult === 'function') await window.persistAuditResult();
-                var tabBtn = document.getElementById('tab-product');
-                if (tabBtn) tabBtn.style.display = 'none';
+                throw new Error('尚有 ' + np.length + ' 个新产品未保存，请先在「产品信息」标签中逐项保存');
             }
         }
     }
@@ -546,6 +538,9 @@
             var items = Array.isArray(orderData.items) ? orderData.items : [];
 
             items.forEach(function (item, index) {
+                if (typeof window.normalizeAuditOrderItem === 'function') {
+                    window.normalizeAuditOrderItem(item);
+                }
                 var displayMatchedName = (item.matched_product_name || '').trim();
                 var productNameValue = (displayMatchedName || item.product_name_raw || '').trim();
                 var matchedProductId = item.matched_product_id ? Number(item.matched_product_id) : 0;
@@ -721,6 +716,51 @@
         totalEl.textContent = '¥' + sum.toFixed(2);
     }
 
+    async function tmApplyManualOrderLastPrices() {
+        var custSel = document.getElementById('manual-order-customer');
+        if (!custSel || !/^\d+$/.test(custSel.value)) return;
+        var custId = parseInt(custSel.value, 10);
+        var tbody = document.getElementById('manual-order-tbody');
+        if (!tbody) return;
+        var productIds = [];
+        var rowMeta = [];
+        tbody.querySelectorAll('tr').forEach(function (row) {
+            var sel = row.querySelector('.manual-product-select');
+            var priceInp = row.querySelector('.manual-price');
+            if (!sel || !priceInp || !/^\d+$/.test(sel.value)) return;
+            var pid = parseInt(sel.value, 10);
+            productIds.push(pid);
+            rowMeta.push({ priceInp: priceInp, productId: pid, sel: sel });
+        });
+        if (!productIds.length) return;
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/orders/last-unit-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ custId: custId, productIds: productIds })
+            });
+            var data = await (window.handleApiResponse ? window.handleApiResponse(resp) : resp.json());
+            var map = (data && data.data) ? data.data : (data || {});
+            rowMeta.forEach(function (meta) {
+                var key = String(meta.productId);
+                var price = map[key] != null ? parseFloat(map[key]) : null;
+                if (price != null && price > 0) {
+                    meta.priceInp.value = price.toFixed(2);
+                    meta.priceInp.title = '已按该客户最近一次拿货价填充';
+                } else {
+                    var opt = meta.sel.options[meta.sel.selectedIndex];
+                    var p = opt && opt.getAttribute('data-price');
+                    if (p != null && p !== '' && (!meta.priceInp.value || parseFloat(meta.priceInp.value) <= 0)) {
+                        meta.priceInp.value = p;
+                    }
+                }
+            });
+            tmRecalcManualOrderTotal();
+        } catch (e) {
+            console.warn('[ManualOrder] 历史价查询失败', e);
+        }
+    }
+
     function tmBindManualOrderRow(row) {
         if (!row) return;
         var sel = row.querySelector('.manual-product-select');
@@ -732,6 +772,7 @@
                 var p = opt && opt.getAttribute('data-price');
                 if (priceInp && p != null && p !== '') priceInp.value = p;
                 tmRecalcManualOrderTotal();
+                tmApplyManualOrderLastPrices();
             });
         }
         [priceInp, qtyInp].forEach(function (inp) {
@@ -788,6 +829,13 @@
         if (typeof window.loadCustomerList === 'function') await window.loadCustomerList();
         if (typeof window.loadProductList === 'function') await window.loadProductList();
         tmFillManualOrderCustomers();
+        var custSel = document.getElementById('manual-order-customer');
+        if (custSel && !custSel.__tmManualCustBound) {
+            custSel.__tmManualCustBound = true;
+            custSel.addEventListener('change', function () {
+                setTimeout(tmApplyManualOrderLastPrices, 80);
+            });
+        }
         var tbody = document.getElementById('manual-order-tbody');
         if (tbody) {
             tbody.innerHTML = '';
@@ -835,7 +883,7 @@
                     quantity: qty,
                     unitPrice: unitPrice,
                     totalAmount: lineTotal,
-                    itemStatus: statusSel && statusSel.value ? statusSel.value : 'D010002'
+                    itemStatus: 'D011001'
                 });
             });
         }
@@ -848,7 +896,7 @@
             order: {
                 custId: custId,
                 totalAmount: grand,
-                orderStatus: statusSel && statusSel.value ? statusSel.value : 'D010002',
+                orderStatus: statusSel && statusSel.value ? statusSel.value : 'D010001',
                 deliveryDate: dateEl && dateEl.value ? (dateEl.value + 'T12:00:00') : null
             },
             orderItems: items
