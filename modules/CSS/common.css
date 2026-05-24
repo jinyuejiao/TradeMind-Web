@@ -263,6 +263,35 @@ body {
     border: 1px solid #f59e0b;
 }
 
+/* 会员中心推荐条（对齐 UI 工程 referral-rewards hero · 品牌青） */
+#member-modal .tm-member-referral-banner.member-referral-hero,
+#subscription-modal .tm-member-referral-banner.member-referral-hero {
+    margin-top: 0;
+}
+
+/* 主壳顶栏：手机端固定展示「商贸智脑」品牌（不依赖 Tailwind md:hidden） */
+@media (max-width: 767px) {
+    #tm-app-header,
+    #tm-app-header.tm-app-header {
+        display: flex !important;
+        visibility: visible !important;
+        min-height: var(--tm-mobile-header-h, 3.5rem);
+    }
+
+    #tm-app-header .tm-app-header-brand {
+        display: flex !important;
+        flex: 1 1 auto;
+        min-width: 0;
+        visibility: visible !important;
+    }
+}
+
+@media (min-width: 768px) {
+    #tm-app-header .tm-app-header-brand {
+        display: none !important;
+    }
+}
+
 .poster-features-grid {
     flex-shrink: 0;
     margin-bottom: 0.25rem;

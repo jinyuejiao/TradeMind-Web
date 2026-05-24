@@ -672,30 +672,7 @@ const MODAL_TEMPLATE = '<!-- ================= [会员订阅中心弹窗] ======
 '            <div id="tm-member-plan-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[120px]">' +
 '                <div class="col-span-full flex items-center justify-center text-xs text-slate-400 py-12">正在加载会员方案…</div>' +
 '            </div>' +
-'            <!-- 2. 推荐官计划 (保留金色 UI) -->' +
-'            <div class="gold-referral-card rounded-[2rem] p-5 relative overflow-hidden shadow-sm">' +
-'                <div class="absolute -right-8 -top-8 opacity-10 rotate-12"><i class="ph ph-medal text-[10rem] text-amber-600"></i></div>' +
-'                <div class="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">' +
-'                    <div class="flex items-center gap-4">' +
-'                        <div class="w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-[0_8px_24px_rgba(30,64,175,0.35)] bg-gradient-to-br from-indigo-600 via-blue-500 to-cyan-400 text-white"><i class="ph ph-rocket-launch text-2xl"></i></div>' +
-'                        <div class="text-left">' +
-'                            <h3 class="text-base font-black text-amber-900 flex items-center gap-2">巨猿推荐官计划 <i class="ph ph-sparkle-fill text-amber-500 text-xs"></i></h3>' +
-'                            <p class="text-[11px] text-amber-800 leading-tight">每成功邀请一位用户订阅，立返 <span class="font-black text-amber-900 underline decoration-amber-400">¥ 100</span> 现金奖励。</p>' +
-'                        </div>' +
-'                    </div>' +
-'                    <div class="flex flex-col gap-3 w-full md:flex-row md:items-stretch md:w-auto">' +
-'                        <div class="bg-white/70 backdrop-blur-sm px-5 py-3 rounded-xl border border-amber-300 text-center w-full md:flex-none md:min-w-[140px]">' +
-'                            <p class="text-[8px] font-black text-amber-700 uppercase tracking-widest mb-1">专属推荐码</p>' +
-'                            <p id="referral-code" class="text-lg font-mono font-black text-amber-900 tracking-tighter">TM-100001</p>' +
-'                        </div>' +
-'                        <div class="grid grid-cols-2 gap-2 w-full md:flex md:gap-3">' +
-'                        <button type="button" onclick="openReferralListModal()" class="w-full px-3 py-3 rounded-2xl border-2 border-amber-700/35 bg-white/90 text-amber-900 text-xs font-black hover:bg-amber-50 transition flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph ph-users-three text-base shrink-0"></i><span>推荐名单</span></button>' +
-'                        <button type="button" onclick="showPoster()" class="w-full px-3 py-3 bg-amber-600 text-white rounded-2xl font-black text-xs shadow-lg flex items-center justify-center gap-1.5 hover:bg-amber-700 active:scale-95 transition-all whitespace-nowrap">' +
-'                            <i class="ph ph-image-square-bold text-base shrink-0"></i><span>生成海报</span></button>' +
-'                        </div>' +
-'                    </div>' +
-'                </div>' +
-'            </div>' +
+'            <div data-tm-member-referral-slot></div>' +
 '        </div>' +
 '        <div class="p-4 bg-slate-50 border-t border-slate-100 text-center"><p class="text-[9px] text-slate-300 font-bold uppercase tracking-widest">TradeMind Security & Billing Terminal</p></div>' +
 '    </div>' +
@@ -1636,10 +1613,38 @@ function tmRenderPlanCard(plan, ctx) {
         '</div>' + btn + '</div></div>';
 }
 
+window.tmInjectMemberReferralBanner = function tmInjectMemberReferralBanner(container) {
+    var root = container || document;
+    var slots = root.querySelectorAll ? root.querySelectorAll('[data-tm-member-referral-slot]') : [];
+    if (!slots.length) return Promise.resolve();
+    var url = '/modules/membership/member-referral-banner-snippet.html?v=20260524ui';
+    if (typeof resolveStaticPageUrl === 'function') {
+        try {
+            url = resolveStaticPageUrl('modules/membership/member-referral-banner-snippet.html?v=20260524ui');
+        } catch (eUrl) { /* ignore */ }
+    }
+    var tasks = [];
+    slots.forEach(function (slot) {
+        if (slot.getAttribute('data-tm-referral-loaded') === '1') return;
+        tasks.push(
+            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+                .then(function (res) { return res.ok ? res.text() : ''; })
+                .then(function (html) {
+                    if (!html || !String(html).trim()) return;
+                    slot.innerHTML = String(html).trim();
+                    slot.setAttribute('data-tm-referral-loaded', '1');
+                })
+                .catch(function () { /* ignore */ })
+        );
+    });
+    return Promise.all(tasks);
+}
+
 async function tmHydrateMemberCenter(modalEl) {
     var strip = modalEl.querySelector('#tm-member-status-strip');
     var grid = modalEl.querySelector('#tm-member-plan-cards');
     if (!strip || !grid) return;
+    await tmInjectMemberReferralBanner(modalEl);
 
     var merchantType = 'WHOLESALE';
     try {
@@ -1983,6 +1988,7 @@ async function openSubscriptionModal() {
         if (window.TradeMindUI && TradeMindUI.wrapModal) TradeMindUI.wrapModal('subscription-modal');
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        await tmInjectMemberReferralBanner(modal);
         await tmHydrateMemberCenter(modal);
     } catch (error) {
         console.error('openSubscriptionModal:', error);
@@ -2070,6 +2076,7 @@ async function openMemberModal() {
         }
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        await tmInjectMemberReferralBanner(modal);
         await tmHydrateMemberCenter(modal);
     } catch (error) {
         console.error('openMemberModal:', error);

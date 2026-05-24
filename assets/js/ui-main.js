@@ -863,6 +863,12 @@ function TM_bootIndexAppShell() {
     if (typeof TM_syncProductCenterOverlays === 'function') {
         TM_syncProductCenterOverlays();
     }
+    if (typeof window.tmInjectMemberReferralBanner === 'function') {
+        var memberModal = document.getElementById('member-modal');
+        if (memberModal) {
+            window.tmInjectMemberReferralBanner(memberModal);
+        }
+    }
     switchTab(getInitialTabFromHash());
 }
 
