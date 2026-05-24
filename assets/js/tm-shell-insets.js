@@ -44,7 +44,7 @@
 
         var bottomReserve = compH;
         if (document.getElementById('tm-onboarding-fab')) {
-            bottomReserve = Math.max(bottomReserve, 52);
+            bottomReserve = Math.max(bottomReserve, 64);
         }
         root.style.setProperty('--tm-shell-bottom-reserve', bottomReserve + 'px');
     }

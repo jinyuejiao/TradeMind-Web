@@ -198,12 +198,15 @@
         min-height: 100dvh;
     }
 
+    /* 顶栏参与文档流（不用 fixed），避免内容区 padding 与实测高度不同步导致顶部被挡 */
     body.tm-layout-mobile .tm-app-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        flex-shrink: 0;
         z-index: 35;
+        width: 100%;
         min-height: var(--tm-mobile-header-h);
         height: auto;
         padding-top: env(safe-area-inset-top, 0px);
@@ -216,44 +219,54 @@
     body.tm-layout-mobile .tm-app-content-area {
         flex: 1;
         min-height: 0;
-        /* --tm-header-h 由 tm-shell-insets 实测（已含 safe-area） */
-        padding-top: calc(var(--tm-header-h, 3.5rem) + 0.5rem) !important;
+        padding-top: 0.5rem !important;
         padding-bottom: calc(
             var(--tm-tabbar-h, 4.25rem) + var(--tm-safe-b) + var(--tm-shell-bottom-reserve, 0px) + 0.75rem
         ) !important;
         -webkit-overflow-scrolling: touch;
     }
 
-    body.tm-layout-mobile .view-section {
-        scroll-margin-top: calc(var(--tm-header-h, 3.5rem) + 0.5rem);
+    /* 必须压过下方 :not(.hidden) 的 display:flex，否则多 Tab 会叠在一起 */
+    body.tm-layout-mobile #content-area > .view-section.hidden {
+        display: none !important;
     }
 
-    body.tm-layout-mobile #view-biz.view-section,
-    body.tm-layout-mobile #view-crm.view-section,
-    body.tm-layout-mobile #view-supplier.view-section {
-        flex: 1;
+    body.tm-layout-mobile #view-biz.view-section:not(.hidden),
+    body.tm-layout-mobile #view-crm.view-section:not(.hidden),
+    body.tm-layout-mobile #view-supplier.view-section:not(.hidden) {
+        flex: 1 1 auto;
         min-height: 0;
         display: flex;
         flex-direction: column;
         padding: 0 !important;
         margin: 0;
+        overflow: hidden;
     }
 
-    body.tm-layout-mobile #view-biz iframe.tm-module-frame,
-    body.tm-layout-mobile #view-crm iframe.tm-module-frame,
-    body.tm-layout-mobile #view-supplier iframe.tm-module-frame {
-        flex: 1;
+    body.tm-layout-mobile #view-biz.view-section:not(.hidden) iframe.tm-module-frame,
+    body.tm-layout-mobile #view-crm.view-section:not(.hidden) iframe.tm-module-frame,
+    body.tm-layout-mobile #view-supplier.view-section:not(.hidden) iframe.tm-module-frame {
+        flex: 1 1 auto;
         width: 100%;
-        height: auto !important;
+        height: 100% !important;
         min-height: 0;
         margin-bottom: 0;
+        border: 0;
     }
 
     body.tm-layout-mobile #content-area > footer.tm-compliance-footer {
         display: none !important;
     }
 
-    body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll {
+    body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll:not(.hidden) {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll:not(.hidden) #supply-inner-scroll {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
@@ -264,9 +277,11 @@
         display: none !important;
     }
 
-    body.tm-layout-mobile #view-dashboard.view-section {
+    body.tm-layout-mobile #view-dashboard.view-section:not(.hidden) {
         flex: none;
         min-height: min-content;
+        display: block;
+        padding-bottom: 0.5rem;
     }
 
     /* auth.js 注入的独立模块顶栏 */

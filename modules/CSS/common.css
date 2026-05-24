@@ -37,6 +37,17 @@
         --tm-mobile-nav-h: 4.25rem;
     }
 
+    body.tm-layout-mobile #content-area > .view-section.hidden {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
     /* 顶栏/底栏留白由 body.tm-layout-mobile + MobileAdapt/mobile.css 统一处理 */
     body:not(.tm-layout-mobile) .tm-app-content-area {
         padding-bottom: calc(var(--tm-tabbar-h) + var(--tm-safe-b) + 0.25rem) !important;
