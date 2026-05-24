@@ -305,44 +305,78 @@
     -webkit-overflow-scrolling: touch;
 }
 
-/* 进货单弹窗：嵌入主壳 iframe 时底栏留白仅 safe-area（主壳底栏由 TM_notifyEmbedModal 隐藏） */
-html.tm-embedded #purchase-modal.tm-purchase-modal {
+/* 进货单弹窗：全高 sheet + 中间滚动 + 底栏固定（对齐 UI 工程 manual-order 弹窗） */
+html.tm-embedded #purchase-modal.tm-purchase-modal,
+#purchase-modal.tm-purchase-modal {
     z-index: 200;
+    height: 100%;
+    max-height: 100%;
 }
 
-html.tm-embedded #purchase-modal .tm-purchase-modal-footer {
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
-}
-
-#purchase-modal.tm-purchase-modal .modal-content-box {
+#purchase-modal.tm-purchase-modal .modal-content-box,
+#purchase-modal.tm-purchase-modal .tm-dialog-panel {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    max-height: min(96dvh, 100%);
+    height: 100%;
+    max-height: 100%;
 }
 
-#purchase-modal.tm-purchase-modal .tm-product-edit-footer {
+#purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-items-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+#purchase-modal.tm-purchase-modal #purchase-items-table .product-select {
+    min-width: 9.5rem;
+}
+
+#purchase-modal.tm-purchase-modal .tm-product-edit-footer,
+#purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
     flex: 0 0 auto;
+    flex-shrink: 0;
     position: relative;
-    z-index: 2;
+    z-index: 5;
     background: #fff;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+}
+
+html.tm-embedded #purchase-modal .tm-purchase-modal-footer,
+html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
 }
 
 @media (max-width: 767px) {
     #purchase-modal.tm-purchase-modal {
-        align-items: flex-end !important;
+        align-items: stretch !important;
+        justify-content: flex-end !important;
         padding: 0 !important;
     }
 
-    #purchase-modal.tm-purchase-modal .modal-content-box {
+    #purchase-modal.tm-purchase-modal .modal-content-box,
+    #purchase-modal.tm-purchase-modal .tm-dialog-panel {
         width: 100%;
-        max-height: min(92dvh, 100%);
+        height: 100%;
+        max-height: 100%;
         border-radius: 1rem 1rem 0 0;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
-        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer .tm-btn-primary,
+    #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer .tm-btn-secondary {
+        min-height: 44px;
     }
 
     #tm-main-scroll,

@@ -50,7 +50,7 @@
     </script>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <link rel="stylesheet" href="../CSS/common.css?v=20260524shell3">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260524supp">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260524supp2">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/tm-format.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
@@ -151,7 +151,7 @@
 
     <div id="purchase-modal" class="tm-dialog-root tm-product-edit-modal tm-purchase-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="closePurchaseModal()"></div>
-        <div class="tm-dialog-panel relative bg-white w-full max-w-5xl max-h-[min(96dvh,100%)] md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
+        <div class="tm-dialog-panel relative bg-white w-full max-w-5xl h-full max-h-full md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
             <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-9 h-9 md:w-10 md:h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-receipt text-lg" aria-hidden="true"></i></div>
@@ -162,7 +162,7 @@
                 </div>
                 <button type="button" onclick="closePurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
             </div>
-            <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-6 md:space-y-8">
+            <div class="tm-purchase-modal-body flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-6 md:space-y-8">
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div class="md:col-span-5 space-y-2">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">供应商</label>
@@ -183,17 +183,18 @@
                         <span>进货商品明细</span>
                         <button type="button" onclick="addPurchaseItem()" class="text-[#0D9488] font-bold hover:underline">+ 添加商品行</button>
                     </h3>
-                    <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                        <table class="w-full text-xs" id="purchase-items-table">
+                    <div class="tm-purchase-items-scroll bg-slate-50 rounded-2xl border border-slate-100">
+                        <p class="md:hidden text-[10px] text-slate-400 px-3 pt-2 pb-0">左右滑动查看完整列</p>
+                        <table class="w-full text-xs min-w-[36rem]" id="purchase-items-table">
                             <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
                                 <tr>
-                                    <th class="px-4 py-3 text-left">产品</th>
-                                    <th class="px-4 py-3 text-center w-[9em] min-w-[9em] max-w-[11em]">数量</th>
-                                    <th class="px-4 py-3 text-center w-28">进货单价</th>
-                                    <th class="px-4 py-3 text-center w-28">单位</th>
-                                    <th class="px-4 py-3 text-center w-56 min-w-[14rem]">批次号</th>
-                                    <th class="px-4 py-3 text-right">小计</th>
-                                    <th class="px-4 py-3 text-center w-14">删除</th>
+                                    <th class="px-3 py-3 text-left min-w-[10rem]">产品</th>
+                                    <th class="px-3 py-3 text-center w-24 min-w-[6rem]">数量</th>
+                                    <th class="px-3 py-3 text-center w-28 min-w-[7rem]">进货单价</th>
+                                    <th class="px-3 py-3 text-center w-24 min-w-[6rem]">单位</th>
+                                    <th class="px-3 py-3 text-center w-40 min-w-[9rem]">批次号</th>
+                                    <th class="px-3 py-3 text-right w-24 min-w-[6rem]">小计</th>
+                                    <th class="px-3 py-3 text-center w-12 min-w-[3rem]">删除</th>
                                 </tr>
                             </thead>
                             <tbody id="purchase-items-tbody" class="divide-y divide-slate-100"></tbody>
@@ -217,10 +218,10 @@
                     <select id="purchase-account" class="form-input w-full max-w-lg"><option value="">--- 请选择付款账户 ---</option></select>
                 </div>
             </div>
-            <div class="tm-product-edit-footer tm-purchase-modal-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0">
-                <div class="flex gap-2 md:gap-3">
-                    <button type="button" onclick="closePurchaseModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3 text-xs">取消</button>
-                    <button type="button" onclick="savePurchase()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3 text-xs shadow-lg shadow-brand-500/25 active:scale-[0.98]">保存进货单据</button>
+            <div class="tm-product-edit-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0">
+                <div class="flex gap-2 md:gap-3 w-full">
+                    <button type="button" onclick="closePurchaseModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3.5 text-xs font-bold min-h-[44px]">取消</button>
+                    <button type="button" onclick="savePurchase()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3.5 text-xs font-black shadow-lg shadow-brand-500/25 active:scale-[0.98] min-h-[44px]">保存进货单据</button>
                 </div>
             </div>
         </div>

@@ -628,7 +628,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260524supp',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260524supp2',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -783,9 +783,7 @@ function TM_setShellChromeHidden(hidden) {
         return;
     }
     var tabbar = document.getElementById('tm-app-tabbar');
-    var compliance = document.getElementById('tm-compliance-sticky');
     if (tabbar) tabbar.classList.toggle('tm-shell-chrome-hidden', !!hidden);
-    if (compliance) compliance.classList.toggle('tm-shell-chrome-hidden', !!hidden);
     document.body.classList.toggle('tm-embed-modal-open', !!hidden);
 }
 
@@ -883,13 +881,7 @@ function switchTab(tabId) {
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
 
-    var stickyCompliance = document.getElementById('tm-compliance-sticky');
-    if (stickyCompliance) {
-        var showSticky = window.innerWidth < 768 && (tabId === 'biz' || tabId === 'supplier');
-        stickyCompliance.classList.toggle('tm-compliance-sticky--visible', showSticky);
-        document.body.classList.toggle('tm-compliance-visible', showSticky);
-    }
-    if (typeof window.TM_syncAppShellMetrics === 'function') {
+  if (typeof window.TM_syncAppShellMetrics === 'function') {
         window.TM_syncAppShellMetrics();
     }
 

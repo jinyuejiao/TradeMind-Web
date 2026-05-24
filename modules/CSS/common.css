@@ -441,35 +441,9 @@ textarea {
     }
 }
 
-/* 手机端 embed 场景：底栏上方固定备案条 */
-#tm-compliance-sticky.tm-compliance-sticky {
-    display: none;
-}
-
-@media (max-width: 767px) {
-    #tm-compliance-sticky.tm-compliance-sticky.tm-compliance-sticky--visible {
-        display: block;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: var(--tm-tabbar-h, 4.25rem);
-        z-index: 90;
-        padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
-        background: rgba(248, 250, 252, 0.96);
-        border-top: 1px solid #e2e8f0;
-        font-size: 10px;
-        line-height: 1.5;
-    }
-
-    #tm-compliance-sticky.tm-compliance-sticky .tm-compliance-footer-inner {
-        flex-direction: column;
-        gap: 0.35rem;
-        padding: 0;
-    }
-
-    body.tm-layout-mobile.tm-compliance-visible {
-        --tm-shell-bottom-reserve: max(var(--tm-shell-bottom-reserve, 0px), var(--tm-compliance-sticky-h, 0px));
-    }
+/* 手机端不再使用底栏上方固定备案条（已改为 content-area 内流式 footer） */
+#tm-compliance-sticky {
+    display: none !important;
 }
 
 .tm-shell-chrome-hidden {
@@ -506,6 +480,12 @@ textarea {
 
     html.tm-embedded .tm-modal-footer-safe,
     html.tm-embedded .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* 全屏 sheet 弹窗（进货单等）在 iframe 内占满高度，底栏不叠加主壳 tabbar 留白 */
+    html.tm-embedded #purchase-modal.tm-purchase-modal .tm-modal-footer-safe,
+    html.tm-embedded #purchase-modal .tm-purchase-modal-footer {
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
     }
 

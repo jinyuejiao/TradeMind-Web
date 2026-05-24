@@ -255,8 +255,23 @@
         border: 0;
     }
 
+    /* 备案信息随内容流式排在底部（与 PC 一致），不固定在底栏上方 */
+    body.tm-layout-mobile .tm-app-content-area {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem));
+    }
+
     body.tm-layout-mobile #content-area > footer.tm-compliance-footer {
-        display: none !important;
+        display: block;
+        flex-shrink: 0;
+        margin-top: auto;
+        padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+        text-align: center;
+        font-size: 10px;
+        color: #94a3b8;
+        background: transparent;
+        border-top: none;
     }
 
     body.tm-layout-mobile #view-supply.view-section.tm-view-supply-scroll:not(.hidden) {

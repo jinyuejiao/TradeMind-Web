@@ -293,9 +293,7 @@
 .tm-onboarding-checklist-fab {
     position: fixed;
     right: 1rem;
-    bottom: calc(
-        var(--tm-tabbar-h, 4.25rem) + var(--tm-compliance-sticky-h, 0px) + env(safe-area-inset-bottom, 0px) + 0.75rem
-    );
+    bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.75rem);
     z-index: 94;
     display: flex;
     align-items: center;
@@ -320,9 +318,7 @@
 .tm-onboarding-checklist-panel {
     position: fixed;
     right: 1rem;
-    bottom: calc(
-        var(--tm-tabbar-h, 4.25rem) + var(--tm-compliance-sticky-h, 0px) + env(safe-area-inset-bottom, 0px) + 3.5rem
-    );
+    bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 3.5rem);
     z-index: 95;
     width: min(18rem, calc(100vw - 2rem));
     background: #fff;
@@ -406,7 +402,7 @@
     position: fixed;
     left: 0.75rem;
     right: 0.75rem;
-    bottom: calc(var(--tm-tabbar-h, 4.25rem) + var(--tm-compliance-sticky-h, 0px) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+    bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.75rem);
     top: auto !important;
     width: auto;
     max-width: none;
