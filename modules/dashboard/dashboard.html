@@ -644,7 +644,7 @@
     </div>
 
     <!-- ================= [弹窗 1] 语音输入交互 ================= -->
-    <div id="voice-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur">
+    <div id="voice-modal" class="tm-dialog-root hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur" data-tm-dialog-variant="center">
         <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center fade-in">
             <div id="voice-ready-ui">
                 <div id="voice-onboarding-tips" class="hidden">
@@ -688,7 +688,7 @@
     </div>
 
     <!-- ================= [弹窗 2] 拍照识别弹窗 ================= -->
-    <div id="photo-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur">
+    <div id="photo-modal" class="tm-dialog-root hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur" data-tm-dialog-variant="center">
         <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden fade-in modal-content-box text-left">
             <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h3 class="font-black text-slate-800 text-lg tracking-tight">选择识别来源</h3>
@@ -912,7 +912,7 @@
         const VOICE_STOP_FALLBACK_DELAYS_DESKTOP = [400];
         const VOICE_STOP_FALLBACK_DELAYS_MOBILE = [800, 2000, 4000, 6000];
         const VOICE_IOS_FINALIZE_RETRY_MS = 200;
-        const VOICE_IOS_FINALIZE_MAX_RETRIES = 25;
+        const VOICE_IOS_FINALIZE_MAX_RETRIES = 40;
         var voiceStopFallbackTimers = [];
 
         function tmVoiceIsIosWebKit() {
@@ -933,11 +933,11 @@
                     return false;
                 }
             } catch (lsErr) { /* ignore */ }
-            if (tmVoiceIsIosWebKit()) {
+            var ua = navigator.userAgent || '';
+            if (/iPhone|iPad|iPod|Android/i.test(ua)) {
                 return true;
             }
-            var ua = navigator.userAgent || '';
-            if (/Android/i.test(ua) && !/Chrome\/[\d.]+ Mobile/i.test(ua) && /wv/i.test(ua)) {
+            if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches) {
                 return true;
             }
             return false;
@@ -1200,14 +1200,19 @@
                                 if (ossRegion.indexOf('oss-') !== 0) {
                                     ossRegion = 'oss-' + ossRegion;
                                 }
-                                OSSService = new OSS({
+                                var ossEndpoint = tmNormalizeOssEndpointForBrowser(baseConfig.endpoint || '');
+                                var ossOpts = {
                                     region: ossRegion,
                                     accessKeyId: stsCredentials.accessKeyId,
                                     accessKeySecret: stsCredentials.accessKeySecret,
                                     stsToken: stsCredentials.securityToken,
                                     bucket: baseConfig.bucketName || 'trademind-ai',
                                     secure: true
-                                });
+                                };
+                                if (ossEndpoint) {
+                                    ossOpts.endpoint = ossEndpoint;
+                                }
+                                OSSService = new OSS(ossOpts);
                                 console.log('OSS 服务初始化成功, region=', ossRegion, 'bucket=', baseConfig.bucketName);
                             }
                         }
@@ -2670,6 +2675,15 @@
                     if (retryIndex === 0 || retryIndex % 5 === 0) {
                         setVoiceProcessingText('正在写入录音数据…');
                     }
+                    if (tmVoiceUseMobileRecorderStrategy() && recorder &&
+                        recorder.state !== 'inactive' &&
+                        typeof recorder.requestData === 'function') {
+                        try {
+                            recorder.requestData();
+                        } catch (rdRetryErr) {
+                            console.warn('[Voice] 收尾重试 requestData:', rdRetryErr);
+                        }
+                    }
                     setTimeout(function () {
                         attemptFinalize(retryIndex + 1);
                     }, retryMs);
@@ -2758,8 +2772,8 @@
                 };
 
                 if (tmVoiceUseMobileRecorderStrategy()) {
-                    recorder.start();
-                    console.log('[Voice] 开始录音 (mobile/WebKit 不分片), state=', recorder.state, 'mime=', voiceRecorderMime);
+                    recorder.start(250);
+                    console.log('[Voice] 开始录音 (mobile 分片 250ms), state=', recorder.state, 'mime=', voiceRecorderMime);
                 } else {
                     recorder.start(500);
                     console.log('[Voice] 开始录音 (desktop 分片 500ms), state=', recorder.state, 'mime=', voiceRecorderMime);
@@ -2895,51 +2909,32 @@
 
         async function uploadVoiceBlobToStorage(audioBlob) {
             var ext = tmVoiceBlobExtension(audioBlob);
-            if (tmVoiceUseMobileRecorderStrategy()) {
-                console.log('[Voice] 移动端：经服务端上传 OSS');
-                var formData = new FormData();
-                formData.append('file', audioBlob, 'voice-' + Date.now() + '.' + ext);
-                var uploadResp = await window.wrappedFetch('/api/v1/ai/voice/upload', {
-                    method: 'POST',
-                    signal: voiceAbortController && voiceAbortController.signal,
-                    body: formData
-                });
-                var uploadData = null;
-                if (typeof window.handleApiResponse === 'function') {
-                    uploadData = await window.handleApiResponse(uploadResp);
-                } else {
-                    if (!uploadResp.ok) {
-                        throw new Error('语音上传失败，状态码: ' + uploadResp.status);
-                    }
-                    uploadData = await uploadResp.json();
-                    if (uploadData && uploadData.success === false) {
-                        throw new Error(uploadData.message || '语音上传失败');
-                    }
+            console.log('[Voice] 经服务端上传 OSS, size=', audioBlob && audioBlob.size, 'ext=', ext);
+            var formData = new FormData();
+            formData.append('file', audioBlob, 'voice-' + Date.now() + '.' + ext);
+            var uploadResp = await window.wrappedFetch('/api/v1/ai/voice/upload', {
+                method: 'POST',
+                signal: voiceAbortController && voiceAbortController.signal,
+                body: formData
+            });
+            var uploadData = null;
+            if (typeof window.handleApiResponse === 'function') {
+                uploadData = await window.handleApiResponse(uploadResp);
+            } else {
+                if (!uploadResp.ok) {
+                    throw new Error('语音上传失败，状态码: ' + uploadResp.status);
                 }
-                var urlFromServer = uploadData && uploadData.data && uploadData.data.url;
-                if (!urlFromServer) {
-                    throw new Error('服务端未返回音频地址');
-                }
-                console.log('[Voice] 服务端上传完成:', urlFromServer);
-                return urlFromServer;
-            }
-            if (typeof OSS === 'undefined') {
-                throw new Error('上传组件未就绪，请刷新页面后重试');
-            }
-            if (!OSSService) {
-                await initOSSService();
-                if (!OSSService) {
-                    throw new Error('OSS 服务初始化失败，请检查网络后重试');
+                uploadData = await uploadResp.json();
+                if (uploadData && uploadData.success === false) {
+                    throw new Error(uploadData.message || '语音上传失败');
                 }
             }
-            var fileName = 'voice-' + Date.now() + '.' + ext;
-            console.log('[Voice] 桌面端：浏览器直传 OSS', fileName);
-            var result = await OSSService.put(fileName, audioBlob);
-            var audioUrl = (result && (result.url || (result.res && result.res.requestUrls && result.res.requestUrls[0]))) || '';
-            if (!audioUrl) {
-                throw new Error('上传成功但未获得音频访问地址');
+            var urlFromServer = uploadData && uploadData.data && uploadData.data.url;
+            if (!urlFromServer) {
+                throw new Error('服务端未返回音频地址');
             }
-            return audioUrl;
+            console.log('[Voice] 服务端上传完成:', urlFromServer);
+            return urlFromServer;
         }
 
         async function retryVoiceUploadAndSubmit() {

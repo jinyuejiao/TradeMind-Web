@@ -708,6 +708,12 @@ textarea {
 }
 
 @media (max-width: 767px) {
+    .tm-dialog-root[data-tm-dialog-variant="center"] {
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 1rem !important;
+    }
+
     .tm-dialog-root[data-tm-dialog-variant="sheet"],
     .tm-dialog-root.tm-mobile-sheet-modal {
         align-items: flex-end !important;

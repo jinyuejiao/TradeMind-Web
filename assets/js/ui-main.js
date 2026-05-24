@@ -79,7 +79,14 @@ function TM_syncDashboardOverlays(htmlString) {
             } else {
                 document.body.appendChild(cloned);
             }
-            if (typeof TM_applyDialogShell === 'function') {
+            if (id === 'voice-modal' || id === 'photo-modal') {
+                if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
+                    window.TM_ShellInsets.applyModalRoot(cloned, { variant: 'center' });
+                } else {
+                    cloned.classList.add('tm-dialog-root');
+                    cloned.setAttribute('data-tm-dialog-variant', 'center');
+                }
+            } else if (typeof TM_applyDialogShell === 'function') {
                 TM_applyDialogShell(cloned);
             }
         });
