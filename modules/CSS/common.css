@@ -504,6 +504,11 @@ textarea {
         padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
     }
 
+    html.tm-embedded .tm-modal-footer-safe,
+    html.tm-embedded .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
     #supplier-modal.tm-mobile-sheet-modal {
         align-items: flex-end !important;
         padding: 0 !important;

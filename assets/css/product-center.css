@@ -305,7 +305,46 @@
     -webkit-overflow-scrolling: touch;
 }
 
+/* 进货单弹窗：嵌入主壳 iframe 时底栏留白仅 safe-area（主壳底栏由 TM_notifyEmbedModal 隐藏） */
+html.tm-embedded #purchase-modal.tm-purchase-modal {
+    z-index: 200;
+}
+
+html.tm-embedded #purchase-modal .tm-purchase-modal-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+#purchase-modal.tm-purchase-modal .modal-content-box {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: min(96dvh, 100%);
+}
+
+#purchase-modal.tm-purchase-modal .tm-product-edit-footer {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+    background: #fff;
+}
+
 @media (max-width: 767px) {
+    #purchase-modal.tm-purchase-modal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    #purchase-modal.tm-purchase-modal .modal-content-box {
+        width: 100%;
+        max-height: min(92dvh, 100%);
+        border-radius: 1rem 1rem 0 0;
+    }
+
+    #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    }
+
     #tm-main-scroll,
     #tm-app-main {
         min-height: 0;

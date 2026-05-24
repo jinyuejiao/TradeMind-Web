@@ -66,8 +66,18 @@
         });
     }
 
+    function openSuccess(message, opts) {
+        opts = opts || {};
+        if (window.TmConfirm && typeof window.TmConfirm.openSuccess === 'function') {
+            window.TmConfirm.openSuccess(message, opts);
+            return;
+        }
+        toast(message, 'success');
+    }
+
     window.TM_UI = window.TM_UI || {};
     window.TM_UI.toast = toast;
     window.TM_UI.alert = alert;
     window.TM_UI.confirm = confirm;
+    window.TM_UI.openSuccess = openSuccess;
 })();

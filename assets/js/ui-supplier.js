@@ -374,6 +374,38 @@ window.SupplierModule = {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     },
 
+    notify: function(message, type, opts) {
+        type = type || 'info';
+        opts = opts || {};
+        if (type === 'success' && opts.useDialog && window.TmConfirm && typeof window.TmConfirm.openSuccess === 'function') {
+            window.TmConfirm.openSuccess(message, { title: opts.title || '保存成功' });
+            return;
+        }
+        if (type === 'success') {
+            this.showToast(message);
+            return;
+        }
+        if (window.TM_UI && typeof window.TM_UI.toast === 'function') {
+            window.TM_UI.toast(message, type);
+            return;
+        }
+        if (type === 'error') {
+            var errToast = document.getElementById('tm-fade-toast');
+            if (!errToast) {
+                errToast = document.createElement('div');
+                errToast.id = 'tm-fade-toast';
+                document.body.appendChild(errToast);
+            }
+            errToast.className = 'fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-rose-500/95 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-xl pointer-events-none';
+            errToast.textContent = message || '操作失败';
+            errToast.style.opacity = '1';
+            if (this.toastTimer) clearTimeout(this.toastTimer);
+            this.toastTimer = setTimeout(function () { errToast.style.opacity = '0'; }, 2200);
+            return;
+        }
+        this.showToast(message);
+    },
+
     showToast: function(message) {
         var toast = document.getElementById('tm-fade-toast');
         if (!toast) {
@@ -603,7 +635,7 @@ window.SupplierModule = {
         var rating = 0;
 
         if (!name) {
-            alert('请输入供应商名称');
+            this.notify('请输入供应商名称', 'error');
             return;
         }
 
@@ -638,14 +670,14 @@ window.SupplierModule = {
                     this.renderSuppliers();
                     this.showToast('保存成功');
                 } else {
-                    alert('保存失败: ' + (result.message || '未知错误'));
+                    this.notify('保存失败: ' + (result.message || '未知错误'), 'error');
                 }
             } else {
-                alert('保存失败');
+                this.notify('保存失败', 'error');
             }
         } catch (error) {
             console.error('Error saving supplier:', error);
-            alert('保存失败: ' + error.message);
+            this.notify('保存失败: ' + error.message, 'error');
         }
     },
 
@@ -675,14 +707,14 @@ window.SupplierModule = {
                         self.renderSuppliers();
                         self.showToast('删除成功');
                     } else {
-                        alert('删除失败: ' + (result.message || '未知错误'));
+                        self.notify('删除失败: ' + (result.message || '未知错误'), 'error');
                     }
                 } else {
-                    alert('删除失败');
+                    self.notify('删除失败', 'error');
                 }
             } catch (error) {
                 console.error('Error deleting supplier:', error);
-                alert('删除失败: ' + error.message);
+                self.notify('删除失败: ' + error.message, 'error');
             }
         };
         if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
@@ -715,7 +747,15 @@ window.SupplierModule = {
         this.populateProductsSelects();
 
         this.resetPurchaseForm();
-        document.getElementById('purchase-modal').classList.remove('hidden');
+        var modal = document.getElementById('purchase-modal');
+        if (modal) {
+            if (typeof window.TM_applyDialogShell === 'function') {
+                window.TM_applyDialogShell(modal, { variant: 'sheet' });
+            } else if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
+                window.TM_ShellInsets.applyModalRoot(modal, { variant: 'sheet' });
+            }
+            modal.classList.remove('hidden');
+        }
         document.body.style.overflow = 'hidden';
         if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
@@ -748,7 +788,7 @@ window.SupplierModule = {
                 <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
                 <td class="px-4 py-3 text-center">
                     <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
-                        <i class="ph-bold ph-trash"></i>
+                        <i class="ph ph-trash"></i>
                     </button>
                 </td>
             </tr>
@@ -865,7 +905,7 @@ window.SupplierModule = {
 
     removePurchaseItem: function(btn) {
         const rows = document.querySelectorAll('.purchase-item-row');
-        if (rows.length <= 1) {alert('至少需要一项商品');return;}
+        if (rows.length <= 1) { this.notify('至少需要一项商品', 'error'); return; }
         btn.closest('tr').remove();
         this.calculatePurchaseTotal();
     },
@@ -925,7 +965,7 @@ window.SupplierModule = {
                     <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
                     <td class="px-4 py-3 text-center">
                         <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
-                            <i class="ph-bold ph-trash"></i>
+                            <i class="ph ph-trash"></i>
                         </button>
                     </td>
                 `;
@@ -955,8 +995,15 @@ window.SupplierModule = {
         }
         
         this.calculatePurchaseTotal();
-        document.getElementById('purchase-modal').classList.remove('hidden');
+        var editModal = document.getElementById('purchase-modal');
+        if (editModal) {
+            if (typeof window.TM_applyDialogShell === 'function') {
+                window.TM_applyDialogShell(editModal, { variant: 'sheet' });
+            }
+            editModal.classList.remove('hidden');
+        }
         document.body.style.overflow = 'hidden';
+        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
 
     savePurchase: async function() {
@@ -964,7 +1011,7 @@ window.SupplierModule = {
         const status = document.getElementById('purchase-status').value;
         const purchaseDate = document.getElementById('purchase-date').value;
 
-        if (!supplierId) {alert('请选择供应商');return;}
+        if (!supplierId) { this.notify('请选择供应商', 'error'); return; }
 
         const accountEl = document.getElementById('purchase-account');
         const accountRaw = accountEl ? accountEl.value : '';
@@ -1000,7 +1047,7 @@ window.SupplierModule = {
                 }
             });
 
-            if (items.length === 0) {alert('请至少添加一项商品');return;}
+            if (items.length === 0) { this.notify('请至少添加一项商品', 'error'); return; }
 
             const paidKeep = (this.currentPurchase && this.currentPurchase.paidAmount != null)
                 ? this.currentPurchase.paidAmount
@@ -1039,16 +1086,16 @@ window.SupplierModule = {
                     await this.loadPurchases(this.purchaseCurrentPage);
                     this.renderPurchases();
                     this.loadPurchaseSummary();
-                    alert('保存成功');
+                    this.notify('进货单据已保存', 'success', { useDialog: true, title: '保存成功' });
                 } else {
-                    alert('保存失败: ' + (result.message || '未知错误'));
+                    this.notify('保存失败: ' + (result.message || '未知错误'), 'error');
                 }
             } else {
-                alert('保存失败');
+                this.notify('保存失败', 'error');
             }
         } catch (error) {
             console.error('Error saving purchase:', error);
-            alert('保存失败: ' + error.message);
+            this.notify('保存失败: ' + error.message, 'error');
         }
     },
 
@@ -1069,16 +1116,16 @@ window.SupplierModule = {
                     }
                     this.renderPurchases();
                     this.loadPurchaseSummary();
-                    alert('删除成功');
+                    this.showToast('删除成功');
                 } else {
-                    alert('删除失败: ' + (result.message || '未知错误'));
+                    this.notify('删除失败: ' + (result.message || '未知错误'), 'error');
                 }
             } else {
-                alert('删除失败');
+                this.notify('删除失败', 'error');
             }
         } catch (error) {
             console.error('Error deleting purchase:', error);
-            alert('删除失败: ' + error.message);
+            this.notify('删除失败: ' + error.message, 'error');
         }
         };
         if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {

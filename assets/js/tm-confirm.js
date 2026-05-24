@@ -55,18 +55,40 @@
         if (msgEl) msgEl.textContent = opts.message || '确定要继续吗？';
 
         var danger = opts.danger === true || opts.confirmLabel === '确认删除';
+        var success = opts.variant === 'success' || opts.success === true;
+        var hideCancel = opts.hideCancel === true || success;
+        var cancelBtn = modal.querySelector('[data-tm-confirm-cancel]');
         if (iconWrap) {
-            iconWrap.className = 'w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ' +
-                (danger ? 'bg-rose-100 text-rose-500' : 'bg-amber-100 text-amber-600');
-            var icon = iconWrap.querySelector('i');
-            if (icon) {
-                icon.className = danger ? 'ph ph-trash text-3xl' : 'ph ph-warning-circle text-3xl';
+            var iconClass = 'ph ph-warning-circle text-3xl';
+            var wrapClass = 'bg-amber-100 text-amber-600';
+            if (danger) {
+                wrapClass = 'bg-rose-100 text-rose-500';
+                iconClass = 'ph ph-trash text-3xl';
+            } else if (success) {
+                wrapClass = 'bg-teal-50 text-teal-600';
+                iconClass = 'ph ph-check-circle text-3xl';
             }
+            iconWrap.className = 'w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ' + wrapClass;
+            var icon = iconWrap.querySelector('i');
+            if (icon) icon.className = iconClass;
         }
         if (okBtn) {
-            okBtn.textContent = opts.confirmLabel || '确定';
-            okBtn.className = 'flex-1 py-3 rounded-2xl text-sm font-bold text-white transition-colors shadow-lg ' +
-                (danger ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25' : 'bg-brand-600 hover:bg-brand-700 shadow-brand-500/20');
+            okBtn.textContent = opts.confirmLabel || (success ? '好的' : '确定');
+            var okClass = 'flex-1 py-3 rounded-2xl text-sm font-bold text-white transition-colors shadow-lg ';
+            if (danger) {
+                okBtn.className = okClass + 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25';
+            } else if (success) {
+                okBtn.className = okClass + 'bg-[#0D9488] hover:bg-[#0F766E] shadow-teal-500/25';
+            } else {
+                okBtn.className = okClass + 'bg-[#0D9488] hover:bg-[#0F766E] shadow-teal-500/20';
+            }
+        }
+        if (cancelBtn) {
+            cancelBtn.style.display = hideCancel ? 'none' : '';
+        }
+        var btnRow = modal.querySelector('.flex.gap-3');
+        if (btnRow && hideCancel && okBtn) {
+            okBtn.classList.add('w-full');
         }
 
         pendingOnConfirm = typeof opts.onConfirm === 'function' ? opts.onConfirm : null;
@@ -75,8 +97,21 @@
         if (okBtn) okBtn.focus();
     }
 
+    function openSuccess(message, opts) {
+        opts = opts || {};
+        open({
+            title: opts.title || '保存成功',
+            message: message || '操作已完成',
+            confirmLabel: opts.confirmLabel || '好的',
+            variant: 'success',
+            hideCancel: true,
+            onConfirm: opts.onConfirm
+        });
+    }
+
     window.TmConfirm = {
         open: open,
+        openSuccess: openSuccess,
         close: close
     };
 })();
