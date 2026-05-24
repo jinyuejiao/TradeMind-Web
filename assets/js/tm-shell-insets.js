@@ -95,10 +95,6 @@
     }
 
     function hideChromeForOverlay(hidden) {
-        if (typeof window.TM_setShellChromeHidden === 'function' && window.TM_setShellChromeHidden !== hideChromeForOverlay) {
-            window.TM_setShellChromeHidden(hidden);
-            return;
-        }
         var tabbar = document.getElementById('tm-app-tabbar');
         if (tabbar) tabbar.classList.toggle('tm-shell-chrome-hidden', !!hidden);
         document.body.classList.toggle('tm-embed-modal-open', !!hidden);

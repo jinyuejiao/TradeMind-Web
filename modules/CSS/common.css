@@ -317,20 +317,25 @@ textarea {
  * 手机端占位文字会与图标重叠（客户 CRM、产品中心 index-app 注入片段等）。
  */
 .relative > i.ph-magnifying-glass + input[type="text"],
-.relative i.ph-magnifying-glass + input[type="text"] {
+.relative i.ph-magnifying-glass + input[type="text"],
+.relative > i.ph-magnifying-glass + input[type="search"],
+.relative i.ph-magnifying-glass + input[type="search"] {
     padding-left: 2.75rem !important;
 }
 
 @media (min-width: 768px) {
 
     .relative > i.ph-magnifying-glass + input[type="text"],
-    .relative i.ph-magnifying-glass + input[type="text"] {
+    .relative i.ph-magnifying-glass + input[type="text"],
+    .relative > i.ph-magnifying-glass + input[type="search"],
+    .relative i.ph-magnifying-glass + input[type="search"] {
         padding-left: 3rem !important;
     }
 }
 
 /* CRM 列表搜索：紧凑高度需抵消全局 input 垂直 padding，否则与 h-9 冲突 */
-input#crmSearchInput[type="text"] {
+input#crmSearchInput[type="text"],
+input#crmSearchInput[type="search"] {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
     line-height: 2.25rem !important;

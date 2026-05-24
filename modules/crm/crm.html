@@ -133,7 +133,7 @@
     <link rel="stylesheet" href="../CSS/common.css?v=20260524shell">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <!-- 确保 auth.js 加载完成后再执行页面代码 -->
-    <script src="../../assets/js/tm-confirm.js?v=20260524"></script>
+    <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -272,7 +272,7 @@
                         </div>
                         <div class="relative">
                             <i class="ph ph-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                            <input type="text" id="crmSearchInput" placeholder="搜索姓名、电话、地区..." class="form-input text-[11px] h-9">
+                            <input type="search" id="crmSearchInput" name="crm-customer-filter" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="搜索姓名、电话、地区..." class="form-input text-[11px] h-9">
                         </div>
                     </div>
 
@@ -346,7 +346,7 @@
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <i id="client-modal-icon" class="ph ph-plus-circle text-xl"></i>
+                        <i id="client-modal-icon" class="ph ph-user-plus text-xl"></i>
                     </div>
                     <div>
                         <h2 class="text-sm font-black text-slate-800" id="client-modal-title">新增客户档案</h2>
@@ -392,28 +392,6 @@
                     <button onclick="closeClientEditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
                     <button type="submit" form="client-edit-form" class="flex-[2] md:flex-none px-12 py-3 rounded-2xl bg-[#14B8A6] text-white text-xs font-black shadow-xl hover:bg-[#0D9488] active:scale-95 transition-all">保存客户档案</button>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 删除确认框 -->
-    <div id="delete-confirm-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeDeleteConfirmModal()"></div>
-        <div class="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden fade-in">
-            <div class="px-6 py-5 border-b border-slate-100 font-bold text-slate-800 flex justify-between items-center bg-slate-50/50">
-                <span>确认删除</span>
-                <i class="ph ph-x cursor-pointer text-slate-400" onclick="closeDeleteConfirmModal()"></i>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="text-center">
-                    <i class="ph ph-warning-circle text-4xl text-risk-high mb-4"></i>
-                    <p class="text-sm font-bold text-slate-800" id="delete-confirm-message">确定删除此客户吗？</p>
-                    <p class="text-[11px] text-slate-400 mt-2">此操作不可撤销</p>
-                </div>
-            </div>
-            <div class="p-4 border-t border-slate-50 bg-slate-50/50 flex gap-4">
-                <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-400 hover:bg-slate-50 transition">取消</button>
-                <button onclick="deleteCustomer()" class="flex-1 py-3 rounded-xl bg-risk-high text-white text-xs font-bold shadow-lg active:scale-95 transition">删除客户</button>
             </div>
         </div>
     </div>
@@ -667,17 +645,16 @@
                     const active = state.currentCustomer && state.currentCustomer.id === cust.id ? 'bg-slate-50' : '';
                     return ''
                         + '<div class="customer-card p-4 border-b border-slate-100 hover:bg-slate-50 transition-all cursor-pointer relative group ' + active + '">'
-                        + '  <div onclick="selectCustomer(' + cust.id + ')" class="pr-10">'
-                        + '    <div class="flex justify-between font-bold text-sm text-slate-800 card-name">' + escapeHtml(cust.name) + ' <span class="text-[9px] text-slate-300 font-mono">#' + escapeHtml(cust.id) + '</span></div>'
-                        + '    <p class="text-[10px] text-slate-500 mt-0.5 card-info">' + escapeHtml(cust.region || '未知地区') + ' | ' + escapeHtml(cust.phone || '-') + '</p>'
+                        + '  <div onclick="selectCustomer(' + cust.id + ')" class="pr-16 md:pr-14">'
+                        + '    <div class="font-bold text-sm text-slate-800 card-name">' + escapeHtml(cust.name) + '</div>'
                         + '    <div class="flex gap-1.5 mt-2">'
                         + '      <span class="px-1.5 py-0.5 text-[9px] border rounded font-bold uppercase tracking-tighter ' + getStatusChip(cust.status) + '">' + escapeHtml(getStatusName(cust.status)) + '</span>'
                         + '      <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] border border-slate-200 rounded font-bold uppercase tracking-tighter">' + escapeHtml(getSourceLabel(cust.source)) + '</span>'
                         + '    </div>'
                         + '  </div>'
-                        + '  <div class="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-2 crm-action-btn">'
-                        + '    <button onclick="openClientEditModal(\'edit\',' + cust.id + ')" class="p-2 bg-white shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-brand-600"><i class="ph ph-pencil-simple text-sm"></i></button>'
-                        + '    <button onclick="confirmDeleteClient(' + cust.id + ')" class="p-2 bg-white shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-risk-high"><i class="ph ph-trash text-sm"></i></button>'
+                        + '  <div class="absolute right-9 md:right-2 top-1/2 -translate-y-1/2 flex flex-row gap-1.5 crm-action-btn z-30">'
+                        + '    <button type="button" onclick="event.stopPropagation(); openClientEditModal(\'edit\',' + cust.id + ')" class="p-2 bg-white shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-brand-600"><i class="ph ph-pencil-simple text-sm"></i></button>'
+                        + '    <button type="button" onclick="event.stopPropagation(); confirmDeleteClient(' + cust.id + ')" class="p-2 bg-white shadow-md border border-slate-100 rounded-full text-slate-400 hover:text-risk-high"><i class="ph ph-trash text-sm"></i></button>'
                         + '  </div>'
                         + '</div>';
                 }).join('');
@@ -863,7 +840,7 @@
                 const customer = state.customers.find(function(item) { return item.id === customerId; }) || state.currentCustomer;
                 if (!customer) return;
                 document.getElementById('client-modal-title').textContent = '编辑客户档案';
-                document.getElementById('client-modal-icon').className = 'ph ph-pencil-simple text-xl';
+                document.getElementById('client-modal-icon').className = 'ph ph-user-circle text-xl';
                 document.getElementById('cust-id').value = customer.id;
                 document.getElementById('cust-name').value = customer.name || '';
                 document.getElementById('cust-phone').value = customer.phone || '';
@@ -873,9 +850,13 @@
                 document.getElementById('cust-summary').value = customer.summary || '';
             } else {
                 document.getElementById('client-modal-title').textContent = '新增客户档案';
-                document.getElementById('client-modal-icon').className = 'ph ph-plus-circle text-xl';
+                document.getElementById('client-modal-icon').className = 'ph ph-user-plus text-xl';
             }
             document.getElementById('client-edit-modal').classList.remove('hidden');
+            var applyDialogShell = (window.parent && window.parent.TM_applyDialogShell) || window.TM_applyDialogShell;
+            if (typeof applyDialogShell === 'function') {
+                applyDialogShell(document.getElementById('client-edit-modal'));
+            }
             if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
         }
 
@@ -929,38 +910,52 @@
         }
 
         function confirmDeleteClient(customerId) {
-            const customer = state.customers.find(function(item) { return item.id === customerId; }) || state.currentCustomer;
+            const customer = state.customers.find(function(item) { return item.id === customerId; });
             if (!customer) return;
-            state.currentCustomer = customer;
-            document.getElementById('delete-confirm-message').textContent = '确定删除客户 ' + customer.name + ' 吗？';
-            document.getElementById('delete-confirm-modal').classList.remove('hidden');
-            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
-        }
-
-        function closeDeleteConfirmModal() {
-            document.getElementById('delete-confirm-modal').classList.add('hidden');
-            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
-        }
-
-        async function deleteCustomer() {
-            if (!state.currentCustomer || !state.currentCustomer.id) {
-                closeDeleteConfirmModal();
-                return;
+            const msg = '确定删除客户「' + customer.name + '」吗？此操作无法撤销。';
+            const runDelete = function() { deleteCustomer(customerId); };
+            if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
+                window.TmConfirm.open({
+                    title: '确认删除',
+                    message: msg,
+                    confirmLabel: '确认删除',
+                    danger: true,
+                    onConfirm: runDelete
+                });
+            } else if (confirm(msg)) {
+                runDelete();
             }
+        }
+
+        async function deleteCustomer(customerId) {
+            if (!customerId) return;
+            const deletedId = customerId;
             try {
-                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/customers/' + state.currentCustomer.id, {
+                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/customers/' + deletedId, {
                     method: 'DELETE'
                 });
                 const result = await response.json().catch(function() { return {}; });
                 if (!response.ok || result.success === false) {
-                    throw new Error(result.message || '删除客户失败');
+                    throw new Error(result.message || result.error || '删除客户失败');
                 }
-                closeDeleteConfirmModal();
-                clearCustomerDetail();
+                if (state.currentCustomer && state.currentCustomer.id === deletedId) {
+                    clearCustomerDetail();
+                }
                 await loadCustomers();
+                const toastMsg = result.message || '客户已删除';
+                if (typeof window.showToast === 'function') {
+                    window.showToast(toastMsg);
+                } else if (window.TM_UI && typeof window.TM_UI.toast === 'function') {
+                    window.TM_UI.toast(toastMsg, 'success');
+                }
             } catch (error) {
                 console.error(error);
-                alert(error.message || '删除失败');
+                const errMsg = error.message || '删除失败';
+                if (window.TM_UI && typeof window.TM_UI.toast === 'function') {
+                    window.TM_UI.toast(errMsg, 'error');
+                } else {
+                    alert(errMsg);
+                }
             }
         }
 
@@ -1009,11 +1004,13 @@
         function openCrmAiModal() {
             const modal = document.getElementById('crm-ai-modal');
             if (modal) modal.classList.remove('hidden');
+            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
         }
 
         function closeCrmAiModal() {
             const modal = document.getElementById('crm-ai-modal');
             if (modal) modal.classList.add('hidden');
+            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
         }
 
         function generateCrmMarketingSuggestion() {
@@ -1067,6 +1064,15 @@
                 if (typeof window.loadUserInfo === 'function') window.loadUserInfo();
                 await fetchCustomerStatusOptions();
                 renderAlphaRail();
+                const searchInput = document.getElementById('crmSearchInput');
+                const debouncedLoadCustomers = debounce(loadCustomers, 300);
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.addEventListener('input', function() {
+                        searchInput.dataset.userTyped = '1';
+                        debouncedLoadCustomers();
+                    });
+                }
                 await loadCustomers();
 
                 (function waitPinyinResort() {
@@ -1092,8 +1098,16 @@
                         hideCrmPhoneCard();
                     }
                 });
-                const searchInput = document.getElementById('crmSearchInput');
-                searchInput.addEventListener('input', debounce(loadCustomers, 300));
+                if (searchInput) {
+                    [500, 1500, 3000].forEach(function(delay) {
+                        setTimeout(function() {
+                            if (searchInput.value && !searchInput.dataset.userTyped) {
+                                searchInput.value = '';
+                                loadCustomers();
+                            }
+                        }, delay);
+                    });
+                }
                 document.getElementById('client-edit-form').addEventListener('submit', saveClient);
                 applyResponsiveLayout();
             } catch (error) {

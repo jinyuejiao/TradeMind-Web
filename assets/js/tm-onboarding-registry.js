@@ -276,7 +276,32 @@
         return OPTIONAL_STEPS[stepKey] || null;
     }
 
+    function getSubjectContext() {
+        if (window.TM_ONBOARDING_SYNC && typeof window.TM_ONBOARDING_SYNC.getSubjectContext === 'function') {
+            return window.TM_ONBOARDING_SYNC.getSubjectContext();
+        }
+        var tenantId = '';
+        var subjectId = '';
+        try {
+            var raw = localStorage.getItem('user_info');
+            if (raw) {
+                var u = JSON.parse(raw);
+                tenantId = u.tenantId != null ? String(u.tenantId) : (u.tenant_id != null ? String(u.tenant_id) : '');
+                subjectId = u.userId != null ? String(u.userId) : (u.user_id != null ? String(u.user_id) : '');
+            }
+        } catch (e) { /* ignore */ }
+        return { tenantId: tenantId, subjectType: 'PRIMARY', subjectId: subjectId };
+    }
+
     function getStorageKey(industry, roleCode) {
+        var ctx = getSubjectContext();
+        var tenant = ctx.tenantId || 'unknown';
+        var subject = ctx.subjectId || 'unknown';
+        return 'tm_onboarding_v3_' + tenant + '_' + subject + '_' +
+            String(industry || 'WHOLESALE').toUpperCase() + '_' + normalizeRoleCode(roleCode);
+    }
+
+    function getLegacyStorageKey(industry, roleCode) {
         return 'tm_onboarding_v2_' + String(industry || 'WHOLESALE').toUpperCase() + '_' + normalizeRoleCode(roleCode);
     }
 
@@ -333,7 +358,9 @@
         getFilteredChecklist: getFilteredChecklist,
         getMandatoryProfile: getMandatoryProfile,
         getOptionalStep: getOptionalStep,
+        getSubjectContext: getSubjectContext,
         getStorageKey: getStorageKey,
+        getLegacyStorageKey: getLegacyStorageKey,
         getBlockingAllowedTabs: getBlockingAllowedTabs,
         getFirstVisibleMenuId: getFirstVisibleMenuId,
         migrateLegacyState: migrateLegacyState

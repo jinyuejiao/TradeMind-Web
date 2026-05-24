@@ -36,11 +36,18 @@
         return modal;
     }
 
+    function notifyEmbedModal(open) {
+        if (typeof window.TM_notifyEmbedModal === 'function') {
+            window.TM_notifyEmbedModal(!!open);
+        }
+    }
+
     function close() {
         var modal = document.getElementById('tm-confirm-modal');
         if (modal) modal.classList.add('hidden');
         document.body.style.overflow = '';
         pendingOnConfirm = null;
+        notifyEmbedModal(false);
     }
 
     function open(opts) {
@@ -94,6 +101,7 @@
         pendingOnConfirm = typeof opts.onConfirm === 'function' ? opts.onConfirm : null;
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+        notifyEmbedModal(true);
         if (okBtn) okBtn.focus();
     }
 

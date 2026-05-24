@@ -35,6 +35,8 @@
     var voiceModalObserver = null;
     var completingVoice = false;
     var voiceStepRestartLock = false;
+    var isFirstLogin = false;
+    var serverHydrated = false;
 
     function $(id) {
         return document.getElementById(id);
@@ -82,22 +84,44 @@
 
     function defaultState() {
         return {
-            version: 2,
+            version: 3,
+            schemaVersion: '2026.05',
             profileId: mandatoryProfile ? mandatoryProfile.id : null,
             welcomed: false,
             mandatoryDone: false,
             celebrated: false,
             dismissed: false,
             checklist: {},
-            lastChecklistId: null
+            lastChecklistId: null,
+            mandatoryStepIndex: 0,
+            updatedAt: new Date().toISOString()
         };
     }
 
-    function loadState() {
+    function parseStoredState(raw) {
+        var o = JSON.parse(raw);
+        var base = defaultState();
+        base.welcomed = !!o.welcomed;
+        base.mandatoryDone = !!(o.mandatoryDone || o.voiceDone);
+        base.celebrated = !!o.celebrated;
+        base.dismissed = !!o.dismissed;
+        base.checklist = o.checklist && typeof o.checklist === 'object' ? o.checklist : {};
+        base.lastChecklistId = o.lastChecklistId || null;
+        base.mandatoryStepIndex = typeof o.mandatoryStepIndex === 'number' ? o.mandatoryStepIndex : 0;
+        base.profileId = o.profileId || (mandatoryProfile && mandatoryProfile.id);
+        base.updatedAt = o.updatedAt || base.updatedAt;
+        return base;
+    }
+
+    function loadStateLocalOnly() {
         refreshRoleContext();
         var key = storageKey();
         try {
             var raw = localStorage.getItem(key);
+            if (!raw) {
+                var legacyKey = registry().getLegacyStorageKey(getIndustry(), roleCode);
+                raw = localStorage.getItem(legacyKey);
+            }
             if (!raw) {
                 var migrated = registry().migrateLegacyState(roleCode);
                 if (migrated) {
@@ -112,25 +136,88 @@
                 }
                 return defaultState();
             }
-            var o = JSON.parse(raw);
-            var base = defaultState();
-            base.welcomed = !!o.welcomed;
-            base.mandatoryDone = !!(o.mandatoryDone || o.voiceDone);
-            base.celebrated = !!o.celebrated;
-            base.dismissed = !!o.dismissed;
-            base.checklist = o.checklist && typeof o.checklist === 'object' ? o.checklist : {};
-            base.lastChecklistId = o.lastChecklistId || null;
-            base.profileId = o.profileId || (mandatoryProfile && mandatoryProfile.id);
-            return base;
+            return parseStoredState(raw);
         } catch (e) {
             return defaultState();
         }
     }
 
+    function loadState() {
+        if (!state) {
+            state = loadStateLocalOnly();
+        }
+        return state;
+    }
+
+    function mergeSnapshot(local, remote) {
+        var a = local || defaultState();
+        var b = remote && typeof remote === 'object' ? remote : {};
+        var out = defaultState();
+        out.welcomed = !!(a.welcomed || b.welcomed);
+        out.mandatoryDone = !!(a.mandatoryDone || b.mandatoryDone);
+        out.celebrated = !!(a.celebrated || b.celebrated);
+        out.dismissed = !!(a.dismissed && b.dismissed);
+        out.checklist = {};
+        var keys = {};
+        Object.keys(a.checklist || {}).forEach(function (k) { keys[k] = true; });
+        Object.keys(b.checklist || {}).forEach(function (k) { keys[k] = true; });
+        Object.keys(keys).forEach(function (k) {
+            out.checklist[k] = !!(a.checklist[k] || b.checklist[k]);
+        });
+        out.lastChecklistId = b.lastChecklistId || a.lastChecklistId || null;
+        out.mandatoryStepIndex = Math.max(
+            typeof a.mandatoryStepIndex === 'number' ? a.mandatoryStepIndex : 0,
+            typeof b.mandatoryStepIndex === 'number' ? b.mandatoryStepIndex : 0
+        );
+        out.profileId = b.profileId || a.profileId || (mandatoryProfile && mandatoryProfile.id);
+        var ta = Date.parse(a.updatedAt || 0) || 0;
+        var tb = Date.parse(b.updatedAt || 0) || 0;
+        var newer = tb >= ta ? b : a;
+        if (newer.lastChecklistId) out.lastChecklistId = newer.lastChecklistId;
+        out.updatedAt = new Date().toISOString();
+        return out;
+    }
+
+    function hydrateFromServer() {
+        var sync = window.TM_ONBOARDING_SYNC;
+        var bootstrap = sync && sync.readLoginBootstrap ? sync.readLoginBootstrap() : null;
+        if (bootstrap && typeof bootstrap.isFirstLogin === 'boolean') {
+            isFirstLogin = bootstrap.isFirstLogin;
+        }
+        var local = loadStateLocalOnly();
+        if (!sync || typeof sync.fetchState !== 'function') {
+            state = local;
+            return Promise.resolve();
+        }
+        return sync.fetchState(true).then(function (resp) {
+            if (resp && typeof resp.isFirstLogin === 'boolean') {
+                isFirstLogin = resp.isFirstLogin;
+            }
+            if (resp && resp.snapshot) {
+                state = mergeSnapshot(local, resp.snapshot);
+            } else {
+                state = local;
+            }
+            try {
+                localStorage.setItem(storageKey(), JSON.stringify(state));
+            } catch (e) { /* ignore */ }
+            serverHydrated = true;
+        }).catch(function () {
+            state = local;
+            serverHydrated = true;
+        });
+    }
+
     function saveState() {
+        if (!state) return;
         try {
             state.profileId = mandatoryProfile ? mandatoryProfile.id : state.profileId;
+            state.updatedAt = new Date().toISOString();
+            state.mandatoryStepIndex = mandatoryStepIndex;
             localStorage.setItem(storageKey(), JSON.stringify(state));
+            if (window.TM_ONBOARDING_SYNC && typeof window.TM_ONBOARDING_SYNC.schedulePut === 'function') {
+                window.TM_ONBOARDING_SYNC.schedulePut(state);
+            }
         } catch (e) { /* ignore */ }
     }
 
@@ -456,6 +543,10 @@
             return;
         }
         mandatoryStepIndex = index;
+        if (state) {
+            state.mandatoryStepIndex = index;
+            saveState();
+        }
         var step = mandatoryProfile.steps[index];
         currentTourStep = step.stepKey;
 
@@ -495,12 +586,14 @@
         if (root) {
             root.querySelectorAll('[data-onb-welcome]').forEach(function (el) { el.remove(); });
         }
-        mandatoryStepIndex = 0;
+        var resume = state && typeof state.mandatoryStepIndex === 'number' ? state.mandatoryStepIndex : 0;
         if (!mandatoryProfile || getMandatoryStepCount() === 0 || roleCode === 'READONLY') {
             completeMandatoryPath();
             return;
         }
-        runMandatoryStepAt(0);
+        if (resume >= getMandatoryStepCount()) resume = 0;
+        mandatoryStepIndex = resume;
+        runMandatoryStepAt(resume);
     }
 
     function startVoiceMandatoryStep(step) {
@@ -791,7 +884,7 @@
     }
 
     function tryStartOnboarding() {
-        if (!roleUiReady) return;
+        if (!roleUiReady || !serverHydrated) return;
         if (onboardingBootstrapped) return;
         onboardingBootstrapped = true;
         state = loadState();
@@ -801,8 +894,8 @@
             return;
         }
         bindVoiceTipsUi();
-        if (!state.welcomed || !state.mandatoryDone) {
-            if (!state.welcomed) {
+        if (!state.mandatoryDone) {
+            if (!state.welcomed && isFirstLogin) {
                 if (!welcomeScheduled) {
                     welcomeScheduled = true;
                     setTimeout(showWelcome, 400);
@@ -810,7 +903,7 @@
             } else if (!state.mandatoryDone) {
                 setTimeout(startMandatoryPath, 400);
             }
-        } else {
+        } else if (!state.dismissed) {
             renderChecklistFab();
         }
     }
@@ -857,11 +950,18 @@
         onMandatoryStepComplete: completeMandatoryPath,
         refreshForRole: function () {
             refreshRoleContext();
-            state = loadState();
-            renderChecklistFab();
+            onboardingBootstrapped = false;
+            welcomeScheduled = false;
+            serverHydrated = false;
+            hydrateFromServer().then(function () {
+                state = loadState();
+                renderChecklistFab();
+                tryStartOnboarding();
+            });
         },
         restart: function () {
             refreshRoleContext();
+            isFirstLogin = true;
             state = defaultState();
             saveState();
             blocking = false;
@@ -891,6 +991,12 @@
         }
     };
 
+    function markRoleUiReady() {
+        if (roleUiReady) return;
+        roleUiReady = true;
+        tryStartOnboarding();
+    }
+
     function bootstrap() {
         if (!registry()) {
             console.warn('[tm-onboarding] 缺少 TM_ONBOARDING_REGISTRY');
@@ -898,18 +1004,17 @@
         }
         patchSwitchTab();
         patchNavClicks();
-        document.addEventListener('tm-role-ui-ready', function () {
-            roleUiReady = true;
-            tryStartOnboarding();
-        });
-        var shell = window.TM_ShellLoader && window.TM_ShellLoader.loadAll;
-        var p = shell ? window.TM_ShellLoader.loadAll() : Promise.resolve();
-        p.then(function () { return waitMs(500); }).then(function () {
+        document.addEventListener('tm-role-ui-ready', markRoleUiReady);
+        hydrateFromServer().then(function () {
+            return waitMs(300);
+        }).then(function () {
             if (!roleUiReady) {
-                roleUiReady = true;
+                markRoleUiReady();
+            } else {
                 tryStartOnboarding();
             }
         });
+        waitMs(500).then(markRoleUiReady);
     }
 
     if (document.readyState === 'loading') {

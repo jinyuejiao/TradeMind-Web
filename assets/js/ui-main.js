@@ -596,7 +596,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260508r5',
+        '/modules/crm/crm.html?embed=1&v=20260524crm',
         'CRM',
         { embedPathCheck: 'crm' }
     );

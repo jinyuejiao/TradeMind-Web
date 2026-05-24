@@ -131,6 +131,10 @@
         }
     };
 
+    function dispatchRoleUiReady() {
+        document.dispatchEvent(new CustomEvent('tm-role-ui-ready'));
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (window.TM_Responsive && typeof window.TM_Responsive.init === 'function') {
             window.TM_Responsive.init();
@@ -140,6 +144,14 @@
             window.TM_UI.applyContextFromToken(token);
             window.TM_RoleGate.apply(document.body);
         }
+        var chain = Promise.resolve();
+        if (window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
+            chain = window.TM_UI.refreshAll ? window.TM_UI.refreshAll() : chain;
+        }
+        chain.finally(function () {
+            dispatchRoleUiReady();
+        });
+        setTimeout(dispatchRoleUiReady, 600);
     });
 
     console.log('[TM_UI_Loader] 商户类型 UI 加载器就绪');
