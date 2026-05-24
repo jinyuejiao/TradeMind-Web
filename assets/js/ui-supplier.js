@@ -596,11 +596,21 @@ window.SupplierModule = {
     openSupplierModal: function() {
         this.currentSupplier = null;
         document.getElementById('supplier-modal-title').textContent = '新增供应商';
+        var sub = document.getElementById('supplier-modal-subtitle');
+        if (sub) sub.textContent = '保存后可在进货单中选择';
         document.getElementById('supplier-name').value = '';
         document.getElementById('supplier-contact').value = '';
         document.getElementById('supplier-phone').value = '';
         document.getElementById('supplier-address').value = '';
-        document.getElementById('supplier-modal').classList.remove('hidden');
+        var modal = document.getElementById('supplier-modal');
+        if (modal) {
+            if (typeof window.TM_applyDialogShell === 'function') {
+                window.TM_applyDialogShell(modal, { variant: 'sheet' });
+            } else if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
+                window.TM_ShellInsets.applyModalRoot(modal, { variant: 'sheet' });
+            }
+            modal.classList.remove('hidden');
+        }
         document.body.style.overflow = 'hidden';
         if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
@@ -618,11 +628,22 @@ window.SupplierModule = {
 
         this.currentSupplier = supplier;
         document.getElementById('supplier-modal-title').textContent = '编辑供应商';
+        var sub = document.getElementById('supplier-modal-subtitle');
+        if (sub) {
+            var hint = supplier.contact || supplier.phone || '';
+            sub.textContent = hint ? hint : ('ID: ' + (supplier.supplierId || ''));
+        }
         document.getElementById('supplier-name').value = supplier.name || '';
         document.getElementById('supplier-contact').value = supplier.contact || '';
         document.getElementById('supplier-phone').value = supplier.phone || '';
         document.getElementById('supplier-address').value = supplier.address || '';
-        document.getElementById('supplier-modal').classList.remove('hidden');
+        var modal = document.getElementById('supplier-modal');
+        if (modal) {
+            if (typeof window.TM_applyDialogShell === 'function') {
+                window.TM_applyDialogShell(modal, { variant: 'sheet' });
+            }
+            modal.classList.remove('hidden');
+        }
         document.body.style.overflow = 'hidden';
         if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
@@ -736,6 +757,130 @@ window.SupplierModule = {
         if (dateInput) {dateInput.value = today;}
     },
 
+    isMobilePurchaseView: function() {
+        return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
+    },
+
+    showPurchaseFormError: function(msg) {
+        var el = document.getElementById('purchase-form-errors');
+        if (!el) {
+            this.notify(msg, 'error');
+            return;
+        }
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        try {
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } catch (e) { /* ignore */ }
+    },
+
+    clearPurchaseFormError: function() {
+        var el = document.getElementById('purchase-form-errors');
+        if (el) {
+            el.classList.add('hidden');
+            el.textContent = '';
+        }
+    },
+
+    buildPurchaseTableRowHtml: function(opts) {
+        opts = opts || {};
+        var qty = opts.qty != null ? opts.qty : 1;
+        var price = opts.price != null ? opts.price : 0;
+        var batch = opts.batch != null ? String(opts.batch) : '';
+        var batchAttr = batch.replace(/"/g, '&quot;');
+        return (
+            '<tr class="purchase-item-row">' +
+            '<td class="px-4 py-3">' +
+            '<select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">' +
+            '<option value="">--- 选择产品 ---</option></select></td>' +
+            '<td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]">' +
+            '<input type="number" class="form-input text-center qty-input w-full min-w-0" value="' + qty + '" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
+            '<td class="px-4 py-3">' +
+            '<input type="number" class="form-input text-center price-input" value="' + price + '" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
+            '<td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>' +
+            '<td class="px-4 py-3 w-56 min-w-[14rem]">' +
+            '<input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号" value="' + batchAttr + '"></td>' +
+            '<td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>' +
+            '<td class="px-4 py-3 text-center">' +
+            '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">' +
+            '<i class="ph ph-trash"></i></button></td></tr>'
+        );
+    },
+
+    buildPurchaseCardHtml: function(opts) {
+        opts = opts || {};
+        var qty = opts.qty != null ? opts.qty : 1;
+        var price = opts.price != null ? opts.price : 0;
+        var batch = opts.batch != null ? String(opts.batch) : '';
+        var batchAttr = batch.replace(/"/g, '&quot;');
+        return (
+            '<div class="purchase-item-row tm-purchase-item-card">' +
+            '<div class="tm-purchase-item-card__head">' +
+            '<span class="tm-purchase-item-card__total row-total">¥0.00</span>' +
+            '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="tm-purchase-item-card__delete" aria-label="删除行">' +
+            '<i class="ph ph-trash"></i></button></div>' +
+            '<div class="tm-product-field tm-product-field--full">' +
+            '<label class="tm-product-label">产品</label>' +
+            '<select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">' +
+            '<option value="">--- 选择产品 ---</option></select></div>' +
+            '<div class="tm-product-edit-grid">' +
+            '<div class="tm-product-field"><label class="tm-product-label">数量</label>' +
+            '<input type="number" class="form-input qty-input" value="' + qty + '" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></div>' +
+            '<div class="tm-product-field"><label class="tm-product-label">进货单价</label>' +
+            '<input type="number" class="form-input price-input" value="' + price + '" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></div>' +
+            '<div class="tm-product-field"><label class="tm-product-label">单位</label>' +
+            '<select class="form-input unit-select"><option value="">--- 单位 ---</option></select></div>' +
+            '<div class="tm-product-field"><label class="tm-product-label">批次号</label>' +
+            '<input type="text" class="form-input batch-input" placeholder="批次号" value="' + batchAttr + '"></div>' +
+            '</div></div>'
+        );
+    },
+
+    clearPurchaseItems: function() {
+        var tbody = document.getElementById('purchase-items-tbody');
+        var cards = document.getElementById('purchase-items-cards');
+        if (tbody) tbody.innerHTML = '';
+        if (cards) cards.innerHTML = '';
+    },
+
+    appendPurchaseItem: function(opts) {
+        opts = opts || {};
+        if (this.isMobilePurchaseView()) {
+            var cards = document.getElementById('purchase-items-cards');
+            if (cards) cards.insertAdjacentHTML('beforeend', this.buildPurchaseCardHtml(opts));
+        } else {
+            var tbody = document.getElementById('purchase-items-tbody');
+            if (tbody) tbody.insertAdjacentHTML('beforeend', this.buildPurchaseTableRowHtml(opts));
+        }
+    },
+
+    applyPurchaseItemValues: function(rows, items) {
+        if (!rows || !items || !items.length) return;
+        var self = this;
+        items.forEach(function (item, idx) {
+            if (!rows[idx]) return;
+            var sel = rows[idx].querySelector('.product-select');
+            if (sel && item.productId) {
+                sel.value = String(item.productId);
+                self.onProductSelect(sel);
+            }
+            var unitSelect = rows[idx].querySelector('.unit-select');
+            if (unitSelect && item.unitName) {
+                var has = false;
+                for (var i = 0; i < unitSelect.options.length; i++) {
+                    if (unitSelect.options[i].value === item.unitName) has = true;
+                }
+                if (!has) {
+                    var opt = document.createElement('option');
+                    opt.value = item.unitName;
+                    opt.textContent = item.unitName;
+                    unitSelect.appendChild(opt);
+                }
+                unitSelect.value = item.unitName;
+            }
+        });
+    },
+
     openPurchaseModal: async function() {
         this.currentPurchase = null;
         document.getElementById('purchase-modal-title').textContent = '新增进货单';
@@ -746,6 +891,7 @@ window.SupplierModule = {
         this.populateStatusesSelect();
         this.populateProductsSelects();
 
+        this.clearPurchaseFormError();
         this.resetPurchaseForm();
         var modal = document.getElementById('purchase-modal');
         if (modal) {
@@ -758,6 +904,11 @@ window.SupplierModule = {
         }
         document.body.style.overflow = 'hidden';
         if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
+        var self = this;
+        requestAnimationFrame(function () {
+            var body = document.querySelector('#purchase-modal .tm-purchase-modal-body');
+            if (body) body.scrollTop = 0;
+        });
     },
 
     closePurchaseModal: function() {
@@ -772,28 +923,8 @@ window.SupplierModule = {
         document.getElementById('purchase-supplier').value = '';
         document.getElementById('purchase-status').value = '';
         document.getElementById('purchase-date').value = today;
-        
-        const tbody = document.getElementById('purchase-items-tbody');
-        tbody.innerHTML = `
-            <tr class="purchase-item-row">
-                <td class="px-4 py-3">
-                    <select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">
-                        <option value="">--- 选择产品 ---</option>
-                    </select>
-                </td>
-                <td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]"><input type="number" class="form-input text-center qty-input w-full min-w-0" value="1" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
-                <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>
-                <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-                <td class="px-4 py-3 w-56 min-w-[14rem]"><input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号"></td>
-                <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
-                <td class="px-4 py-3 text-center">
-                    <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
-                        <i class="ph ph-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-        
+        this.clearPurchaseItems();
+        this.appendPurchaseItem({});
         this.populateProductsSelects();
         this.calculatePurchaseTotal();
         this.fillPurchaseAccountSelect(null);
@@ -801,8 +932,17 @@ window.SupplierModule = {
 
     populateSuppliersSelect: function() {
         const select = document.getElementById('purchase-supplier');
+        if (!select) return;
         select.innerHTML = '<option value="">--- 请选择供应商 ---</option>';
         const source = (this.allSuppliers && this.allSuppliers.length > 0) ? this.allSuppliers : this.suppliers;
+        if (!source || source.length === 0) {
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.disabled = true;
+            emptyOpt.textContent = '暂无供应商，请先新增';
+            select.appendChild(emptyOpt);
+            return;
+        }
         source.forEach(supplier => {
             const option = document.createElement('option');
             option.value = supplier.supplierId;
@@ -823,7 +963,7 @@ window.SupplierModule = {
     },
 
     populateProductsSelects: function() {
-        const selects = document.querySelectorAll('#purchase-items-table .product-select');
+        const selects = document.querySelectorAll('#purchase-modal .product-select');
         selects.forEach(select => {
             const currentValue = select.value;
             select.innerHTML = '<option value="">--- 选择产品 ---</option>';
@@ -841,7 +981,8 @@ window.SupplierModule = {
     },
 
     onProductSelect: function(selectEl) {
-        const row = selectEl.closest('tr');
+        const row = selectEl.closest('.purchase-item-row');
+        if (!row) return;
         const productId = selectEl.value;
         const unitSelect = row.querySelector('.unit-select');
         const priceInput = row.querySelector('.price-input');
@@ -879,39 +1020,21 @@ window.SupplierModule = {
     },
 
     addPurchaseItem: function() {
-        const tbody = document.getElementById('purchase-items-tbody');
-        const newRow = document.createElement('tr');
-        newRow.className = 'purchase-item-row';
-        newRow.innerHTML = `
-            <td class="px-4 py-3">
-                <select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">
-                    <option value="">--- 选择产品 ---</option>
-                </select>
-            </td>
-            <td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]"><input type="number" class="form-input text-center qty-input w-full min-w-0" value="1" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
-            <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="0" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>
-            <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-            <td class="px-4 py-3 w-56 min-w-[14rem]"><input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号"></td>
-            <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
-            <td class="px-4 py-3 text-center">
-                <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
-                    <i class="ph-bold ph-trash"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(newRow);
+        this.appendPurchaseItem({});
         this.populateProductsSelects();
+        this.calculatePurchaseTotal();
     },
 
     removePurchaseItem: function(btn) {
-        const rows = document.querySelectorAll('.purchase-item-row');
+        const rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
         if (rows.length <= 1) { this.notify('至少需要一项商品', 'error'); return; }
-        btn.closest('tr').remove();
+        var row = btn.closest('.purchase-item-row');
+        if (row) row.remove();
         this.calculatePurchaseTotal();
     },
 
     calculatePurchaseTotal: function() {
-        const rows = document.querySelectorAll('.purchase-item-row');
+        const rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
         let total = 0;
         
         rows.forEach(row => {
@@ -934,66 +1057,39 @@ window.SupplierModule = {
 
         this.currentPurchase = purchase;
         document.getElementById('purchase-modal-title').textContent = '编辑进货单';
+        this.clearPurchaseFormError();
 
         await this.loadProducts();
 
         this.populateSuppliersSelect();
         this.populateStatusesSelect();
-        
+
         document.getElementById('purchase-supplier').value = purchase.supplierId || '';
         document.getElementById('purchase-status').value = purchase.purchaseStatus || '';
         document.getElementById('purchase-date').value = this.toDateInputValue(this.pickPurchaseDateRaw(purchase));
         this.fillPurchaseAccountSelect(purchase.accountId != null ? purchase.accountId : purchase.account_id);
-        
-        const tbody = document.getElementById('purchase-items-tbody');
-        tbody.innerHTML = '';
-        
-        if (purchase.items && purchase.items.length > 0) {
-            purchase.items.forEach(item => {
-                const newRow = document.createElement('tr');
-                newRow.className = 'purchase-item-row';
-                newRow.innerHTML = `
-                    <td class="px-4 py-3">
-                        <select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">
-                            <option value="">--- 选择产品 ---</option>
-                        </select>
-                    </td>
-                    <td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]"><input type="number" class="form-input text-center qty-input w-full min-w-0" value="${item.quantity || 1}" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>
-                    <td class="px-4 py-3"><input type="number" class="form-input text-center price-input" value="${item.unitPrice || 0}" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>
-                    <td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>
-                    <td class="px-4 py-3 w-56 min-w-[14rem]"><input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号" value="${item.batchNo || ''}"></td>
-                    <td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>
-                    <td class="px-4 py-3 text-center">
-                        <button onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">
-                            <i class="ph ph-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(newRow);
+
+        this.clearPurchaseItems();
+
+        var purchaseItems = purchase.items || [];
+        if (purchaseItems.length > 0) {
+            var self = this;
+            purchaseItems.forEach(function (item) {
+                self.appendPurchaseItem({
+                    qty: item.quantity || 1,
+                    price: item.unitPrice || 0,
+                    batch: item.batchNo || ''
+                });
             });
         } else {
-            this.addPurchaseItem();
+            this.appendPurchaseItem({});
         }
-        
+
         this.populateProductsSelects();
-        
-        if (purchase.items && purchase.items.length > 0) {
-            const rows = tbody.querySelectorAll('.purchase-item-row');
-            purchase.items.forEach((item, idx) => {
-                if (rows[idx]) {
-                    rows[idx].querySelector('.product-select').value = item.productId || '';
-                    const unitSelect = rows[idx].querySelector('.unit-select');
-                    if (item.unitName) {
-                        const option = document.createElement('option');
-                        option.value = item.unitName;
-                        option.textContent = item.unitName;
-                        option.selected = true;
-                        unitSelect.appendChild(option);
-                    }
-                }
-            });
+        if (purchaseItems.length > 0) {
+            var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+            this.applyPurchaseItemValues(rows, purchaseItems);
         }
-        
         this.calculatePurchaseTotal();
         var editModal = document.getElementById('purchase-modal');
         if (editModal) {
@@ -1004,14 +1100,21 @@ window.SupplierModule = {
         }
         document.body.style.overflow = 'hidden';
         if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
+        requestAnimationFrame(function () {
+            var body = document.querySelector('#purchase-modal .tm-purchase-modal-body');
+            if (body) body.scrollTop = 0;
+        });
     },
 
     savePurchase: async function() {
+        this.clearPurchaseFormError();
         const supplierId = document.getElementById('purchase-supplier').value;
         const status = document.getElementById('purchase-status').value;
         const purchaseDate = document.getElementById('purchase-date').value;
 
-        if (!supplierId) { this.notify('请选择供应商', 'error'); return; }
+        if (!supplierId) { this.showPurchaseFormError('请选择供应商'); return; }
+        if (!status) { this.showPurchaseFormError('请选择进货状态'); return; }
+        if (!purchaseDate) { this.showPurchaseFormError('请选择进货日期'); return; }
 
         const accountEl = document.getElementById('purchase-account');
         const accountRaw = accountEl ? accountEl.value : '';
@@ -1022,32 +1125,44 @@ window.SupplierModule = {
         }
 
         try {
-            const rows = document.querySelectorAll('.purchase-item-row');
+            const rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
             const items = [];
             let totalAmount = 0;
-            
-            rows.forEach(row => {
+
+            for (var ri = 0; ri < rows.length; ri++) {
+                var row = rows[ri];
                 const productId = row.querySelector('.product-select').value;
-                const qty = parseInt(row.querySelector('.qty-input').value) || 0;
+                const qty = parseInt(row.querySelector('.qty-input').value, 10) || 0;
                 const price = parseFloat(row.querySelector('.price-input').value) || 0;
                 const unitName = row.querySelector('.unit-select').value;
-                const batchNo = row.querySelector('.batch-input').value;
-                
-                if (productId) {
-                    items.push({
-                        productId: parseInt(productId),
-                        quantity: qty,
-                        unitPrice: price,
-                        unitName,
-                        batchNo,
-                        purchaseStatus: status || 'DRAFT',
-                        purchaseDate: purchaseDate
-                    });
-                    totalAmount += qty * price;
-                }
-            });
+                const batchNo = (row.querySelector('.batch-input') && row.querySelector('.batch-input').value) || '';
 
-            if (items.length === 0) { this.notify('请至少添加一项商品', 'error'); return; }
+                if (!productId) {
+                    this.showPurchaseFormError('请为第 ' + (ri + 1) + ' 行选择产品');
+                    return;
+                }
+                if (qty < 1) {
+                    this.showPurchaseFormError('第 ' + (ri + 1) + ' 行数量须大于 0');
+                    return;
+                }
+                if (price < 0) {
+                    this.showPurchaseFormError('第 ' + (ri + 1) + ' 行单价不能为负');
+                    return;
+                }
+
+                items.push({
+                    productId: parseInt(productId, 10),
+                    quantity: qty,
+                    unitPrice: price,
+                    unitName: unitName,
+                    batchNo: batchNo,
+                    purchaseStatus: status || 'DRAFT',
+                    purchaseDate: purchaseDate
+                });
+                totalAmount += qty * price;
+            }
+
+            if (items.length === 0) { this.showPurchaseFormError('请至少添加一项商品'); return; }
 
             const paidKeep = (this.currentPurchase && this.currentPurchase.paidAmount != null)
                 ? this.currentPurchase.paidAmount

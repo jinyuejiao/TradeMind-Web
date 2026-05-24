@@ -16,7 +16,7 @@
 
 ## 1. 数据库表结构设计
 
-**DDL 权威来源**：绿场新装由 **`InitCfgService`** 启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**，种子见 **`production-seed-v1.sql`**；历史脚本位于 **`InitCfgService/src/main/resources/migrations/legacy/`**（`create_tables.sql`、`alter_subscription_referral.sql`、`alter_subscription_payment.sql`、`alter_tenants_merchant_type.sql`、`alter_ops_center.sql`）。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**，与 **`production-schema-v1.sql`** 一致。
+**DDL 权威来源**：绿场新装由 **`InitCfgService`** 启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**，种子见 **`production-seed-v1.sql`**；存量增量位于 **`InitCfgService/src/main/resources/migrations/legacy/`**（`create_tables.sql`、`alter_subscription_referral.sql`、`alter_subscription_payment.sql`、`alter_tenants_merchant_type.sql`、`alter_ops_center.sql`、`alter_user_onboarding_state.sql` 等），其中已登记的增量脚本由 **`applyIncrementalMigrations()`** 在每次启动时幂等执行。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**，与 **`production-schema-v1.sql`** 一致。
 
 ### 1.1 核心业务表
 
@@ -66,6 +66,41 @@
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
 
 奖励归属 **用户**，与租户经营账户 **`biz_accounts`** 分离；详见 §2.8。**运维账号**：种子租户 **`SYSTEM_OPS`** / 用户 **`ops_admin`**（`role_type=ROLE_OPS_ADMIN`）见 **`production-seed-v1.sql`**。
+
+
+#### 1.1.2.1 新手导览状态表（user_onboarding_state）
+
+按 **租户 + 登录主体 + 业态 + 角色** 持久化商户端新手导览进度；**DDL** 在 **`production-schema-v1.sql`**；存量库由 **`migrations/legacy/alter_user_onboarding_state.sql`** 幂等补齐，**`InitCfgService` 启动时**经 **`DatabaseInitService.applyIncrementalMigrations()`** 自动执行。读写 API 见 **`TenantService`** **`GET/PUT /onboarding/state`**（网关 **`/api/v1/tenant/onboarding/state`**）。
+
+| 字段名 | 类型 | 可空 | 说明 |
+| ----- | --- | --- | --- |
+| id | BIGSERIAL | 否 | 主键 |
+| tenant_id | VARCHAR(32) | 否 | FK → `tenants(tenant_id)` |
+| subject_type | VARCHAR(16) | 否 | `PRIMARY` 主账号登录体；`SUBUSER` 子账号（`subject_id` 为 `users.user_id`） |
+| subject_id | VARCHAR(64) | 否 | 主体 ID（主账号或子账号 `user_id` 字符串） |
+| industry | VARCHAR(32) | 否 | 业态，如 `WHOLESALE`（字典 **D013**） |
+| role_code | VARCHAR(32) | 否 | 归一化角色：`ADMIN`/`SALES`/`WAREHOUSE`/`FINANCE`/`READONLY` |
+| first_login_at | TIMESTAMP | 是 | 首次进入主应用时间；`NULL` 表示尚未标记首登 |
+| snapshot | JSONB | 否 | 导览快照（**`snapshot_version=3`**），典型键见下表 |
+| snapshot_version | INT | 否 | 快照结构版本，当前 `3` |
+| updated_at | TIMESTAMP | 否 | 最近更新时间 |
+
+**`snapshot` JSON 约定（与前端 `tm-onboarding.js` 对齐）**：
+
+| 键 | 类型 | 说明 |
+| --- | --- | --- |
+| `version` | number | 固定 `3` |
+| `welcomed` | boolean | 是否已展示欢迎页（仅 **首登** 自动弹欢迎，见 §3.1.6） |
+| `mandatoryDone` | boolean | 角色必学路径是否完成 |
+| `celebrated` | boolean | 是否已展示完成庆祝 |
+| `dismissed` | boolean | 用户关闭可选导览 FAB（须与 `mandatoryDone` 同时为 true 才不再自动打扰） |
+| `checklist` | object | 可选功能导览项完成标记（如 `pendingAudit`、`crmCustomer`） |
+| `mandatoryStepIndex` | number | 必学中断续做步骤索引 |
+| `updatedAt` | string | ISO 时间，用于本地与服务端合并 |
+
+**唯一约束**：`(tenant_id, subject_type, subject_id, industry, role_code)`。
+
+**同步策略**：浏览器 **`localStorage`** 键 **`tm_onboarding_v3_{tenantId}_{subjectId}_{industry}_{roleCode}`** 作离线缓存；登录后 **`GET /onboarding/state`** 与本地 **merge**（进度取并集，`dismissed` 须双端均为 true）；步骤变更经 **`PUT /onboarding/state`** 防抖写回。登录响应 **`onboarding: { isFirstLogin, mandatoryDone }`** 可写入 **`sessionStorage.tm_onboarding_bootstrap`** 以减少首屏 RTT。
 
 
 #### 1.1.3 订阅方案表（subscription_plans）
@@ -723,7 +758,7 @@
 
 | 服务名称    | 服务标识           | 技术栈                       | 主要职责                            |
 | ------- | -------------- | ------------------------- | ------------------------------- |
-| 租户服务    | TenantService  | Spring Boot 3.x           | 租户/用户/认证；**订阅试用与履历**（`SubscriptionLifecycleService`、`tenant_subscriptions`）；**推荐绑定与达标奖励**（`ReferralBindingService`、`ReferralQualificationService`）；JWT 含 **`merchantType`、`accessMode`、`subscriptionTier`、`subEndMs`**；注册 body 支持 **`referralCode`** |
+| 租户服务    | TenantService  | Spring Boot 3.x           | 租户/用户/认证；**订阅试用与履历**（`SubscriptionLifecycleService`、`tenant_subscriptions`）；**推荐绑定与达标奖励**（`ReferralBindingService`、`ReferralQualificationService`）；**新手导览状态**（`OnboardingStateService`、`OnboardingController`）；JWT 含 **`merchantType`、`accessMode`、`subscriptionTier`、`subEndMs`**；注册 body 支持 **`referralCode`** |
 | 初始化配置服务 | InitCfgService | Spring Boot 3.x           | 配置管理、RDS/OSS/AI配置、数据库初始化        |
 | 客户关系服务  | CRMService     | Spring Boot 3.x           | 客户信息管理                          |
 | 进销存服务   | RDService      | Spring Boot 3.x           | 产品管理、订单管理、生产管理、单位换算、仓库管理、产品分类管理 |
@@ -984,7 +1019,7 @@
 #### 2.7.2 注册与登录（TenantService）
 
 - **注册** `POST /register`：请求体可传 **`merchantType`**（兼容 **`industryType`**），缺省 **`WHOLESALE`**；可选 **`referralCode`**（推荐码，绑定 **`referral_records`**）。事务内顺序：**持久化租户** → **校验并绑定推荐** → **创建管理员用户** → **`SubscriptionLifecycleService.startTrial`**（按 **`subscription_plans`** 中该业态 **`TRIAL`** 行的 **`trial_days`** 写 **`tenant_subscriptions`**，并同步 **`tenants.subscription_type`**、**`sub_*`**、**`current_plan_id`**）→ **`ReferralCodeAllocator`** 为用户生成 **`JYxxxxxx`**。非法 **`merchantType`** 或无效推荐码返回 **400**。
-- **登录** `POST /login`：**`ReferralCodeAllocator.assignIfAbsent`** 兼容存量用户补码；**`AccessModeEvaluator.evaluateAndPersist`** 写回 **`access_mode`**；签发 JWT（见 §2.7.3）。响应体除 **`token`**、**`user`**、**`merchantType`** 外，含 **`accessMode`**、**`referralCode`**。
+- **登录** `POST /login`：**`ReferralCodeAllocator.assignIfAbsent`** 兼容存量用户补码；**`AccessModeEvaluator.evaluateAndPersist`** 写回 **`access_mode`**；签发 JWT（见 §2.7.3）。响应体除 **`token`**、**`user`**、**`merchantType`** 外，含 **`accessMode`**、**`referralCode`**、**`onboarding`**（首登/必学摘要，详情见 **`GET /onboarding/state`**）。
 
 #### 2.7.3 JWT 与网关
 
@@ -997,8 +1032,10 @@
 #### 2.7.4 前端（TradeMind-Web）要点
 
 - **注册意图**：`auth.js` 中 `tmResolveMerchantIntent()`，支持 URL 参数 `merchantType`、`industryType`、`industry`、`version`（合法值归一为 D013 `dict_code`），并写入 `sessionStorage`。
-- **运行时上下文**：`/assets/js/tm-ui-loader.js` — `TM_UI_CONTEXT.industry`、`TM_UI.applyContextFromToken(token)`、`TM_UI.injectSlots(root)`、`TM_RoleGate.apply(root)`（`data-role`）。
+- **运行时上下文**：`/assets/js/tm-ui-loader.js` — `TM_UI_CONTEXT.industry`、`TM_UI.applyContextFromToken(token)`、`TM_UI.injectSlots(root)`、`TM_RoleGate.apply(root)`（`data-role`）；壳层就绪后派发 **`tm-role-ui-ready`**（供新手导览启动）。
 - **行业片段**：`/fragments/{wholesale|foreign|ecom|factory}/{scope}/{slot}.html`；模块 HTML 内预留 `data-tm-fragment-scope` + `data-tm-slot`。
+- **主壳**：单页 **`index-app.html`** + **`ui-main.js`** 按 Tab 注入模块；**PC** 左侧 `aside` 导航，**移动** 底栏 **`#tm-app-tabbar`**（`TM_Responsive` / `body.tm-layout-mobile`，断点 **&lt;768px**）。
+- **顶栏**：`#tm-app-header` — 移动端 **`tm-app-header-brand`** 固定展示「商贸智脑」；PC 顶栏不重复退出/新手引导（退出在侧栏、导览见 FAB，§3.1.0、§3.1.6）。
 - **样式**：根节点 `data-merchant-type` 与 `theme.css` 中 `--tm-brand-accent-rgb`；详见 `TradeMind-Web/docs/Framework_Guide.md`。
 
 ### 2.8 商业化：推荐奖励账户与配额配置（设计修订 2026-05-07）
@@ -1016,7 +1053,7 @@
 #### 2.8.3 配额指标「可配置」位置 recap
 
 - **按业态 × 等级** 的数值上限：**`subscription_plans.quota_limits`（JSONB）**，键名约定见 §1.5.3。
-- **初始化**：表结构由 **`production-schema-v1.sql`** 落地；存量库可执行 **`migrations/legacy/`** 下 **`alter_subscription_referral.sql`**、**`alter_subscription_payment.sql`**、**`alter_tenants_merchant_type.sql`**、**`alter_ops_center.sql`**；默认方案行由 **`TenantService.SubscriptionPlanSeedService`** 在库为空时写入。
+- **初始化**：表结构由 **`production-schema-v1.sql`** 落地（含 **`user_onboarding_state`**）；存量增量由 **`InitCfgService`** 启动时 **`applyIncrementalMigrations()`** 幂等执行（如 **`alter_user_onboarding_state.sql`**），亦可在 **`migrations/legacy/`** 手工执行；默认方案行由 **`TenantService.SubscriptionPlanSeedService`** 在库为空时写入。
 - **演进**：不同商户类型在同一等级下的指标差异，仅需 **增删改方案行或 JSON 字段**，不依赖发版；必要时配合 **`quota_metric_definitions`** 约束可用键集合。
 
 #### 2.8.4 实现对照（代码与配置，2026-05-07）
@@ -1032,6 +1069,7 @@
 | 达标发奖 | **`ReferralQualificationService`**（首笔 **`pricePaid > 0`**） |
 | 会员门户 API | **`SubscriptionPortalController`**：`/subscription/*`（含 **`renew`/`upgrade`**）、`/referral/*`、`/user/payout-profile` |
 | 子账号管理 | **`TenantUserController`** + **`TenantUserManagementService`**（席位 **`quota_limits.max_users`**） |
+| 新手导览 | **`OnboardingController`**（`/onboarding/state` GET/PUT）、**`OnboardingStateService`**、**`OnboardingRoleCodes`**；登录 **`peekLoginSummary`** |
 | 订阅支付 | **`SubscriptionPaymentController`** + **`HccbPaymentNotifyController`**（杭州银行收银台） |
 | 运维中台 | **`OpsService`**（租户树、延期、推荐运维、AI 用量、公告）；网关 **`isOpsAdmin`** |
 | TenantService 配置项 | **`custom.subscription.grace-days-after-expiry`**（默认 `7`）；**`custom.referral.reward-per-qualified`**（默认 `100`，金额单位与业务约定一致） |
@@ -1054,14 +1092,28 @@
 - **主壳**：`index-app.html` 在 `ui-components.js` 之后加载 `tm-ui-loader.js`，模块内容由 `ui-main.js` 注入后在 **`view-dashboard` / `view-supply`** 根节点上调用 `injectSlots`。
 - **约定**：不在 `modules/` 下按行业拆分物理目录；行业差异 HTML 放在 **`/fragments/`**。
 
+**主壳布局（`index-app.html`，对齐 UI 工程）**：
+
+| 区域 | PC（≥768px） | 移动（&lt;768px） |
+| --- | --- | --- |
+| 导航 | 左侧 `aside`（含用户区 + **退出**） | 底部 **`#tm-app-tabbar`**（`mobile-nav-btn`） |
+| 顶栏 `#tm-app-header` | 搜索框、`#page-title` 胶囊、通知 | **`tm-app-header-brand`**（图标 + **商贸智脑**）、通知、会员、**退出** |
+| 顶栏去重（2026-05-24） | **无**顶栏「新手引导」、**无**顶栏退出（避免与侧栏/FAB 重复） | 保留顶栏退出（无侧栏）；导览入口为悬浮 **功能导览 FAB**（§3.1.6） |
+| 内容 | `#content-area` / `.tm-app-content-area` | 同上 + 底栏留白（`MobileAdapt/mobile.css`、`tm-shell-insets.js`） |
+| 嵌入模块 | `biz`/`crm`/`supplier` 以 **iframe** 加载；子页 `html.tm-embedded` 隐藏自身 header（`ui-main.js` **`TM_mountEmbeddedFrame`**） | 顶栏仅主壳一层，避免双层「商贸智脑」 |
+
+**样式与脚本**：`/modules/CSS/common.css`（顶栏图标、会员推荐条、移动品牌区）；`/MobileAdapt/mobile.css`、`TM_Responsive.js`；`/assets/js/tm-shell-insets.js`（`--tm-header-h` / `--tm-tabbar-h`）。
+
 #### 3.1.1 工作台（Dashboard）
 
 - **路径**：`/modules/dashboard/dashboard.html`
 - **功能**：
   - 系统概览展示
-  - 待办事项提醒
-  - 快捷操作入口
-  - 数据统计卡片
+  - **左栏·待确认单据**：`GET /api/v1/ai/records`，展示 AI 识别完成（`SUCCESS`）且用户未确认入库的草稿；点击打开核对弹窗
+  - **右栏·进行中业务单据**：`GET /api/v1/rd/orders/in-progress`，仅 **D010001 待支付**、**D010002 出货中** 正式订单
+  - 核对确认后：`POST /api/v1/rd/orders` 默认 **D010001**，删除对应 AI 记录，右栏刷新
+  - 核对弹窗支持多个 `new_products_found` 时分项 Tab 保存新产品
+  - 待办事项提醒、快捷操作入口、数据统计卡片
   - **商户片段插槽**：`data-tm-fragment-scope="dashboard"`、`data-tm-slot="workspace-banner"`（按租户业态加载横幅片段）
 
 #### 3.1.2 客户关系（CRM）
@@ -1130,6 +1182,34 @@
   - AI智能处理
   - 报表分析展示
 
+#### 3.1.6 新手导览（Onboarding）
+
+- **范围**：当前自动导览仅 **`WHOLESALE`** 业态（`tm-onboarding.js` **`shouldRun()`**）；运维账号不进商户导览。
+- **脚本**：`/assets/js/tm-onboarding-registry.js`（步骤/角色必学路径、`targets.desktop` / `targets.mobile`）、`/assets/js/tm-onboarding.js`（引擎）、`/assets/js/tm-onboarding-sync.js`（服务端同步）、`/assets/js/ui-permissions.js`（`TM_ROLE_SCHEMA` / 菜单可见性）。
+- **样式**：`/assets/css/tm-onboarding.css`。
+- **角色必学（批发商示例）**：`ADMIN`/`SALES` 含工作台介绍 + 语音首单（阻塞导航）；`FINANCE`/`WAREHOUSE`/`READONLY` 见 registry **`MANDATORY_PROFILES`**。
+- **流程**：
+  1. 登录成功 → 可选缓存 **`onboarding`** 摘要 → 进入 **`index-app.html`**；
+  2. **`GET /api/v1/tenant/onboarding/state`**（`markFirstLogin=true` 时写入 **`first_login_at`**）并与本地 merge；
+  3. **`isFirstLogin && !welcomed`** → 欢迎弹窗；**`!mandatoryDone`** → 每次登录续做必学（含 **`mandatoryStepIndex`**）；
+  4. 必学完成后 → 可选 **功能导览 FAB** + 清单面板（可「不再提示」）；**不**在 PC 顶栏重复「新手引导」按钮。
+- **与子账号**：`sessionStorage.tm_auth_subuser_id` 存在时 **`subjectType=SUBUSER`**，与主账号分表存储。
+- **公开 API**：`window.TmOnboarding`（`openChecklist`、`restart`、`onVoiceComplete` 等）；工作台语音完成回调 **`TmOnboarding.onVoiceComplete()`**。
+
+#### 3.1.7 会员中心与推荐 UI
+
+- **弹窗壳**：
+  - 主壳内置 **`#member-modal`**（`index-app.html`）；
+  - 独立模块页由 **`auth.js`** 注入 **`#subscription-modal`**（`MODAL_TEMPLATE`）。
+- **数据填充**：**`tmHydrateMemberCenter(modal)`** — `GET /subscription/plans`、`GET /subscription/me`、`GET /referral/summary`；套餐卡片 **`tmRenderPlanCard`**；状态条 **`#tm-member-status-strip`**。
+- **推荐官条（对齐 UI 工程 · 品牌青）**：
+  - 片段文件 **`/modules/membership/member-referral-banner-snippet.html`**（`member-referral-hero` 渐变样式，与 **`referral-rewards-modal.html`** hero 一致）；
+  - 占位 **`[data-tm-member-referral-slot]`**，由 **`tmInjectMemberReferralBanner()`** 在打开弹窗/壳层启动时 fetch 注入；
+  - 含 **专属推荐码**（`#referral-code`）、**推荐名单**（`openReferralListModal`）、**生成海报**（`showPoster`）。
+  - **已废弃**：旧版金色 **`gold-referral-card`**（琥珀渐变 + 火箭图标）不再作为主路径。
+- **推荐奖励详情**：**`/modules/membership/referral-rewards-modal.html`** + **`referral-rewards.js`**（名单脱敏、提现收款信息）；由 **`injectMemberAuxModals()`** 注入。
+- **支付回站**：`sessionStorage.tm_pending_subscription_pay_txnOrderId`；轮询 **`/subscription/payment/status`** 成功后 **`openMemberModal()`**。
+
 ### 3.2 后端服务模块
 
 #### 3.2.1 租户服务（TenantService）
@@ -1143,7 +1223,9 @@
 | `/info/{tenantId}` | GET  | 获取租户信息            |
 | `/create`          | POST | 创建租户              |
 | `/register`        | POST | 租户注册（Body 含 `smsToken`、`smsCode`、**`merchantType`**（可选）、**`referralCode`**（可选）；注册成功后开通 **D001/TRIAL 对应试用** 与 `subscription_plans` 中该业态试用方案；`dysms.enabled=true` 时须先 `send-code`） |
-| `/login`           | POST | 用户登录（JWT 含 **`merchantType`**、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**；响应体可含 `merchantType`、`accessMode`、`referralCode`） |
+| `/login`           | POST | 用户登录（JWT 含 **`merchantType`**、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**；响应体可含 `merchantType`、`accessMode`、`referralCode`、**`onboarding`** 摘要 `{ isFirstLogin, mandatoryDone }`） |
+| `/onboarding/state` | GET | 拉取导览快照；Query `industry`、`roleType`、`subjectType`、`subjectId`、`markFirstLogin`；首次 GET 可写入 **`first_login_at`**（需 Bearer） |
+| `/onboarding/state` | PUT | 保存导览 **`snapshot`** JSONB（需 Bearer） |
 | `/send-code`       | POST | 发送注册短信验证码（阿里云 Dysms SendSms：返回 `smsToken` 票据；未开启时为开发占位） |
 | `/subscription/me` | GET  | 当前租户订阅摘要（含 **`userSeatMax`/`userSeatUsed`**、**`canManageUsers`**、**`pricingHints`**；需 Bearer） |
 | `/subscription/plans` | GET | 某业态可售方案列表；Query `merchantType`（默认 `WHOLESALE`）；**网关可免 JWT**（见网关白名单） |
@@ -1170,7 +1252,7 @@
 
 #### 3.2.2 初始化配置服务（InitCfgService）
 
-应用启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`** / **`production-seed-v1.sql`**（含运维表与 **`SYSTEM_OPS`** 种子）；字典初始化含 **D013 商户类型**（**`DictionaryInitService`**）。存量库增量见 **`migrations/legacy/`** 下脚本。
+应用启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**（仅绿场空库）/ **`production-seed-v1.sql`**（幂等种子），随后 **`applyIncrementalMigrations()`** 幂等执行 **`migrations/legacy/`** 下增量 DDL（如 **`alter_user_onboarding_state.sql`**）；字典初始化含 **D013 商户类型**（**`DictionaryInitService`**）。
 
 **主要接口**：
 
@@ -1281,7 +1363,7 @@
 | `/api/v1/rd/orders/{id}`              | GET    | 根据订单ID查询订单              |
 | `/api/v1/rd/orders/code/{orderCode}`  | GET    | 根据订单编号查询订单              |
 | `/api/v1/rd/orders`                   | GET    | 根据租户ID查询订单列表            |
-| `/api/v1/rd/orders/in-progress`       | GET    | 查询进行中订单（待出货等）           |
+| `/api/v1/rd/orders/in-progress`       | GET    | 查询进行中订单（D010001 待支付 + D010002 出货中） |
 | `/api/v1/rd/orders/latest`            | GET    | 查询最新的10条订单              |
 | `/api/v1/rd/orders/{id}/status`       | PUT    | 更新订单状态                  |
 | `/api/v1/rd/orders/{id}/items`        | GET    | 查询订单详情                  |
@@ -1614,10 +1696,10 @@ dictionary (字典表)
 
 ### 7.5 移动端适配
 
-- 响应式设计，支持手机端
-- 统一的Header和底部导航
-- 移动端优化的弹窗UI
-- **`MobileAdapt/TM_Responsive.js`**：`isMobile()` / **`isMobileView()`**；样式分界与 Tailwind `md`（768px）对齐时，自定义 CSS 建议使用 **`max-width: 767px`**
+- 响应式设计，支持手机端；主壳 **`index-app.html`** 在 **&lt;768px** 使用底栏 Tab + 顶栏 **`tm-app-header-brand`（商贸智脑）**（§3.1.0）
+- 独立模块页经 **`injectCommonUI`** 可注入 **`tm-mobile-header`**；**主壳页禁止重复注入**（避免双层顶栏）
+- 移动端优化的弹窗 UI（会员中心 sheet、推荐奖励弹窗等）
+- **`MobileAdapt/TM_Responsive.js`**：`isMobile()` / **`isMobileView()`**、`body.tm-layout-mobile`；样式分界与 Tailwind `md`（768px）对齐时，自定义 CSS 建议使用 **`max-width: 767px`**
 
 ### 7.6 多商户类型（业态）
 
@@ -1634,7 +1716,10 @@ TM_Project/
 ├── TenantService/              # 租户服务
 │   └── 结构同其他服务
 ├── InitCfgService/             # 初始化配置服务
-│   └── 结构同其他服务
+│   └── src/main/resources/
+│       ├── production-schema-v1.sql      # 绿场 DDL（含 user_onboarding_state）
+│       ├── production-seed-v1.sql
+│       └── migrations/legacy/            # 存量增量；启动时 applyIncrementalMigrations
 ├── CRMService/                 # 客户关系服务
 │   └── 结构同其他服务
 ├── RDService/                  # 进销存服务
@@ -1647,32 +1732,42 @@ TM_Project/
 │   └── 结构同其他服务
 ├── OpsService/                 # 运维中台服务
 │   └── 结构同其他服务
+├── scripts/
+│   └── postgresql/            # 运维手工脚本（DDL 权威在 InitCfgService，见 §1 文首）
 └── TradeMind-Web/              # 前端Web应用
+    ├── index-app.html         # 商户主壳（侧栏/顶栏/底栏、member-modal）
     ├── docs/
     │   └── Framework_Guide.md # 目录职能、fragments、tm-ui-loader、D013 对齐说明
     ├── fragments/             # 按业态目录存放 HTML 片段（wholesale/foreign/ecom/factory）
     │   └── …                  # 例：dashboard/workspace-banner.html
     ├── MobileAdapt/
-    │   └── TM_Responsive.js   # 响应式：isMobile / isMobileView
-    ├── assets/
-    │   └── js/
-    │       ├── auth.js        # 认证、tmResolveMerchantIntent、公共 UI
-    │       ├── tm-ui-loader.js # TM_UI_CONTEXT、injectSlots、TM_RoleGate（main-app 之后加载）
-    │       ├── main-app.js    # TradeMindApp / TM_UI 基础命名空间
-    │       ├── ui-main.js     # 主壳模块加载与 injectSlots 钩子
-    │       ├── ui-product-center.js  # 产品中心前端逻辑
-    │       └── env-config.js # 环境配置
+    │   ├── TM_Responsive.js   # 响应式：isMobile / isMobileView、tm-layout-mobile
+    │   └── mobile.css         # 主壳顶栏/底栏/内容区留白
     ├── modules/
-    │   ├── dashboard/         # 工作台
-    │   │   └── dashboard.html
-    │   ├── crm/               # 客户关系管理
-    │   │   └── crm.html
-    │   ├── product-center/    # 产品中心
-    │   │   └── product-center.html
-    │   ├── supply-chain/      # 供应链管理
-    │   │   └── supply-chain.html
-    │   └── smart-ops/         # 智能经营
-    │       └── smart-ops.html
+    │   ├── membership/
+    │   │   ├── member-referral-banner-snippet.html  # 会员中心推荐条片段
+    │   │   ├── referral-rewards-modal.html
+    │   │   └── referral-rewards.js
+    │   ├── CSS/
+    │   │   └── common.css     # 顶栏品牌区、会员推荐 hero、全局表单
+    │   ├── dashboard/
+    │   ├── crm/
+    │   ├── product-center/
+    │   ├── supply-chain/
+    │   └── smart-ops/
+    └── assets/
+        ├── css/
+        │   └── tm-onboarding.css
+        └── js/
+            ├── auth.js              # 认证、会员中心、MODAL_TEMPLATE、tmInjectMemberReferralBanner
+            ├── tm-ui-loader.js      # TM_UI_CONTEXT、injectSlots、tm-role-ui-ready
+            ├── tm-onboarding.js / tm-onboarding-registry.js / tm-onboarding-sync.js
+            ├── ui-permissions.js    # TM_ROLE_SCHEMA
+            ├── tm-shell-insets.js   # 壳层 safe-area / header-tabbar 高度
+            ├── main-app.js
+            ├── ui-main.js           # switchTab、iframe 嵌入、壳层启动
+            ├── ui-product-center.js
+            └── env-config.js
 ```
 
 ---
@@ -1710,6 +1805,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.20 | 2026-05-24 | **新手导览**：§1.1.2.1 **`user_onboarding_state`** 快照字段与双写策略；**`InitCfgService.applyIncrementalMigrations()`**；§3.1.6、`OnboardingController`；§3.2.1 **`/onboarding/state`**、登录 **`onboarding`** 摘要。**会员/壳层 UI**：§3.1.0 主壳顶栏表、§3.1.7 会员中心（**`member-referral-banner-snippet`** 品牌青 hero，废弃主路径 **`gold-referral-card`**）；PC 顶栏去重新手引导/退出；移动 **`tm-app-header-brand`** 固定「商贸智脑」。§8 目录树同步 |
 | v1.19 | 2026-05-20 | DDL 权威切换至 **`production-schema-v1.sql`** / **`production-seed-v1.sql`**；§1.1.2 **`last_login_ip`**；§1.6 运维表（**`ops_tenant_snapshot`、`ai_usage_stats`、`ops_subscription_logs`、`system_announcements`**）；新增 **OpsService** 与网关 **`/api/v1/ops/**`** RBAC（§2.4.5）；§3.2.1 子账号/续费升级/推荐扩展接口；§3.2.4–3.2.6 补齐 RD/Supp/AI 接口；§3.2.8 运维 API；网关 **保留 Authorization** 转发说明 |
 | v1.18 | 2026-05-12 | §1 与 **`InitCfgService/create_tables.sql`** 对齐：`tenant_subscriptions` 日期约束；**`subscription_payment_orders` / `subscription_payment_events`** 全列与索引（§1.1.4.1–1.1.4.2）；**`balanceChgDetails`、`customers`、`orders`、`order_items`、`dictionary`、`ai_operation_records`** 物理蛇形列名；**`biz_account_ledger`** 索引与幂等唯一索引；**`production`** 标注当前 DDL 未含；§3.2.2 / 初始化说明列举 **`alter_subscription_payment.sql`** 等 |
 | v1.17 | 2026-05-08 | **`biz_accounts.balance`**、**`biz_account_ledger`** 及索引；订单「已完成」入账（RDService）、进货 **`paid_amount`** 差额入账（SuppService）、IMService 手动余额轧差；IMService **`/accounts/{id}/ledger`** 与 Excel 导出（≤10000 条）；智能经营前端列表/详情/流水与 §3.2.7 接口说明 |
@@ -1733,6 +1829,6 @@ TM_Project/
 
 ---
 
-**文档版本**：v1.19
-**最后更新**：2026-05-20
+**文档版本**：v1.20
+**最后更新**：2026-05-24
 **维护者**：TradeMind开发团队

@@ -661,7 +661,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260524supp2',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260524supp3',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );

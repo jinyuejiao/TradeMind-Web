@@ -818,9 +818,9 @@ textarea {
         padding: 0 !important;
     }
 
-    .tm-dialog-root .tm-dialog-panel,
-    .tm-dialog-root .tm-mobile-sheet-panel,
-    .tm-dialog-root > .modal-content-box {
+    .tm-dialog-root:not(.tm-purchase-modal) .tm-dialog-panel,
+    .tm-dialog-root:not(.tm-purchase-modal) .tm-mobile-sheet-panel,
+    .tm-dialog-root:not(.tm-purchase-modal) > .modal-content-box {
         width: 100%;
         max-width: 100%;
         max-height: min(
