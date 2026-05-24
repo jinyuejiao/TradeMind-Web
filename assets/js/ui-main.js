@@ -108,6 +108,8 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
     try {
         // 工作台内联脚本含大量顶层 let：重复 append 会触发 Identifier has already been declared，导致语音/待确认逻辑整段未执行。
         // 已加载过则只恢复导航全局并刷新待确认列表（DOM 已由 loadDashboard 重注入）。
+        var voiceUploadRev = window.__TM_DASHBOARD_VOICE_UPLOAD_REV || '';
+        var expectedVoiceRev = '20260524';
         if (window.__TM_DASHBOARD_INLINE_LOADED) {
             TM_restoreShellNavigationGlobals();
             TM_refreshDashboardPendingOrders();
@@ -117,6 +119,10 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     window.loadPendingOrders();
                 }
             } catch (e0) { /* ignore */ }
+            if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
+                window.__TM_VOICE_RELOAD_HINT_SHOWN = true;
+                console.warn('[Voice] 检测到旧版工作台脚本，请强制刷新页面 (Ctrl+F5) 以加载语音上传修复');
+            }
             return;
         }
 
@@ -528,7 +534,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260523voice5', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260524voice-server', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');

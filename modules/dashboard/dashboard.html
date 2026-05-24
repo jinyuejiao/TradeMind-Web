@@ -3,6 +3,7 @@
 <head>
     <script src="../../assets/js/env-config.js"></script>
     <script src="../../assets/js/api-client.js"></script>
+    <script src="../../assets/js/dashboard-voice-upload.js?v=20260524"></script>
     <script src="../../assets/js/ai-order-extract-parse.js?v=20260504r2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -2908,8 +2909,14 @@
         }
 
         async function uploadVoiceBlobToStorage(audioBlob) {
+            if (typeof window.__TM_uploadVoiceBlobToStorage === 'function') {
+                return window.__TM_uploadVoiceBlobToStorage(
+                    audioBlob,
+                    voiceAbortController && voiceAbortController.signal
+                );
+            }
             var ext = tmVoiceBlobExtension(audioBlob);
-            console.log('[Voice] 经服务端上传 OSS, size=', audioBlob && audioBlob.size, 'ext=', ext);
+            console.log('[Voice] 经服务端上传 OSS (fallback), size=', audioBlob && audioBlob.size, 'ext=', ext);
             var formData = new FormData();
             formData.append('file', audioBlob, 'voice-' + Date.now() + '.' + ext);
             var uploadResp = await window.wrappedFetch('/api/v1/ai/voice/upload', {
