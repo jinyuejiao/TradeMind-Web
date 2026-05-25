@@ -202,7 +202,7 @@
         });
     </script>
 </head>
-<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+<body class="bg-slate-100 text-slate-600 font-sans w-full flex flex-col overflow-hidden tm-module-body">
 
     <!-- 1. 侧边导航栏 -->
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
@@ -340,7 +340,7 @@
         </div>
     </main>
 
-    <div id="client-edit-modal" class="tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8">
+    <div id="client-edit-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeClientEditModal()"></div>
         <div class="tm-mobile-sheet-panel relative bg-white w-full max-w-4xl h-full max-h-[90vh] md:max-h-[90vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">

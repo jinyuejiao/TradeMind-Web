@@ -1,4 +1,5 @@
 /* TradeMind Common UI Styles */
+@import url('../../assets/css/tm-layout-engine.css');
 
 :root {
     --brand-primary: #14B8A6;
@@ -26,31 +27,6 @@
 @media (min-width: 768px) {
     .col-hide-mobile {
         display: table-cell;
-    }
-}
-
-@media (max-width: 767px) {
-    :root {
-        --tm-header-h: 3.5rem;
-        --tm-tabbar-h: 4.25rem;
-        --tm-mobile-header-h: 3.5rem;
-        --tm-mobile-nav-h: 4.25rem;
-    }
-
-    body.tm-layout-mobile #content-area > .view-section.hidden {
-        display: none !important;
-        height: 0 !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-
-    /* 顶栏/底栏留白由 body.tm-layout-mobile + MobileAdapt/mobile.css 统一处理 */
-    body:not(.tm-layout-mobile) .tm-app-content-area {
-        padding-bottom: calc(var(--tm-tabbar-h) + var(--tm-safe-b) + 0.25rem) !important;
     }
 }
 
@@ -410,13 +386,6 @@ textarea {
     background: rgba(15, 23, 42, 0.5);
 }
 
-@media (max-width: 768px) {
-    .modal-content-box {
-        height: 95vh !important;
-        border-radius: 1.5rem 1.5rem 0 0 !important;
-    }
-}
-
 .tm-compliance-footer {
     width: 100%;
     padding: 18px 16px;
@@ -475,7 +444,6 @@ textarea {
     }
 }
 
-/* 手机端备案由各 Tab 内 data-tm-compliance-slot 展示；主壳全局 footer 在 mobile.css 隐藏 */
 #tm-compliance-sticky {
     display: none !important;
 }
@@ -483,99 +451,6 @@ textarea {
 @media (min-width: 768px) {
     footer.tm-compliance-footer[data-tm-compliance-slot] {
         display: none !important;
-    }
-}
-
-/* 手机 embed：子页文档流展开，由主壳 content-area 统一滚动（备案与工作台一致） */
-@media (max-width: 767px) {
-    html.tm-embedded.tm-embed-parent-flow,
-    html.tm-embedded.tm-embed-parent-flow body {
-        height: auto !important;
-        min-height: 0 !important;
-        overflow: visible !important;
-    }
-
-    html.tm-embedded.tm-embed-parent-flow body {
-        display: block !important;
-    }
-
-    html.tm-embedded.tm-embed-parent-flow main {
-        height: auto !important;
-        overflow: visible !important;
-        display: block !important;
-    }
-
-    html.tm-embedded.tm-embed-parent-flow #content-area {
-        overflow: visible !important;
-        height: auto !important;
-        flex: none !important;
-        padding-bottom: 0 !important;
-    }
-
-    html.tm-embedded.tm-embed-parent-flow #view-crm,
-    html.tm-embedded.tm-embed-parent-flow #crm-list-pane,
-    html.tm-embedded.tm-embed-parent-flow #customer-list-container,
-    html.tm-embedded.tm-embed-parent-flow #orders-list-view,
-    html.tm-embedded.tm-embed-parent-flow #suppliers-list-view,
-    html.tm-embedded.tm-embed-parent-flow #sup-list-view,
-    html.tm-embedded.tm-embed-parent-flow #sup-supplier-view {
-        height: auto !important;
-        max-height: none !important;
-        overflow: visible !important;
-    }
-}
-
-.tm-shell-chrome-hidden {
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
-
-/* 模块弹窗 — 手机端底 sheet（对齐 UI 工程） */
-@media (max-width: 767px) {
-    .tm-mobile-sheet-modal {
-        align-items: flex-end !important;
-        justify-content: flex-end !important;
-        padding: 0 !important;
-        z-index: 110 !important;
-    }
-
-    .tm-mobile-sheet-modal .tm-mobile-sheet-panel,
-    .tm-mobile-sheet-modal > .tm-mobile-sheet-panel {
-        width: 100%;
-        max-width: 100%;
-        max-height: min(
-            88dvh,
-            calc(100dvh - env(safe-area-inset-top, 0px) - var(--tm-tabbar-h, 4.25rem))
-        ) !important;
-        height: auto !important;
-        border-radius: 1rem 1rem 0 0 !important;
-        margin: 0;
-    }
-
-    .tm-modal-footer-safe {
-        flex-shrink: 0;
-        padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
-    }
-
-    html.tm-embedded .tm-modal-footer-safe,
-    html.tm-embedded .tm-purchase-modal-footer {
-        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
-    }
-
-    /* 全屏 sheet 弹窗（进货单等）在 iframe 内占满高度，底栏不叠加主壳 tabbar 留白 */
-    html.tm-embedded #purchase-modal.tm-purchase-modal .tm-modal-footer-safe,
-    html.tm-embedded #purchase-modal .tm-purchase-modal-footer {
-        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
-    }
-
-    #supplier-modal.tm-mobile-sheet-modal {
-        align-items: flex-end !important;
-        padding: 0 !important;
-    }
-
-    #supplier-modal .tm-mobile-sheet-panel {
-        max-width: 100%;
-        border-radius: 1rem 1rem 0 0 !important;
     }
 }
 

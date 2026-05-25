@@ -1,0 +1,341 @@
+/**
+ * TradeMind — 手机端三段式布局引擎
+ * Header (文档流) + Main Content (滚动) + Bottom Nav (fixed)
+ * 权威来源：取代 MobileAdapt/mobile.css 壳层段 + common.css 重复壳层/sheet 规则
+ */
+
+/* ========== 1. 设计令牌 ========== */
+:root {
+    --tm-safe-t: env(safe-area-inset-top, 0px);
+    --tm-safe-b: env(safe-area-inset-bottom, 0px);
+    --tm-header-h: 4rem;
+    --tm-tabbar-h: 0px;
+    --tm-mobile-header-h: var(--tm-header-h);
+    --tm-mobile-nav-h: var(--tm-tabbar-h);
+    --tm-content-pad-b: 0px;
+    --tm-iframe-min-h: 420px;
+}
+
+@media (max-width: 767px) {
+    :root {
+        --tm-header-h: 3.5rem;
+        --tm-tabbar-h: 4.25rem;
+        --tm-mobile-header-h: 3.5rem;
+        --tm-mobile-nav-h: 4.25rem;
+        --tm-content-pad-b: calc(var(--tm-tabbar-h) + var(--tm-safe-b) + 0.75rem);
+    }
+}
+
+@media (min-width: 768px) {
+    :root {
+        --tm-header-h: 4rem;
+        --tm-tabbar-h: 0px;
+    }
+}
+
+/* ========== 2. 根容器（主壳 mobile） ========== */
+@media (max-width: 767px) {
+    body.tm-layout-mobile {
+        height: 100dvh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: row;
+    }
+
+    @supports not (height: 100dvh) {
+        body.tm-layout-mobile {
+            height: 100vh;
+        }
+    }
+
+    body.tm-layout-mobile main {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        height: 100%;
+        flex: 1;
+    }
+
+    /* Header: 文档流顶栏 */
+    body.tm-layout-mobile .tm-app-header {
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        flex-shrink: 0;
+        z-index: 40;
+        display: flex !important;
+        width: 100%;
+        min-height: var(--tm-mobile-header-h);
+        height: auto;
+        padding-top: var(--tm-safe-t);
+        padding-bottom: 0.125rem;
+        box-sizing: border-box;
+        box-shadow: 0 1px 0 rgba(226, 232, 240, 0.9);
+    }
+
+    /* Main: 唯一滚动区 */
+    body.tm-layout-mobile .tm-content-area,
+    body.tm-layout-mobile .tm-app-content-area {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-top: 0.5rem !important;
+        padding-bottom: var(--tm-content-pad-b) !important;
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem));
+    }
+
+  body.tm-layout-mobile #content-area > .view-section.hidden {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    body.tm-layout-mobile #content-area > .view-section:not(.hidden) {
+        flex: none;
+        width: 100%;
+        min-height: min-content;
+        overflow: visible;
+    }
+
+    /* Footer: 备案贴底 */
+    body.tm-layout-mobile #content-area > footer.tm-compliance-footer {
+        display: block;
+        flex-shrink: 0;
+        margin-top: auto;
+        padding: 1rem 1rem calc(0.5rem + var(--tm-safe-b));
+        text-align: center;
+        font-size: 10px;
+        color: #94a3b8;
+        background: transparent;
+        border-top: none;
+    }
+
+    body.tm-layout-mobile footer.tm-compliance-footer[data-tm-compliance-slot] {
+        display: none !important;
+    }
+
+    /* Tab 视图微调 */
+    body.tm-layout-mobile #view-dashboard.view-section:not(.hidden) {
+        display: block;
+        padding-bottom: 0.5rem;
+    }
+
+    body.tm-layout-mobile #view-biz.view-section:not(.hidden),
+    body.tm-layout-mobile #view-crm.view-section:not(.hidden),
+    body.tm-layout-mobile #view-supplier.view-section:not(.hidden) {
+        padding: 0 !important;
+        margin: 0;
+    }
+
+    body.tm-layout-mobile #view-biz.view-section:not(.hidden) iframe.tm-module-frame,
+    body.tm-layout-mobile #view-crm.view-section:not(.hidden) iframe.tm-module-frame,
+    body.tm-layout-mobile #view-supplier.view-section:not(.hidden) iframe.tm-module-frame {
+        display: block;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        border: 0;
+    }
+
+    body.tm-layout-mobile #view-supply.view-section:not(.hidden) {
+        padding-bottom: 0.5rem;
+        min-height: min-content;
+    }
+
+    body.tm-layout-mobile #view-supply.view-section:not(.hidden) #supply-inner-scroll,
+    body.tm-layout-mobile #view-supply.view-section:not(.hidden) #mobile-product-shell {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+        flex: none !important;
+        min-height: 0;
+    }
+
+    body.tm-layout-mobile #view-supply.tm-view-supply-scroll:not(.hidden) {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+        flex: none !important;
+    }
+
+    /* Bottom Nav: fixed */
+    body.tm-layout-mobile #tm-app-tabbar,
+    body.tm-layout-mobile nav[data-tm-shell="mobile-bottom-nav"] {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 95;
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    /* 独立模块页（auth 注入顶栏） */
+    body.tm-layout-mobile .tm-mobile-header {
+        position: relative;
+        flex-shrink: 0;
+        min-height: calc(var(--tm-mobile-header-h) + var(--tm-safe-t));
+        height: auto;
+        padding-top: var(--tm-safe-t);
+        padding-bottom: 0.125rem;
+    }
+
+    body.tm-layout-mobile #content-area:not(.tm-app-content-area) {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding-top: 0.5rem !important;
+        padding-bottom: var(--tm-content-pad-b) !important;
+    }
+
+    body.tm-layout-mobile.tm-mobile-active {
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+    }
+}
+
+/* ========== 3. 模块独立页 body（非 embed） ========== */
+@media (max-width: 767px) {
+    html:not(.tm-embedded) body.tm-module-body {
+        height: 100dvh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    @supports not (height: 100dvh) {
+        html:not(.tm-embedded) body.tm-module-body {
+            height: 100vh;
+        }
+    }
+
+    html:not(.tm-embedded) body.tm-module-body main {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+/* ========== 4. iframe embed 子页流式展开 ========== */
+@media (max-width: 767px) {
+    html.tm-embedded.tm-embed-parent-flow,
+    html.tm-embedded.tm-embed-parent-flow body {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow body {
+        display: block !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow main {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow #content-area {
+        overflow: visible !important;
+        height: auto !important;
+        flex: none !important;
+        padding-bottom: 0 !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow #view-crm,
+    html.tm-embedded.tm-embed-parent-flow #crm-list-pane,
+    html.tm-embedded.tm-embed-parent-flow #customer-list-container,
+    html.tm-embedded.tm-embed-parent-flow #orders-list-view,
+    html.tm-embedded.tm-embed-parent-flow #suppliers-list-view,
+    html.tm-embedded.tm-embed-parent-flow #sup-list-view,
+    html.tm-embedded.tm-embed-parent-flow #sup-supplier-view {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    html.tm-embedded .tm-compliance-footer {
+        display: none !important;
+    }
+}
+
+/* ========== 5. 底栏隐藏（弹窗打开） ========== */
+.tm-shell-chrome-hidden {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* ========== 6. Bottom Sheet 标准 ========== */
+@media (max-width: 767px) {
+    .tm-mobile-sheet-modal,
+    .tm-dialog-root[data-tm-dialog-variant="sheet"] {
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 0 !important;
+        z-index: 110 !important;
+    }
+
+    .tm-mobile-sheet-modal .tm-dialog-panel,
+    .tm-mobile-sheet-modal .tm-mobile-sheet-panel,
+    .tm-mobile-sheet-modal > .tm-mobile-sheet-panel,
+    .tm-mobile-sheet-modal .modal-content-box,
+    .tm-dialog-root[data-tm-dialog-variant="sheet"] .tm-dialog-panel,
+    .tm-dialog-root[data-tm-dialog-variant="sheet"] .modal-content-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: min(
+            90dvh,
+            calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem))
+        ) !important;
+        height: auto !important;
+        border-radius: 2.5rem 2.5rem 0 0 !important;
+        margin: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tm-mobile-sheet-modal .tm-sheet-body,
+    .tm-mobile-sheet-modal .modal-content-box > .overflow-y-auto,
+    .tm-dialog-root[data-tm-dialog-variant="sheet"] .overflow-y-auto {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .tm-modal-footer-safe {
+        flex-shrink: 0;
+        padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + var(--tm-safe-b) + 0.5rem) !important;
+    }
+
+    html.tm-embedded .tm-modal-footer-safe,
+    html.tm-embedded .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, var(--tm-safe-b)) !important;
+    }
+
+    html.tm-embedded #purchase-modal.tm-purchase-modal .tm-modal-footer-safe,
+    html.tm-embedded #purchase-modal .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, var(--tm-safe-b)) !important;
+    }
+
+    #supplier-modal.tm-mobile-sheet-modal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    #supplier-modal .tm-mobile-sheet-panel {
+        max-width: 100%;
+        border-radius: 2.5rem 2.5rem 0 0 !important;
+    }
+}

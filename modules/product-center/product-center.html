@@ -11,7 +11,8 @@
 
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
-    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260508r4">
+    <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260525layout">
+    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260525layout">
     <link rel="stylesheet" href="/assets/css/product-center.css?v=20260519pc">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,7 +54,7 @@
         });
     </script>
 </head>
-<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+<body class="bg-slate-100 text-slate-600 font-sans w-full flex flex-col overflow-hidden tm-module-body">
 
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
         <div class="h-16 flex items-center px-6 border-b border-slate-800">
@@ -214,7 +215,7 @@
                 </div>
             </div>
 
-            <div id="cost-analysis-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-0 md:p-8 modal-blur">
+            <div id="cost-analysis-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-8 modal-blur" data-tm-dialog-variant="sheet">
                 <div class="absolute inset-0" onclick="closeCostAnalysis()"></div>
                 <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
                     <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -246,7 +247,7 @@
                 </div>
             </div>
 
-            <div id="workshop-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
+            <div id="workshop-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8 modal-blur" data-tm-dialog-variant="sheet">
                 <div class="absolute inset-0" onclick="closeWorkshopModal()"></div>
                 <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[95vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
                     <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -271,7 +272,7 @@
                 </div>
             </div>
 
-            <div id="clearance-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
+            <div id="clearance-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8 modal-blur" data-tm-dialog-variant="sheet">
                 <div class="absolute inset-0" onclick="closeClearanceModal()"></div>
                 <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
                     <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -301,7 +302,7 @@
                 </div>
             </div>
 
-            <div id="purchase-suggestion-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
+            <div id="purchase-suggestion-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8 modal-blur" data-tm-dialog-variant="sheet">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePurchaseSuggestionModal()"></div>
                 <div class="relative bg-white w-full max-w-4xl h-full max-sm:h-full max-sm:rounded-none md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
                     <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -375,7 +376,7 @@
                 </div>
             </div>
 
-            <div id="category-modal-root" class="hidden fixed inset-0 z-[140] flex items-end justify-center p-0 md:p-4 md:items-center modal-blur">
+            <div id="category-modal-root" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[140] flex items-end justify-center p-0 md:p-4 md:items-center modal-blur" data-tm-dialog-variant="sheet">
                 <div class="absolute inset-0" onclick="window.ProductModule.closeCategoryManager()"></div>
                 <div class="relative bg-white w-full max-w-md h-auto max-h-[80vh] rounded-none md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box max-md:rounded-t-[2.5rem] max-md:rounded-b-none">
                     <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">

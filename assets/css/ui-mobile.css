@@ -53,7 +53,7 @@
 /* ================= 产品中心移动端适配 ================= */
 
 /* 产品中心筛选器移动端适配 */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     /* 筛选器区域 */
     #category-filter,
     #supplier-filter,

@@ -968,7 +968,14 @@ function switchTab(tabId) {
     if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
         setTimeout(function () {
             window.TM_Compliance.onTabChange(tabId);
+            var contentEl = document.getElementById('content-area');
+            if (contentEl) contentEl.scrollTop = 0;
         }, 200);
+    } else {
+        requestAnimationFrame(function () {
+            var contentEl = document.getElementById('content-area');
+            if (contentEl) contentEl.scrollTop = 0;
+        });
     }
 
     if (typeof window.TM_syncAppShellMetrics === 'function') {

@@ -59,7 +59,6 @@
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/ui-supplier.js?v=20260524supp3"></script>
     <style>
-        body { display: flex; height: 100vh; overflow: hidden; }
         .view-toggle-btn { transition: all 0.2s ease; }
         .view-toggle-btn.active {
             background-color: #14B8A6 !important;
@@ -68,7 +67,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-600 font-sans h-screen w-full flex overflow-hidden">
+<body class="bg-slate-100 text-slate-600 font-sans w-full flex flex-col overflow-hidden tm-module-body">
     <aside class="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 flex-col z-20 shadow-xl" id="main-sidebar">
         <div class="h-16 flex items-center px-6 border-b border-slate-800">
             <div class="w-10 h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center mr-3 text-white shadow-lg shadow-[#14B8A6]/20">
@@ -132,7 +131,7 @@
         </div>
     </main>
 
-    <div id="supplier-modal" class="tm-product-edit-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6">
+    <div id="supplier-modal" class="tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="closeSupplierModal()"></div>
         <div class="relative bg-white w-full max-w-lg md:max-w-md h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
             <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">

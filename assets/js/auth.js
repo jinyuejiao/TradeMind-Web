@@ -415,7 +415,7 @@ window.tmGetSelectedMerchantType = function () {
                     .main-content-section,
                     .page-content,
                     #content-area:not(.tm-app-content-area) {
-                        padding-top: calc(var(--tm-mobile-header-h, 3.5rem) + env(safe-area-inset-top, 0px) + 0.5rem);
+                        padding-top: 0.5rem;
                         padding-bottom: calc(var(--tm-mobile-nav-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.75rem);
                     }
 
@@ -429,12 +429,10 @@ window.tmGetSelectedMerchantType = function () {
                     }
                 }
 
-                /* 移动端顶部导航（高度含 safe-area，与 MobileAdapt/mobile.css 一致） */
+                /* 移动端顶部导航（文档流，与 tm-layout-engine.css 一致） */
                 .tm-mobile-header {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
+                    position: relative;
+                    flex-shrink: 0;
                     min-height: calc(var(--tm-mobile-header-h, 3.5rem) + env(safe-area-inset-top, 0px));
                     height: auto;
                     padding-top: env(safe-area-inset-top, 0px);
@@ -2294,10 +2292,10 @@ function closePoster() {
 function ensureMobileShellAssets() {
     var cssId = 'tm-mobile-adapt-css';
     if (!document.getElementById(cssId)) {
-        var cssHref = '/MobileAdapt/mobile.css?v=20260520shell';
+        var cssHref = '/assets/css/tm-layout-engine.css?v=20260525layout';
         if (typeof resolveStaticPageUrl === 'function') {
             try {
-                cssHref = resolveStaticPageUrl('MobileAdapt/mobile.css?v=20260520shell');
+                cssHref = resolveStaticPageUrl('assets/css/tm-layout-engine.css?v=20260525layout');
             } catch (eCss) { /* ignore */ }
         }
         var link = document.createElement('link');
@@ -2400,7 +2398,8 @@ window.injectCommonUI = function() {
             // 给 body 添加移动端类名（嵌入 iframe 的模块页不加，避免全局移动端样式干扰子页布局）
             if (!isEmbeddedModule) {
                 document.body.classList.add('tm-mobile-active');
-                console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active 类');
+                document.body.classList.add('tm-module-body');
+                console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active / tm-module-body 类');
             }
 
             /** index-app 等主壳页已内置顶栏与 .mobile-nav-btn 底栏（方案 A），禁止再注入 tm-mobile-header / tm-mobile-nav */

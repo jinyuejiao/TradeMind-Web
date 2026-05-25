@@ -310,7 +310,7 @@ button.btn-modal-danger,
 }
 
 /* --- 手机端 CRM 专用适配样式 --- */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     /* 详情页显示时隐藏列表页 */
     .crm-detail-active #crm-list-pane {
         display: none;
@@ -318,12 +318,6 @@ button.btn-modal-danger,
 
     .crm-detail-active #crm-detail-pane {
         display: block;
-    }
-
-    /* 弹窗高度优化 */
-    .modal-content-box {
-        height: 92vh !important;
-        border-radius: 1.5rem 1.5rem 0 0 !important;
     }
 }
 
@@ -339,7 +333,7 @@ button.btn-modal-danger,
     transform: translateX(0);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     #main-sidebar {
         position: fixed;
         inset-y: 0;
