@@ -325,8 +325,39 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
 #purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
     flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-items-core {
+    flex: 1 1 auto;
+    min-height: 8rem;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-items-scroll,
+#purchase-modal.tm-purchase-modal #purchase-items-cards {
+    min-height: 0;
+}
+
+#purchase-modal.tm-purchase-modal #purchase-bottom-panel {
+    flex: 0 0 auto;
+    max-height: 42vh;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-aux-details > summary {
+    list-style: none;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-aux-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+#purchase-modal.tm-purchase-modal .form-input--compact {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    font-size: 0.8125rem;
 }
 
 #purchase-modal.tm-purchase-modal .tm-purchase-items-scroll {
@@ -413,8 +444,7 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
         flex: 1 1 auto;
         min-height: 0;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
@@ -442,4 +472,44 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
         top: 0;
         z-index: 1;
     }
+}
+
+/* 工作台 — 进行中订单详情弹窗 */
+#order-detail-modal.tm-order-detail-modal .tm-dialog-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#order-detail-modal.tm-order-detail-modal .form-input--compact {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    font-size: 0.8125rem;
+}
+
+#order-detail-modal.tm-order-detail-modal #detail-aux-details > summary {
+    list-style: none;
+}
+
+#order-detail-modal.tm-order-detail-modal #detail-aux-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+#order-detail-modal.tm-order-detail-modal .tm-order-aux-summary::-webkit-details-marker,
+#manual-order-modal.tm-order-detail-modal .tm-order-aux-summary::-webkit-details-marker {
+    display: none;
+}
+
+#manual-order-modal.tm-order-detail-modal #manual-aux-details > summary {
+    list-style: none;
+}
+
+#manual-order-modal.tm-order-detail-modal #manual-aux-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+#manual-order-modal.tm-order-detail-modal .form-input--compact {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+    font-size: 0.8125rem;
 }

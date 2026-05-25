@@ -11,7 +11,7 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260519wb">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260524od">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260525mo">
 
     <style>
         body {
@@ -329,11 +329,33 @@
                                 <button type="button" onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95 whitespace-nowrap">
                                     <i class="ph ph-plus-circle text-lg shrink-0 leading-none"></i><span>添加订单</span>
                                 </button>
-                                <select id="inprogress-status-filter" onchange="filterInProgressOrders()" class="text-[10px] bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none font-bold text-slate-600 max-w-[7.5rem] sm:max-w-none">
-                                    <option value="">全部</option>
-                                    <option value="D010001">待支付</option>
-                                    <option value="D010002">出货中</option>
-                                </select>
+                            <div class="relative" id="inprogress-filter-wrap">
+                                <button type="button" id="inprogress-filter-btn" onclick="toggleInProgressFilterPanel(event)" class="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 bg-white rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-50 whitespace-nowrap">
+                                    <i class="ph ph-funnel text-sm"></i><span>筛选</span>
+                                    <span id="inprogress-filter-badge" class="hidden w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                                </button>
+                                <div id="inprogress-filter-panel" class="hidden absolute right-0 top-full mt-1.5 z-30 w-56 rounded-xl border border-slate-200 bg-white shadow-xl p-3 space-y-2">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase">物流状态</p>
+                                    <select id="inprogress-filter-order-status" class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5">
+                                        <option value="">全部</option>
+                                        <option value="D010001">待配货</option>
+                                        <option value="D010002">拣货中</option>
+                                        <option value="D010003">已发货</option>
+                                    </select>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase pt-1">收款状态</p>
+                                    <select id="inprogress-filter-fin-status" class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5">
+                                        <option value="">全部</option>
+                                        <option value="UNPAID">未收款</option>
+                                        <option value="PARTIAL_PAID">部分收款</option>
+                                        <option value="SETTLED">已结清</option>
+                                        <option value="BAD_DEBT">坏账</option>
+                                    </select>
+                                    <div class="flex gap-2 pt-2">
+                                        <button type="button" onclick="resetInProgressFilter()" class="flex-1 py-1.5 text-[10px] font-bold text-slate-500 border border-slate-200 rounded-lg">重置</button>
+                                        <button type="button" onclick="applyInProgressFilter()" class="flex-1 py-1.5 text-[10px] font-bold text-white bg-brand-600 rounded-lg">应用</button>
+                                    </div>
+                                </div>
+                            </div>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar min-h-0" id="inprogress-list">
@@ -571,7 +593,7 @@
                     </div>
                     <!-- 客户高级信息 -->
                     <div class="pt-6 border-t border-slate-50">
-                        <button type="button" onclick="toggleAdvanced('cust', event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+                        <button type="button" onclick="toggleAuditCustAdvanced(event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
                             <span>展开详细地址与档案摘要</span>
                             <i id="advanced-icon-cust" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
                         </button>
@@ -739,73 +761,107 @@
     </div>
 
 
-    <!-- 进行中业务弹窗 -->
-    <div id="order-detail-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+        <!-- 进行中业务弹窗 -->
+    <div id="order-detail-modal" class="tm-dialog-root tm-mobile-sheet-modal tm-order-detail-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeOrderDetail()"></div>
-        <div class="tm-dialog-panel relative bg-white w-full max-w-4xl h-full max-h-[85vh] md:max-h-[85vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
-
-            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg"><i class="ph ph-receipt"></i></div>
-                    <div>
-                        <h2 class="text-sm font-bold text-slate-800" id="detail-order-id">INV-2026-0082</h2>
-                        <p id="detail-order-meta" class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5">创建时间: --</p>
+        <div class="tm-dialog-panel relative bg-white w-full max-w-4xl h-full max-h-[90vh] md:max-h-[90vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+            <div class="px-4 py-3 md:px-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shrink-0"><i class="ph ph-receipt"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-sm font-bold text-slate-800 truncate" id="detail-order-id">ORD-</h2>
+                            <span id="detail-badge-logistics" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 text-teal-700 text-[10px] font-bold"><i class="ph ph-truck"></i> 待配货</span>
+                            <span id="detail-badge-finance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-bold"><i class="ph ph-currency-cny"></i> 未收款</span>
+                        </div>
+                        <p id="detail-order-meta" class="text-[10px] text-slate-400 mt-0.5 truncate">创建时间: --</p>
                     </div>
                 </div>
-                <button onclick="closeOrderDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                <button type="button" onclick="closeOrderDetail()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
             </div>
-
-            <div class="flex-1 overflow-y-auto p-4 md:p-8 no-scrollbar space-y-8">
-                <section class="tm-product-edit-section">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="detail-customer-name">客户名称</label>
-                            <input id="detail-customer-name" type="text" class="form-input font-bold text-slate-700" disabled>
+            <div id="detail-order-status-hint" class="hidden mx-4 mt-2 md:mx-6 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700 shrink-0" role="status"></div>
+            <div class="flex-1 min-h-0 flex flex-col overflow-hidden px-4 py-3 md:px-6">
+                <section class="shrink-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="detail-customer-name">客户</label>
+                            <input id="detail-customer-name" type="text" class="form-input form-input--compact font-bold text-slate-700" disabled>
                         </div>
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="detail-order-status">订单状态</label>
-                            <select id="detail-order-status" class="form-input w-full font-bold text-brand-600" aria-label="订单状态"></select>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="detail-order-status">物流状态</label>
+                            <select id="detail-order-status" class="form-input form-input--compact font-bold text-brand-600" aria-label="订单状态"></select>
                         </div>
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="detail-delivery-date">交货日期</label>
-                            <input id="detail-delivery-date" type="date" class="form-input" disabled>
-                        </div>
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="detail-receipt-account">收款账户</label>
-                            <select id="detail-receipt-account" class="form-input w-full font-bold text-slate-700" aria-label="收款账户"></select>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="detail-delivery-date">交货日期</label>
+                            <input id="detail-delivery-date" type="date" class="form-input form-input--compact" disabled>
                         </div>
                     </div>
-                    <p id="detail-order-status-hint" class="tm-product-hint mt-2 hidden" role="status"></p>
                 </section>
-                <!-- 详情内容区 -->
-                <section>
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><i class="ph ph-package text-brand-500"></i> 单据包含产品列表</h3>
-                    <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
-                        <table class="w-full text-left text-xs">
-                            <thead class="bg-slate-100/50 text-slate-400 font-black uppercase tracking-tighter">
+                <section class="flex-1 min-h-0 flex flex-col mt-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
+                        <h3 class="text-xs font-black text-slate-700">订单明细</h3>
+                        <span class="text-[11px] text-slate-500">应收 <strong class="font-mono text-slate-800" id="detail-order-total">¥0.00</strong></span>
+                    </div>
+                    <div class="flex-1 min-h-0 overflow-auto bg-slate-50 rounded-xl border border-slate-100">
+                        <table class="w-full text-xs min-w-[20rem]">
+                            <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
                                 <tr>
-                                    <th class="px-5 py-4">产品名称 / 规格</th>
-                                    <th class="px-5 py-4 text-center">数量</th>
-                                            <th class="px-5 py-4 text-right">分项金额 (CNY)</th>
+                                    <th class="px-3 py-2 text-left">产品</th>
+                                    <th class="px-3 py-2 text-center w-16">数量</th>
+                                    <th class="px-3 py-2 text-right w-24">小计</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-slate-700" id="detail-order-items-body"></tbody>
+                            <tbody class="divide-y divide-slate-100 bg-white" id="detail-order-items-body"></tbody>
                         </table>
                     </div>
                 </section>
-
-                <div id="detail-order-total-mount">
-                    <div class="tm-order-total-card">
-                        <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
-                        <div class="tm-order-total-card__text">
-                            <p class="tm-order-total-card__title">订单总计</p>
-                            <p class="tm-order-total-card__subtitle">系统自动计算</p>
+            </div>
+            <div id="detail-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
+                <details id="detail-aux-details" class="group">
+                    <summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">
+                        <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款·发货</span>
+                        <span id="detail-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>
+                        <span class="text-[10px] text-brand-600 shrink-0 group-open:hidden">展开</span>
+                    </summary>
+                    <div class="pt-2 pb-1 space-y-2 border-t border-slate-200/60 mt-1">
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="w-36">
+                                <label class="text-[10px] text-slate-400" for="detail-order-warehouse">发出仓库</label>
+                                <select id="detail-order-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white"><option value="">默认仓库</option></select>
+                            </div>
+                            <div id="detail-remaining-hint" class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
+                                应收 <span id="detail-pay-total" class="font-mono font-bold">¥0.00</span>
+                                <span class="hidden" id="detail-received-wrap"> · 已收 <span id="detail-received-sum" class="font-mono">¥0.00</span></span>
+                                <span class="hidden text-teal-700 font-bold" id="detail-remaining-wrap"> · 剩 <span id="detail-remaining-sum" class="font-mono">¥0.00</span></span>
+                            </div>
                         </div>
-                        <div class="tm-order-total-card__amount-wrap">
-                            <span class="tm-order-total-card__amount" id="detail-order-total">¥0.00</span>
+                        <p id="detail-fin-hint-unpaid" class="hidden text-[10px] text-amber-600">改回「未收款」仅更新标记，不冲账。</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div>
+                                <label class="text-[10px] text-slate-400" for="detail-fin-status">收款状态</label>
+                                <select id="detail-fin-status" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white">
+                                    <option value="UNPAID">未收款</option>
+                                    <option value="PARTIAL_PAID">部分收款</option>
+                                    <option value="SETTLED">已结清</option>
+                                    <option value="BAD_DEBT">坏账</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400" for="detail-receive-amount">本次收款</label>
+                                <input type="number" id="detail-receive-amount" min="0" step="0.01" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs font-mono bg-white" placeholder="0" />
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-[10px] text-slate-400" for="detail-receipt-account">收款账户</label>
+                                <select id="detail-receipt-account" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="收款账户"></select>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <button type="button" id="detail-confirm-receive-btn" onclick="recordOrderPayment()" class="px-3 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold disabled:opacity-40">确认收款</button>
+                            <button type="button" id="detail-ship-btn" onclick="confirmOrderShip()" class="hidden px-3 py-1 rounded-lg border border-teal-500 text-teal-700 text-[11px] font-bold">确认发货</button>
+                            <span id="detail-fin-disabled-hint" class="text-[10px] text-slate-400">请先保存后再收款</span>
                         </div>
                     </div>
-                </div>
+                </details>
             </div>
             <div class="tm-modal-footer-safe pb-safe p-4 md:p-5 border-t border-slate-100 bg-white flex gap-2 md:gap-3 shrink-0">
                 <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">返回工作台</button>
@@ -813,75 +869,102 @@
             </div>
         </div>
     </div>
-
-    <!-- 添加订单弹窗（UI 对齐审核/产品弹窗） -->
-    <div id="manual-order-modal" class="hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6">
-        <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="TM_closeManualOrderModal()"></div>
-        <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
-            <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-9 md:w-10 md:h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-plus-circle text-lg"></i></div>
-                    <div class="min-w-0">
-                        <h2 class="text-sm md:text-base font-black text-slate-800 truncate">新建业务订单</h2>
-                        <p class="text-[10px] text-slate-400 mt-0.5">选择客户与商品明细后提交</p>
+<!-- 添加订单弹窗（UI 对齐订单编辑界面） -->
+    <div id="manual-order-modal" class="tm-dialog-root tm-mobile-sheet-modal tm-order-detail-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="TM_closeManualOrderModal()"></div>
+        <div class="tm-dialog-panel relative bg-white w-full max-w-4xl h-full max-h-[90vh] md:max-h-[90vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+            <div class="px-4 py-3 md:px-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-white shrink-0"><i class="ph ph-plus-circle"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-sm font-bold text-slate-800 truncate">新建业务订单</h2>
+                            <span id="manual-badge-logistics" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 text-teal-700 text-[10px] font-bold"><i class="ph ph-truck"></i> 待配货</span>
+                            <span id="manual-badge-finance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-bold"><i class="ph ph-currency-cny"></i> 未收款</span>
+                        </div>
+                        <p id="manual-order-meta" class="text-[10px] text-slate-400 mt-0.5 truncate">手动创建 · 选择客户与商品明细</p>
                     </div>
                 </div>
-                <button type="button" onclick="TM_closeManualOrderModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                <button type="button" onclick="TM_closeManualOrderModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
             </div>
-            <div id="manual-order-form-errors" class="hidden mx-4 mt-3 md:mx-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed shrink-0" role="alert"></div>
-            <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-5">
-                <section class="tm-product-edit-section">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="manual-order-customer">客户名称<span class="tm-product-required">*</span></label>
-                            <select id="manual-order-customer" class="form-input w-full font-bold text-slate-700"></select>
+            <div id="manual-order-form-errors" class="hidden mx-4 mt-2 md:mx-6 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700 shrink-0" role="alert"></div>
+            <div class="flex-1 min-h-0 flex flex-col overflow-hidden px-4 py-3 md:px-6">
+                <section class="shrink-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="manual-order-customer">客户<span class="text-red-500">*</span></label>
+                            <select id="manual-order-customer" class="form-input form-input--compact w-full font-bold text-slate-700"></select>
                         </div>
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="manual-order-status">订单状态</label>
-                            <select id="manual-order-status" class="form-input w-full font-bold text-brand-600"></select>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="manual-order-status">物流状态</label>
+                            <select id="manual-order-status" class="form-input form-input--compact w-full font-bold text-brand-600" aria-label="物流状态"></select>
                         </div>
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="manual-order-delivery-date">交货日期</label>
-                            <input type="date" id="manual-order-delivery-date" class="form-input w-full" />
-                        </div>
-                        <div class="tm-product-field min-w-0">
-                            <label class="tm-product-label" for="manual-order-account">收款账户</label>
-                            <select id="manual-order-account" class="form-input w-full font-bold text-slate-700"></select>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="manual-order-delivery-date">交货日期</label>
+                            <input type="date" id="manual-order-delivery-date" class="form-input form-input--compact w-full" />
                         </div>
                     </div>
                 </section>
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center gap-2">
-                        <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">订单商品明细</h3>
-                        <button type="button" onclick="TM_addManualOrderRow()" class="text-brand-600 text-[11px] font-bold hover:underline">+ 添加商品行</button>
+                <section class="flex-1 min-h-0 flex flex-col mt-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
+                        <h3 class="text-xs font-black text-slate-700">订单明细</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] text-slate-500">应收 <strong class="font-mono text-slate-800" id="manual-order-total">¥0.00</strong></span>
+                            <button type="button" onclick="TM_addManualOrderRow()" class="text-brand-600 text-[10px] font-bold hover:underline whitespace-nowrap">+ 添加行</button>
+                        </div>
                     </div>
-                    <div class="bg-slate-50 rounded-2xl border border-slate-100 overflow-x-auto">
-                        <table class="w-full text-xs min-w-[32rem]" id="manual-order-table">
-                            <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
+                    <div class="flex-1 min-h-0 overflow-auto bg-slate-50 rounded-xl border border-slate-100">
+                        <table class="w-full text-xs min-w-[24rem]" id="manual-order-table">
+                            <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
                                 <tr>
-                                    <th class="px-4 py-3 text-left">产品</th>
-                                    <th class="px-4 py-3 text-center w-24">数量</th>
-                                    <th class="px-4 py-3 text-center w-28">单价(元)</th>
-                                    <th class="px-4 py-3 text-right w-28">小计</th>
-                                    <th class="px-2 py-3 w-10"></th>
+                                    <th class="px-3 py-2 text-left">产品</th>
+                                    <th class="px-3 py-2 text-center w-16">数量</th>
+                                    <th class="px-3 py-2 text-center w-20">单价</th>
+                                    <th class="px-3 py-2 text-right w-24">小计</th>
+                                    <th class="px-1 py-2 w-8"></th>
                                 </tr>
                             </thead>
-                            <tbody id="manual-order-tbody"></tbody>
+                            <tbody id="manual-order-tbody" class="divide-y divide-slate-100 bg-white"></tbody>
                         </table>
                     </div>
-                </div>
-                <div id="manual-order-total-mount">
-                    <div class="tm-order-total-card">
-                        <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
-                        <div class="tm-order-total-card__text">
-                            <p class="tm-order-total-card__title">订单预计总计</p>
-                            <p class="tm-order-total-card__subtitle">提取源：手动添加</p>
+                </section>
+            </div>
+            <div id="manual-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
+                <details id="manual-aux-details" class="group" open>
+                    <summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">
+                        <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>
+                        <span id="manual-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>
+                        <span class="text-[10px] text-brand-600 shrink-0 group-open:hidden">展开</span>
+                    </summary>
+                    <div class="pt-2 pb-1 space-y-2 border-t border-slate-200/60 mt-1">
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="w-36">
+                                <label class="text-[10px] text-slate-400" for="manual-order-warehouse">发出仓库</label>
+                                <select id="manual-order-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white"><option value="">默认仓库</option></select>
+                            </div>
+                            <div class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
+                                应收 <span id="manual-pay-total" class="font-mono font-bold">¥0.00</span>
+                                <span class="text-teal-700 font-bold"> · 剩 <span id="manual-remaining-sum" class="font-mono">¥0.00</span></span>
+                            </div>
                         </div>
-                        <div class="tm-order-total-card__amount-wrap">
-                            <span class="tm-order-total-card__amount" id="manual-grand-total">¥0.00</span>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-[10px] text-slate-400" for="manual-fin-status">收款状态</label>
+                                <select id="manual-fin-status" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white">
+                                    <option value="UNPAID">未收款</option>
+                                    <option value="PARTIAL_PAID">部分收款</option>
+                                    <option value="SETTLED">已结清</option>
+                                    <option value="BAD_DEBT">坏账</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-[10px] text-slate-400" for="manual-order-account">收款账户</label>
+                                <select id="manual-order-account" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="收款账户"></select>
+                            </div>
                         </div>
+                        <p class="text-[10px] text-slate-400">创建后可于订单详情中确认收款与发货；创建时仅保存收款标记与默认账户。</p>
                     </div>
-                </div>
+                </details>
             </div>
             <div class="tm-modal-footer-safe pb-safe p-4 md:p-5 border-t border-slate-100 bg-white flex gap-2 md:gap-3 shrink-0">
                 <button type="button" onclick="TM_closeManualOrderModal()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">取消</button>
@@ -1279,14 +1362,26 @@
         let inProgressOrdersCache = [];
         let inProgressOrdersCacheFull = [];
 
-        var TM_ORDER_TERMINAL_STATUSES = ['D010003', 'D010004', 'D010_003', 'D010_004', 'COMPLETED', 'CANCELLED'];
+        var TM_ORDER_TERMINAL_STATUSES = ['D010004', 'D010005', 'D010_004', 'D010_005', 'RECEIVED', 'RETURNED', 'COMPLETED', 'CANCELLED'];
 
         var TM_ORDER_STATUS_FALLBACK = {
-            D010001: '待支付',
-            D010002: '出货中',
-            D010003: '已完成',
-            D010004: '已取消'
+            D010001: '待配货',
+            D010002: '拣货中',
+            D010003: '已发货',
+            D010004: '已签收',
+            D010005: '退货'
         };
+
+        var TM_ORDER_FIN_FALLBACK = {
+            UNPAID: '未收款',
+            PARTIAL_PAID: '部分收款',
+            SETTLED: '已结清',
+            BAD_DEBT: '坏账'
+        };
+
+        var inProgressFilterState = { orderStatus: '', finStatus: '' };
+        var orderWarehousesList = [];
+        var currentDetailOrder = null;
 
         let bizAccountById = {};
         let bizAccountsList = [];
@@ -1299,10 +1394,11 @@
         function toCanonicalOrderStatusCode(statusCode) {
             var raw = String(statusCode || '').trim().toUpperCase();
             if (!raw) return '';
-            if (raw === 'PENDING') return 'D010001';
-            if (raw === 'PROCESSING') return 'D010002';
-            if (raw === 'COMPLETED') return 'D010003';
-            if (raw === 'CANCELLED' || raw === 'CANCELED') return 'D010004';
+            if (raw === 'PENDING' || raw === 'ALLOCATING') return 'D010001';
+            if (raw === 'PROCESSING' || raw === 'PICKING') return 'D010002';
+            if (raw === 'SHIPPED') return 'D010003';
+            if (raw === 'COMPLETED' || raw === 'RECEIVED') return 'D010004';
+            if (raw === 'CANCELLED' || raw === 'CANCELED' || raw === 'RETURNED') return 'D010005';
             var m = raw.match(/^D010[_-]?0*(\d{1,3})$/);
             if (m) {
                 var n = m[1];
@@ -1324,13 +1420,272 @@
         }
 
         function isValidOrderStatusCanonical(code) {
-            return /^D01000[1-4]$/.test(toCanonicalOrderStatusCode(code));
+            return /^D01000[1-5]$/.test(toCanonicalOrderStatusCode(code));
         }
 
         function isInProgressOrderStatus(statusCode) {
             var s = toCanonicalOrderStatusCode(statusCode);
-            return s === 'D010001' || s === 'D010002';
+            return s === 'D010001' || s === 'D010002' || s === 'D010003';
         }
+
+        function finStatusLabel(code) {
+            var c = String(code || 'UNPAID').toUpperCase();
+            return TM_ORDER_FIN_FALLBACK[c] || c;
+        }
+
+        function getOrderReceivedAmount(order) {
+            if (!order) return 0;
+            var v = order.receivedAmount != null ? order.receivedAmount : order.received_amount;
+            return Number(v) || 0;
+        }
+
+        function getOrderRemainingAmount(order) {
+            var total = Number(order && order.totalAmount != null ? order.totalAmount : 0) || 0;
+            var received = getOrderReceivedAmount(order);
+            return Math.max(0, Math.round((total - received) * 100) / 100);
+        }
+
+        function normalizeFinStatus(code) {
+            return String(code || 'UNPAID').trim().toUpperCase();
+        }
+
+        function toggleInProgressFilterPanel(ev) {
+            if (ev) ev.stopPropagation();
+            var panel = document.getElementById('inprogress-filter-panel');
+            if (panel) panel.classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function (e) {
+            var wrap = document.getElementById('inprogress-filter-wrap');
+            var panel = document.getElementById('inprogress-filter-panel');
+            if (!wrap || !panel || panel.classList.contains('hidden')) return;
+            if (!wrap.contains(e.target)) panel.classList.add('hidden');
+        });
+
+        function updateInProgressFilterBadge() {
+            var badge = document.getElementById('inprogress-filter-badge');
+            if (!badge) return;
+            var active = !!(inProgressFilterState.orderStatus || inProgressFilterState.finStatus);
+            badge.classList.toggle('hidden', !active);
+        }
+
+        function applyInProgressFilter() {
+            var os = document.getElementById('inprogress-filter-order-status');
+            var fs = document.getElementById('inprogress-filter-fin-status');
+            inProgressFilterState.orderStatus = os ? toCanonicalOrderStatusCode(os.value) : '';
+            inProgressFilterState.finStatus = fs ? normalizeFinStatus(fs.value) : '';
+            if (fs && !fs.value) inProgressFilterState.finStatus = '';
+            var panel = document.getElementById('inprogress-filter-panel');
+            if (panel) panel.classList.add('hidden');
+            updateInProgressFilterBadge();
+            filterInProgressOrders();
+        }
+        window.applyInProgressFilter = applyInProgressFilter;
+
+        function resetInProgressFilter() {
+            inProgressFilterState = { orderStatus: '', finStatus: '' };
+            var os = document.getElementById('inprogress-filter-order-status');
+            var fs = document.getElementById('inprogress-filter-fin-status');
+            if (os) os.value = '';
+            if (fs) fs.value = '';
+            updateInProgressFilterBadge();
+            filterInProgressOrders();
+            var panel = document.getElementById('inprogress-filter-panel');
+            if (panel) panel.classList.add('hidden');
+        }
+        window.resetInProgressFilter = resetInProgressFilter;
+        window.toggleInProgressFilterPanel = toggleInProgressFilterPanel;
+
+        function updateDetailRemainingHint(order) {
+            order = order || currentDetailOrder;
+            if (!order) return { total: 0, received: 0, remaining: 0 };
+            var total = Number(order.totalAmount || 0);
+            var received = getOrderReceivedAmount(order);
+            var remaining = getOrderRemainingAmount(order);
+            var fmt = function (v) { return '¥' + (Number(v) || 0).toFixed(2); };
+            var payTotal = document.getElementById('detail-pay-total');
+            var totalEl = document.getElementById('detail-order-total');
+            var recSum = document.getElementById('detail-received-sum');
+            var recWrap = document.getElementById('detail-received-wrap');
+            var remWrap = document.getElementById('detail-remaining-wrap');
+            var remSum = document.getElementById('detail-remaining-sum');
+            if (payTotal) payTotal.textContent = fmt(total);
+            if (totalEl) totalEl.textContent = fmt(total);
+            if (recSum) recSum.textContent = fmt(received);
+            if (recWrap) recWrap.classList.toggle('hidden', received <= 0);
+            if (remWrap) remWrap.classList.toggle('hidden', remaining <= 0.001);
+            if (remSum) remSum.textContent = fmt(remaining);
+            updateDetailAuxSummary(order, remaining);
+            return { total: total, received: received, remaining: remaining };
+        }
+
+        function updateDetailAuxSummary(order, remaining) {
+            var el = document.getElementById('detail-aux-summary');
+            if (!el) return;
+            order = order || currentDetailOrder;
+            remaining = remaining != null ? remaining : getOrderRemainingAmount(order);
+            var whSel = document.getElementById('detail-order-warehouse');
+            var whLabel = '默认仓库';
+            if (whSel && whSel.value) {
+                var opt = whSel.options[whSel.selectedIndex];
+                whLabel = opt ? opt.textContent : whLabel;
+            }
+            var fin = normalizeFinStatus(order && order.finStatus ? order.finStatus : (document.getElementById('detail-fin-status') || {}).value);
+            el.textContent = whLabel + ' · ' + finStatusLabel(fin) + ' · 剩 ' + (Number(remaining) || 0).toFixed(2);
+        }
+
+        function updateDetailBadges(order) {
+            var logEl = document.getElementById('detail-badge-logistics');
+            var finEl = document.getElementById('detail-badge-finance');
+            var st = order && order.orderStatus ? order.orderStatus : '';
+            var fin = normalizeFinStatus(order && order.finStatus ? order.finStatus : 'UNPAID');
+            if (logEl) logEl.innerHTML = '<i class="ph ph-truck"></i> ' + getOrderStatusLabel(st);
+            if (finEl) {
+                finEl.innerHTML = '<i class="ph ph-currency-cny"></i> ' + finStatusLabel(fin);
+                finEl.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold ' +
+                    (fin === 'SETTLED' ? 'bg-emerald-50 text-emerald-700' :
+                        fin === 'PARTIAL_PAID' ? 'bg-sky-50 text-sky-700' :
+                            fin === 'BAD_DEBT' ? 'bg-slate-100 text-slate-600' :
+                                'bg-amber-50 text-amber-700');
+            }
+        }
+
+        function syncDetailFinStatusUI(order) {
+            order = order || currentDetailOrder;
+            var finSel = document.getElementById('detail-fin-status');
+            var amountEl = document.getElementById('detail-receive-amount');
+            var payBtn = document.getElementById('detail-confirm-receive-btn');
+            var shipBtn = document.getElementById('detail-ship-btn');
+            var hintUnpaid = document.getElementById('detail-fin-hint-unpaid');
+            var hintDisabled = document.getElementById('detail-fin-disabled-hint');
+            var finVal = finSel ? finSel.value : 'UNPAID';
+            if (order && order.finStatus && finSel) finSel.value = normalizeFinStatus(order.finStatus);
+            if (finSel) finVal = finSel.value;
+            var totals = updateDetailRemainingHint(order);
+            var hasSaved = !!(currentDetailOrderId);
+            if (hintDisabled) hintDisabled.classList.toggle('hidden', hasSaved);
+            if (hintUnpaid) {
+                hintUnpaid.classList.toggle('hidden', !(hasSaved && finVal === 'UNPAID' && totals.received > 0));
+            }
+            if (amountEl) {
+                if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
+                    amountEl.value = '';
+                    amountEl.disabled = true;
+                } else {
+                    amountEl.disabled = false;
+                    if (finVal === 'SETTLED' && totals.remaining > 0) {
+                        amountEl.value = totals.remaining.toFixed(2);
+                    }
+                }
+            }
+            if (payBtn) {
+                var canPay = hasSaved && finVal !== 'UNPAID' && finVal !== 'BAD_DEBT' && totals.remaining > 0.001;
+                payBtn.disabled = !canPay;
+            }
+            var st = order && order.orderStatus ? toCanonicalOrderStatusCode(order.orderStatus) : '';
+            if (shipBtn) {
+                if (st === 'D010001' || st === 'D010002') shipBtn.classList.remove('hidden');
+                else shipBtn.classList.add('hidden');
+            }
+            updateDetailBadges(order);
+        }
+
+        function bindDetailFinEvents() {
+            if (window._detailFinBound) return;
+            window._detailFinBound = true;
+            var finSel = document.getElementById('detail-fin-status');
+            var whSel = document.getElementById('detail-order-warehouse');
+            if (finSel) finSel.addEventListener('change', function () { syncDetailFinStatusUI(); });
+            if (whSel) whSel.addEventListener('change', function () { updateDetailAuxSummary(); });
+        }
+
+        function populateOrderWarehouseSelect() {
+            var sel = document.getElementById('detail-order-warehouse');
+            if (!sel) return;
+            var html = '<option value="">默认仓库</option>';
+            (orderWarehousesList || []).forEach(function (w) {
+                html += '<option value="' + w.warehouseId + '">' + (w.name || ('仓库#' + w.warehouseId)) + '</option>';
+            });
+            sel.innerHTML = html;
+        }
+
+        function loadOrderWarehouses() {
+            return window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    orderWarehousesList = (res && res.data) ? res.data : (res || []);
+                    populateOrderWarehouseSelect();
+                })
+                .catch(function () { orderWarehousesList = []; });
+        }
+
+        async function recordOrderPayment() {
+            if (!currentDetailOrderId) { showToast('请先保存订单'); return; }
+            var finSel = document.getElementById('detail-fin-status');
+            var finVal = finSel ? finSel.value : 'UNPAID';
+            if (finVal === 'UNPAID') { showToast('未收款状态下不能确认收款'); return; }
+            if (finVal === 'BAD_DEBT') { showToast('坏账状态不记录收款流水'); return; }
+            var amountEl = document.getElementById('detail-receive-amount');
+            var accEl = document.getElementById('detail-receipt-account');
+            var totals = updateDetailRemainingHint(currentDetailOrder);
+            var amount = parseFloat(amountEl && amountEl.value ? amountEl.value : '0');
+            var accountId = accEl && accEl.value ? parseInt(accEl.value, 10) : null;
+            if (finVal === 'SETTLED' && totals.remaining > 0 && (!amount || amount <= 0)) amount = totals.remaining;
+            if (!amount || amount <= 0) { showToast('请输入有效收款金额'); return; }
+            if (amount > totals.remaining + 0.01 + 1e-9) {
+                showToast('收款金额不能超过剩余应收 ¥' + totals.remaining.toFixed(2));
+                return;
+            }
+            if (Math.abs(amount - totals.remaining) <= 0.01 + 1e-9) amount = totals.remaining;
+            if (!accountId) { showToast('请选择收款账户'); return; }
+            try {
+                var resp = await window.wrappedFetch('/api/v1/rd/orders/' + currentDetailOrderId + '/record-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId: accountId, amount: amount, bizTypeCode: 'SALES_INCOME' })
+                });
+                var result = await resp.json();
+                if (!result || !result.success) throw new Error((result && result.message) || '收款失败');
+                currentDetailOrder = result.data;
+                var payHit = inProgressOrdersCacheFull.find(function (o) {
+                    return String(o.orderId || o.id) === String(currentDetailOrderId);
+                });
+                if (payHit) Object.assign(payHit, result.data);
+                if (amountEl) amountEl.value = '';
+                if (finSel && result.data.finStatus) finSel.value = result.data.finStatus;
+                syncDetailFinStatusUI(result.data);
+                filterInProgressOrders();
+                showToast('收款记账成功');
+            } catch (e) {
+                showToast(e.message || '收款失败');
+            }
+        }
+        window.recordOrderPayment = recordOrderPayment;
+
+        async function confirmOrderShip() {
+            if (!currentDetailOrderId) { showToast('请先保存订单'); return; }
+            var wh = document.getElementById('detail-order-warehouse');
+            var warehouseId = wh && wh.value ? parseInt(wh.value, 10) : null;
+            try {
+                var resp = await window.wrappedFetch('/api/v1/rd/orders/' + currentDetailOrderId + '/ship', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ warehouseId: warehouseId })
+                });
+                var result = await resp.json();
+                if (!result || !result.success) throw new Error((result && result.message) || '发货失败');
+                currentDetailOrder = result.data;
+                var hit = inProgressOrdersCacheFull.find(function (o) { return String(o.orderId || o.id) === String(currentDetailOrderId); });
+                if (hit) Object.assign(hit, result.data);
+                fillDetailOrderStatusSelect(result.data.orderStatus);
+                syncDetailFinStatusUI(result.data);
+                filterInProgressOrders();
+                showToast('发货成功');
+            } catch (e) {
+                showToast(e.message || '发货失败');
+            }
+        }
+        window.confirmOrderShip = confirmOrderShip;
 
         function getInProgressStatusOptions() {
             var opts = orderStatusDictList.filter(function (item) {
@@ -1339,7 +1694,8 @@
             if (opts.length) return opts;
             return [
                 { code: 'D010001', name: TM_ORDER_STATUS_FALLBACK.D010001 },
-                { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 }
+                { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 },
+                { code: 'D010003', name: TM_ORDER_STATUS_FALLBACK.D010003 }
             ];
         }
 
@@ -1352,14 +1708,15 @@
                 { code: 'D010001', name: TM_ORDER_STATUS_FALLBACK.D010001 },
                 { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 },
                 { code: 'D010003', name: TM_ORDER_STATUS_FALLBACK.D010003 },
-                { code: 'D010004', name: TM_ORDER_STATUS_FALLBACK.D010004 }
+                { code: 'D010004', name: TM_ORDER_STATUS_FALLBACK.D010004 },
+                { code: 'D010005', name: TM_ORDER_STATUS_FALLBACK.D010005 }
             ];
         }
 
         function fillManualOrderStatusSelect(preferredCode) {
             var manualSel = document.getElementById('manual-order-status');
             if (!manualSel) return;
-            var opts = getAllOrderStatusOptions();
+            var opts = getInProgressStatusOptions();
             manualSel.innerHTML = opts.map(function (item) {
                 return '<option value="' + item.code + '">' + item.name + '</option>';
             }).join('');
@@ -2101,15 +2458,13 @@
         }
 
         function filterInProgressOrders() {
-            const filterEl = document.getElementById('inprogress-status-filter');
-            const code = filterEl ? toCanonicalOrderStatusCode(filterEl.value) : '';
-            if (!code) {
-                inProgressOrdersCache = inProgressOrdersCacheFull.slice();
-            } else {
-                inProgressOrdersCache = inProgressOrdersCacheFull.filter(function (o) {
-                    return toCanonicalOrderStatusCode(o.orderStatus) === code;
-                });
-            }
+            var orderCode = inProgressFilterState.orderStatus || '';
+            var finCode = inProgressFilterState.finStatus || '';
+            inProgressOrdersCache = inProgressOrdersCacheFull.filter(function (o) {
+                var matchOrder = !orderCode || toCanonicalOrderStatusCode(o.orderStatus) === orderCode;
+                var matchFin = !finCode || normalizeFinStatus(o.finStatus) === finCode;
+                return matchOrder && matchFin;
+            });
             renderInProgressOrders();
         }
         window.filterInProgressOrders = filterInProgressOrders;
@@ -2118,37 +2473,35 @@
             const listEl = document.getElementById('inprogress-list');
             if (!listEl) return;
             if (!inProgressOrdersCache.length) {
-                listEl.innerHTML = `
-                    <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                        <div class="text-center">
-                            <i class="ph ph-check-circle text-xl mb-2"></i>
-                            <p>暂无进行中单据</p>
-                        </div>
-                    </div>
-                `;
+                listEl.innerHTML = '<div class="flex items-center justify-center h-full text-slate-400 text-sm"><div class="text-center"><i class="ph ph-check-circle text-xl mb-2"></i><p>暂无进行中单据</p></div></div>';
                 return;
             }
-            listEl.innerHTML = inProgressOrdersCache.map(order => {
-                const orderId = order.orderId || order.id;
-                const orderCode = order.orderCode || ('ORD-' + orderId);
-                const custName = getCustomerNameById(order.custId);
-                const statusLabel = getOrderStatusLabel(order.orderStatus);
-                const amount = Number(order.totalAmount || 0);
-                return `
-                    <div onclick="openOrderDetail('${orderId}')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
-                        <div>
-                            <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">${orderCode}</p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-[9px] text-slate-400 uppercase tracking-tighter">${custName}</span>
-                                <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                <span class="text-[9px] text-brand-600 font-bold">${statusLabel}</span>
-                            </div>
-                        </div>
-                        <div class="px-3 py-2 bg-brand-50 rounded-full text-brand-600 font-black text-[10px]">${amount.toFixed(0)}</div>
-                    </div>
-                `;
+            listEl.innerHTML = inProgressOrdersCache.map(function (order) {
+                var orderId = order.orderId || order.id;
+                var orderCode = order.orderCode || ('ORD-' + orderId);
+                var custName = getCustomerNameById(order.custId);
+                var statusLabel = getOrderStatusLabel(order.orderStatus);
+                var finLabel = finStatusLabel(order.finStatus);
+                var total = Number(order.totalAmount || 0);
+                var remaining = getOrderRemainingAmount(order);
+                var received = getOrderReceivedAmount(order);
+                var remainPrimary = remaining <= 0.001
+                    ? '剩 ¥0'
+                    : ('剩 ¥' + remaining.toFixed(remaining >= 100 ? 0 : 2));
+                var remainClass = remaining <= 0.001
+                    ? 'font-black text-sm text-slate-400 font-mono'
+                    : 'font-black text-sm text-brand-600 font-mono';
+                var subLine = received > 0 ? ('应收 ¥' + total.toFixed(0) + ' · 已收 ¥' + received.toFixed(0)) : ('应收 ¥' + total.toFixed(0));
+                return '<div onclick="openOrderDetail(\'' + orderId + '\')" class="p-3 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center gap-2 group">' +
+                    '<div class="min-w-0 flex-1"><p class="text-xs font-bold text-slate-800 truncate">' + orderCode + '</p>' +
+                    '<div class="flex flex-wrap items-center gap-1.5 mt-1"><span class="text-[9px] text-slate-400">' + custName + '</span>' +
+                    '<span class="text-[9px] text-teal-600 font-bold">' + statusLabel + '</span>' +
+                    '<span class="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold">' + finLabel + '</span></div>' +
+                    '<p class="text-[9px] text-slate-400 mt-0.5">' + subLine + '</p></div>' +
+                    '<div class="text-right shrink-0"><p class="' + remainClass + '">' + remainPrimary + '</p></div></div>';
             }).join('');
         }
+
 
         // 加载待确认单据
         function loadPendingOrders() {
@@ -2608,12 +2961,13 @@
             set('audit-np-desc', item.description || item.summary || '');
         }
 
-        // 切换高级配置抽屉
-        function toggleAdvanced(type, event) {
+        // 审核弹窗：客户资料高级配置（勿与产品中心 toggleProductDetailAdvanced 同名，避免污染全局）
+        function toggleAuditCustAdvanced(event) {
             if (event) event.preventDefault();
-            const drawer = document.getElementById(`drawer-${type}`);
-            const icon = document.getElementById(`icon-${type}`) || document.getElementById(`advanced-icon-${type}`);
-            
+            const drawer = document.getElementById('drawer-cust');
+            const icon = document.getElementById('icon-cust') || document.getElementById('advanced-icon-cust');
+            if (!drawer) return;
+
             if (drawer.classList.contains('open')) {
                 drawer.classList.remove('open');
                 drawer.classList.add('hidden');
@@ -2898,6 +3252,8 @@
             }
             var statusEl = document.getElementById('detail-order-status');
             var accountEl = document.getElementById('detail-receipt-account');
+            var finEl = document.getElementById('detail-fin-status');
+            var dateEl = document.getElementById('detail-delivery-date');
             var saveBtn = document.getElementById('detail-order-status-save');
             var hintEl = document.getElementById('detail-order-status-hint');
             var status = toCanonicalOrderStatusCode(statusEl ? statusEl.value : '');
@@ -2911,6 +3267,12 @@
                 showToast('请选择有效的收款账户');
                 return;
             }
+            var body = {
+                orderStatus: status,
+                finStatus: finEl ? finEl.value : 'UNPAID'
+            };
+            if (accountId != null) body.accountId = accountId;
+            if (dateEl && dateEl.value) body.deliveryDate = dateEl.value;
             if (saveBtn) {
                 saveBtn.disabled = true;
                 saveBtn.classList.add('opacity-60');
@@ -2919,20 +3281,17 @@
                 hintEl.classList.add('hidden');
                 hintEl.textContent = '';
             }
-            var url = '/api/v1/rd/orders/' + encodeURIComponent(currentDetailOrderId)
-                + '/status?status=' + encodeURIComponent(status);
-            if (accountId != null) {
-                url += '&accountId=' + encodeURIComponent(accountId);
-            }
-            window.wrappedFetch(url, {
+            window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(currentDetailOrderId) + '/save', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             })
             .then(function (response) { return response.json(); })
             .then(function (result) {
                 if (!result || !result.success) {
                     throw new Error((result && result.message) || '保存失败');
                 }
+                var updated = result.data || {};
                 var terminal = isTerminalOrderStatus(status);
                 var oid = String(currentDetailOrderId);
                 if (terminal) {
@@ -2946,16 +3305,17 @@
                 }
                 inProgressOrdersCacheFull.forEach(function (o) {
                     if (String(o.orderId || o.id) === oid) {
+                        Object.assign(o, updated);
                         o.orderStatus = status;
-                        if (accountId != null) o.accountId = accountId;
                     }
                 });
-                closeOrderDetail();
+                currentDetailOrder = updated;
+                syncDetailFinStatusUI(updated);
                 filterInProgressOrders();
                 showToast('订单已保存');
             })
             .catch(function (err) {
-                console.error('更新订单状态失败:', err);
+                console.error('保存订单失败:', err);
                 if (hintEl) {
                     hintEl.textContent = err.message || '保存失败，请重试';
                     hintEl.classList.remove('hidden');
@@ -2985,7 +3345,12 @@
             if (!bizAccountsList.length) {
                 await loadBizAccounts();
             }
+            if (!orderWarehousesList.length) {
+                await loadOrderWarehouses();
+            }
             currentDetailOrderId = order.orderId || order.id;
+            currentDetailOrder = order;
+            bindDetailFinEvents();
             var detailModal = document.getElementById('order-detail-modal');
             if (detailModal && typeof window.TM_applyDialogShell === 'function') {
                 window.TM_applyDialogShell(detailModal);
@@ -3000,6 +3365,8 @@
                 hintEl.classList.add('hidden');
                 hintEl.textContent = '';
             }
+            var auxDetails = document.getElementById('detail-aux-details');
+            if (auxDetails) auxDetails.open = true;
             document.getElementById('detail-order-id').textContent = order.orderCode || ('ORD-' + orderId);
             const dateLabel = order.createTime ? normalizeDateInput(order.createTime) : '--';
             const sub = document.getElementById('detail-order-meta');
@@ -3008,6 +3375,11 @@
             setInputValueIfExists('detail-delivery-date', normalizeDateInput(order.deliveryDate));
             fillDetailOrderStatusSelect(order.orderStatus);
             fillDetailReceiptAccountSelect(order);
+            var finSel = document.getElementById('detail-fin-status');
+            if (finSel) finSel.value = normalizeFinStatus(order.finStatus);
+            var whSel = document.getElementById('detail-order-warehouse');
+            if (whSel && order.warehouseId) whSel.value = String(order.warehouseId);
+            syncDetailFinStatusUI(order);
 
             window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
                 method: 'GET',
@@ -3017,8 +3389,12 @@
             .then(function (result) {
                 if (result && result.success && result.data) {
                     Object.assign(order, result.data);
+                    currentDetailOrder = order;
                     fillDetailOrderStatusSelect(order.orderStatus);
                     fillDetailReceiptAccountSelect(order);
+                    if (finSel) finSel.value = normalizeFinStatus(order.finStatus);
+                    if (whSel && order.warehouseId) whSel.value = String(order.warehouseId);
+                    syncDetailFinStatusUI(order);
                 }
             })
             .catch(function () { /* 列表数据已展示 */ });
@@ -3033,24 +3409,16 @@
                 const tbody = document.getElementById('detail-order-items-body');
                 if (!tbody) return;
                 if (!items.length) {
-                    tbody.innerHTML = '<tr><td class="px-5 py-6 text-center text-slate-400" colspan="3">暂无商品明细</td></tr>';
+                    tbody.innerHTML = '<tr><td class="px-3 py-4 text-center text-slate-400" colspan="3">暂无商品明细</td></tr>';
                 } else {
                     tbody.innerHTML = items.map(item => {
                         const p = getProductDisplayById(item.productId);
-                        return `
-                            <tr>
-                                <td class="px-5 py-4">
-                                    <p class="font-bold">${p.name}</p>
-                                    <p class="text-[9px] text-slate-400 font-mono">${p.sku ? ('SKU: ' + p.sku) : ''}</p>
-                                </td>
-                                <td class="px-5 py-4 text-center font-mono font-bold">${Number(item.quantity || 0)}</td>
-                                <td class="px-5 py-4 text-right font-mono font-bold text-slate-900">${formatCurrency(item.totalAmount || 0)}</td>
-                            </tr>
-                        `;
+                        return '<tr><td class="px-3 py-2"><p class="font-bold">' + p.name + '</p></td>' +
+                            '<td class="px-3 py-2 text-center font-mono">' + Number(item.quantity || 0) + '</td>' +
+                            '<td class="px-3 py-2 text-right font-mono font-bold">' + formatCurrency(item.totalAmount || 0) + '</td></tr>';
                     }).join('');
                 }
-                const totalEl = document.getElementById('detail-order-total');
-                if (totalEl) totalEl.textContent = formatCurrency(order.totalAmount || 0);
+                updateDetailRemainingHint(order);
             })
             .catch(error => {
                 console.error('加载订单详情失败:', error);
@@ -3060,6 +3428,7 @@
         // 关闭订单详情模态框
         function closeOrderDetail() {
             currentDetailOrderId = null;
+            currentDetailOrder = null;
             document.getElementById('order-detail-modal').classList.add('hidden');
             document.body.style.overflow = '';
             if (typeof window.TM_setShellChromeHidden === 'function') {
@@ -4048,7 +4417,7 @@
         window.loadCustomerList = loadCustomerList;
         window.loadProductList = loadProductList;
     </script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260524wb"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260525mo"></script>
 </body>
 </html>
 

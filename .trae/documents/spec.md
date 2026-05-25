@@ -8,6 +8,8 @@
 
 系统已实现**商业化订阅与推荐奖励**底座：`subscription_plans` / `tenant_subscriptions` 管理业态×等级配额与订阅履历；注册默认试用（**D001/TRIAL**）；用户维度 **`referral_code`** 与提现字段；网关根据 JWT **`accessMode`** 做 **READ_ONLY / BILLING_ONLY** 路由限制（详见 §1.1.3–§1.1.6、§2.7、§2.8）。业务服务侧 **配额硬校验（AOP/Redis）** 仍为后续迭代项。
 
+销售/进货单据已落地**物流状态 + 财务状态双线模型**（字典 **D010–D012** 物流、**D015–D017** 财务/流水类型）：物流驱动 **`warehouse_stock`** 精准出入库（明细 **`is_processed`** 幂等），财务经 **`record-payment`** 独立记账（详见 §1.3.7–§1.4.4、§2.9）。前端 **`tm-layout-engine.css`** 统一手机端三段式壳层与弹窗 Bottom Sheet（§3.1.0、§7.5）。
+
 ## 系统架构
 
 采用微服务架构，由多个独立服务组成，通过API网关统一对外提供服务；网关在校验 JWT 后 **保留** `Authorization` 并向业务服务注入 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**；并在解析令牌中的 **`accessMode`** 后执行订阅访问策略（见 §2.7）；**`/api/v1/ops/**`** 路径额外校验运维角色（§2.4.5）。
@@ -16,7 +18,7 @@
 
 ## 1. 数据库表结构设计
 
-**DDL 权威来源**：绿场新装由 **`InitCfgService`** 启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**，种子见 **`production-seed-v1.sql`**；存量增量位于 **`InitCfgService/src/main/resources/migrations/legacy/`**（`create_tables.sql`、`alter_subscription_referral.sql`、`alter_subscription_payment.sql`、`alter_tenants_merchant_type.sql`、`alter_ops_center.sql`、`alter_user_onboarding_state.sql` 等），其中已登记的增量脚本由 **`applyIncrementalMigrations()`** 在每次启动时幂等执行。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**，与 **`production-schema-v1.sql`** 一致。
+**DDL 权威来源**：绿场新装由 **`InitCfgService`** 启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**，种子见 **`production-seed-v1.sql`**；存量增量位于 **`InitCfgService/src/main/resources/migrations/legacy/`**（`create_tables.sql`、`alter_subscription_referral.sql`、`alter_subscription_payment.sql`、`alter_tenants_merchant_type.sql`、`alter_ops_center.sql`、`alter_user_onboarding_state.sql`、**`alter_document_status_inventory.sql`** 等），其中已登记的增量脚本由 **`applyIncrementalMigrations()`** 在每次启动时幂等执行。**单据财务/库存扩展列**（`orders.fin_status`、`order_items.is_processed` 等）当前经 **`alter_document_status_inventory.sql`** 幂等补齐；绿场 **`production-schema-v1.sql`** 合入前以增量脚本为准。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**。
 
 ### 1.1 核心业务表
 
@@ -319,7 +321,7 @@
 | supplier_id   | INT       | -    | 是   | NULL             | 供应商ID（`supplier.supplier_id`）            |
 | warehouse_id  | INT       | -    | 是   | NULL             | 默认仓库ID（`warehouse.warehouse_id`）          |
 | name          | VARCHAR   | 100  | 否   | -                | 产品名称                                    |
-| category_id   | INT       | -    | 是   | NULL             | 分类ID（`product_categories.category_id`）    |
+| category_id   | INT       | -    | 是   | NULL             | 分类ID（`product_categories.category_id`）；**可空**，前端新增/编辑产品**非必填** |
 | description   | TEXT      | -    | 是   | -                | 产品描述                                    |
 | sku           | VARCHAR   | 50   | 否   | -                | SKU                                     |
 | price         | DECIMAL   | 10,2 | 否   | 0                | 销售价格                                    |
@@ -357,7 +359,10 @@
 | account_id | INT | - | 是 | NULL | 结算账户，FK → `biz_accounts.account_id`，ON DELETE SET NULL |
 | order_code | VARCHAR | 50 | 否 | - | 订单编号，**UNIQUE** |
 | total_amount | DECIMAL | 12,2 | 否 | 0 | 总金额 |
-| order_status | VARCHAR | 50 | 否 | - | 订单状态（字典 **D010**） |
+| order_status | VARCHAR | 50 | 否 | - | 订单**物流**状态（字典 **D010** `dict_code`，持久化 **`D010001`…`D010005`**；兼容 `ALLOCATING`/`PICKING` 等别名，入库前经 **`OrderStatusCodes.normalizeForStorage`**） |
+| fin_status | VARCHAR | 50 | 否 | UNPAID | 订单**财务**状态（字典 **D015**：`UNPAID`/`PARTIAL_PAID`/`SETTLED`/`BAD_DEBT`） |
+| warehouse_id | INT | - | 是 | NULL | 发出仓库 FK → `warehouse(warehouse_id)` ON DELETE SET NULL |
+| received_amount | DECIMAL | 12,2 | 否 | 0 | 累计已收金额；与 **`total_amount`** 比较驱动 **`fin_status`** |
 | delivery_date | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 交付日期 |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
@@ -372,7 +377,10 @@
 | quantity | INT | - | 否 | - | 数量 |
 | unit_price | DECIMAL | 10,2 | 否 | - | 单价 |
 | total_amount | DECIMAL | 12,2 | 否 | - | 行总金额 |
-| item_status | VARCHAR | 50 | 否 | - | 明细状态（字典 **D011**） |
+| item_status | VARCHAR | 50 | 否 | - | 明细**物流**状态（字典 **D011**） |
+| is_processed | BOOLEAN | - | 否 | FALSE | 是否已完成出库处理（发货幂等标志） |
+| processed_at | TIMESTAMP | - | 是 | NULL | 出库处理时间 |
+| processed_qty | INT | - | 是 | NULL | 已处理数量（通常等于 `quantity`） |
 | delivery_date | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 交付日期 |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
@@ -413,7 +421,8 @@
 | warehouse_id    | INT       | -    | 是   | NULL             | 入库仓库ID                              |
 | total_amount    | DECIMAL   | 12,2 | 否   | -                | 总金额                                 |
 | paid_amount     | DECIMAL   | 12,2 | 否   | -                | 已付金额                                |
-| purchase_status | VARCHAR   | 20   | 否   | -                | 进货状态（字典D012）                        |
+| fin_status      | VARCHAR   | 50   | 否   | UNPAID           | 进货**财务**状态（字典 **D016**）              |
+| purchase_status | VARCHAR   | 20   | 否   | -                | 进货**物流**状态（字典 **D012** `dict_code`）   |
 | purchase_date   | TIMESTAMP | -    | 否   | -                | 进货日期                                |
 | create_time     | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 创建时间                                |
 | update_time     | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 更新时间                                |
@@ -429,7 +438,10 @@
 | unit_price      | DECIMAL   | 10,2 | 否   | -                | 单价         |
 | unit_name       | VARCHAR   | 20   | 是   | -                | 单位名称       |
 | batch_no        | VARCHAR   | 50   | 是   | -                | 批次号        |
-| purchase_status | VARCHAR   | 20   | 否   | -                | 状态（字典D012） |
+| purchase_status | VARCHAR   | 20   | 否   | -                | 明细物流状态（字典 **D012**，与主表同步） |
+| is_processed    | BOOLEAN   | -    | 否   | FALSE            | 是否已完成入库处理（入库幂等标志） |
+| processed_at    | TIMESTAMP | -    | 是   | NULL             | 入库处理时间 |
+| processed_qty   | INT       | -    | 是   | NULL             | 已入库数量 |
 | purchase_date   | TIMESTAMP | -    | 否   | -                | 明细业务日期     |
 | create_time     | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 创建时间       |
 | update_time     | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 更新时间       |
@@ -467,9 +479,21 @@
 | source_type       | VARCHAR   | 32  | 否   | -                | ORDER / PURCHASE / BALANCE_EDIT |
 | source_id         | BIGINT    | -   | 是   | NULL             | 关联单据或账户等业务 ID |
 | idempotency_key   | VARCHAR   | 128 | 是   | NULL             | 幂等键（租户内唯一，部分流水） |
+| biz_type_code     | VARCHAR   | 50  | 是   | NULL             | 业务类型（字典 **D017**：`SALES_INCOME`/`PURCHASE_EXPENSE`/`REFUND`/`COMMISSION`） |
 | create_time       | TIMESTAMP | -   | 是   | CURRENT_TIMESTAMP | 写入时间 |
 
-**入账规则（与实现一致）**：订单状态变为字典 D010 下「已完成」（兼容存 `D010003` / `D010_003` / `COMPLETED`）且结算账户非空时，按订单 `total_amount` 记收款，业务时间为订单该次状态变更对应 `update_time`；进货单按 `paid_amount` 相对上次变动差额记付款/收款（调减已付视为收款）；账户保存时手动修改余额通过 `BALANCE_EDIT` 流水轧差。
+**入账规则（与实现一致，2026-05-25 双线解耦）**：
+
+| 触发节点 | 服务 | 接口/动作 | 流水 |
+| --- | --- | --- | --- |
+| 销售收款 | RDService | **`POST /api/v1/rd/orders/{id}/record-payment`** | `txn_type=RECEIPT`，`biz_type_code=SALES_INCOME`（默认），按本次 **`amount`** 写入；回写 **`orders.received_amount`** 与 **`fin_status`** |
+| 采购付款 | SuppService | **`POST /api/v1/supp/purchases/{id}/record-payment`** | `txn_type=PAYMENT`，`biz_type_code=PURCHASE_EXPENSE`（默认），按 **`paid_amount` 增量** 写流水；回写 **`fin_status`** |
+| 销售发货 | RDService | **`POST /api/v1/rd/orders/{id}/ship`** | **不写**财务流水；扣减 **`warehouse_stock`**，明细 **`is_processed=true`** |
+| 采购入库 | SuppService | **`POST /api/v1/supp/purchases/{id}/inbound`** | **不写**财务流水；增加 **`warehouse_stock`**，明细 **`is_processed=true`** |
+| 元数据保存 | RDService | **`PUT /api/v1/rd/orders/{id}/save`** | 可改物流/财务状态标记与账户，**不**改 **`received_amount`**、**不写**流水 |
+| 手动调账 | IMService | 账户保存余额变更 | `source_type=BALANCE_EDIT` 轧差 |
+
+**说明**：物流状态变更（含旧版「已完成即入账」）**不再**自动产生流水；存量 **`COMPLETED`/`D010003`** 等已迁移为 **`D010004`（已签收）**（见 **`alter_document_status_inventory.sql`**）。进货单 **`updatePurchase`** 若仍变更 **`paid_amount`** 差额，经 **`AccountLedgerAppender.onPurchasePaidAmountChanged`** 记账（与独立 **`record-payment`** 并存，前端编辑场景优先显式 **`record-payment`**）。
 
 **索引（与 `production-schema-v1.sql` 一致）**：`idx_biz_account_ledger_tenant_account_time(tenant_id, account_id, txn_time DESC)`；**`idx_biz_account_ledger_idempotency`** 为 **`UNIQUE (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL`**（部分流水幂等）。
 
@@ -508,10 +532,13 @@
 | D007   | NULL     | PRODUCTIONRISK      | 生产风险等级   | 1         | 7    | 生产计划/新品研发的风险等级分类            |
 | D008   | NULL     | CUSTOMERSOURCE      | 客户来源     | 1         | 8    | 商户客户的获取渠道分类                 |
 | D009   | NULL     | CUSTOMERSTATUS      | 客户状态     | 1         | 9    | 客户全生命周期状态分类                 |
-| D010   | NULL     | ORDERSTATUS         | 订单状态     | 1         | 10   | 商贸订单全生命周期状态分类               |
-| D011   | NULL     | ITEMSTATUS          | 商品明细状态   | 1         | 11   | 订单内单项单品的核心状态分类              |
-| D012   | NULL     | PURCHASEORDERSTATUS | 进货单据状态   | 1         | 12   | 进货单据全生命周期状态枚举，包含草稿、审核、入库等状态 |
+| D010   | NULL     | ORDERSTATUS         | 订单物流状态   | 1         | 10   | 销售订单物流生命周期（与 D015 财务状态正交） |
+| D011   | NULL     | ITEMSTATUS          | 商品明细物流状态 | 1         | 11   | 订单/进货明细行物流处理状态 |
+| D012   | NULL     | PURCHASEORDERSTATUS | 进货单据物流状态 | 1         | 12   | 进货单物流：草稿、审核、入库等 |
 | D013   | NULL     | MERCHANT_TYPE       | 商户类型     | 1         | 13   | SaaS 多业态：批发 / 外贸 / 电商 / 工贸；子项 `dict_code` 写入 `tenants.merchant_type` 与 JWT |
+| D015   | NULL     | ORDER_FIN_STATUS    | 销售单财务状态  | 1         | 15   | `orders.fin_status` |
+| D016   | NULL     | PURCHASE_FIN_STATUS | 进货单财务状态  | 1         | 16   | `purchases.fin_status` |
+| D017   | NULL     | LEDGER_BIZ_TYPE     | 财务流水业务类型 | 1         | 17   | `biz_account_ledger.biz_type_code` |
 
 
 ##### 1.5.2.2 字典子项详细列表
@@ -615,39 +642,66 @@
 | D009003 | D009     | LOST     | 流失       | 2         | 3    | 客户状态流失 |
 
 
-**D010 - 订单状态**
+**D010 - 订单物流状态**
 
 
 | dictid  | parentid | dictcode   | dictname | dictlevel | sort | remark  |
 | ------- | -------- | ---------- | -------- | --------- | ---- | ------- |
-| D010001 | D010     | PENDING    | 待支付      | 2         | 1    | 订单待支付状态 |
-| D010002 | D010     | PROCESSING | 待出货      | 2         | 2    | 订单出货中状态 |
-| D010003 | D010     | COMPLETED  | 已完成      | 2         | 3    | 订单已完成状态 |
-| D010004 | D010     | CANCELLED  | 已取消      | 2         | 4    | 订单已取消状态 |
+| D010001 | D010     | ALLOCATING | 待配货      | 2         | 1    | 等待仓库分配 |
+| D010002 | D010     | PICKING    | 拣货中      | 2         | 2    | 仓库拣货中 |
+| D010003 | D010     | SHIPPED    | 已发货      | 2         | 3    | 出库扣减点 |
+| D010004 | D010     | RECEIVED   | 已签收      | 2         | 4    | 物流完结 |
+| D010005 | D010     | RETURNED   | 退货       | 2         | 5    | 逆向入库 |
 
 
-**D011 - 商品明细状态**
+**D011 - 商品明细物流状态**
 
 
-| dictid  | parentid | dictcode  | dictname | dictlevel | sort | remark  |
-| ------- | -------- | --------- | -------- | --------- | ---- | ------- |
-| D011001 | D011     | PENDING   | 待发货      | 2         | 1    | 商品待发货状态 |
-| D011002 | D011     | SHIPPED   | 已发货      | 2         | 2    | 商品已发货状态 |
-| D011003 | D011     | DELIVERED | 已送达      | 2         | 3    | 商品已送达状态 |
-| D011004 | D011     | RETURNED  | 已退货      | 2         | 4    | 商品已退货状态 |
+| dictid  | parentid | dictcode   | dictname | dictlevel | sort | remark  |
+| ------- | -------- | ---------- | -------- | --------- | ---- | ------- |
+| D011001 | D011     | PENDING    | 待处理      | 2         | 1    | 新建明细默认 |
+| D011002 | D011     | ALLOCATING | 配货中      | 2         | 2    | 纳入拣货 |
+| D011003 | D011     | FULFILLED  | 已发货/已收货 | 2         | 3    | 物流完成 |
+| D011004 | D011     | EXCEPTION  | 异常       | 2         | 4    | 缺货破损等 |
 
 
-**D012 - 进货单据状态**
+**D012 - 进货单据物流状态**
 
 
-| dictid  | parentid | dictcode  | dictname | dictlevel | sort | remark    |
-| ------- | -------- | --------- | -------- | --------- | ---- | --------- |
-| D012001 | D012     | DRAFT     | 草稿       | 2         | 1    | 进货单据草稿状态  |
-| D012002 | D012     | SUBMITTED | 已提交      | 2         | 2    | 进货单据已提交状态 |
-| D012003 | D012     | APPROVED  | 已审核      | 2         | 3    | 进货单据已审核状态 |
-| D012004 | D012     | STOCKED   | 已入库      | 2         | 4    | 进货单据已入库状态 |
-| D012005 | D012     | CANCELLED | 已取消      | 2         | 5    | 进货单据已取消状态 |
+| dictid  | parentid | dictcode        | dictname | dictlevel | sort | remark    |
+| ------- | -------- | --------------- | -------- | --------- | ---- | --------- |
+| D012001 | D012     | DRAFT           | 草稿       | 2         | 1    | 可编辑 |
+| D012002 | D012     | PENDING_REVIEW  | 待审核      | 2         | 2    | 待审批 |
+| D012003 | D012     | APPROVED        | 审核通过     | 2         | 3    | 待入库 |
+| D012004 | D012     | PARTIAL_INBOUND | 部分入库     | 2         | 4    | 增量入库 |
+| D012005 | D012     | FULL_INBOUND    | 全部入库     | 2         | 5    | 完结入库 |
+| D012006 | D012     | VOIDED          | 作废       | 2         | 6    | 禁止入库 |
 
+**D015 - 销售单财务状态**（`orders.fin_status`）
+
+| dictid  | parentid | dictcode     | dictname | dictlevel | sort | remark |
+| ------- | -------- | ------------ | -------- | --------- | ---- | ------ |
+| D015001 | D015     | UNPAID       | 未收款      | 2         | 1    | 尚未收款 |
+| D015002 | D015     | PARTIAL_PAID | 部分收款     | 2         | 2    | 部分收款 |
+| D015003 | D015     | SETTLED      | 已结清      | 2         | 3    | 已全部收款 |
+| D015004 | D015     | BAD_DEBT     | 坏账       | 2         | 4    | 坏账 |
+
+**D016 - 进货单财务状态**（`purchases.fin_status`）
+
+| dictid  | parentid | dictcode     | dictname | dictlevel | sort | remark |
+| ------- | -------- | ------------ | -------- | --------- | ---- | ------ |
+| D016001 | D016     | UNPAID       | 未付款      | 2         | 1    | 尚未付款 |
+| D016002 | D016     | PARTIAL_PAID | 部分付款     | 2         | 2    | 部分付款 |
+| D016003 | D016     | SETTLED      | 已结清      | 2         | 3    | 已全部付款 |
+
+**D017 - 财务流水业务类型**（`biz_account_ledger.biz_type_code`）
+
+| dictid  | parentid | dictcode          | dictname | dictlevel | sort | remark |
+| ------- | -------- | ----------------- | -------- | --------- | ---- | ------ |
+| D017001 | D017     | SALES_INCOME      | 销售收入     | 2         | 1    | 销售收款 |
+| D017002 | D017     | PURCHASE_EXPENSE  | 采购支出     | 2         | 2    | 采购付款 |
+| D017003 | D017     | REFUND            | 退款       | 2         | 3    | 退款 |
+| D017004 | D017     | COMMISSION        | 佣金       | 2         | 4    | 佣金 |
 
 **D013 - 商户类型（与 `TenantService` / JWT / 网关一致）**
 
@@ -1036,7 +1090,7 @@
 - **行业片段**：`/fragments/{wholesale|foreign|ecom|factory}/{scope}/{slot}.html`；模块 HTML 内预留 `data-tm-fragment-scope` + `data-tm-slot`。
 - **主壳**：单页 **`index-app.html`** + **`ui-main.js`** 按 Tab 注入模块；**PC** 左侧 `aside` 导航，**移动** 底栏 **`#tm-app-tabbar`**（`TM_Responsive` / `body.tm-layout-mobile`，断点 **&lt;768px**）。
 - **顶栏**：`#tm-app-header` — 移动端 **`tm-app-header-brand`** 固定展示「商贸智脑」；PC 顶栏不重复退出/新手引导（退出在侧栏、导览见 FAB，§3.1.0、§3.1.6）。
-- **样式**：根节点 `data-merchant-type` 与 `theme.css` 中 `--tm-brand-accent-rgb`；详见 `TradeMind-Web/docs/Framework_Guide.md`。
+- **样式**：根节点 `data-merchant-type` 与 `theme.css` 中 `--tm-brand-accent-rgb`；手机壳层见 **`tm-layout-engine.css`**（§3.1.0）；详见 `TradeMind-Web/docs/Framework_Guide.md`。
 
 ### 2.8 商业化：推荐奖励账户与配额配置（设计修订 2026-05-07）
 
@@ -1080,6 +1134,49 @@
 
 - **已实现列**：**`referral_code`**、**`payout_pay_type`**、**`payout_account_name`**、**`payout_account_no`**、**`payout_bank_name`**、**`payout_verified`**（与 **`biz_accounts`** 分离）。
 
+### 2.9 单据状态机与精准库存同步（2026-05-25）
+
+#### 2.9.1 设计原则
+
+- **物流与财务解耦**：**D010/D011/D012** 驱动出入库与明细处理；**D015/D016** 描述收付款进度；二者可异步组合（如「已发货未收款」「已入库未付款」）。
+- **幂等库存**：仅对 **`is_processed=false`** 的明细行执行 **`ship`** / **`inbound`**；处理完成后写 **`is_processed=true`**、**`processed_at`**、**`processed_qty`**，避免重复扣减/加库存。
+- **子仓为准**：库存变更统一经 **`InventoryService.adjust`**（RDService）写 **`warehouse_stock`**，并 **`syncProductTotalStock`** 汇总至 **`products.stock`**。
+- **默认仓库**：单仓小商户可不选手工仓库；服务侧 **`resolveDefaultWarehouseId`** 取租户首个仓库（仍须至少存在一个仓库记录）。
+
+#### 2.9.2 销售订单（RDService）
+
+| 物流码（存储） | dict_code | 含义 | 库存 |
+| --- | --- | --- | --- |
+| D010001 | ALLOCATING | 待配货 | 无 |
+| D010002 | PICKING | 拣货中 | 无 |
+| D010003 | SHIPPED | 已发货 | **`ship`** 扣减发出仓 |
+| D010004 | RECEIVED | 已签收 | 无（出库已在发货完成） |
+| D010005 | RETURNED | 退货 | 逆向入库（后续迭代） |
+
+- **进行中定义**（**`OrderStatusCodes.isInProgress`**）：**D010001 + D010002 + D010003**（待配货 / 拣货中 / 已发货）；**D010004/D010005** 为终态，从工作台进行中列表移除。
+- **发货**：**`POST /api/v1/rd/orders/{id}/ship`** — Body 可选 **`warehouseId`**、**`itemIds`**（部分发货）；未传仓库则用订单 **`warehouse_id`** 或租户默认仓。
+- **收款**：**`POST /api/v1/rd/orders/{id}/record-payment`** — Body **`accountId`**、**`amount`**、可选 **`txnTime`**、**`bizTypeCode`**；**`fin_status`** 由 **`FinStatusCodes.computeFromAmounts(received_amount, total_amount)`** 计算。
+
+#### 2.9.3 进货单（SuppService）
+
+| 物流码 | dict_code | 含义 | 库存 |
+| --- | --- | --- | --- |
+| D012001 | DRAFT | 草稿 | 无 |
+| D012002 | PENDING_REVIEW | 待审核 | 无 |
+| D012003 | APPROVED | 审核通过 | 无 |
+| D012004 | PARTIAL_INBOUND | 部分入库 | **`inbound`** 增量 |
+| D012005 | FULL_INBOUND | 全部入库 | **`inbound`** 全量 |
+| D012006 | VOIDED | 作废 | 已入库则 **`reverseInbound`** |
+
+- **入库**：**`POST /api/v1/supp/purchases/{id}/inbound`** — Body 可选 **`targetStatus`**（`PARTIAL_INBOUND`/`FULL_INBOUND`）、**`warehouseId`**、**`itemIds`**（部分入库必填）；**`warehouse_id` 可空**（前端允许不选，后端落默认仓）。
+- **付款**：**`POST /api/v1/supp/purchases/{id}/record-payment`** — 与订单对称，更新 **`paid_amount`** 与 **`fin_status`**（D016）。
+
+#### 2.9.4 存量迁移（`alter_document_status_inventory.sql`）
+
+- 进货中文状态 **「已入库」→ `FULL_INBOUND`**；已入库明细标记 **`is_processed=true`**。
+- 订单 **`COMPLETED`/`D010003` → `D010004`（已签收）**；**`PENDING`/`PROCESSING` → D010001/D010002**。
+- 已签收且绑定了账户的历史订单：**`fin_status` 置 `SETTLED`**（仅当原值为 `UNPAID`）。
+
 ---
 
 ## 3. 模块功能列表
@@ -1099,10 +1196,17 @@
 | 导航 | 左侧 `aside`（含用户区 + **退出**） | 底部 **`#tm-app-tabbar`**（`mobile-nav-btn`） |
 | 顶栏 `#tm-app-header` | 搜索框、`#page-title` 胶囊、通知 | **`tm-app-header-brand`**（图标 + **商贸智脑**）、通知、会员、**退出** |
 | 顶栏去重（2026-05-24） | **无**顶栏「新手引导」、**无**顶栏退出（避免与侧栏/FAB 重复） | 保留顶栏退出（无侧栏）；导览入口为悬浮 **功能导览 FAB**（§3.1.6） |
-| 内容 | `#content-area` / `.tm-app-content-area` | 同上 + 底栏留白（`MobileAdapt/mobile.css`、`tm-shell-insets.js`） |
+| 内容 | `#content-area` / `.tm-app-content-area` | **唯一滚动区**（`100dvh - header - tabbar`，`overflow-y-auto`）；底栏留白由 **`tm-layout-engine.css`** / **`tm-shell-insets.js`** 计算 |
 | 嵌入模块 | `biz`/`crm`/`supplier` 以 **iframe** 加载；子页 `html.tm-embedded` 隐藏自身 header（`ui-main.js` **`TM_mountEmbeddedFrame`**） | 顶栏仅主壳一层，避免双层「商贸智脑」 |
+| 弹窗 | 业务 Modal 经 **`TM_applyDialogShell(modal, { variant: 'sheet'|'center' })`** | 移动默认 **Bottom Sheet**（圆角 **`rounded-[2.5rem]`**）；PC 居中对话框 |
 
-**样式与脚本**：`/modules/CSS/common.css`（顶栏图标、会员推荐条、移动品牌区）；`/MobileAdapt/mobile.css`、`TM_Responsive.js`；`/assets/js/tm-shell-insets.js`（`--tm-header-h` / `--tm-tabbar-h`）。
+**样式与脚本（2026-05-25 布局引擎）**：
+
+- **权威壳层**：**`/assets/css/tm-layout-engine.css`**（由 **`common.css`** `@import`；**`auth.js`** 对独立页动态注入）；取代 **`MobileAdapt/mobile.css`** / **`ui-mobile.css`** 中重复的 fixed/h-screen 规则（后者标记 **`@deprecated`**，仅保留兼容引用）。
+- **壳层度量**：**`/assets/js/tm-shell-insets.js`** — **`TM_ShellInsets.sync()`** 写入 **`--tm-header-h`** / **`--tm-tabbar-h`** / **`--tm-content-pad-b`**；弹窗 **`applyModalRoot`**、嵌入页 **`initEmbeddedDocument`**。
+- **弹窗适配**：**`ui-main.js`** 导出 **`TM_applyDialogShell`**；模块切换时 **`TM_ShellInsets.sync()`** 重置滚动位置。
+- **响应式**：**`/MobileAdapt/TM_Responsive.js`** — **`body.tm-layout-mobile`**（断点 **&lt;768px**）；与 Tailwind `md` 对齐时自定义 CSS 使用 **`max-width: 767px`**。
+- **备案信息**：各业务模块 **禁止** 重复内联 ICP；统一由主壳或 **`tm-layout-engine`** 规则控制（避免双层 footer）。
 
 #### 3.1.1 工作台（Dashboard）
 
@@ -1110,8 +1214,14 @@
 - **功能**：
   - 系统概览展示
   - **左栏·待确认单据**：`GET /api/v1/ai/records`，展示 AI 识别完成（`SUCCESS`）且用户未确认入库的草稿；点击打开核对弹窗
-  - **右栏·进行中业务单据**：`GET /api/v1/rd/orders/in-progress`，仅 **D010001 待支付**、**D010002 出货中** 正式订单
-  - 核对确认后：`POST /api/v1/rd/orders` 默认 **D010001**，删除对应 AI 记录，右栏刷新
+  - **右栏·进行中业务单据**：
+    - 数据：**`GET /api/v1/rd/orders/in-progress`**（物流态 **D010001 待配货 + D010002 拣货中 + D010003 已发货**；接口不可用时回退全量订单客户端筛选）
+    - **双维筛选**：单个「筛选」按钮弹出面板，可按 **D010 物流状态** + **D015 财务状态** 组合过滤（客户端 **`filterInProgressOrders`**）
+    - **列表摘要**：展示 **`dict_name`** 物流态、**D015** 财务态、**「剩 ¥xxx」** 剩余应收（`total_amount - received_amount`）
+    - **详情/编辑**：客户名称、**D010 物流状态**（下拉展示 **`dictname`**，非 `D010001` 码）、交货日期、**收款账户**（下拉 **`biz_accounts.account_name`**）、**收款状态与本次收款金额**；底部与「返回工作台」平级的 **「保存」** 按钮；保存调用 **`PUT /api/v1/rd/orders/{id}/save`** 或 **`POST .../record-payment`**（有收款金额时）
+    - **终态移除**：保存为 **D010004 已签收** 或 **D010005 退货** 后从进行中列表移除
+    - **添加订单**弹窗：字段与详情对齐；状态下拉加载 **D010 全部子项**；底栏按钮样式与详情一致
+  - 核对确认后：`POST /api/v1/rd/orders` 默认 **D010001（待配货）**，删除对应 AI 记录，右栏刷新
   - 核对弹窗支持多个 `new_products_found` 时分项 Tab 保存新产品
   - 待办事项提醒、快捷操作入口、数据统计卡片
   - **商户片段插槽**：`data-tm-fragment-scope="dashboard"`、`data-tm-slot="workspace-banner"`（按租户业态加载横幅片段）
@@ -1127,18 +1237,20 @@
 
 #### 3.1.3 产品中心（Product Center）
 
-- **路径**：`/modules/product-center/product-center.html`
-- **前端脚本**：`/assets/js/ui-product-center.js`
+- **路径**：`/modules/product-center/product-center.html`；弹窗片段 **`product-overlays.html`**
+- **前端脚本**：`/assets/js/ui-product-center.js`、**`/assets/js/ui-product-center-enhance.js`**
 - **功能**：
   - 产品信息增删改查（真实API对接）
-  - 产品分类管理（真实API对接）
+  - 产品分类管理（真实API对接）；**新增/编辑时类别非必填**（与 DB **`category_id` 可空** 一致）
   - 仓库管理（真实API对接）
   - 库存管理
-  - 单位换算配置
+  - **单位换算**：弹窗默认展示已有配置；无配置时展示 **1 行**待填行；**「+」最多增至 2 行**；支持删除行（至少保留 1 行）；保存经 **`POST /api/v1/rd/products/save`**
+  - **高级配置**：折叠区 **`#product-advanced-drawer`**；使用 **`ProductModule.toggleAdvanced`**（全局 **`toggleProductAdvanced`**），避免被 dashboard 内联脚本覆盖导致无法展开
   - 库存预警提醒
   - 产品列表筛选和搜索
   - 桌面端表格和移动端卡片双布局
   - 仓库调拨功能
+  - 产品/供应商弹窗经 **`TM_applyDialogShell(..., { variant: 'sheet' })`** 适配移动 Bottom Sheet
 - **技术实现**：
   - 使用`window.wrappedFetch()`进行API请求
   - 使用`window.handleApiResponse()`统一响应处理
@@ -1167,11 +1279,15 @@
 #### 3.1.4 供应链管理（Supply Chain）
 
 - **路径**：`/modules/supply-chain/supply-chain.html`
+- **前端脚本**：`/assets/js/ui-supplier.js`
 - **功能**：
-  - 供应商管理
+  - 供应商管理（三 Tab：供应商 / 进货单 / 建议）
   - 进货单管理
   - 进货明细管理
-  - 库存入库联动
+  - **弹窗 UI（2026-05-25）**：供应商编辑、进货单编辑/新增弹窗对齐产品中心 **Sheet 壳层**（**`TM_applyDialogShell` variant `sheet`**）；进货内容区为主，**接收仓库**与**付款/账务**压缩为底部次要区块（可折叠 **`tm-purchase-footer`**）
+  - **进货编辑**：**接收仓库**、**付款状态（D016）** 与 **本次付款金额** 置于表单底部；已部分付款时提示剩余货款；**仓库可选**（单仓商户可不选，后端默认仓）
+  - **库存入库联动**：经 **`POST /api/v1/supp/purchases/{id}/inbound`** 增量入库，非简单改状态加 **`products.stock`**
+  - **独立记账**：**`POST /api/v1/supp/purchases/{id}/record-payment`**
 
 #### 3.1.5 智能经营（Smart Ops）
 
@@ -1252,7 +1368,7 @@
 
 #### 3.2.2 初始化配置服务（InitCfgService）
 
-应用启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**（仅绿场空库）/ **`production-seed-v1.sql`**（幂等种子），随后 **`applyIncrementalMigrations()`** 幂等执行 **`migrations/legacy/`** 下增量 DDL（如 **`alter_user_onboarding_state.sql`**）；字典初始化含 **D013 商户类型**（**`DictionaryInitService`**）。
+应用启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**（仅绿场空库）/ **`production-seed-v1.sql`**（幂等种子），随后 **`applyIncrementalMigrations()`** 幂等执行 **`migrations/legacy/`** 下增量 DDL（如 **`alter_user_onboarding_state.sql`**、**`alter_document_status_inventory.sql`**）；字典初始化含 **D010–D017**（**`DictionaryInitService`**，含物流/财务拆分）。
 
 **主要接口**：
 
@@ -1297,7 +1413,7 @@
 2. 客户列表右侧提供26字母索引（A-Z），点击后滚动到对应首字母客户分组。
 3. 客户新增/编辑统一使用同一套弹窗样式与表单结构，保存时调用CRMService真实接口（`POST /customers`、`PUT /customers/{id}`）。
 4. 客户删除由前端调用RDService桥接接口（`DELETE /api/v1/rd/customers/{id}`）执行，删除前校验当前租户下是否存在关联订单。
-5. 客户详情右侧电话按钮弹出轻量电话卡片；交易时间轴按时间倒序展示订单项摘要（超16字符省略）与订单金额。
+5. 客户详情右侧电话按钮弹出轻量电话卡片；**交互时间轴**（2026-05-25）：按时间倒序展示订单项摘要（`产品名*数量 单位`，多项 **`, `** 分隔，超 **28 字符**或超过 **2 个 SKU** 以 **`...`** 省略）、双状态 Badge（**D010 物流 `dictname` | D015 财务 `dictname`**，品牌色 `#14B8A6` 浅底）、订单金额；进入 CRM 时 **`ui-crm.js`** 各拉取一次全量 **products** 索引与 **D010/D015** 字典。
 
 #### 3.2.4 进销存服务（RDService）
 
@@ -1363,7 +1479,11 @@
 | `/api/v1/rd/orders/{id}`              | GET    | 根据订单ID查询订单              |
 | `/api/v1/rd/orders/code/{orderCode}`  | GET    | 根据订单编号查询订单              |
 | `/api/v1/rd/orders`                   | GET    | 根据租户ID查询订单列表            |
-| `/api/v1/rd/orders/in-progress`       | GET    | 查询进行中订单（D010001 待支付 + D010002 出货中） |
+| `/api/v1/rd/orders/in-progress`       | GET    | 查询进行中订单（**D010001 待配货 + D010002 拣货中 + D010003 已发货**；含 legacy `PENDING`/`PROCESSING` 兼容码） |
+| `/api/v1/rd/orders/{id}/save`         | PUT    | 保存订单元数据（物流/财务状态、账户、交货日；不改 `received_amount`、不写流水） |
+| `/api/v1/rd/orders/{orderId}/ship`    | POST   | 确认发货：扣减发出仓库存，明细 `is_processed` |
+| `/api/v1/rd/orders/{orderId}/record-payment` | POST | 销售收款记账：写流水 + 更新 `received_amount`/`fin_status` |
+| `/api/v1/rd/inventory/adjust`         | POST   | 通用库存调整（`InventoryService.adjust`，供发货/入库内部或扩展调用） |
 | `/api/v1/rd/orders/latest`            | GET    | 查询最新的10条订单              |
 | `/api/v1/rd/orders/{id}/status`       | PUT    | 更新订单状态                  |
 | `/api/v1/rd/orders/{id}/items`        | GET    | 查询订单详情                  |
@@ -1422,6 +1542,9 @@
 | `/supp/purchases/{id}/items` 或 `/api/v1/supp/purchases/{id}/items`  | GET    | 获取进货单明细         |
 | `/supp/purchases/{id}/status` 或 `/api/v1/supp/purchases/{id}/status` | PUT    | 更新进货单状态（含库存联动）  |
 | `/supp/purchases/save` 或 `/api/v1/supp/purchases/save`          | POST   | 保存进货单（含明细，统一 save） |
+| `/supp/purchases/in-progress` 或 `/api/v1/supp/purchases/in-progress` | GET | 进行中进货单（非终态物流态） |
+| `/supp/purchases/{id}/inbound` 或 `/api/v1/supp/purchases/{id}/inbound` | POST | 增量/全量入库（明细 `is_processed` 幂等） |
+| `/supp/purchases/{id}/record-payment` 或 `/api/v1/supp/purchases/{id}/record-payment` | POST | 采购付款记账 |
 
 **字典接口**（双路径）：
 
@@ -1552,10 +1675,12 @@ biz_accounts (经营账户)
 
 orders (订单)
    ├─ N:1 ──> biz_accounts (结算账户)
+   ├─ N:1 ──> warehouse (发出仓库，可选)
    └─ 1:N ──> order_items (订单明细)
 
 purchases (进货单)
    ├─ N:1 ──> biz_accounts (付款账户)
+   ├─ N:1 ──> warehouse (入库仓库，可选)
    └─ 1:N ──> purchase_items (进货明细)
 
 dictionary (字典表)
@@ -1633,25 +1758,39 @@ dictionary (字典表)
 6. 前端轮询`/ai/status/{requestId}`接口获取处理状态
 7. 处理成功后，用户确认保存数据
 
-### 6.3 订单创建流程
+### 6.3 订单创建与履约流程
 
 1. 用户选择客户，添加订单明细
-2. 前端调用RDService`/api/v1/rd/orders`接口
-3. RDService开启事务
-4. 保存orders表记录
-5. 批量保存order_items表记录
-6. 根据产品ID扣减products表的stock
-7. 提交事务，返回结果
+2. 前端调用 RDService **`POST /api/v1/rd/orders`**
+3. RDService 开启事务：保存 **`orders`**（默认物流 **D010001 待配货**、财务 **UNPAID**）与 **`order_items`**
+4. **创建时不扣减库存**（出库点在 **`ship`**）
+5. 提交事务，返回结果
 
-### 6.4 进货单创建流程
+#### 6.3.1 销售发货流程
+
+1. 用户在工作台或订单详情触发发货（或调用 **`POST /api/v1/rd/orders/{id}/ship`**）
+2. 选择发出仓库（可省略，用订单仓或租户默认仓）
+3. **`InventoryService.adjust`** 扣减 **`warehouse_stock`**，明细 **`is_processed=true`**
+4. 订单物流态更新为 **D010003 已发货**
+
+#### 6.3.2 销售收款流程
+
+1. 用户选择收款账户并填写本次收款金额
+2. 调用 **`POST /api/v1/rd/orders/{id}/record-payment`**
+3. 写入 **`biz_account_ledger`**（`SALES_INCOME`），累加 **`received_amount`**，重算 **`fin_status`（D015）**
+
+### 6.4 进货单创建与入库流程
 
 1. 用户选择供应商，添加进货明细
-2. 前端调用SuppService`/supp/purchases`接口
-3. SuppService开启事务
-4. 保存purchases表记录
-5. 批量保存purchase_items表记录
-6. 提交事务
-7. 进货单状态变更为"已入库"时，增加products表的stock
+2. 前端调用 SuppService **`POST /api/v1/supp/purchases`**
+3. SuppService 开启事务：保存 **`purchases`**（默认物流 **DRAFT**、财务 **UNPAID**）与 **`purchase_items`**
+4. 提交事务
+
+#### 6.4.1 进货入库与付款
+
+1. **入库**：调用 **`POST /api/v1/supp/purchases/{id}/inbound`**（可选 **`itemIds`** 部分入库）；增量更新 **`warehouse_stock`**，主表物流态 **PARTIAL_INBOUND / FULL_INBOUND**
+2. **付款**：调用 **`POST /api/v1/supp/purchases/{id}/record-payment`**；写 **`PURCHASE_EXPENSE`** 流水，更新 **`paid_amount`** 与 **`fin_status`（D016）**
+3. 编辑界面底部可选仓库（**可空**）与付款区块，不以大块 UI 抢占明细编辑区
 
 ### 6.5 仓库调拨流程
 
@@ -1696,10 +1835,13 @@ dictionary (字典表)
 
 ### 7.5 移动端适配
 
-- 响应式设计，支持手机端；主壳 **`index-app.html`** 在 **&lt;768px** 使用底栏 Tab + 顶栏 **`tm-app-header-brand`（商贸智脑）**（§3.1.0）
+- **三段式布局引擎**（2026-05-25）：**Header（文档流固定）+ Main（唯一滚动，`100dvh`）+ Bottom Nav（fixed）**；权威样式 **`/assets/css/tm-layout-engine.css`**
+- 主壳 **`index-app.html`** 在 **&lt;768px** 使用底栏 Tab + 顶栏 **`tm-app-header-brand`（商贸智脑）**（§3.1.0）
+- **`TM_applyDialogShell` / `TM_ShellInsets`**：业务弹窗移动态 Bottom Sheet（**`rounded-[2.5rem]`**），与产品中心/供应链/工作台详情对齐
 - 独立模块页经 **`injectCommonUI`** 可注入 **`tm-mobile-header`**；**主壳页禁止重复注入**（避免双层顶栏）
 - 移动端优化的弹窗 UI（会员中心 sheet、推荐奖励弹窗等）
 - **`MobileAdapt/TM_Responsive.js`**：`isMobile()` / **`isMobileView()`**、`body.tm-layout-mobile`；样式分界与 Tailwind `md`（768px）对齐时，自定义 CSS 建议使用 **`max-width: 767px`**
+- **`MobileAdapt/mobile.css`**、**`ui-mobile.css`**：壳层规则已迁移至 **`tm-layout-engine.css`**，保留 **`@deprecated`** 兼容引用
 
 ### 7.6 多商户类型（业态）
 
@@ -1742,32 +1884,37 @@ TM_Project/
     │   └── …                  # 例：dashboard/workspace-banner.html
     ├── MobileAdapt/
     │   ├── TM_Responsive.js   # 响应式：isMobile / isMobileView、tm-layout-mobile
-    │   └── mobile.css         # 主壳顶栏/底栏/内容区留白
+    │   └── mobile.css         # @deprecated，壳层已迁至 tm-layout-engine.css
+    ├── assets/
+    │   ├── css/
+    │   │   ├── tm-layout-engine.css  # 手机端三段式壳层 + Bottom Sheet（权威）
+    │   │   ├── tm-onboarding.css
+    │   │   ├── ui-mobile.css         # @deprecated 兼容
+    │   │   └── product-center.css
+    │   └── js/
+    │       ├── auth.js              # 认证、会员中心、布局 CSS 注入
+    │       ├── tm-ui-loader.js      # TM_UI_CONTEXT、injectSlots、tm-role-ui-ready
+    │       ├── tm-onboarding.js / tm-onboarding-registry.js / tm-onboarding-sync.js
+    │       ├── ui-permissions.js    # TM_ROLE_SCHEMA
+    │       ├── tm-shell-insets.js   # 壳层 safe-area / header-tabbar 高度、弹窗 sheet
+    │       ├── main-app.js
+    │       ├── ui-main.js           # switchTab、iframe 嵌入、TM_applyDialogShell
+    │       ├── ui-product-center.js / ui-product-center-enhance.js
+    │       ├── ui-crm.js / ui-supplier.js
+    │       └── env-config.js
     ├── modules/
     │   ├── membership/
-    │   │   ├── member-referral-banner-snippet.html  # 会员中心推荐条片段
+    │   │   ├── member-referral-banner-snippet.html
     │   │   ├── referral-rewards-modal.html
     │   │   └── referral-rewards.js
     │   ├── CSS/
-    │   │   └── common.css     # 顶栏品牌区、会员推荐 hero、全局表单
+    │   │   └── common.css     # @import tm-layout-engine；顶栏、会员推荐 hero
     │   ├── dashboard/
     │   ├── crm/
     │   ├── product-center/
+    │   │   └── product-overlays.html  # 产品弹窗 HTML 片段
     │   ├── supply-chain/
     │   └── smart-ops/
-    └── assets/
-        ├── css/
-        │   └── tm-onboarding.css
-        └── js/
-            ├── auth.js              # 认证、会员中心、MODAL_TEMPLATE、tmInjectMemberReferralBanner
-            ├── tm-ui-loader.js      # TM_UI_CONTEXT、injectSlots、tm-role-ui-ready
-            ├── tm-onboarding.js / tm-onboarding-registry.js / tm-onboarding-sync.js
-            ├── ui-permissions.js    # TM_ROLE_SCHEMA
-            ├── tm-shell-insets.js   # 壳层 safe-area / header-tabbar 高度
-            ├── main-app.js
-            ├── ui-main.js           # switchTab、iframe 嵌入、壳层启动
-            ├── ui-product-center.js
-            └── env-config.js
 ```
 
 ---
@@ -1805,6 +1952,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.21 | 2026-05-25 | **单据状态机与库存**：§1 增补 `orders`/`order_items`/`purchases`/`purchase_items` 财务与 **`is_processed`** 列、**`biz_account_ledger.biz_type_code`**；**`alter_document_status_inventory.sql`**；字典 **D010–D012** 物流重构、**D015–D017** 全表；§1.4.4 入账规则改为 **`record-payment`/`ship`/`inbound`** 双线解耦；§2.9 状态机与迁移。**前端**：§3.1.0 **`tm-layout-engine.css`** 三段式壳层 + **`TM_applyDialogShell`** Sheet；§3.1.1 工作台进行中单据双维筛选/详情编辑/终态移除；§3.1.3 产品类别可空、单位换算最多 2 行、高级配置展开修复；§3.1.4 供应链弹窗 Sheet 与进货底部仓库/付款区；§3.2.3 CRM 时间轴 Badge；§3.2.4–3.2.5 新 API；§6.3–§6.4 流程；§7.5、§8 目录树 |
 | v1.20 | 2026-05-24 | **新手导览**：§1.1.2.1 **`user_onboarding_state`** 快照字段与双写策略；**`InitCfgService.applyIncrementalMigrations()`**；§3.1.6、`OnboardingController`；§3.2.1 **`/onboarding/state`**、登录 **`onboarding`** 摘要。**会员/壳层 UI**：§3.1.0 主壳顶栏表、§3.1.7 会员中心（**`member-referral-banner-snippet`** 品牌青 hero，废弃主路径 **`gold-referral-card`**）；PC 顶栏去重新手引导/退出；移动 **`tm-app-header-brand`** 固定「商贸智脑」。§8 目录树同步 |
 | v1.19 | 2026-05-20 | DDL 权威切换至 **`production-schema-v1.sql`** / **`production-seed-v1.sql`**；§1.1.2 **`last_login_ip`**；§1.6 运维表（**`ops_tenant_snapshot`、`ai_usage_stats`、`ops_subscription_logs`、`system_announcements`**）；新增 **OpsService** 与网关 **`/api/v1/ops/**`** RBAC（§2.4.5）；§3.2.1 子账号/续费升级/推荐扩展接口；§3.2.4–3.2.6 补齐 RD/Supp/AI 接口；§3.2.8 运维 API；网关 **保留 Authorization** 转发说明 |
 | v1.18 | 2026-05-12 | §1 与 **`InitCfgService/create_tables.sql`** 对齐：`tenant_subscriptions` 日期约束；**`subscription_payment_orders` / `subscription_payment_events`** 全列与索引（§1.1.4.1–1.1.4.2）；**`balanceChgDetails`、`customers`、`orders`、`order_items`、`dictionary`、`ai_operation_records`** 物理蛇形列名；**`biz_account_ledger`** 索引与幂等唯一索引；**`production`** 标注当前 DDL 未含；§3.2.2 / 初始化说明列举 **`alter_subscription_payment.sql`** 等 |
@@ -1829,6 +1977,6 @@ TM_Project/
 
 ---
 
-**文档版本**：v1.20
-**最后更新**：2026-05-24
+**文档版本**：v1.21
+**最后更新**：2026-05-25
 **维护者**：TradeMind开发团队

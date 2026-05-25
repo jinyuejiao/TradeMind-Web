@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260524pc';
+    var url = '/modules/product-center/product-overlays.html?v=20260524adv';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -42,6 +42,9 @@ function TM_syncProductCenterOverlays() {
             document.querySelectorAll('#unit-modal').forEach(function (el) {
                 el.parentNode.removeChild(el);
             });
+            if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
+                window.TM_bindProductCenterGlobalFns();
+            }
         })
         .catch(function (e) {
             console.warn('[TM] 同步产品中心弹窗失败:', e);
@@ -112,6 +115,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
         var expectedVoiceRev = '20260524';
         if (window.__TM_DASHBOARD_INLINE_LOADED) {
             TM_restoreShellNavigationGlobals();
+            if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
+                window.TM_bindProductCenterGlobalFns();
+            }
             TM_refreshDashboardPendingOrders();
             TM_rebindVoiceStopAfterOverlaySync();
             try {
@@ -189,6 +195,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
             if (index >= queue.length) {
                 window.__TM_DASHBOARD_INLINE_LOADED = true;
                 TM_restoreShellNavigationGlobals();
+                if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
+                    window.TM_bindProductCenterGlobalFns();
+                }
                 TM_refreshDashboardPendingOrders();
                 return;
             }
@@ -552,7 +561,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260524od8', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260525mo1', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');

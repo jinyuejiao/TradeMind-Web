@@ -700,20 +700,100 @@
         return opts;
     }
 
+    var TM_MANUAL_FIN_LABELS = {
+        UNPAID: '未收款',
+        PARTIAL_PAID: '部分收款',
+        SETTLED: '已结清',
+        BAD_DEBT: '坏账'
+    };
+
+    function tmManualFinLabel(code) {
+        var c = String(code || 'UNPAID').trim().toUpperCase();
+        return TM_MANUAL_FIN_LABELS[c] || c;
+    }
+
+    function tmSyncManualOrderUI() {
+        var statusSel = document.getElementById('manual-order-status');
+        var finSel = document.getElementById('manual-fin-status');
+        var whSel = document.getElementById('manual-order-warehouse');
+        var logEl = document.getElementById('manual-badge-logistics');
+        var finEl = document.getElementById('manual-badge-finance');
+        var auxEl = document.getElementById('manual-aux-summary');
+        var statusLabel = '待配货';
+        if (statusSel && statusSel.selectedIndex >= 0) {
+            statusLabel = statusSel.options[statusSel.selectedIndex].textContent || statusLabel;
+        }
+        var finVal = finSel ? finSel.value : 'UNPAID';
+        if (logEl) {
+            logEl.innerHTML = '<i class="ph ph-truck"></i> ' + statusLabel;
+        }
+        if (finEl) {
+            finEl.innerHTML = '<i class="ph ph-currency-cny"></i> ' + tmManualFinLabel(finVal);
+            finEl.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold ' +
+                (finVal === 'SETTLED' ? 'bg-emerald-50 text-emerald-700' :
+                    finVal === 'PARTIAL_PAID' ? 'bg-sky-50 text-sky-700' :
+                        finVal === 'BAD_DEBT' ? 'bg-slate-100 text-slate-600' :
+                            'bg-amber-50 text-amber-700');
+        }
+        if (auxEl) {
+            var whLabel = '默认仓库';
+            if (whSel && whSel.value && whSel.selectedIndex >= 0) {
+                whLabel = whSel.options[whSel.selectedIndex].textContent || whLabel;
+            }
+            var remEl = document.getElementById('manual-remaining-sum');
+            var remText = remEl ? remEl.textContent.replace('¥', '') : '0.00';
+            auxEl.textContent = whLabel + ' · ' + tmManualFinLabel(finVal) + ' · 剩 ' + remText;
+        }
+    }
+
+    function tmBindManualOrderPanelEvents() {
+        if (window._manualOrderPanelBound) return;
+        window._manualOrderPanelBound = true;
+        var statusSel = document.getElementById('manual-order-status');
+        var finSel = document.getElementById('manual-fin-status');
+        var whSel = document.getElementById('manual-order-warehouse');
+        if (statusSel) statusSel.addEventListener('change', tmSyncManualOrderUI);
+        if (finSel) finSel.addEventListener('change', tmSyncManualOrderUI);
+        if (whSel) whSel.addEventListener('change', tmSyncManualOrderUI);
+    }
+
+    function tmPopulateManualWarehouseSelect() {
+        var sel = document.getElementById('manual-order-warehouse');
+        if (!sel) return Promise.resolve();
+        return window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var list = (res && res.data) ? res.data : (res || []);
+                var html = '<option value="">默认仓库</option>';
+                (list || []).forEach(function (w) {
+                    html += '<option value="' + w.warehouseId + '">' + (w.name || ('仓库#' + w.warehouseId)) + '</option>';
+                });
+                sel.innerHTML = html;
+            })
+            .catch(function () {
+                sel.innerHTML = '<option value="">默认仓库</option>';
+            });
+    }
+
     function tmRecalcManualOrderTotal() {
         var tbody = document.getElementById('manual-order-tbody');
-        var totalEl = document.getElementById('manual-grand-total') || document.getElementById('manual-order-grand-total');
-        if (!tbody || !totalEl) return;
+        if (!tbody) return;
         var sum = 0;
         tbody.querySelectorAll('tr').forEach(function (row) {
             var qty = parseFloat(row.querySelector('.manual-qty') && row.querySelector('.manual-qty').value) || 0;
             var price = parseFloat(row.querySelector('.manual-price') && row.querySelector('.manual-price').value) || 0;
-            var sub = qty * price;
+            var sub = Math.round(qty * price * 100) / 100;
             var subEl = row.querySelector('.manual-row-total');
             if (subEl) subEl.textContent = '¥' + sub.toFixed(2);
             sum += sub;
         });
-        totalEl.textContent = '¥' + sum.toFixed(2);
+        sum = Math.round(sum * 100) / 100;
+        var fmt = '¥' + sum.toFixed(2);
+        ['manual-order-total', 'manual-pay-total', 'manual-remaining-sum', 'manual-grand-total'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = fmt;
+        });
+        tmSyncManualOrderUI();
     }
 
     async function tmApplyManualOrderLastPrices() {
@@ -793,12 +873,12 @@
         var tr = document.createElement('tr');
         tr.className = 'border-t border-slate-100';
         tr.innerHTML =
-            '<td class="px-4 py-3"><select class="form-input font-bold text-slate-700 manual-product-select w-full min-w-[10rem]">' +
+            '<td class="px-3 py-2"><select class="form-input form-input--compact font-bold text-slate-700 manual-product-select w-full min-w-[8rem]">' +
             tmBuildManualProductOptions() + '</select></td>' +
-            '<td class="px-4 py-3 text-center"><input type="number" min="1" step="1" value="1" class="manual-qty w-20 text-center form-input py-1 font-bold" /></td>' +
-            '<td class="px-4 py-3 text-center"><input type="number" min="0" step="0.01" value="0" class="manual-price w-24 text-center form-input py-1 font-mono font-bold" /></td>' +
-            '<td class="px-4 py-3 text-right font-mono font-bold manual-row-total">¥0.00</td>' +
-            '<td class="px-2 py-3 text-center"><button type="button" class="manual-row-delete text-slate-400 hover:text-red-500" title="删除行"><i class="ph ph-trash"></i></button></td>';
+            '<td class="px-3 py-2 text-center"><input type="number" min="1" step="1" value="1" class="manual-qty w-16 text-center form-input form-input--compact py-1 font-bold" /></td>' +
+            '<td class="px-3 py-2 text-center"><input type="number" min="0" step="0.01" value="0" class="manual-price w-20 text-center form-input form-input--compact py-1 font-mono font-bold" /></td>' +
+            '<td class="px-3 py-2 text-right font-mono font-bold manual-row-total">¥0.00</td>' +
+            '<td class="px-1 py-2 text-center"><button type="button" class="manual-row-delete text-slate-400 hover:text-red-500" title="删除行"><i class="ph ph-trash"></i></button></td>';
         tbody.appendChild(tr);
         tmBindManualOrderRow(tr);
         return tr;
@@ -830,6 +910,8 @@
         if (typeof window.loadProductList === 'function') await window.loadProductList();
         if (typeof window.loadOrderStatusDict === 'function') await window.loadOrderStatusDict();
         if (typeof window.loadBizAccounts === 'function') await window.loadBizAccounts();
+        await tmPopulateManualWarehouseSelect();
+        tmBindManualOrderPanelEvents();
         if (typeof window.populateOrderStatusSelects === 'function') {
             window.populateOrderStatusSelects();
         } else if (typeof window.fillManualOrderStatusSelect === 'function') {
@@ -840,6 +922,12 @@
         if (acctSel && typeof window.fillBizAccountSelect === 'function') {
             window.fillBizAccountSelect(acctSel, null);
         }
+        var finSel = document.getElementById('manual-fin-status');
+        if (finSel) finSel.value = 'UNPAID';
+        var whSel = document.getElementById('manual-order-warehouse');
+        if (whSel) whSel.value = '';
+        var auxDetails = document.getElementById('manual-aux-details');
+        if (auxDetails) auxDetails.open = true;
         var custSel = document.getElementById('manual-order-customer');
         if (custSel && !custSel.__tmManualCustBound) {
             custSel.__tmManualCustBound = true;
@@ -856,9 +944,13 @@
         if (dateEl && typeof window.getTodayDateInput === 'function') {
             dateEl.value = window.getTodayDateInput();
         }
+        if (typeof window.TM_applyDialogShell === 'function') {
+            window.TM_applyDialogShell(modal);
+        }
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         tmRecalcManualOrderTotal();
+        tmSyncManualOrderUI();
     };
 
     window.TM_closeManualOrderModal = function () {
@@ -904,10 +996,20 @@
 
         var grand = items.reduce(function (s, it) { return s + (it.totalAmount || 0); }, 0);
         var accountSel = document.getElementById('manual-order-account');
+        var finSel = document.getElementById('manual-fin-status');
+        var whSel = document.getElementById('manual-order-warehouse');
         var accountRaw = accountSel && accountSel.value ? String(accountSel.value).trim() : '';
         var accountId = accountRaw ? parseInt(accountRaw, 10) : null;
         if (accountRaw && Number.isNaN(accountId)) {
             errors.push('请选择有效的收款账户');
+            tmManualOrderShowErrors(errors);
+            return;
+        }
+        var finStatus = finSel && finSel.value ? finSel.value : 'UNPAID';
+        var warehouseRaw = whSel && whSel.value ? String(whSel.value).trim() : '';
+        var warehouseId = warehouseRaw ? parseInt(warehouseRaw, 10) : null;
+        if (warehouseRaw && Number.isNaN(warehouseId)) {
+            errors.push('请选择有效的发出仓库');
             tmManualOrderShowErrors(errors);
             return;
         }
@@ -916,12 +1018,16 @@
                 custId: custId,
                 totalAmount: grand,
                 orderStatus: statusSel && statusSel.value ? statusSel.value : 'D010001',
+                finStatus: finStatus,
                 deliveryDate: dateEl && dateEl.value ? (dateEl.value + 'T12:00:00') : null
             },
             orderItems: items
         };
         if (accountId != null) {
             orderPayload.order.accountId = accountId;
+        }
+        if (warehouseId != null) {
+            orderPayload.order.warehouseId = warehouseId;
         }
 
         try {

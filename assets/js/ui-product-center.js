@@ -2696,7 +2696,14 @@ window.openCreateProductModal = function() { window.ProductModule.openCreateProd
 window.closeProductDetail = function() { window.ProductModule.closeProductDetail(); };
 window.confirmDeleteProduct = function(productName) { window.ProductModule.confirmDeleteProduct(productName); };
 window.saveProduct = function() { window.ProductModule.saveProduct(); };
-/** 无参：产品详情弹窗 advanced-drawer；'prod'/'cust'：主壳审核弹窗内 drawer-prod / drawer-cust */
+/** 产品编辑弹窗：展开/收起高级配置（独立命名，避免被 dashboard 内联脚本覆盖 toggleAdvanced） */
+window.toggleProductDetailAdvanced = function() {
+    if (window.ProductModule && typeof window.ProductModule.toggleAdvanced === 'function') {
+        window.ProductModule.toggleAdvanced();
+    }
+};
+
+/** 兼容旧调用；'prod'/'cust' 为审核弹窗内 drawer；无参等同 toggleProductDetailAdvanced */
 window.toggleAdvanced = function(type) {
     if (type === 'prod' || type === 'cust') {
         var drawer = document.getElementById('drawer-' + type);
@@ -2711,10 +2718,34 @@ window.toggleAdvanced = function(type) {
         }
         return;
     }
-    if (window.ProductModule && window.ProductModule.toggleAdvanced) {
-        window.ProductModule.toggleAdvanced();
-    }
+    window.toggleProductDetailAdvanced();
 };
+
+/** 工作台 dashboard 脚本注入后会覆盖 window.toggleAdvanced，需在注入后重新绑定 */
+window.TM_bindProductCenterGlobalFns = function() {
+    window.toggleProductDetailAdvanced = function() {
+        if (window.ProductModule && typeof window.ProductModule.toggleAdvanced === 'function') {
+            window.ProductModule.toggleAdvanced();
+        }
+    };
+    window.toggleAdvanced = function(type) {
+        if (type === 'prod' || type === 'cust') {
+            var drawer = document.getElementById('drawer-' + type);
+            var icon = document.getElementById('icon-' + type) || document.getElementById('advanced-icon-' + type);
+            if (!drawer) return;
+            var open = drawer.classList.toggle('open');
+            if (open) drawer.classList.remove('hidden');
+            else drawer.classList.add('hidden');
+            if (icon) {
+                icon.classList.toggle('ph-caret-down', !open);
+                icon.classList.toggle('ph-caret-up', open);
+            }
+            return;
+        }
+        window.toggleProductDetailAdvanced();
+    };
+};
+window.TM_bindProductCenterGlobalFns();
 window.openUnitModal = function() { window.ProductModule.openUnitModal(); };
 window.closeUnitModal = function() { window.ProductModule.closeUnitModal(); };
 window.openWarehouseDrawer = function() { window.ProductModule.openWarehouseDrawer(); };

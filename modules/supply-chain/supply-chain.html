@@ -50,14 +50,14 @@
     </script>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <link rel="stylesheet" href="../CSS/common.css?v=20260524shell3">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260524supp3">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260525supp5">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/tm-format.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-confirm.js?v=20260524"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
-    <script src="../../assets/js/ui-supplier.js?v=20260524supp3"></script>
+    <script src="../../assets/js/ui-supplier.js?v=20260525supp5"></script>
     <style>
         .view-toggle-btn { transition: all 0.2s ease; }
         .view-toggle-btn.active {
@@ -169,7 +169,7 @@
             </div>
             <div class="tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
                 <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存后可在进货单中选择该供应商</p>
-                <div class="flex gap-2 md:gap-3">
+                <div class="flex gap-2 md:gap-3 w-full">
                     <button type="button" onclick="closeSupplierModal()" class="flex-1 md:flex-none md:px-6 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
                     <button type="button" onclick="saveSupplier()" class="flex-[1.4] md:flex-none md:px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/25 hover:bg-brand-700 transition active:scale-[0.98] flex items-center justify-center gap-2">
                         <i class="ph ph-floppy-disk-back"></i> 保存
@@ -182,80 +182,115 @@
     <div id="purchase-modal" class="tm-dialog-root tm-product-edit-modal tm-purchase-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
         <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="closePurchaseModal()"></div>
         <div class="tm-dialog-panel relative bg-white w-full max-w-5xl h-full max-h-full md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
-            <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-9 md:w-10 md:h-10 bg-[#14B8A6] rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-receipt text-lg" aria-hidden="true"></i></div>
-                    <div class="min-w-0">
-                        <h2 class="text-sm md:text-base font-black text-slate-800 truncate" id="purchase-modal-title">新增进货单</h2>
-                        <p class="text-[10px] text-slate-400 mt-0.5 truncate" id="purchase-modal-subtitle">填写供应商、明细与付款账户</p>
+            <div class="tm-product-edit-header px-4 py-2.5 md:px-6 md:py-3 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <div class="w-8 h-8 bg-[#14B8A6] rounded-lg flex items-center justify-center text-white shrink-0"><i class="ph ph-receipt"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-sm font-black text-slate-800 truncate" id="purchase-modal-title">新增进货单</h2>
+                            <span id="purchase-badge-logistics" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 text-teal-700 text-[10px] font-bold"><i class="ph ph-truck"></i> 草稿</span>
+                            <span id="purchase-badge-finance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-bold"><i class="ph ph-currency-cny"></i> 未付款</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 truncate hidden md:block" id="purchase-modal-subtitle">以进货明细为主，保存后可付款入库</p>
                     </div>
                 </div>
-                <button type="button" onclick="closePurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                <button type="button" onclick="closePurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
             </div>
-            <div id="purchase-form-errors" class="hidden mx-4 mt-3 md:mx-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed shrink-0" role="alert"></div>
-            <div class="tm-purchase-modal-body flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-5 md:space-y-6">
-                <section class="tm-product-edit-section">
-                    <h3 class="tm-product-edit-section__title">单据信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
-                    <div class="tm-product-edit-grid">
-                        <div class="tm-product-field tm-product-field--full md:col-span-2">
-                            <label class="tm-product-label" for="purchase-supplier">供应商<span class="tm-product-required">*</span></label>
-                            <select id="purchase-supplier" class="form-input"><option value="">--- 请选择供应商 ---</option></select>
+            <div id="purchase-form-errors" class="hidden mx-4 mt-2 md:mx-6 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700 shrink-0" role="alert"></div>
+            <div class="tm-purchase-modal-body flex-1 min-h-0 flex flex-col overflow-hidden px-4 py-3 md:px-6">
+                <section class="shrink-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-supplier">供应商<span class="text-red-400">*</span></label>
+                            <select id="purchase-supplier" class="form-input form-input--compact"><option value="">选择供应商</option></select>
                         </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="purchase-status">进货状态<span class="tm-product-required">*</span></label>
-                            <select id="purchase-status" class="form-input"><option value="">--- 请选择状态 ---</option></select>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-status">状态<span class="text-red-400">*</span></label>
+                            <select id="purchase-status" class="form-input form-input--compact"><option value="">选择状态</option></select>
                         </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="purchase-date">进货日期<span class="tm-product-required">*</span></label>
-                            <input type="date" id="purchase-date" class="form-input">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-date">日期<span class="text-red-400">*</span></label>
+                            <input type="date" id="purchase-date" class="form-input form-input--compact">
                         </div>
                     </div>
                 </section>
-
-                <section class="tm-product-edit-section">
-                    <div class="flex justify-between items-center gap-2 mb-2">
-                        <h3 class="tm-product-edit-section__title mb-0">进货商品明细</h3>
-                        <button type="button" onclick="addPurchaseItem()" class="tm-product-unit-btn shrink-0">+ 添加商品</button>
+                <section class="tm-purchase-items-core flex-1 min-h-0 flex flex-col mt-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
+                        <h3 class="text-xs font-black text-slate-700">进货明细</h3>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] text-slate-500">合计 <strong class="font-mono text-brand-700" id="po-form-total-display">¥0.00</strong></span>
+                            <button type="button" onclick="addPurchaseItem()" class="tm-product-unit-btn shrink-0 text-[11px] py-1 px-2">+ 添加</button>
+                        </div>
                     </div>
-                    <div id="purchase-items-cards" class="md:hidden space-y-3"></div>
-                    <div class="tm-purchase-items-scroll hidden md:block bg-slate-50 rounded-2xl border border-slate-100">
+                    <div id="purchase-items-cards" class="md:hidden flex-1 min-h-0 overflow-y-auto space-y-2"></div>
+                    <div class="tm-purchase-items-scroll hidden md:block flex-1 min-h-0 overflow-auto bg-slate-50 rounded-xl border border-slate-100">
                         <table class="w-full text-xs min-w-[36rem]" id="purchase-items-table">
-                            <thead class="bg-slate-100/50 text-slate-400 font-bold uppercase tracking-tighter">
+                            <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
                                 <tr>
-                                    <th class="px-3 py-3 text-left min-w-[10rem]">产品</th>
-                                    <th class="px-3 py-3 text-center w-24 min-w-[6rem]">数量</th>
-                                    <th class="px-3 py-3 text-center w-28 min-w-[7rem]">进货单价</th>
-                                    <th class="px-3 py-3 text-center w-24 min-w-[6rem]">单位</th>
-                                    <th class="px-3 py-3 text-center w-40 min-w-[9rem]">批次号</th>
-                                    <th class="px-3 py-3 text-right w-24 min-w-[6rem]">小计</th>
-                                    <th class="px-3 py-3 text-center w-12 min-w-[3rem]">删除</th>
+                                    <th class="px-2 py-2 text-left">产品</th>
+                                    <th class="px-2 py-2 text-center w-20">数量</th>
+                                    <th class="px-2 py-2 text-center w-24">单价</th>
+                                    <th class="px-2 py-2 text-center w-20">单位</th>
+                                    <th class="px-2 py-2 text-center w-32">批次</th>
+                                    <th class="px-2 py-2 text-right w-20">小计</th>
+                                    <th class="px-2 py-2 w-10"></th>
                                 </tr>
                             </thead>
-                            <tbody id="purchase-items-tbody" class="divide-y divide-slate-100"></tbody>
+                            <tbody id="purchase-items-tbody" class="divide-y divide-slate-100 bg-white"></tbody>
                         </table>
                     </div>
                 </section>
-
-                <div class="tm-order-total-card">
-                    <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
-                    <div class="tm-order-total-card__text">
-                        <p class="tm-order-total-card__title">进货单预计总计</p>
-                        <p class="tm-order-total-card__subtitle">系统自动计算</p>
-                    </div>
-                    <div class="tm-order-total-card__amount-wrap">
-                        <span class="tm-order-total-card__amount" id="po-form-total-display">¥0.00</span>
-                    </div>
-                </div>
-
-                <section class="tm-product-edit-section">
-                    <div class="tm-product-field">
-                        <label class="tm-product-label" for="purchase-account">付款账户 <span class="text-[10px] text-slate-400 font-normal">选填</span></label>
-                        <select id="purchase-account" class="form-input w-full max-w-lg"><option value="">--- 请选择付款账户 ---</option></select>
-                    </div>
-                </section>
             </div>
-            <div class="tm-product-edit-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
-                <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存后更新库存与进货记录</p>
+            <div id="purchase-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
+                <details id="purchase-aux-details" class="tm-purchase-aux-details group">
+                    <summary class="tm-purchase-aux-summary-row flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1">
+                        <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·付款·入库</span>
+                        <span id="purchase-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 应付 ¥0.00</span>
+                        <span class="text-[10px] text-brand-600 shrink-0 group-open:hidden">展开</span>
+                    </summary>
+                    <div class="pt-2 pb-1 space-y-2 border-t border-slate-200/60 mt-1">
+                        <div class="flex flex-wrap items-end gap-2">
+                            <div class="w-36">
+                                <label class="text-[10px] text-slate-400" for="purchase-warehouse">仓库</label>
+                                <select id="purchase-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white"><option value="">默认仓库</option></select>
+                            </div>
+                            <div id="purchase-remaining-hint" class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
+                                应付 <span id="purchase-pay-total" class="font-mono font-bold">¥0.00</span>
+                                <span class="hidden" id="purchase-paid-wrap"> · 已付 <span id="purchase-paid-sum" class="font-mono">¥0.00</span></span>
+                                <span class="hidden text-teal-700" id="purchase-remaining-wrap"> · 剩 <span id="purchase-remaining-sum" class="font-mono">¥0.00</span></span>
+                            </div>
+                        </div>
+                        <p id="purchase-fin-hint-unpaid" class="hidden text-[10px] text-amber-600">改回「未付款」仅更新标记，不冲账。</p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2" id="purchase-ledger-section">
+                            <div>
+                                <label class="text-[10px] text-slate-400" for="purchase-fin-status">付款状态</label>
+                                <select id="purchase-fin-status" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white">
+                                    <option value="UNPAID">未付款</option>
+                                    <option value="PARTIAL_PAID">部分付款</option>
+                                    <option value="SETTLED">已结清</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400" for="purchase-pay-amount">本次金额</label>
+                                <input type="number" id="purchase-pay-amount" min="0" step="0.01" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs font-mono bg-white" placeholder="0" />
+                            </div>
+                            <div class="col-span-2">
+                                <label class="text-[10px] text-slate-400" for="purchase-pay-account">账户</label>
+                                <select id="purchase-pay-account" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white"></select>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <button type="button" id="purchase-confirm-pay-btn" onclick="SupplierModule.recordPurchasePayment()" class="px-3 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold disabled:opacity-40">确认付款</button>
+                            <button type="button" id="purchase-inbound-btn" onclick="SupplierModule.confirmPartialInbound()" class="hidden px-3 py-1 rounded-lg border border-teal-500 text-teal-700 text-[11px] font-bold">确认入库</button>
+                            <span id="purchase-fin-disabled-hint" class="text-[10px] text-slate-400">请先保存后再付款</span>
+                        </div>
+                        <select id="purchase-account" class="hidden"><option value="">---</option></select>
+                    </div>
+                </details>
+            </div>
+
+<div class="tm-product-edit-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+                <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存仅更新单据信息，付款与入库请使用下方操作</p>
                 <div class="flex gap-2 md:gap-3 w-full">
                     <button type="button" onclick="closePurchaseModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3.5 text-xs font-bold min-h-[44px]">取消</button>
                     <button type="button" onclick="savePurchase()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3.5 text-xs font-black shadow-lg shadow-brand-500/25 active:scale-[0.98] min-h-[44px] flex items-center justify-center gap-2">

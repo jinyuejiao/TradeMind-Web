@@ -136,6 +136,7 @@
     <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
+    <script src="../../assets/js/ui-crm.js?v=20260525timeline"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
         // 打开会员订阅弹窗
@@ -323,7 +324,7 @@
                     </div>
 
                     <div class="pb-20">
-                        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm text-left">
+                        <div class="bg-white rounded-[2.5rem] border border-slate-200 p-6 shadow-sm text-left">
                             <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">交互时间轴</h3>
                             <div id="timeline-container" class="relative pl-6 space-y-8">
                                 <div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>
@@ -555,12 +556,6 @@
             return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN');
         }
 
-        function shortText(text, limit) {
-            const src = (text || '').trim();
-            if (src.length <= limit) return src;
-            return src.slice(0, limit) + '...';
-        }
-
         async function fetchCustomerStatusOptions() {
             try {
                 const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/dictionary/D009', { method: 'GET' });
@@ -713,7 +708,9 @@
                 }
                 renderCustomerDetail(detail);
                 renderAlphaRail();
-                await loadCustomerTimeline(detail.id);
+                if (window.TmCrm && typeof window.TmCrm.loadCustomerTimeline === 'function') {
+                    await window.TmCrm.loadCustomerTimeline(detail.id);
+                }
                 if (window.innerWidth < 768) {
                     document.getElementById('crm-list-pane').classList.add('hidden');
                     document.getElementById('crm-detail-pane').classList.remove('hidden');
@@ -735,72 +732,15 @@
                 '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] border border-slate-200 rounded">' + escapeHtml(getSourceLabel(customer.source)) + '</span>';
         }
 
-        async function loadCustomerTimeline(custId) {
-            const container = document.getElementById('timeline-container');
-            container.innerHTML = '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div><div class="p-8 text-center text-slate-400"><i class="ph ph-clock text-4xl mb-3"></i><p class="text-sm">加载订单记录中...</p></div>';
-            try {
-                const orderResp = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/orders/customer/' + custId, { method: 'GET' });
-                if (!orderResp.ok) throw new Error('加载订单失败');
-                const orderResult = await orderResp.json();
-                const orders = Array.isArray(orderResult.data) ? orderResult.data.slice() : [];
-                orders.sort(function(a, b) {
-                    return new Date(b.createTime || 0).getTime() - new Date(a.createTime || 0).getTime();
-                });
-                const enriched = await Promise.all(orders.map(async function(order) {
-                    try {
-                        const itemResp = await wrappedFetch(GATEWAY_URL + '/api/v1/rd/orders/' + order.orderId + '/items', { method: 'GET' });
-                        if (!itemResp.ok) return { order: order, items: [] };
-                        const itemResult = await itemResp.json();
-                        return { order: order, items: Array.isArray(itemResult.data) ? itemResult.data : [] };
-                    } catch (e) {
-                        return { order: order, items: [] };
-                    }
-                }));
-                renderTimeline(enriched);
-            } catch (error) {
-                console.error(error);
-                renderTimeline([]);
-            }
-        }
-
-        function renderTimeline(records) {
-            const container = document.getElementById('timeline-container');
-            if (!records.length) {
-                container.innerHTML = '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div><div class="text-center text-slate-400 py-8"><p class="text-sm">暂无交易记录</p></div>';
-                return;
-            }
-
-            const body = records.map(function(record, index) {
-                const order = record.order || {};
-                const items = record.items || [];
-                const dt = order.createTime ? new Date(order.createTime) : null;
-                const timeText = dt && !isNaN(dt.getTime()) ? dt.toLocaleString() : '未知时间';
-                const itemText = items.length
-                    ? items.map(function(item) { return '产品#' + item.productId + 'x' + item.quantity; }).join('、')
-                    : ('订单号 ' + (order.orderCode || '-'));
-                const typeText = (order.orderStatus || '订单').toUpperCase();
-                return ''
-                    + '<div class="relative' + (index > 4 ? ' opacity-80' : '') + '">'
-                    + '  <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm"></span>'
-                    + '  <div class="flex justify-between items-start mb-1">'
-                    + '    <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase">' + escapeHtml(timeText) + '</p>'
-                    + '    <span class="text-[9px] bg-brand-50 text-brand-600 px-1.5 rounded uppercase font-bold tracking-widest">' + escapeHtml(typeText) + '</span>'
-                    + '  </div>'
-                    + '  <p class="text-xs font-bold text-slate-800 tracking-tight">' + escapeHtml(shortText(itemText, 16)) + '</p>'
-                    + '  <p class="text-xs text-brand-600 font-bold mt-1">订单金额: ¥' + escapeHtml(order.totalAmount || 0) + '</p>'
-                    + '</div>';
-            }).join('');
-            container.innerHTML = '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div>' + body;
-        }
-
         function clearCustomerDetail() {
             state.currentCustomer = null;
             document.getElementById('crm-detail-name').textContent = '未选择客户';
             document.getElementById('customer-avatar').textContent = 'AH';
             document.getElementById('customer-info').textContent = '请选择一个客户查看详情';
             document.getElementById('customer-tags').innerHTML = '';
-            document.getElementById('timeline-container').innerHTML =
-                '<div class="absolute left-2.5 top-0 bottom-0 w-px bg-slate-100"></div><div class="p-8 text-center text-slate-400"><i class="ph ph-clock text-4xl mb-3"></i><p class="text-sm">请选择客户后查看交易时间轴</p></div>';
+            if (window.TmCrm && typeof window.TmCrm.resetTimelinePlaceholder === 'function') {
+                window.TmCrm.resetTimelinePlaceholder();
+            }
         }
 
         function hideCrmDetail() {
@@ -1062,6 +1002,9 @@
         document.addEventListener('DOMContentLoaded', async function() {
             try {
                 if (typeof window.loadUserInfo === 'function') window.loadUserInfo();
+                if (window.TmCrm && typeof window.TmCrm.init === 'function') {
+                    await window.TmCrm.init({ gatewayUrl: GATEWAY_URL });
+                }
                 await fetchCustomerStatusOptions();
                 renderAlphaRail();
                 const searchInput = document.getElementById('crmSearchInput');

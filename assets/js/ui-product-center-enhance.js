@@ -930,6 +930,13 @@
         }
     };
 
+    window.toggleProductDetailAdvanced = function () {
+        PM.toggleAdvanced();
+    };
+    if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
+        window.TM_bindProductCenterGlobalFns();
+    }
+
     window.openProductUnitModal = function () { PM.openUnitModal(); };
     window.closeProductUnitModal = function () { PM.closeUnitModal(); };
     window.openUnitModal = function () { PM.openUnitModal(); };
