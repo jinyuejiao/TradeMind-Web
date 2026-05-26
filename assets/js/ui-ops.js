@@ -44,6 +44,7 @@
         try {
             var data = await res.json();
             if (data && data.message) msg = data.message;
+            else if (data && data.error) msg = data.error;
         } catch (ignore) {
             if (res.status === 502 || res.status === 503 || res.status === 500) {
                 msg = '运维服务不可用，请确认 OpsService(8085) 已启动且网关已路由 /api/v1/ops';
@@ -68,6 +69,7 @@
         tenants: { file: './modules/ops/tenants-quota-tree.html', title: '租户看板' },
         plans: { file: './modules/ops/plan-catalog-by-merchant.html', title: '订阅策略' },
         referral: { file: './modules/ops/referral-settlement.html', title: '推荐与结算' },
+        feedback: { file: './modules/ops/merchant-feedback.html', title: '用户问题' },
         announce: { file: './modules/ops/announce-audit.html', title: '公告与审计' }
     };
 
@@ -368,6 +370,7 @@
             if (route === 'tenants') initTenantsQuotaTreePage();
             else if (route === 'plans') initPlanCatalogPage();
             else if (route === 'referral') initReferralPage();
+            else if (route === 'feedback') initFeedbackPage();
             else if (route === 'announce') initAnnouncePage();
         }).catch(function () {
             root.innerHTML = '<div class="tm-ops-glass rounded-tm-3xl p-8 text-center text-rose-600 text-sm">模块加载失败：' + cfg.file + '</div>';
@@ -1695,6 +1698,267 @@
         }
 
         loadRewards();
+    }
+
+    var opsFbCurrentId = null;
+
+    var FB_STATUS_LABEL = {
+        OPEN: '待处理',
+        IN_PROGRESS: '处理中',
+        RESOLVED: '已解决',
+        CLOSED: '已关闭'
+    };
+
+    var FB_STATUS_CLASS = {
+        OPEN: 'bg-amber-100 text-amber-800',
+        IN_PROGRESS: 'bg-indigo-100 text-indigo-800',
+        RESOLVED: 'bg-emerald-100 text-emerald-800',
+        CLOSED: 'bg-slate-100 text-slate-600'
+    };
+
+    function fbFormatTime(v) {
+        if (!v) return '—';
+        var s = String(v);
+        return s.replace('T', ' ').slice(0, 16);
+    }
+
+    function fbExtractImageUrls(row) {
+        if (!row) return [];
+        var raw = row.image_display_urls || row.image_urls || row.imageUrls;
+        if (typeof raw === 'string') {
+            try { raw = JSON.parse(raw); } catch (eJson) { raw = []; }
+        }
+        if (!Array.isArray(raw)) return [];
+        return raw.map(function (u) { return String(u || '').trim(); }).filter(Boolean);
+    }
+
+    function initFeedbackPage() {
+        if (typeof window.wrappedFetch !== 'function') {
+            initFeedbackPageMock();
+            return;
+        }
+        initFeedbackPageLive();
+    }
+
+    function initFeedbackPageMock() {
+        var tbody = el('ops-fb-tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500 text-sm">请登录运维账号并启动网关与 OpsService 后查看真实数据</td></tr>';
+        }
+    }
+
+    function initFeedbackPageLive() {
+        var tenantFilter = el('ops-fb-filter-tenant');
+        if (tenantFilter) {
+            tenantFilter.value = '';
+        }
+
+        function statusPill(st) {
+            var label = FB_STATUS_LABEL[st] || st;
+            var cls = FB_STATUS_CLASS[st] || 'bg-slate-100 text-slate-600';
+            return '<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ' + cls + '">' + escapeHtml(label) + '</span>';
+        }
+
+        function renderSummary(summary) {
+            var box = el('ops-fb-summary-cards');
+            if (!box) return;
+            var map = { OPEN: 0, IN_PROGRESS: 0, RESOLVED: 0, CLOSED: 0 };
+            (summary || []).forEach(function (row) {
+                var k = String(row.status || '');
+                map[k] = Number(row.cnt) || 0;
+            });
+            var total = map.OPEN + map.IN_PROGRESS + map.RESOLVED + map.CLOSED;
+            box.innerHTML = [
+                { label: '全部', val: total, cls: 'text-slate-800' },
+                { label: '待处理', val: map.OPEN, cls: 'text-amber-700' },
+                { label: '处理中', val: map.IN_PROGRESS, cls: 'text-indigo-700' },
+                { label: '已解决', val: map.RESOLVED, cls: 'text-emerald-700' }
+            ].map(function (c) {
+                return '<div class="tm-ops-glass rounded-2xl p-4 border border-indigo-50"><p class="text-[10px] text-slate-500 font-bold uppercase">' + c.label + '</p><p class="text-2xl font-black mt-1 ' + c.cls + '">' + c.val + '</p></div>';
+            }).join('');
+        }
+
+        function renderTable(items) {
+            var tbody = el('ops-fb-tbody');
+            var empty = el('ops-fb-empty');
+            if (!tbody) return;
+            if (!items || !items.length) {
+                tbody.innerHTML = '';
+                if (empty) empty.classList.remove('hidden');
+                return;
+            }
+            if (empty) empty.classList.add('hidden');
+            tbody.innerHTML = items.map(function (row) {
+                var id = String(row.id || '');
+                var preview = row.content_preview || (row.content ? String(row.content).slice(0, 40) : '');
+                var rowImgs = fbExtractImageUrls(row);
+                var imgCnt = row.image_count != null ? row.image_count : rowImgs.length;
+                return '<tr class="hover:bg-ops-50/50">'
+                    + '<td class="px-4 py-3 font-mono text-[10px]">' + escapeHtml(String(row.feedback_no || '')) + '</td>'
+                    + '<td class="px-4 py-3"><div class="font-semibold text-slate-800">' + escapeHtml(String(row.tenant_name || '')) + '</div><div class="text-[10px] text-slate-400 font-mono">' + escapeHtml(String(row.tenant_id || '')) + '</div></td>'
+                    + '<td class="px-4 py-3">' + escapeHtml(String(row.user_name || '')) + '</td>'
+                    + '<td class="px-4 py-3 max-w-[12rem] truncate text-slate-600" title="' + escapeHtml(String(row.content || preview)) + '">' + escapeHtml(preview) + '</td>'
+                    + '<td class="px-4 py-3 text-center">' + (imgCnt ? '<span class="text-ops-700 font-bold">' + imgCnt + '</span>' : '—') + '</td>'
+                    + '<td class="px-4 py-3">' + statusPill(String(row.status || '')) + '</td>'
+                    + '<td class="px-4 py-3 text-[10px] text-slate-500 whitespace-nowrap">' + escapeHtml(fbFormatTime(row.created_at)) + '</td>'
+                    + '<td class="px-4 py-3 text-right"><button type="button" class="ops-fb-view text-ops-600 font-bold hover:underline" data-id="' + escapeHtml(id) + '">查看</button></td>'
+                    + '</tr>';
+            }).join('');
+        }
+
+        async function loadList() {
+            var tbody = el('ops-fb-tbody');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500">加载中…</td></tr>';
+            var q = [];
+            var st = el('ops-fb-filter-status');
+            var tenant = el('ops-fb-filter-tenant');
+            var df = el('ops-fb-filter-from');
+            var dt = el('ops-fb-filter-to');
+            if (st && st.value && st.value !== 'ALL') q.push('status=' + encodeURIComponent(st.value));
+            if (tenant && tenant.value.trim()) q.push('tenantId=' + encodeURIComponent(tenant.value.trim()));
+            if (df && df.value) q.push('dateFrom=' + encodeURIComponent(df.value));
+            if (dt && dt.value) q.push('dateTo=' + encodeURIComponent(dt.value));
+            try {
+                var res = await opsFetch('/api/v1/ops/feedback?' + q.join('&'), { method: 'GET' });
+                if (!res.ok) {
+                    throw new Error(await opsParseError(res));
+                }
+                var data = await res.json();
+                renderSummary(data.summary);
+                renderTable(data.items);
+            } catch (e) {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-rose-600 text-sm">' + escapeHtml(e.message) + '</td></tr>';
+            }
+        }
+
+        function closeDrawer() {
+            var dr = el('ops-fb-drawer');
+            if (dr) dr.classList.add('hidden');
+            opsFbCurrentId = null;
+        }
+
+        function openLightbox(url) {
+            var lb = el('ops-fb-lightbox');
+            var img = el('ops-fb-lightbox-img');
+            if (!lb || !img) return;
+            img.src = url;
+            lb.classList.remove('hidden');
+        }
+
+        async function openDrawer(id) {
+            opsFbCurrentId = id;
+            var dr = el('ops-fb-drawer');
+            var body = el('ops-fb-drawer-body');
+            if (!dr || !body) return;
+            dr.classList.remove('hidden');
+            body.innerHTML = '<p class="text-center text-slate-400 text-xs py-8">加载中…</p>';
+            try {
+                var res = await opsFetch('/api/v1/ops/feedback/' + encodeURIComponent(id), { method: 'GET' });
+                var row = await res.json();
+                if (!res.ok) throw new Error((row && row.message) || '加载失败');
+                if (el('ops-fb-drawer-no')) el('ops-fb-drawer-no').textContent = String(row.feedback_no || '');
+                var stSel = el('ops-fb-drawer-status');
+                if (stSel) stSel.value = String(row.status || 'OPEN');
+                var imgs = fbExtractImageUrls(row);
+                var imgHtml = imgs.length
+                    ? '<div class="flex flex-wrap gap-2">' + imgs.map(function (u, idx) {
+                        return '<button type="button" class="ops-fb-img w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100" data-url="' + escapeHtml(u) + '">'
+                            + '<img src="' + escapeHtml(u) + '" class="w-full h-full object-cover" alt="截图' + (idx + 1) + '" loading="lazy" referrerpolicy="no-referrer" /></button>';
+                    }).join('') + '</div>'
+                    : '<p class="text-xs text-slate-400">无截图</p>';
+                var timeline = (row.followups || []).map(function (f) {
+                    var line = escapeHtml(fbFormatTime(f.created_at)) + ' · ' + escapeHtml(String(f.operator_name || '运维'));
+                    if (f.action === 'STATUS_CHANGE' && f.from_status && f.to_status) {
+                        line += ' · ' + escapeHtml(FB_STATUS_LABEL[f.from_status] || f.from_status) + ' → ' + escapeHtml(FB_STATUS_LABEL[f.to_status] || f.to_status);
+                    }
+                    var note = f.note ? '<p class="text-xs text-slate-600 mt-1">' + escapeHtml(String(f.note)) + '</p>' : '';
+                    return '<li class="border-l-2 border-ops-200 pl-3 py-2"><p class="text-[10px] text-slate-500">' + line + '</p>' + note + '</li>';
+                }).join('');
+                body.innerHTML = ''
+                    + '<div class="text-xs space-y-1 text-slate-500"><p><span class="font-bold text-slate-700">租户</span> ' + escapeHtml(String(row.tenant_name || '')) + ' <span class="font-mono">(' + escapeHtml(String(row.tenant_id || '')) + ')</span></p>'
+                    + '<p><span class="font-bold text-slate-700">提交人</span> ' + escapeHtml(String(row.user_name || '')) + ' · ' + escapeHtml(fbFormatTime(row.created_at)) + '</p></div>'
+                    + '<div class="bg-slate-50 rounded-2xl p-4 border border-slate-100"><p class="text-xs font-bold text-slate-500 mb-2">问题描述</p><p class="text-sm text-slate-800 whitespace-pre-wrap">' + escapeHtml(String(row.content || '')) + '</p></div>'
+                    + '<div><p class="text-xs font-bold text-slate-500 mb-2">截图</p>' + imgHtml + '</div>'
+                    + '<div><p class="text-xs font-bold text-slate-500 mb-2">跟进记录</p><ul class="space-y-1">' + (timeline || '<li class="text-xs text-slate-400">暂无</li>') + '</ul></div>';
+                body.querySelectorAll('.ops-fb-img').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        openLightbox(btn.getAttribute('data-url'));
+                    });
+                });
+            } catch (err) {
+                body.innerHTML = '<p class="text-center text-rose-600 text-sm">' + escapeHtml(err.message) + '</p>';
+            }
+        }
+
+        var refreshBtn = el('ops-fb-btn-refresh');
+        if (refreshBtn) refreshBtn.addEventListener('click', loadList);
+
+        var tbody = el('ops-fb-tbody');
+        if (tbody) {
+            tbody.addEventListener('click', function (e) {
+                var btn = e.target.closest('.ops-fb-view');
+                if (btn) openDrawer(btn.getAttribute('data-id'));
+            });
+        }
+
+        var closeBtn = el('ops-fb-drawer-close');
+        var backdrop = el('ops-fb-drawer-backdrop');
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+        var lbClose = el('ops-fb-lightbox-close');
+        var lb = el('ops-fb-lightbox');
+        if (lbClose) lbClose.addEventListener('click', function () { if (lb) lb.classList.add('hidden'); });
+        if (lb) lb.addEventListener('click', function (e) { if (e.target === lb) lb.classList.add('hidden'); });
+
+        var saveSt = el('ops-fb-btn-save-status');
+        if (saveSt) {
+            saveSt.addEventListener('click', async function () {
+                if (!opsFbCurrentId) return;
+                var status = el('ops-fb-drawer-status').value;
+                var note = (el('ops-fb-drawer-note') && el('ops-fb-drawer-note').value) || '';
+                try {
+                    var res = await opsFetch('/api/v1/ops/feedback/' + encodeURIComponent(opsFbCurrentId) + '/status', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: status, note: note })
+                    });
+                    var j = await res.json();
+                    if (!res.ok) throw new Error((j && j.message) || '更新失败');
+                    appendAudit('FEEDBACK_STATUS', opsFbCurrentId + ' -> ' + status);
+                    if (el('ops-fb-drawer-note')) el('ops-fb-drawer-note').value = '';
+                    await openDrawer(opsFbCurrentId);
+                    loadList();
+                } catch (err) {
+                    alert(err.message || String(err));
+                }
+            });
+        }
+
+        var addNote = el('ops-fb-btn-add-note');
+        if (addNote) {
+            addNote.addEventListener('click', async function () {
+                if (!opsFbCurrentId) return;
+                var note = (el('ops-fb-drawer-note') && el('ops-fb-drawer-note').value.trim()) || '';
+                if (!note) { alert('请填写备注'); return; }
+                try {
+                    var res = await opsFetch('/api/v1/ops/feedback/' + encodeURIComponent(opsFbCurrentId) + '/followups', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ note: note })
+                    });
+                    var j = await res.json();
+                    if (!res.ok) throw new Error((j && j.message) || '保存失败');
+                    appendAudit('FEEDBACK_NOTE', opsFbCurrentId);
+                    if (el('ops-fb-drawer-note')) el('ops-fb-drawer-note').value = '';
+                    await openDrawer(opsFbCurrentId);
+                } catch (err) {
+                    alert(err.message || String(err));
+                }
+            });
+        }
+
+        loadList();
     }
 
     function initAnnouncePageLive() {

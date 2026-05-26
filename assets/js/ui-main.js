@@ -165,7 +165,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -199,6 +199,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     window.TM_bindProductCenterGlobalFns();
                 }
                 TM_refreshDashboardPendingOrders();
+                if (typeof window.loadInProgressOrders === 'function') {
+                    window.loadInProgressOrders();
+                }
                 return;
             }
             const item = queue[index];
@@ -561,7 +564,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260525mo1', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260527audit3', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -608,7 +611,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260524crm',
+        '/modules/crm/crm.html?embed=1&v=20260527crm',
         'CRM',
         { embedPathCheck: 'crm' }
     );
@@ -620,7 +623,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260519pc', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260527pc', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
@@ -1693,12 +1696,21 @@ function filterCrmList() {
 
 // 产品中心相关函数
 function filterInventoryTable() {
-    const input = document.getElementById('inventorySearch').value.toUpperCase();
+    if (window.ProductModule && typeof window.ProductModule.filterInventoryTable === 'function') {
+        window.ProductModule.filterInventoryTable();
+        return;
+    }
+    const input = document.getElementById('inventorySearch');
+    if (!input) return;
+    const query = input.value.toUpperCase();
     const rows = document.querySelectorAll('#existingProdTable tbody tr');
     rows.forEach(row => {
-        const name = row.querySelector('.product-name-cell').innerText.toUpperCase();
-        const sku = row.querySelector('.product-sku-cell').innerText.toUpperCase();
-        row.style.display = (name.includes(input) || sku.includes(input)) ? "" : "none";
+        const nameCell = row.querySelector('.product-name-cell');
+        const skuCell = row.querySelector('.product-sku-cell');
+        if (!nameCell || !skuCell) return;
+        const name = nameCell.innerText.toUpperCase();
+        const sku = skuCell.innerText.toUpperCase();
+        row.style.display = (name.includes(query) || sku.includes(query)) ? '' : 'none';
     });
 }
 

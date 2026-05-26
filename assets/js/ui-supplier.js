@@ -79,6 +79,9 @@ window.SupplierModule = {
     loadWarehouses: async function() {
         try {
             var response = await window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' });
+            if (window.TM_TenantOps) {
+                window.__tmOpsProfile = await window.TM_TenantOps.fetchOpsProfile();
+            }
             if (response.ok) {
                 var result = await response.json();
                 this.warehouses = (result.data || result) || [];
@@ -92,31 +95,93 @@ window.SupplierModule = {
     populateWarehouseSelect: function() {
         var sel = document.getElementById('purchase-warehouse');
         if (!sel) return;
-        var html = '<option value="">默认仓库</option>';
-        (this.warehouses || []).forEach(function(w) {
-            html += '<option value="' + w.warehouseId + '">' + (w.name || ('仓库#' + w.warehouseId)) + '</option>';
-        });
-        sel.innerHTML = html;
+        var prev = sel.value;
+        var profile = window.__tmOpsProfile || null;
+        if (window.TM_TenantOps) {
+            sel.innerHTML = window.TM_TenantOps.buildWarehouseOptionsHtml(this.warehouses, profile, prev || null);
+        } else if ((this.warehouses || []).length) {
+            var html = '';
+            (this.warehouses || []).forEach(function(w, idx) {
+                var id = w.warehouseId != null ? w.warehouseId : w.id;
+                var selFlag = (prev && String(id) === String(prev)) || (!prev && idx === 0);
+                html += '<option value="' + id + '"' + (selFlag ? ' selected' : '') + '>' +
+                    (w.name || ('仓库#' + id)) + '</option>';
+            });
+            sel.innerHTML = html;
+        } else {
+            sel.innerHTML = '<option value="">暂无仓库</option>';
+        }
+        if (prev) {
+            sel.value = prev;
+        }
     },
 
-    getPurchaseTotals: function(purchase) {
+    roundMoney: function(value) {
+        return Math.round((Number(value) || 0) * 100) / 100;
+    },
+
+    getFormLineTotal: function() {
         var total = 0;
-        if (purchase && purchase.totalAmount != null) {
-            total = Number(purchase.totalAmount) || 0;
-        } else {
-            document.querySelectorAll('#purchase-modal .purchase-item-row').forEach(function(row) {
-                var qty = parseFloat(row.querySelector('.qty-input') && row.querySelector('.qty-input').value) || 0;
-                var price = parseFloat(row.querySelector('.price-input') && row.querySelector('.price-input').value) || 0;
-                total += qty * price;
-            });
+        document.querySelectorAll('#purchase-modal .purchase-item-row').forEach(function(row) {
+            var qty = parseFloat(row.querySelector('.qty-input') && row.querySelector('.qty-input').value) || 0;
+            var price = parseFloat(row.querySelector('.price-input') && row.querySelector('.price-input').value) || 0;
+            total += qty * price;
+        });
+        return this.roundMoney(total);
+    },
+
+    getServerPayTotals: function(purchase) {
+        purchase = purchase || this.currentPurchase;
+        if (!purchase) {
+            return { total: 0, paid: 0, remaining: 0 };
         }
-        var paid = (purchase && purchase.paidAmount != null) ? Number(purchase.paidAmount) : 0;
-        var remaining = Math.max(0, Math.round((total - paid) * 100) / 100);
+        var total = this.roundMoney(purchase.totalAmount != null ? purchase.totalAmount : 0);
+        var paid = this.roundMoney(purchase.paidAmount != null ? purchase.paidAmount : 0);
+        var remaining = Math.max(0, this.roundMoney(total - paid));
         return { total: total, paid: paid, remaining: remaining };
     },
 
+    hasUnsavedPurchaseChanges: function() {
+        if (!this.currentPurchase || !this.currentPurchase.purchaseId) return false;
+        var formTotal = this.getFormLineTotal();
+        var serverTotal = this.roundMoney(this.currentPurchase.totalAmount);
+        return Math.abs(formTotal - serverTotal) > 0.01;
+    },
+
+    getPurchaseTotals: function(purchase) {
+        var total = this.getFormLineTotal();
+        if (total <= 0 && purchase && purchase.totalAmount != null) {
+            total = this.roundMoney(purchase.totalAmount);
+        } else if (total <= 0 && this.currentPurchase && this.currentPurchase.totalAmount != null) {
+            total = this.roundMoney(this.currentPurchase.totalAmount);
+        }
+        var paidSource = purchase || this.currentPurchase;
+        var paid = (paidSource && paidSource.paidAmount != null) ? Number(paidSource.paidAmount) : 0;
+        paid = this.roundMoney(paid);
+        total = this.roundMoney(total);
+        var remaining = Math.max(0, this.roundMoney(total - paid));
+        return { total: total, paid: paid, remaining: remaining };
+    },
+
+    getPayableTotals: function(purchase) {
+        purchase = purchase || this.currentPurchase;
+        var form = this.getPurchaseTotals(purchase);
+        if (!purchase || !purchase.purchaseId) {
+            return form;
+        }
+        var server = this.getServerPayTotals(purchase);
+        if (this.hasUnsavedPurchaseChanges()) {
+            return form;
+        }
+        return {
+            total: server.total,
+            paid: server.paid,
+            remaining: server.remaining
+        };
+    },
+
     updateRemainingHint: function(purchase) {
-        var totals = this.getPurchaseTotals(purchase || this.currentPurchase);
+        var totals = this.getPayableTotals(purchase || this.currentPurchase);
         var fmt = function(v) { return '¥' + (Number(v) || 0).toFixed(2); };
         var payTotal = document.getElementById('purchase-pay-total');
         var paidSum = document.getElementById('purchase-paid-sum');
@@ -128,6 +193,10 @@ window.SupplierModule = {
         if (paidWrap) paidWrap.classList.toggle('hidden', totals.paid <= 0);
         if (remWrap) remWrap.classList.toggle('hidden', totals.remaining <= 0.001);
         if (remSum) remSum.textContent = fmt(totals.remaining);
+        var unsavedHint = document.getElementById('purchase-unsaved-pay-hint');
+        if (unsavedHint) {
+            unsavedHint.classList.toggle('hidden', !this.hasUnsavedPurchaseChanges());
+        }
         this.updateAuxSummary(totals);
         return totals;
     },
@@ -153,21 +222,34 @@ window.SupplierModule = {
         if (details) details.open = !!open;
     },
 
-    syncFinStatusUI: function(purchase) {
+    syncFinStatusUI: function(purchase, opts) {
+        opts = opts || {};
         var finSel = document.getElementById('purchase-fin-status');
         var amountEl = document.getElementById('purchase-pay-amount');
         var payBtn = document.getElementById('purchase-confirm-pay-btn');
         var hintUnpaid = document.getElementById('purchase-fin-hint-unpaid');
         var hintDisabled = document.getElementById('purchase-fin-disabled-hint');
-        var fin = (finSel && finSel.value) || (purchase && purchase.finStatus) || 'UNPAID';
-        if (finSel && purchase && purchase.finStatus) finSel.value = purchase.finStatus;
-        if (finSel && !finSel.value) finSel.value = fin;
+        if (opts.applyPurchaseFin && finSel && purchase && purchase.finStatus) {
+            finSel.value = purchase.finStatus;
+        }
+        if (finSel && !finSel.value) finSel.value = 'UNPAID';
 
         var totals = this.updateRemainingHint(purchase);
         var hasSaved = !!(this.currentPurchase && this.currentPurchase.purchaseId);
-        var finVal = finSel ? finSel.value : fin;
+        var finVal = finSel ? finSel.value : ((purchase && purchase.finStatus) || 'UNPAID');
 
-        if (hintDisabled) hintDisabled.classList.toggle('hidden', hasSaved);
+        var canPay = finVal !== 'UNPAID' && totals.remaining > 0.001;
+        if (hintDisabled) {
+            if (canPay && !hasSaved) {
+                hintDisabled.textContent = '确认付款将自动保存单据';
+                hintDisabled.classList.remove('hidden');
+            } else if (!canPay && !hasSaved) {
+                hintDisabled.textContent = '选择「部分付款」或「已结清」后可确认付款';
+                hintDisabled.classList.remove('hidden');
+            } else {
+                hintDisabled.classList.add('hidden');
+            }
+        }
         if (hintUnpaid) {
             var showUnpaidHint = hasSaved && finVal === 'UNPAID' && totals.paid > 0;
             hintUnpaid.classList.toggle('hidden', !showUnpaidHint);
@@ -179,16 +261,17 @@ window.SupplierModule = {
                 amountEl.disabled = true;
             } else {
                 amountEl.disabled = false;
-                if (finVal === 'SETTLED' && totals.remaining > 0) {
-                    amountEl.value = totals.remaining.toFixed(2);
+                if (finVal === 'SETTLED') {
+                    amountEl.value = totals.remaining > 0 ? totals.remaining.toFixed(2) : '';
                 }
             }
         }
 
         if (payBtn) {
-            var canPay = hasSaved && finVal !== 'UNPAID' && totals.remaining > 0.001;
             payBtn.disabled = !canPay;
-            payBtn.title = finVal === 'UNPAID' ? '未付款状态下请保存单据；实际付款请切换为部分付款或已结清' : '';
+            payBtn.title = finVal === 'UNPAID'
+                ? '请选择「部分付款」或「已结清」后再确认付款'
+                : (finVal === 'SETTLED' && totals.remaining <= 0.001 ? '货款已结清，无需再付款' : '');
         }
 
         this.updatePurchaseBadges(purchase || this.currentPurchase);
@@ -207,6 +290,152 @@ window.SupplierModule = {
         if (whSel) {
             whSel.addEventListener('change', function() { self.updateAuxSummary(); });
         }
+        var statusSel = document.getElementById('purchase-status');
+        if (statusSel) {
+            statusSel.addEventListener('change', function() {
+                self.updatePurchaseBadges();
+                self.syncInboundUi();
+            });
+        }
+    },
+
+    shouldShowInboundChecks: function() {
+        var statusEl = document.getElementById('purchase-status');
+        var st = statusEl ? statusEl.value : '';
+        return st === 'PARTIAL_INBOUND';
+    },
+
+    resolvePurchaseItemId: function(item) {
+        if (!item) return null;
+        if (item.pItemId != null && item.pItemId !== '') return item.pItemId;
+        if (item.p_item_id != null && item.p_item_id !== '') return item.p_item_id;
+        if (item.pitemId != null && item.pitemId !== '') return item.pitemId;
+        return null;
+    },
+
+    fetchPurchaseDetail: async function(purchaseId) {
+        if (!purchaseId) return null;
+        try {
+            var resp = await window.wrappedFetch('/api/v1/supp/purchases/' + purchaseId, { method: 'GET' });
+            if (!resp.ok) return null;
+            var result = await resp.json();
+            return (result && result.success && result.data) ? result.data : null;
+        } catch (e) {
+            console.warn('fetchPurchaseDetail', e);
+            return null;
+        }
+    },
+
+    collectInboundItemIds: function() {
+        var ids = [];
+        var seen = {};
+        var items = (this.currentPurchase && this.currentPurchase.items) || [];
+        var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+        var self = this;
+        rows.forEach(function(row, idx) {
+            var cb = row.querySelector('.purchase-inbound-check');
+            if (!cb || !cb.checked || cb.disabled) return;
+            var raw = cb.getAttribute('data-item-id') || cb.dataset.itemId || '';
+            var parsed = parseInt(raw, 10);
+            if (!Number.isNaN(parsed) && parsed > 0) {
+                if (!seen[parsed]) {
+                    seen[parsed] = true;
+                    ids.push(parsed);
+                }
+                return;
+            }
+            var productSel = row.querySelector('.product-select');
+            var productId = productSel && productSel.value ? String(productSel.value) : '';
+            var match = null;
+            if (productId) {
+                match = items.find(function(it) {
+                    var pid = it.productId != null ? it.productId : it.product_id;
+                    var proc = it.isProcessed === true || it.is_processed === true;
+                    return pid != null && String(pid) === productId && !proc;
+                });
+            }
+            if (!match && items[idx]) {
+                var candidate = items[idx];
+                var proc0 = candidate.isProcessed === true || candidate.is_processed === true;
+                if (!proc0) match = candidate;
+            }
+            var mid = self.resolvePurchaseItemId(match);
+            if (mid != null) {
+                var n = parseInt(mid, 10);
+                if (!Number.isNaN(n) && n > 0 && !seen[n]) {
+                    seen[n] = true;
+                    ids.push(n);
+                    cb.setAttribute('data-item-id', String(n));
+                    cb.dataset.itemId = String(n);
+                }
+            }
+        });
+        return ids;
+    },
+
+    buildInboundCheckboxHtml: function(opts) {
+        opts = opts || {};
+        var itemId = opts.itemId != null && opts.itemId !== '' ? String(opts.itemId) : '';
+        var processed = !!opts.processed;
+        var disabled = processed ? ' disabled' : '';
+        var checked = processed ? ' checked' : '';
+        return (
+            '<input type="checkbox" class="purchase-inbound-check w-4 h-4 accent-teal-600" ' +
+            'data-item-id="' + itemId + '"' + checked + disabled + ' aria-label="本次入库">'
+        );
+    },
+
+    syncInboundUi: function() {
+        var show = this.shouldShowInboundChecks();
+        var hasSaved = !!(this.currentPurchase && this.currentPurchase.purchaseId);
+        document.querySelectorAll('#purchase-modal .purchase-inbound-col').forEach(function(el) {
+            el.classList.toggle('hidden', !show);
+        });
+        var inboundHint = document.getElementById('purchase-inbound-hint');
+        if (inboundHint) {
+            inboundHint.classList.toggle('hidden', !show);
+            if (show) {
+                inboundHint.textContent = hasSaved
+                    ? '勾选本次入库的明细行，再点「确认入库」'
+                    : '部分入库需先保存单据，保存后可勾选明细';
+            }
+        }
+        var inboundBtn = document.getElementById('purchase-inbound-btn');
+        if (inboundBtn) {
+            inboundBtn.classList.toggle('hidden', !show || !hasSaved);
+        }
+        if (show && hasSaved && this.currentPurchase && this.currentPurchase.items) {
+            this.applyPurchaseItemIdsFromPurchase(this.currentPurchase);
+        }
+    },
+
+    applyPurchaseItemIdsFromPurchase: function(purchase) {
+        if (!purchase || !purchase.items || !purchase.items.length) return;
+        var items = purchase.items;
+        var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+        var self = this;
+        rows.forEach(function(row) {
+            var cb = row.querySelector('.purchase-inbound-check');
+            if (!cb) return;
+            var productSel = row.querySelector('.product-select');
+            var productId = productSel && productSel.value ? String(productSel.value) : '';
+            var it = null;
+            if (productId) {
+                it = items.find(function(x) {
+                    var pid = x.productId != null ? x.productId : x.product_id;
+                    return pid != null && String(pid) === productId;
+                });
+            }
+            if (!it) return;
+            var id = self.resolvePurchaseItemId(it);
+            if (id != null) {
+                cb.setAttribute('data-item-id', String(id));
+                cb.dataset.itemId = String(id);
+            }
+            var proc = it.isProcessed === true || it.is_processed === true;
+            cb.disabled = proc;
+            if (proc) cb.checked = true;
+        });
     },
 
     updatePurchaseBadges: function(purchase) {
@@ -217,7 +446,8 @@ window.SupplierModule = {
         var finMap = { UNPAID: '未付款', PARTIAL_PAID: '部分付款', SETTLED: '已结清' };
         var stName = (this.states.find(function(s) { return s.dictCode === st; }) || {}).dictName || st;
         if (logEl) logEl.innerHTML = '<i class="ph ph-truck"></i> ' + stName;
-        var fin = purchase && purchase.finStatus ? purchase.finStatus : (document.getElementById('purchase-fin-status') || {}).value || 'UNPAID';
+        var finSel = document.getElementById('purchase-fin-status');
+        var fin = (finSel && finSel.value) ? finSel.value : ((purchase && purchase.finStatus) || 'UNPAID');
         if (finEl) {
             var finLabel = finMap[fin] || fin;
             finEl.innerHTML = '<i class="ph ph-currency-cny"></i> ' + finLabel;
@@ -226,17 +456,17 @@ window.SupplierModule = {
                     fin === 'PARTIAL_PAID' ? 'bg-sky-50 text-sky-700 ring-sky-200' :
                         'bg-amber-50 text-amber-700 ring-amber-200');
         }
-        var inboundBtn = document.getElementById('purchase-inbound-btn');
-        if (inboundBtn) {
-            if (st === 'PARTIAL_INBOUND' || st === 'APPROVED') inboundBtn.classList.remove('hidden');
-            else inboundBtn.classList.add('hidden');
-        }
+        this.syncInboundUi();
     },
 
     recordPurchasePayment: async function() {
-        if (!this.currentPurchase || !this.currentPurchase.purchaseId) {
-            this.showPurchaseFormError('请先保存进货单后再付款');
+        if (!(await this.ensurePurchaseSaved({ forPayment: true }))) {
             return;
+        }
+        this.clearPurchaseFormError();
+        var fresh = await this.fetchPurchaseDetail(this.currentPurchase.purchaseId);
+        if (fresh) {
+            this.currentPurchase = fresh;
         }
         var finSel = document.getElementById('purchase-fin-status');
         var finVal = finSel ? finSel.value : 'UNPAID';
@@ -246,33 +476,49 @@ window.SupplierModule = {
         }
         var amountEl = document.getElementById('purchase-pay-amount');
         var accEl = document.getElementById('purchase-pay-account');
-        var totals = this.getPurchaseTotals(this.currentPurchase);
-        var amount = parseFloat(amountEl && amountEl.value ? amountEl.value : '0');
+        var totals = this.getServerPayTotals(this.currentPurchase);
+        var remaining = totals.remaining;
+        var amount = this.roundMoney(amountEl && amountEl.value ? amountEl.value : 0);
         var accountId = accEl && accEl.value ? parseInt(accEl.value, 10) : null;
-        if (finVal === 'SETTLED' && totals.remaining > 0 && (!amount || amount <= 0)) {
-            amount = totals.remaining;
+        if (finVal === 'SETTLED' && remaining > 0) {
+            amount = remaining;
+            if (amountEl) amountEl.value = remaining.toFixed(2);
         }
-        if (!amount || amount <= 0) { this.showPurchaseFormError('请输入有效付款金额'); return; }
-        if (amount > totals.remaining + 0.01 + 1e-9) {
-            this.showPurchaseFormError('付款金额不能超过剩余货款 ¥' + totals.remaining.toFixed(2));
+        if (!amount || amount <= 0) {
+            if (finVal === 'SETTLED' && remaining <= 0) {
+                this.showPurchaseFormError('货款已结清，无需再付款');
+            } else {
+                this.showPurchaseFormError('请输入有效付款金额');
+            }
             return;
         }
-        if (Math.abs(amount - totals.remaining) <= 0.01 + 1e-9) {
-            amount = totals.remaining;
+        var amountCents = Math.round(amount * 100);
+        var remainingCents = Math.round(remaining * 100);
+        if (amountCents > remainingCents) {
+            if (amountCents - remainingCents <= 1) {
+                amount = remaining;
+                amountCents = remainingCents;
+            } else {
+                this.showPurchaseFormError('付款金额不能超过剩余货款 ¥' + remaining.toFixed(2));
+                return;
+            }
         }
-        if (!accountId) { this.showPurchaseFormError('请选择付款账户'); return; }
+        amount = this.roundMoney(amount);
+        var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+        if (!virtualFin && !accountId) { this.showPurchaseFormError('请选择付款账户'); return; }
         try {
+            var payBody = { amount: amount, bizTypeCode: 'PURCHASE_EXPENSE' };
+            if (accountId) payBody.accountId = accountId;
             var response = await window.wrappedFetch('/api/v1/supp/purchases/' + this.currentPurchase.purchaseId + '/record-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ accountId: accountId, amount: amount, bizTypeCode: 'PURCHASE_EXPENSE' })
+                body: JSON.stringify(payBody)
             });
             var result = await response.json();
             if (result.success) {
                 this.currentPurchase = result.data;
                 if (amountEl) amountEl.value = '';
-                if (finSel && result.data.finStatus) finSel.value = result.data.finStatus;
-                this.syncFinStatusUI(result.data);
+                this.syncFinStatusUI(result.data, { applyPurchaseFin: true });
                 this.notify('付款记账成功', 'success', { useDialog: true, title: '记账成功' });
             } else {
                 this.showPurchaseFormError(result.message || '记账失败');
@@ -287,12 +533,15 @@ window.SupplierModule = {
             this.showPurchaseFormError('请先保存进货单');
             return;
         }
+        this.clearPurchaseFormError();
+        var fresh = await this.fetchPurchaseDetail(this.currentPurchase.purchaseId);
+        if (fresh) {
+            this.currentPurchase = fresh;
+            this.applyPurchaseItemIdsFromPurchase(fresh);
+        }
         var wh = document.getElementById('purchase-warehouse');
         var warehouseId = wh && wh.value ? parseInt(wh.value, 10) : null;
-        var itemIds = [];
-        document.querySelectorAll('.purchase-inbound-check:checked:not(:disabled)').forEach(function(cb) {
-            if (cb.dataset.itemId) itemIds.push(parseInt(cb.dataset.itemId, 10));
-        });
+        var itemIds = this.collectInboundItemIds();
         if (!itemIds.length) { this.showPurchaseFormError('请勾选本次入库的明细行'); return; }
         try {
             var response = await window.wrappedFetch('/api/v1/supp/purchases/' + this.currentPurchase.purchaseId + '/inbound', {
@@ -303,8 +552,10 @@ window.SupplierModule = {
             var result = await response.json();
             if (result.success) {
                 this.currentPurchase = result.data;
+                this.applyPurchaseItemIdsFromPurchase(result.data);
                 this.updatePurchaseBadges(result.data);
-                this.syncFinStatusUI(result.data);
+                this.syncFinStatusUI(result.data, { applyPurchaseFin: true });
+                this.syncInboundUi();
                 await this.loadPurchases(this.purchaseCurrentPage);
                 this.renderPurchases();
                 this.notify('入库成功', 'success', { useDialog: true, title: '入库成功' });
@@ -481,6 +732,9 @@ window.SupplierModule = {
 
     loadAccounts: async function() {
         try {
+            if (window.TM_TenantOps) {
+                window.__tmOpsProfile = await window.TM_TenantOps.fetchOpsProfile();
+            }
             const response = await window.wrappedFetch('/api/v1/im/accounts', { method: 'GET' });
             if (response.ok) {
                 const result = await response.json();
@@ -489,6 +743,11 @@ window.SupplierModule = {
                 } else {
                     this.accounts = [];
                 }
+                this.fillPurchaseAccountSelect(
+                    this.currentPurchase && (this.currentPurchase.accountId != null
+                        ? this.currentPurchase.accountId
+                        : this.currentPurchase.account_id)
+                );
             }
         } catch (error) {
             console.error('Error loading accounts:', error);
@@ -499,6 +758,32 @@ window.SupplierModule = {
     fillPurchaseAccountSelect: function(preferredAccountId) {
         var ids = ['purchase-account', 'purchase-pay-account'];
         var accounts = this.accounts || [];
+        var profile = window.__tmOpsProfile || null;
+        var virtualOnly = accounts.length === 0
+            && window.TM_TenantOps
+            && window.TM_TenantOps.isVirtualFinance(profile);
+        if (virtualOnly) {
+            ids.forEach(function(id) {
+                var sel = document.getElementById(id);
+                if (!sel) return;
+                sel.innerHTML = window.TM_TenantOps.buildAccountOptionsHtml(accounts, profile, preferredAccountId);
+            });
+            return;
+        }
+        if (accounts.length > 0 && window.TM_TenantOps) {
+            var html = window.TM_TenantOps.buildAccountOptionsHtml(accounts, profile, preferredAccountId);
+            ids.forEach(function(id) {
+                var sel = document.getElementById(id);
+                if (sel) sel.innerHTML = html;
+            });
+            if (preferredAccountId != null && preferredAccountId !== '') {
+                ids.forEach(function(id) {
+                    var sel = document.getElementById(id);
+                    if (sel) sel.value = String(preferredAccountId);
+                });
+            }
+            return;
+        }
         ids.forEach(function(id) {
             var sel = document.getElementById(id);
             if (!sel) return;
@@ -1034,8 +1319,10 @@ window.SupplierModule = {
         var price = opts.price != null ? opts.price : 0;
         var batch = opts.batch != null ? String(opts.batch) : '';
         var batchAttr = batch.replace(/"/g, '&quot;');
+        var inboundColClass = 'purchase-inbound-col px-2 py-3 text-center hidden';
         return (
             '<tr class="purchase-item-row">' +
+            '<td class="' + inboundColClass + '">' + this.buildInboundCheckboxHtml(opts) + '</td>' +
             '<td class="px-4 py-3">' +
             '<select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">' +
             '<option value="">--- 选择产品 ---</option></select></td>' +
@@ -1059,8 +1346,13 @@ window.SupplierModule = {
         var price = opts.price != null ? opts.price : 0;
         var batch = opts.batch != null ? String(opts.batch) : '';
         var batchAttr = batch.replace(/"/g, '&quot;');
+        var inboundRow = (
+            '<label class="purchase-inbound-col hidden flex items-center gap-1.5 text-[10px] text-teal-700 font-bold mb-2">' +
+            this.buildInboundCheckboxHtml(opts) + ' 本次入库</label>'
+        );
         return (
             '<div class="purchase-item-row tm-purchase-item-card">' +
+            inboundRow +
             '<div class="tm-purchase-item-card__head">' +
             '<span class="tm-purchase-item-card__total row-total">¥0.00</span>' +
             '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="tm-purchase-item-card__delete" aria-label="删除行">' +
@@ -1098,6 +1390,8 @@ window.SupplierModule = {
             var tbody = document.getElementById('purchase-items-tbody');
             if (tbody) tbody.insertAdjacentHTML('beforeend', this.buildPurchaseTableRowHtml(opts));
         }
+        this.refreshPurchaseItemsLayout();
+        this.syncInboundUi();
     },
 
     applyPurchaseItemValues: function(rows, items) {
@@ -1106,8 +1400,8 @@ window.SupplierModule = {
         items.forEach(function (item, idx) {
             if (!rows[idx]) return;
             var sel = rows[idx].querySelector('.product-select');
-            if (sel && item.productId) {
-                sel.value = String(item.productId);
+            if (sel && (item.productId != null || item.product_id != null)) {
+                sel.value = String(item.productId != null ? item.productId : item.product_id);
                 self.onProductSelect(sel);
             }
             var unitSelect = rows[idx].querySelector('.unit-select');
@@ -1124,14 +1418,55 @@ window.SupplierModule = {
                 }
                 unitSelect.value = item.unitName;
             }
+            var cb = rows[idx].querySelector('.purchase-inbound-check');
+            if (cb) {
+                var id = self.resolvePurchaseItemId(item);
+                if (id != null) {
+                    cb.setAttribute('data-item-id', String(id));
+                    cb.dataset.itemId = String(id);
+                }
+                var proc = item.isProcessed === true || item.is_processed === true;
+                cb.disabled = proc;
+                cb.checked = proc;
+            }
         });
+        this.syncInboundUi();
+    },
+
+    refreshPurchaseItemsLayout: function() {
+        var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+        var n = rows.length;
+        var maxRows = 5;
+        var scroll = document.querySelector('#purchase-modal .tm-purchase-items-scroll');
+        var cards = document.getElementById('purchase-items-cards');
+        var core = document.querySelector('#purchase-modal .tm-purchase-items-core');
+        var rowH = '2.75rem';
+        if (scroll) {
+            scroll.classList.toggle('tm-purchase-items--scroll', n > maxRows);
+            scroll.style.flex = n > maxRows ? '1 1 auto' : '0 0 auto';
+            scroll.style.maxHeight = n > maxRows ? ('calc(' + rowH + ' * ' + maxRows + ' + 2.25rem)') : '';
+            scroll.style.overflowY = n > maxRows ? 'auto' : 'visible';
+        }
+        if (cards) {
+            cards.classList.toggle('tm-purchase-items--scroll', n > maxRows);
+            cards.style.flex = n > maxRows ? '1 1 auto' : '0 0 auto';
+            cards.style.maxHeight = n > maxRows ? ('calc(' + rowH + ' * ' + maxRows + ' + 0.5rem)') : '';
+            cards.style.overflowY = n > maxRows ? 'auto' : 'visible';
+        }
+        if (core) {
+            core.classList.toggle('tm-purchase-items-core--compact', n <= maxRows);
+        }
     },
 
     openPurchaseModal: async function() {
         this.currentPurchase = null;
         document.getElementById('purchase-modal-title').textContent = '新增进货单';
 
-        await this.loadProducts();
+        await Promise.all([
+            this.loadProducts(),
+            this.loadWarehouses(),
+            this.loadAccounts()
+        ]);
 
         this.populateSuppliersSelect();
         this.populateStatusesSelect();
@@ -1175,6 +1510,7 @@ window.SupplierModule = {
         this.appendPurchaseItem({});
         this.populateProductsSelects();
         this.calculatePurchaseTotal();
+        this.refreshPurchaseItemsLayout();
         this.fillPurchaseAccountSelect(null);
         var finSel = document.getElementById('purchase-fin-status');
         if (finSel) finSel.value = 'UNPAID';
@@ -1186,6 +1522,7 @@ window.SupplierModule = {
         this.updatePurchaseBadges(null);
         this.setPurchaseAuxOpen(false);
         this.syncFinStatusUI();
+        this.syncInboundUi();
     },
 
     populateSuppliersSelect: function() {
@@ -1289,6 +1626,7 @@ window.SupplierModule = {
         var row = btn.closest('.purchase-item-row');
         if (row) row.remove();
         this.calculatePurchaseTotal();
+        this.refreshPurchaseItemsLayout();
     },
 
     calculatePurchaseTotal: function() {
@@ -1308,18 +1646,26 @@ window.SupplierModule = {
         var totalEl = document.getElementById('po-form-total-display') || document.getElementById('purchase-grand-total');
         if (totalEl) totalEl.textContent = fmt;
         this.updateRemainingHint();
+        this.refreshPurchaseItemsLayout();
         this.syncFinStatusUI();
     },
 
     editPurchase: async function(purchaseId) {
-        const purchase = this.purchases.find(p => String(p.purchaseId) === String(purchaseId));
+        var purchase = await this.fetchPurchaseDetail(purchaseId);
+        if (!purchase) {
+            purchase = this.purchases.find(function(p) { return String(p.purchaseId) === String(purchaseId); });
+        }
         if (!purchase) return;
 
         this.currentPurchase = purchase;
         document.getElementById('purchase-modal-title').textContent = '编辑进货单';
         this.clearPurchaseFormError();
 
-        await this.loadProducts();
+        await Promise.all([
+            this.loadProducts(),
+            this.loadWarehouses(),
+            this.loadAccounts()
+        ]);
 
         this.populateSuppliersSelect();
         this.populateStatusesSelect();
@@ -1330,12 +1676,13 @@ window.SupplierModule = {
         this.fillPurchaseAccountSelect(purchase.accountId != null ? purchase.accountId : purchase.account_id);
         this.populateWarehouseSelect();
         var whEl = document.getElementById('purchase-warehouse');
-        if (whEl && purchase.warehouseId) whEl.value = String(purchase.warehouseId);
+        var whId = purchase.warehouseId != null ? purchase.warehouseId : purchase.warehouse_id;
+        if (whEl && whId) whEl.value = String(whId);
         var finSel = document.getElementById('purchase-fin-status');
         if (finSel) finSel.value = purchase.finStatus || 'UNPAID';
         this.bindPurchaseFinEvents();
-        this.setPurchaseAuxOpen(true);
-        this.syncFinStatusUI(purchase);
+        this.setPurchaseAuxOpen(false);
+        this.syncFinStatusUI(purchase, { applyPurchaseFin: true });
 
         this.clearPurchaseItems();
 
@@ -1346,7 +1693,9 @@ window.SupplierModule = {
                 self.appendPurchaseItem({
                     qty: item.quantity || 1,
                     price: item.unitPrice || 0,
-                    batch: item.batchNo || ''
+                    batch: item.batchNo || '',
+                    itemId: self.resolvePurchaseItemId(item),
+                    processed: item.isProcessed === true || item.is_processed === true
                 });
             });
         } else {
@@ -1359,6 +1708,8 @@ window.SupplierModule = {
             this.applyPurchaseItemValues(rows, purchaseItems);
         }
         this.calculatePurchaseTotal();
+        this.refreshPurchaseItemsLayout();
+        this.syncInboundUi();
         var editModal = document.getElementById('purchase-modal');
         if (editModal) {
             if (typeof window.TM_applyDialogShell === 'function') {
@@ -1374,7 +1725,7 @@ window.SupplierModule = {
         });
     },
 
-    savePurchase: async function() {
+    buildPurchaseSavePayload: function() {
         this.clearPurchaseFormError();
         const supplierId = document.getElementById('purchase-supplier').value;
         const status = document.getElementById('purchase-status').value;
@@ -1382,109 +1733,193 @@ window.SupplierModule = {
         const whEl = document.getElementById('purchase-warehouse');
         const warehouseId = whEl && whEl.value ? parseInt(whEl.value, 10) : null;
 
-        if (!supplierId) { this.showPurchaseFormError('请选择供应商'); return; }
-        if (!status) { this.showPurchaseFormError('请选择进货状态'); return; }
-        if (!purchaseDate) { this.showPurchaseFormError('请选择进货日期'); return; }
+        if (!supplierId) { this.showPurchaseFormError('请选择供应商'); return null; }
+        if (!status) { this.showPurchaseFormError('请选择进货状态'); return null; }
+        if (!purchaseDate) { this.showPurchaseFormError('请选择进货日期'); return null; }
 
-        const accountEl = document.getElementById('purchase-account');
-        const accountRaw = accountEl ? accountEl.value : '';
+        var payAccEl = document.getElementById('purchase-pay-account');
+        var accountEl = document.getElementById('purchase-account');
+        var accountRaw = (payAccEl && payAccEl.value) ? payAccEl.value : (accountEl ? accountEl.value : '');
         let accountId = null;
         if (accountRaw) {
             const n = parseInt(accountRaw, 10);
             if (!Number.isNaN(n)) accountId = n;
         }
 
-        try {
-            const rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
-            const items = [];
-            let totalAmount = 0;
+        const rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+        const items = [];
+        let totalAmount = 0;
 
-            for (var ri = 0; ri < rows.length; ri++) {
-                var row = rows[ri];
-                const productId = row.querySelector('.product-select').value;
-                const qty = parseInt(row.querySelector('.qty-input').value, 10) || 0;
-                const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                const unitName = row.querySelector('.unit-select').value;
-                const batchNo = (row.querySelector('.batch-input') && row.querySelector('.batch-input').value) || '';
+        for (var ri = 0; ri < rows.length; ri++) {
+            var row = rows[ri];
+            const productId = row.querySelector('.product-select').value;
+            const qty = parseInt(row.querySelector('.qty-input').value, 10) || 0;
+            const price = parseFloat(row.querySelector('.price-input').value) || 0;
+            const unitName = row.querySelector('.unit-select').value;
+            const batchNo = (row.querySelector('.batch-input') && row.querySelector('.batch-input').value) || '';
 
-                if (!productId) {
-                    this.showPurchaseFormError('请为第 ' + (ri + 1) + ' 行选择产品');
-                    return;
-                }
-                if (qty < 1) {
-                    this.showPurchaseFormError('第 ' + (ri + 1) + ' 行数量须大于 0');
-                    return;
-                }
-                if (price < 0) {
-                    this.showPurchaseFormError('第 ' + (ri + 1) + ' 行单价不能为负');
-                    return;
-                }
-
-                items.push({
-                    productId: parseInt(productId, 10),
-                    quantity: qty,
-                    unitPrice: price,
-                    unitName: unitName,
-                    batchNo: batchNo,
-                    purchaseStatus: status || 'DRAFT',
-                    purchaseDate: purchaseDate
-                });
-                totalAmount += qty * price;
+            if (!productId) {
+                this.showPurchaseFormError('请为第 ' + (ri + 1) + ' 行选择产品');
+                return null;
+            }
+            if (qty < 1) {
+                this.showPurchaseFormError('第 ' + (ri + 1) + ' 行数量须大于 0');
+                return null;
+            }
+            if (price < 0) {
+                this.showPurchaseFormError('第 ' + (ri + 1) + ' 行单价不能为负');
+                return null;
             }
 
-            if (items.length === 0) { this.showPurchaseFormError('请至少添加一项商品'); return; }
-
-            const paidKeep = (this.currentPurchase && this.currentPurchase.paidAmount != null)
-                ? this.currentPurchase.paidAmount
-                : 0;
-            const finSel = document.getElementById('purchase-fin-status');
-            const finStatus = finSel ? finSel.value : 'UNPAID';
-
-            const purchaseData = {
-                supplierId: parseInt(supplierId),
-                accountId: accountId,
-                warehouseId: warehouseId,
+            items.push({
+                productId: parseInt(productId, 10),
+                quantity: qty,
+                unitPrice: price,
+                unitName: unitName,
+                batchNo: batchNo,
                 purchaseStatus: status || 'DRAFT',
-                purchaseDate: purchaseDate,
-                totalAmount: totalAmount,
-                paidAmount: paidKeep,
-                finStatus: finStatus,
-                items: items
-            };
+                purchaseDate: purchaseDate
+            });
+            totalAmount += qty * price;
+        }
 
-            const requestData = {
-                purchase: this.currentPurchase ? {
-                    ...purchaseData,
-                    purchaseId: this.currentPurchase.purchaseId
-                } : purchaseData,
-                items: items
-            };
+        if (items.length === 0) { this.showPurchaseFormError('请至少添加一项商品'); return null; }
 
+        const paidKeep = (this.currentPurchase && this.currentPurchase.paidAmount != null)
+            ? this.currentPurchase.paidAmount
+            : 0;
+        const finSel = document.getElementById('purchase-fin-status');
+        const finStatus = finSel ? finSel.value : 'UNPAID';
+
+        const purchaseData = {
+            supplierId: parseInt(supplierId, 10),
+            accountId: accountId,
+            warehouseId: warehouseId,
+            purchaseStatus: status || 'DRAFT',
+            purchaseDate: purchaseDate,
+            totalAmount: totalAmount,
+            paidAmount: paidKeep,
+            finStatus: finStatus,
+            items: items
+        };
+
+        return {
+            purchase: this.currentPurchase && this.currentPurchase.purchaseId ? {
+                purchaseId: this.currentPurchase.purchaseId,
+                supplierId: purchaseData.supplierId,
+                accountId: purchaseData.accountId,
+                warehouseId: purchaseData.warehouseId,
+                purchaseStatus: purchaseData.purchaseStatus,
+                purchaseDate: purchaseData.purchaseDate,
+                totalAmount: purchaseData.totalAmount,
+                paidAmount: purchaseData.paidAmount,
+                finStatus: purchaseData.finStatus,
+                items: items
+            } : purchaseData,
+            items: items,
+            purchaseStatus: status,
+            finStatus: finStatus
+        };
+    },
+
+    persistPurchase: async function(opts) {
+        opts = opts || {};
+        var requestData = this.buildPurchaseSavePayload();
+        if (!requestData) return null;
+        try {
             const response = await window.wrappedFetch('/api/v1/supp/purchases/save', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestData)
             });
-
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    this.closePurchaseModal();
-                    await this.loadPurchases(this.purchaseCurrentPage);
-                    this.renderPurchases();
-                    this.loadPurchaseSummary();
-                    this.notify('进货单据已保存', 'success', { useDialog: true, title: '保存成功' });
-                } else {
-                    this.notify('保存失败: ' + (result.message || '未知错误'), 'error');
-                }
-            } else {
-                this.notify('保存失败', 'error');
+            var result = null;
+            try {
+                result = await response.json();
+            } catch (parseErr) {
+                result = null;
             }
+            if (!response.ok) {
+                var errMsg = (result && result.message) ? result.message : ('保存失败（HTTP ' + response.status + '）');
+                if (!opts.silent) {
+                    this.showPurchaseFormError(errMsg);
+                    this.notify(errMsg, 'error');
+                }
+                return null;
+            }
+            if (!result || !result.success) {
+                var failMsg = (result && result.message) ? result.message : '未知错误';
+                if (!opts.silent) {
+                    this.showPurchaseFormError('保存失败: ' + failMsg);
+                    this.notify('保存失败: ' + failMsg, 'error');
+                }
+                return null;
+            }
+            this.currentPurchase = result.data || this.currentPurchase;
+            if (this.currentPurchase && !this.currentPurchase.purchaseId && result.data && result.data.purchaseId) {
+                this.currentPurchase = result.data;
+            }
+            var titleEl = document.getElementById('purchase-modal-title');
+            if (titleEl && this.currentPurchase && this.currentPurchase.purchaseId) {
+                titleEl.textContent = '编辑进货单';
+            }
+            this.syncFinStatusUI(this.currentPurchase);
+            this.syncInboundUi();
+            if (this.currentPurchase && this.currentPurchase.purchaseId) {
+                var detail = await this.fetchPurchaseDetail(this.currentPurchase.purchaseId);
+                if (detail) {
+                    this.currentPurchase = detail;
+                    this.applyPurchaseItemIdsFromPurchase(detail);
+                }
+            }
+            if (opts.refreshList !== false) {
+                await this.loadPurchases(this.purchaseCurrentPage);
+                this.renderPurchases();
+                this.loadPurchaseSummary();
+            }
+            return result;
         } catch (error) {
             console.error('Error saving purchase:', error);
-            this.notify('保存失败: ' + error.message, 'error');
+            if (!opts.silent) this.notify('保存失败: ' + error.message, 'error');
+            return null;
+        }
+    },
+
+    ensurePurchaseSaved: async function(opts) {
+        opts = opts || {};
+        if (this.currentPurchase && this.currentPurchase.purchaseId) {
+            if (!this.hasUnsavedPurchaseChanges()) {
+                if (opts.forPayment) {
+                    var cached = await this.fetchPurchaseDetail(this.currentPurchase.purchaseId);
+                    if (cached) this.currentPurchase = cached;
+                    this.syncFinStatusUI(this.currentPurchase);
+                }
+                return true;
+            }
+        }
+        var result = await this.persistPurchase({ refreshList: false, silent: true });
+        if (!result || !result.success) {
+            return false;
+        }
+        if (this.currentPurchase && this.currentPurchase.purchaseId) {
+            var detail = await this.fetchPurchaseDetail(this.currentPurchase.purchaseId);
+            if (detail) {
+                this.currentPurchase = detail;
+                this.applyPurchaseItemIdsFromPurchase(detail);
+            }
+        } else if (!this.currentPurchase || !this.currentPurchase.purchaseId) {
+            this.notify('单据已保存，可继续付款', 'success');
+        }
+        if (opts.forPayment) {
+            this.syncFinStatusUI(this.currentPurchase);
+        }
+        return true;
+    },
+
+    savePurchase: async function() {
+        var result = await this.persistPurchase({ refreshList: true });
+        if (result && result.success) {
+            this.closePurchaseModal();
+            this.notify('进货单据已保存', 'success', { useDialog: true, title: '保存成功' });
         }
     },
 

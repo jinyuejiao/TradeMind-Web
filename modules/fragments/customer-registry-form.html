@@ -1,0 +1,42 @@
+<input type="hidden" id="cust-id" value="">
+<section>
+    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+        <i class="ph ph-identification-card text-brand-500 text-lg"></i> 核心联系信息
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 ml-1" for="cust-name">客户姓名 *</label>
+            <input type="text" id="cust-name" class="form-input font-bold" required autocomplete="off">
+        </div>
+        <div class="space-y-2">
+            <label class="text-[11px] font-bold text-slate-500 ml-1" for="cust-phone">联系手机</label>
+            <input type="tel" id="cust-phone" class="form-input font-mono" inputmode="tel" autocomplete="off" placeholder="选填">
+        </div>
+    </div>
+</section>
+<section class="pt-6 border-t border-slate-50">
+    <button type="button" data-tm-cust-toggle-advanced class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
+        <span>展开详细地址与档案摘要</span>
+        <i id="advanced-icon" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
+    </button>
+    <div id="advanced-drawer" class="advanced-drawer hidden">
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+                <label class="text-[11px] font-bold text-slate-500 ml-1" for="cust-email">电子邮箱</label>
+                <input type="email" id="cust-email" class="form-input" autocomplete="off">
+            </div>
+            <div class="space-y-2">
+                <label class="text-[11px] font-bold text-slate-500 ml-1" for="cust-region">所属地区</label>
+                <input type="text" id="cust-region" class="form-input" autocomplete="off">
+            </div>
+            <div class="space-y-2 col-span-full">
+                <label class="text-[11px] font-bold text-slate-500 ml-1" for="cust-address">详细地址</label>
+                <input type="text" id="cust-address" class="form-input" autocomplete="off">
+            </div>
+            <div class="space-y-2 col-span-full">
+                <label class="text-[11px] font-bold text-slate-500 ml-1" for="cust-summary">客户摘要</label>
+                <textarea id="cust-summary" class="form-input h-20 no-scrollbar"></textarea>
+            </div>
+        </div>
+    </div>
+</section>

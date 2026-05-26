@@ -594,7 +594,35 @@ window.ProductModule = {
             onPrev: 'window.ProductModule.setProductPage(' + (this.productCurrentPage - 1) + ')',
             onNext: 'window.ProductModule.setProductPage(' + (this.productCurrentPage + 1) + ')'
         });
-        console.log('[ProductModule] renderProducts完成');
+        console.log('[ProductModule] renderProducts完成，当前页:', this.productCurrentPage, '总页数:', this.productTotalPages, '本页条数:', pageProducts.length);
+    },
+
+    ensurePaginationContainer: function(containerId) {
+        var container = document.getElementById(containerId);
+        if (container) return container;
+
+        var root = document.getElementById('view-supply') || document.getElementById('supply-inner-scroll') || document.body;
+        if (containerId === 'product-pagination') {
+            var table = root.querySelector('#existingProdTable');
+            if (table && table.parentElement) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'bg-white hidden md:block';
+                table.parentElement.insertAdjacentElement('afterend', container);
+                return container;
+            }
+        }
+        if (containerId === 'mobile-product-pagination') {
+            var cards = root.querySelector('#mobile-product-cards');
+            if (cards && cards.parentElement) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'border-t border-slate-100 bg-slate-50/70 px-3 py-2';
+                cards.insertAdjacentElement('afterend', container);
+                return container;
+            }
+        }
+        return null;
     },
 
     paginateData: function(list, page, pageSize) {
@@ -613,8 +641,11 @@ window.ProductModule = {
     },
 
     renderPaginationBar: function(config) {
-        const container = document.getElementById(config.containerId);
-        if (!container) return;
+        const container = this.ensurePaginationContainer(config.containerId);
+        if (!container) {
+            console.warn('[ProductModule] 未找到分页容器:', config.containerId);
+            return;
+        }
 
         const page = Number(config.page) || 1;
         const totalPages = Math.max(1, Number(config.totalPages) || 1);
@@ -622,25 +653,28 @@ window.ProductModule = {
         const pageSize = Number(config.pageSize) || 20;
         const disablePrev = page <= 1;
         const disableNext = page >= totalPages;
+        const btnCls = 'inline-flex items-center justify-center gap-1 min-h-[2rem] px-3 py-1.5 rounded-full border border-teal-200 bg-white text-[11px] font-bold text-teal-700 shadow-sm hover:bg-teal-50 disabled:opacity-40 disabled:pointer-events-none disabled:text-slate-400 disabled:border-slate-200 transition-colors';
 
         if (total === 0) {
             container.innerHTML = '';
-            const mobilePagEmpty = document.getElementById('mobile-product-pagination');
+            const mobilePagEmpty = this.ensurePaginationContainer('mobile-product-pagination');
             if (mobilePagEmpty) mobilePagEmpty.innerHTML = '';
             return;
         }
 
         container.innerHTML = `
-            <div class="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
-                <div class="text-xs text-slate-400">共 ${total} 条，当前第 ${page}/${totalPages} 页，每页最多 ${pageSize} 条</div>
-                <div class="flex items-center gap-2">
-                    <button onclick="${config.onPrev}" ${disablePrev ? 'disabled' : ''} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disablePrev ? 'opacity-40 cursor-not-allowed' : ''}">上一页</button>
-                    <button onclick="${config.onNext}" ${disableNext ? 'disabled' : ''} class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 ${disableNext ? 'opacity-40 cursor-not-allowed' : ''}">下一页</button>
+            <div class="border-t border-slate-100 bg-slate-50/70 px-4 md:px-6 py-3 md:py-4">
+                <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <p class="text-[10px] md:text-xs text-slate-500 leading-snug text-center md:text-left">共 ${total} 条，第 ${page}/${totalPages} 页，每页 ${pageSize} 条</p>
+                    <div class="flex gap-2 justify-center md:justify-end">
+                        <button type="button" onclick="${config.onPrev}" ${disablePrev ? 'disabled' : ''} class="${btnCls}"><i class="ph ph-caret-left"></i>上一页</button>
+                        <button type="button" onclick="${config.onNext}" ${disableNext ? 'disabled' : ''} class="${btnCls}">下一页<i class="ph ph-caret-right"></i></button>
+                    </div>
                 </div>
             </div>
         `;
 
-        const mobilePag = document.getElementById('mobile-product-pagination');
+        const mobilePag = this.ensurePaginationContainer('mobile-product-pagination');
         if (mobilePag) {
             mobilePag.innerHTML = `
             <div class="flex flex-col gap-1.5">
@@ -666,6 +700,14 @@ window.ProductModule = {
         }
         this.productCurrentPage = target;
         this.renderProducts(this.filteredProducts || this.products || [], { resetPage: false });
+        const scrollRoot = document.getElementById('supply-inner-scroll') || document.getElementById('content-area');
+        if (scrollRoot) {
+            try { scrollRoot.scrollTop = 0; } catch (e) { /* ignore */ }
+        }
+        const tableTop = document.getElementById('product-library-header') || document.getElementById('existingProdTable');
+        if (tableTop) {
+            try { tableTop.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e2) { /* ignore */ }
+        }
     },
 
     renderDesktopTable: function(productList) {
@@ -1708,6 +1750,10 @@ window.ProductModule = {
             locationInput.value = '';
             this.editingWarehouseId = null;
             await this.loadWarehousesAndRender();
+            if (window.TM_TenantOps) {
+                await window.TM_TenantOps.maybePromptWarehouseMigration(data);
+                window.TM_TenantOps.invalidateProfile();
+            }
         } catch (error) {
             console.error('[ProductModule] 保存仓库异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {

@@ -4,14 +4,18 @@
     <script src="../../assets/js/env-config.js"></script>
     <script src="../../assets/js/api-client.js"></script>
     <script src="../../assets/js/dashboard-voice-upload.js?v=20260524"></script>
+    <script src="../../assets/js/tm-oss-path.js?v=20260527"></script>
+    <script src="../../assets/js/tm-oss-upload.js?v=20260527"></script>
+    <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
+    <script src="../../assets/js/tm-product-registry-form.js?v=20260527prf"></script>
     <script src="../../assets/js/ai-order-extract-parse.js?v=20260504r2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260519wb">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260525mo">
+    <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260527audit3">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260527ordunit">
 
     <style>
         body {
@@ -250,15 +254,11 @@
     <main class="flex-1 flex flex-col min-w-0 relative h-full">
         <!-- Header -->
         <header class="hidden md:flex h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
-            <div class="md:hidden flex items-center"><div class="w-7 h-7 bg-brand-500 rounded flex items-center justify-center text-white mr-2"><i class="ph ph-brain text-lg"></i></div><span class="font-bold text-slate-800">商贸智脑</span></div>
-            <div class="hidden md:flex items-center w-1/3 text-slate-400 group"><i class="ph ph-magnifying-glass text-lg group-focus-within:text-brand-600 transition"></i><input type="text" placeholder="搜索报表、单据、AI指令..." class="bg-transparent border-none focus:outline-none text-slate-700 w-full ml-3 placeholder-slate-400 text-sm font-medium"></div>
-            <div class="flex items-center space-x-3 md:space-x-5">
-                <div class="hidden md:flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
-                    <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
-                    <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">工作台</span>
-                </div>
-                <button class="relative text-slate-400 hover:text-brand-600 transition"><i class="ph ph-bell text-xl"></i></button>
+            <div class="flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
+                <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
+                <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">工作台</span>
             </div>
+            <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof TM_MerchantFeedback!=='undefined'&&TM_MerchantFeedback.open()" title="问题与建议" aria-label="问题与建议"><i class="ph ph-chat-circle-dots text-xl"></i></button>
         </header>
 
         <!-- 内容区域 -->
@@ -306,24 +306,17 @@
                 <!-- 待确认单据和进行中业务单据 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- 待核对单据 (Pending) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none">
-                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white sticky top-0 z-10">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white shrink-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-orange-500"></i> 待确认单据 (AI 草稿)</h3>
                             <span class="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-bold">需人工确认</span>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar" id="pending-orders-list">
-                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                                <div class="text-center">
-                                    <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
-                                    <p>加载待确认单据中...</p>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="tm-dashboard-doc-list flex-1 min-h-0 overflow-y-auto p-4 space-y-3 no-scrollbar" id="pending-orders-list"></div>
                     </div>
 
                     <!-- 进行中业务单据 (扩展部分) -->
-                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none">
-                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center gap-3 bg-white sticky top-0 z-10">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center gap-3 bg-white shrink-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-1"><i class="ph ph-truck text-blue-500 font-bold shrink-0"></i><span class="truncate">进行中业务单据</span></h3>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button type="button" onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95 whitespace-nowrap">
@@ -340,7 +333,8 @@
                                         <option value="">全部</option>
                                         <option value="D010001">待配货</option>
                                         <option value="D010002">拣货中</option>
-                                        <option value="D010003">已发货</option>
+                                        <option value="D010006">部分发货</option>
+                                        <option value="D010003">全部发货</option>
                                     </select>
                                     <p class="text-[10px] font-bold text-slate-400 uppercase pt-1">收款状态</p>
                                     <select id="inprogress-filter-fin-status" class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5">
@@ -358,14 +352,7 @@
                             </div>
                             </div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar min-h-0" id="inprogress-list">
-                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                                <div class="text-center">
-                                    <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
-                                    <p>加载进行中单据中...</p>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="tm-dashboard-doc-list flex-1 min-h-0 overflow-y-auto p-4 space-y-3 no-scrollbar" id="inprogress-list"></div>
                     </div>
                 </div>
             </div>
@@ -499,133 +486,42 @@
                     </div>
                 </div>
 
-                <!-- 2. 新产品：内嵌产品编辑（与产品中心字段一致） -->
+                <!-- 2. 新产品：复用产品中心新增产品表单 -->
                 <div id="confirm-product-tab" class="sub-pane hidden space-y-4">
-                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-start gap-3">
-                        <i class="ph ph-info text-blue-600 text-lg shrink-0"></i>
-                        <p class="text-[11px] text-blue-700 leading-relaxed">请补全下方产品信息后点击「保存当前产品」；多个新产品时请切换上方标签逐项保存，全部保存后可返回订单详情确认下单。</p>
+                    <div class="flex items-center gap-3">
+                        <div class="crm-modal-head-icon w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
+                            <i class="ph ph-package text-xl" aria-hidden="true"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-sm font-black text-slate-800">新增产品档案</h3>
+                            <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">Product Registry · AI 预填</p>
+                        </div>
                     </div>
-                    <div id="audit-new-product-subtabs" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+                    <div id="audit-new-product-subtabs" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1"></div>
                     <p id="audit-new-product-progress" class="hidden text-[10px] font-bold text-slate-500"></p>
                     <div id="audit-product-form-errors" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed" role="alert"></div>
-                    <section class="tm-product-edit-section rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
-                        <h3 class="tm-product-edit-section__title">基本信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
-                        <div class="tm-product-edit-grid">
-                            <div class="tm-product-field tm-product-field--full">
-                                <label class="tm-product-label" for="audit-detail-product-name">产品名称<span class="tm-product-required">*</span></label>
-                                <input id="audit-detail-product-name" type="text" class="form-input" placeholder="如：东北大板原味" autocomplete="off" />
-                            </div>
-                            <div class="tm-product-field">
-                                <label class="tm-product-label" for="audit-detail-product-category">商品类别 <span class="text-[10px] text-slate-400 font-normal">选填</span></label>
-                                <select id="audit-detail-product-category" class="form-input w-full" aria-label="商品类别"></select>
-                            </div>
-                            <div class="tm-product-field">
-                                <label class="tm-product-label" for="audit-detail-product-price">预设销售价<span class="tm-product-required">*</span></label>
-                                <div class="tm-product-input-suffix">
-                                    <input id="audit-detail-product-price" type="number" min="0" step="0.01" class="form-input font-mono font-bold text-brand-600" placeholder="0.00" />
-                                    <span class="tm-product-suffix">元</span>
-                                </div>
-                            </div>
-                            <div class="tm-product-field">
-                                <label class="tm-product-label" for="audit-detail-product-base-unit">基本单位<span class="tm-product-required">*</span></label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="audit-detail-product-base-unit" class="form-input flex-1 min-w-0" placeholder="件、箱、吨" autocomplete="off" oninput="window.ProductModule && window.ProductModule.onBaseUnitChanged()" />
-                                    <button type="button" onclick="openProductUnitModal()" class="tm-product-unit-btn shrink-0" title="配置包装单位换算">换算</button>
-                                </div>
-                            </div>
-                            <div class="tm-product-field">
-                                <label class="tm-product-label" for="audit-detail-product-stock">当前库存总量</label>
-                                <input id="audit-detail-product-stock" type="number" min="0" step="1" class="form-input font-mono" placeholder="留空视为 0" />
-                            </div>
-                        </div>
-                    </section>
-                    <section class="tm-product-edit-section tm-product-edit-section--advanced rounded-2xl border border-slate-100 bg-white p-4 md:p-5">
-                        <button type="button" onclick="toggleAuditProductAdvanced()" class="tm-product-advanced-toggle w-full" aria-expanded="false" aria-controls="audit-product-advanced-drawer">
-                            <span class="flex items-center gap-2">
-                                <i class="ph ph-sliders-horizontal text-brand-500"></i>
-                                <span class="font-bold text-slate-700">高级配置</span>
-                                <span class="text-[10px] text-slate-400 font-normal">选填</span>
-                            </span>
-                            <i id="audit-product-detail-advanced-icon" class="ph ph-caret-down text-slate-400 transition-transform"></i>
-                        </button>
-                        <div id="audit-product-advanced-drawer" class="tm-product-advanced-drawer" aria-hidden="true">
-                            <div class="tm-product-edit-grid tm-product-edit-grid--advanced">
-                                <div class="tm-product-field">
-                                    <label class="tm-product-label" for="audit-detail-product-sku-input">产品 SKU</label>
-                                    <input id="audit-detail-product-sku-input" type="text" class="form-input font-mono text-sm" placeholder="留空将自动生成" autocomplete="off" />
-                                </div>
-                                <div class="tm-product-field tm-product-field--full">
-                                    <label class="tm-product-label" for="audit-detail-product-description">产品详情描述</label>
-                                    <textarea id="audit-detail-product-description" class="form-input tm-product-textarea no-scrollbar" rows="3" placeholder="规格、卖点、存储说明等"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                    <div id="audit-product-registry-root"></div>
                 </div>
 
-                <!-- 3. 客户资料 Tab 页 -->
+                <!-- 3. 客户资料 Tab 页（复用 CRM 新增客户档案表单） -->
                 <div id="confirm-customer-tab" class="sub-pane hidden space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户姓名 *</label>
-                            <input type="text" id="customer-name" class="form-input font-bold" required>
+                    <div class="flex items-center gap-3">
+                        <div class="crm-modal-head-icon w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
+                            <i class="ph ph-user-plus text-xl" aria-hidden="true"></i>
                         </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">联系手机 *</label>
-                            <input type="tel" id="customer-phone" class="form-input font-mono" required>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户来源</label>
-                            <select id="customer-source" class="form-input font-bold text-slate-700">
-                                <option value="WECHAT">WECHAT (微信)</option>
-                                <option value="ALIPAY">ALIPAY (支付宝)</option>
-                                <option value="PHONE">PHONE (电话)</option>
-                                <option value="OTHER">OTHER (其他)</option>
-                            </select>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[11px] font-bold text-slate-500 ml-1">客户状态</label>
-                            <select id="customer-status" class="form-input font-bold text-brand-600">
-                                <option value="ACTIVE">活跃客户</option>
-                                <option value="INACTIVE">沉睡客户</option>
-                            </select>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-800">新增客户档案</h3>
+                            <p class="text-[10px] text-slate-400 font-mono tracking-widest mt-0.5 uppercase">Customer Registry · AI 预填</p>
                         </div>
                     </div>
-                    <!-- 客户高级信息 -->
-                    <div class="pt-6 border-t border-slate-50">
-                        <button type="button" onclick="toggleAuditCustAdvanced(event)" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-brand-600 transition-colors group">
-                            <span>展开详细地址与档案摘要</span>
-                            <i id="advanced-icon-cust" class="ph ph-caret-down transition-transform group-hover:translate-y-0.5"></i>
-                        </button>
-                        <div id="drawer-cust" class="advanced-drawer hidden">
-                            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">电子邮箱</label>
-                                    <input type="email" id="customer-email" class="form-input">
-                                </div>
-                                <div class="space-y-2">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">所属地区</label>
-                                    <input type="text" id="customer-region" class="form-input">
-                                </div>
-                                <div class="space-y-2 col-span-full">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">详细地址</label>
-                                    <textarea id="customer-address" class="form-input h-20 no-scrollbar"></textarea>
-                                </div>
-                                <div class="space-y-2 col-span-full">
-                                    <label class="text-[11px] font-bold text-slate-500 ml-1">客户摘要</label>
-                                    <textarea id="customer-summary" class="form-input h-20 no-scrollbar"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div id="audit-customer-registry-root"></div>
                 </div>
             </div>
 
             <!-- 弹窗底部操作 -->
             <div class="tm-audit-footer tm-modal-footer-safe pb-safe p-4 md:p-6 border-t border-slate-100 bg-white shrink-0">
                 <div class="tm-audit-footer-actions">
-                <p class="text-[10px] text-slate-400 font-medium md:text-left text-center">注意：点击“确认入库”后，系统将同步扣除租户 AI 能量点 1.0 Credits。</p>
-                <div class="flex gap-3 w-full md:w-auto">
+                <div class="flex gap-3 w-full md:w-auto md:ml-auto">
                     <div id="audit-footer-order-actions" class="contents">
                         <button type="button" onclick="closeAuditModal()" class="tm-audit-footer-btn tm-audit-footer-btn--secondary tm-btn-secondary flex-1 md:flex-none px-8 py-3 text-xs">存为草稿</button>
                         <button type="button" onclick="confirmAuditOrder()" class="tm-audit-footer-btn tm-audit-footer-btn--primary tm-btn-primary flex-[2] md:flex-none px-10 py-3 text-xs shadow-xl shadow-brand-500/30 active:scale-95">确认入库并下单</button>
@@ -770,11 +666,12 @@
                     <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shrink-0"><i class="ph ph-receipt"></i></div>
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-2">
-                            <h2 class="text-sm font-bold text-slate-800 truncate" id="detail-order-id">ORD-</h2>
+                            <h2 class="text-sm font-bold text-slate-800 truncate">订单详情</h2>
                             <span id="detail-badge-logistics" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 text-teal-700 text-[10px] font-bold"><i class="ph ph-truck"></i> 待配货</span>
                             <span id="detail-badge-finance" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-bold"><i class="ph ph-currency-cny"></i> 未收款</span>
                         </div>
                         <p id="detail-order-meta" class="text-[10px] text-slate-400 mt-0.5 truncate">创建时间: --</p>
+                        <p id="detail-order-code" class="text-[9px] text-slate-300 mt-0.5 truncate font-mono"></p>
                     </div>
                 </div>
                 <button type="button" onclick="closeOrderDetail()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
@@ -797,18 +694,25 @@
                         </div>
                     </div>
                 </section>
-                <section class="flex-1 min-h-0 flex flex-col mt-3">
+                <section class="tm-order-items-core flex flex-col mt-3 shrink-0">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
                         <h3 class="text-xs font-black text-slate-700">订单明细</h3>
-                        <span class="text-[11px] text-slate-500">应收 <strong class="font-mono text-slate-800" id="detail-order-total">¥0.00</strong></span>
+                        <div class="flex flex-wrap items-center gap-2 justify-end">
+                            <span id="detail-ship-hint" class="hidden text-[10px] text-teal-600 max-w-[14rem] leading-tight text-right">勾选明细后点「确认发货」</span>
+                            <button type="button" id="detail-ship-btn" onclick="confirmOrderShip()" class="hidden px-3 py-1 rounded-lg border border-teal-500 bg-teal-50 text-teal-700 text-[11px] font-bold shrink-0">确认发货</button>
+                            <span class="text-[11px] text-slate-500">应收 <strong class="font-mono text-slate-800" id="detail-order-total">¥0.00</strong></span>
+                        </div>
                     </div>
-                    <div class="flex-1 min-h-0 overflow-auto bg-slate-50 rounded-xl border border-slate-100">
-                        <table class="w-full text-xs min-w-[20rem]">
+                    <div id="detail-order-items-cards" class="md:hidden space-y-2"></div>
+                    <div class="tm-order-items-scroll hidden md:block overflow-x-auto bg-slate-50 rounded-xl border border-slate-100">
+                        <table class="tm-order-detail-table text-xs">
                             <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
                                 <tr>
-                                    <th class="px-3 py-2 text-left">产品</th>
-                                    <th class="px-3 py-2 text-center w-16">数量</th>
-                                    <th class="px-3 py-2 text-right w-24">小计</th>
+                                    <th class="detail-ship-col hidden tm-col-ship px-2 py-2 text-center">发货</th>
+                                    <th class="tm-col-product px-3 py-2 text-left">产品</th>
+                                    <th class="tm-col-qty px-3 py-2 text-center">数量</th>
+                                    <th class="tm-col-unit px-3 py-2 text-center">单位</th>
+                                    <th class="tm-col-sub px-3 py-2 text-right">小计</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 bg-white" id="detail-order-items-body"></tbody>
@@ -819,15 +723,16 @@
             <div id="detail-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
                 <details id="detail-aux-details" class="group">
                     <summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">
-                        <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款·发货</span>
+                        <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>
                         <span id="detail-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>
                         <span class="text-[10px] text-brand-600 shrink-0 group-open:hidden">展开</span>
+                        <span class="text-[10px] text-brand-600 shrink-0 hidden group-open:inline">收起</span>
                     </summary>
                     <div class="pt-2 pb-1 space-y-2 border-t border-slate-200/60 mt-1">
                         <div class="flex flex-wrap items-end gap-2">
                             <div class="w-36">
                                 <label class="text-[10px] text-slate-400" for="detail-order-warehouse">发出仓库</label>
-                                <select id="detail-order-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white"><option value="">默认仓库</option></select>
+                                <select id="detail-order-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="发出仓库"></select>
                             </div>
                             <div id="detail-remaining-hint" class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
                                 应收 <span id="detail-pay-total" class="font-mono font-bold">¥0.00</span>
@@ -857,8 +762,7 @@
                         </div>
                         <div class="flex flex-wrap gap-2 items-center">
                             <button type="button" id="detail-confirm-receive-btn" onclick="recordOrderPayment()" class="px-3 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold disabled:opacity-40">确认收款</button>
-                            <button type="button" id="detail-ship-btn" onclick="confirmOrderShip()" class="hidden px-3 py-1 rounded-lg border border-teal-500 text-teal-700 text-[11px] font-bold">确认发货</button>
-                            <span id="detail-fin-disabled-hint" class="text-[10px] text-slate-400">请先保存后再收款</span>
+                            <span id="detail-fin-disabled-hint" class="text-[10px] text-slate-400">选择「部分收款」或「已结清」后可确认收款</span>
                         </div>
                     </div>
                 </details>
@@ -905,7 +809,7 @@
                         </div>
                     </div>
                 </section>
-                <section class="flex-1 min-h-0 flex flex-col mt-3">
+                <section class="tm-order-items-core flex flex-col mt-3 shrink-0">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
                         <h3 class="text-xs font-black text-slate-700">订单明细</h3>
                         <div class="flex items-center gap-2">
@@ -913,15 +817,15 @@
                             <button type="button" onclick="TM_addManualOrderRow()" class="text-brand-600 text-[10px] font-bold hover:underline whitespace-nowrap">+ 添加行</button>
                         </div>
                     </div>
-                    <div class="flex-1 min-h-0 overflow-auto bg-slate-50 rounded-xl border border-slate-100">
-                        <table class="w-full text-xs min-w-[24rem]" id="manual-order-table">
+                    <div class="tm-order-items-scroll overflow-x-auto bg-slate-50 rounded-xl border border-slate-100">
+                        <table class="tm-order-detail-table text-xs" id="manual-order-table">
                             <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
                                 <tr>
-                                    <th class="px-3 py-2 text-left">产品</th>
-                                    <th class="px-3 py-2 text-center w-16">数量</th>
-                                    <th class="px-3 py-2 text-center w-20">单价</th>
-                                    <th class="px-3 py-2 text-right w-24">小计</th>
-                                    <th class="px-1 py-2 w-8"></th>
+                                    <th class="tm-col-product px-3 py-2 text-left">产品</th>
+                                    <th class="tm-col-qty px-3 py-2 text-center">数量</th>
+                                    <th class="tm-col-price px-3 py-2 text-center">单价</th>
+                                    <th class="tm-col-sub px-3 py-2 text-right">小计</th>
+                                    <th class="tm-col-action px-1 py-2"></th>
                                 </tr>
                             </thead>
                             <tbody id="manual-order-tbody" class="divide-y divide-slate-100 bg-white"></tbody>
@@ -930,24 +834,25 @@
                 </section>
             </div>
             <div id="manual-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
-                <details id="manual-aux-details" class="group" open>
+                <details id="manual-aux-details" class="group">
                     <summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">
                         <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>
                         <span id="manual-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>
                         <span class="text-[10px] text-brand-600 shrink-0 group-open:hidden">展开</span>
+                        <span class="text-[10px] text-brand-600 shrink-0 hidden group-open:inline">收起</span>
                     </summary>
                     <div class="pt-2 pb-1 space-y-2 border-t border-slate-200/60 mt-1">
                         <div class="flex flex-wrap items-end gap-2">
                             <div class="w-36">
                                 <label class="text-[10px] text-slate-400" for="manual-order-warehouse">发出仓库</label>
-                                <select id="manual-order-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white"><option value="">默认仓库</option></select>
+                                <select id="manual-order-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="发出仓库"></select>
                             </div>
                             <div class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
                                 应收 <span id="manual-pay-total" class="font-mono font-bold">¥0.00</span>
                                 <span class="text-teal-700 font-bold"> · 剩 <span id="manual-remaining-sum" class="font-mono">¥0.00</span></span>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                             <div>
                                 <label class="text-[10px] text-slate-400" for="manual-fin-status">收款状态</label>
                                 <select id="manual-fin-status" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white">
@@ -957,12 +862,16 @@
                                     <option value="BAD_DEBT">坏账</option>
                                 </select>
                             </div>
+                            <div>
+                                <label class="text-[10px] text-slate-400" for="manual-receive-amount">本次收款</label>
+                                <input type="number" id="manual-receive-amount" min="0" step="0.01" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs font-mono bg-white" placeholder="0" disabled />
+                            </div>
                             <div class="col-span-2">
                                 <label class="text-[10px] text-slate-400" for="manual-order-account">收款账户</label>
                                 <select id="manual-order-account" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="收款账户"></select>
                             </div>
                         </div>
-                        <p class="text-[10px] text-slate-400">创建后可于订单详情中确认收款与发货；创建时仅保存收款标记与默认账户。</p>
+                        <p class="text-[10px] text-slate-400">创建后可于订单详情中确认收款与发货</p>
                     </div>
                 </details>
             </div>
@@ -978,7 +887,6 @@
         let loginExpiredShown = false;
 
         // OSS 服务初始化
-        let OSSService = null;
         let recorder = null;
         let audioChunks = [];
         let recording = false;
@@ -1062,14 +970,6 @@
         function tmVoiceClearStopFallbackTimers() {
             voiceStopFallbackTimers.forEach(function (tid) { clearTimeout(tid); });
             voiceStopFallbackTimers = [];
-        }
-
-        /** 浏览器直传 OSS 不可使用 -internal 域名（手机/公网无法解析） */
-        function tmNormalizeOssEndpointForBrowser(endpoint) {
-            if (!endpoint || typeof endpoint !== 'string') {
-                return endpoint;
-            }
-            return endpoint.replace(/-internal\.aliyuncs\.com/gi, '.aliyuncs.com');
         }
 
         function tmVoiceMinBlobBytes() {
@@ -1255,60 +1155,16 @@
             console.log('[Voice] 停止按钮已绑定 (click + pointerup + onclick)');
         }
 
-        // 初始化 OSS 服务
-        async function initOSSService() {
-            try {
-                // 调用 InitCfgService 获取 STS (通过网关)
-                const response = await window.wrappedFetch('/api/v1/init/config/oss/sts', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const stsData = await response.json();
-                    if (stsData.success) {
-                        // 先获取基础 OSS 配置 (通过网关)
-                        const baseConfigResponse = await window.wrappedFetch('/api/v1/init/config/oss/base', {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            }
-                        });
-                        
-                        if (baseConfigResponse.ok) {
-                            const baseConfigData = await baseConfigResponse.json();
-                            if (baseConfigData.success && baseConfigData.data) {
-                                const baseConfig = baseConfigData.data;
-                                const stsCredentials = stsData.data;
-                                var ossRegion = baseConfig.region || 'cn-hangzhou';
-                                if (ossRegion.indexOf('oss-') !== 0) {
-                                    ossRegion = 'oss-' + ossRegion;
-                                }
-                                var ossEndpoint = tmNormalizeOssEndpointForBrowser(baseConfig.endpoint || '');
-                                var ossOpts = {
-                                    region: ossRegion,
-                                    accessKeyId: stsCredentials.accessKeyId,
-                                    accessKeySecret: stsCredentials.accessKeySecret,
-                                    stsToken: stsCredentials.securityToken,
-                                    bucket: baseConfig.bucketName || 'trademind-ai',
-                                    secure: true
-                                };
-                                if (ossEndpoint) {
-                                    ossOpts.endpoint = ossEndpoint;
-                                }
-                                OSSService = new OSS(ossOpts);
-                                console.log('OSS 服务初始化成功, region=', ossRegion, 'bucket=', baseConfig.bucketName);
-                            }
-                        }
-                    }
-                } else {
-                    console.error('获取 STS 失败');
-                }
-            } catch (error) {
-                console.error('OSS 服务初始化失败:', error);
+        function resolveTmOssUpload() {
+            if (window.TMOssUpload) {
+                return window.TMOssUpload;
             }
+            try {
+                if (window.parent && window.parent !== window && window.parent.TMOssUpload) {
+                    return window.parent.TMOssUpload;
+                }
+            } catch (eParent) { /* ignore */ }
+            return null;
         }
 
         let __TM_DASHBOARD_INIT_DONE = false;
@@ -1316,10 +1172,7 @@
             if (__TM_DASHBOARD_INIT_DONE) return;
             __TM_DASHBOARD_INIT_DONE = true;
             // 主壳 index-app 已提供顶栏/底栏，禁止在内联工作台再次 initCommonUI（避免双层底栏）
-            // 初始化 OSS 服务
-            await initOSSService();
-            // 加载待确认单据
-            loadPendingOrders();
+            // 待确认单据由 dashboard-workbench.js 的 TM_PendingOrdersStore 加载
             // 加载客户列表
             loadCustomerList();
             // 加载产品列表
@@ -1327,18 +1180,22 @@
             // 加载订单状态字典、收款账户
             loadOrderStatusDict();
             loadBizAccounts();
-            // 加载进行中业务单据
-            loadInProgressOrders();
+            // 进行中业务单据由 dashboard-workbench.js / loadInProgressOrders 加载
             // 加载顶部概览数据
             loadDashboardOverviewStats();
         }
 
-        // 页面加载完成后执行（兼容动态注入场景）
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initDashboardDataOnce);
-        } else {
-            initDashboardDataOnce();
+        // 页面加载完成后执行（defer 确保下方 window.loadOrderStatusDict 等已赋值）
+        function scheduleDashboardInitOnce() {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function () {
+                    setTimeout(initDashboardDataOnce, 0);
+                });
+            } else {
+                setTimeout(initDashboardDataOnce, 0);
+            }
         }
+        scheduleDashboardInitOnce();
 
 
 
@@ -1367,9 +1224,10 @@
         var TM_ORDER_STATUS_FALLBACK = {
             D010001: '待配货',
             D010002: '拣货中',
-            D010003: '已发货',
+            D010003: '全部发货',
             D010004: '已签收',
-            D010005: '退货'
+            D010005: '退货',
+            D010006: '部分发货'
         };
 
         var TM_ORDER_FIN_FALLBACK = {
@@ -1382,6 +1240,26 @@
         var inProgressFilterState = { orderStatus: '', finStatus: '' };
         var orderWarehousesList = [];
         var currentDetailOrder = null;
+        var detailOrderItemsCache = [];
+
+        function tmRoundMoney(v) {
+            return window.TM_OrderModal && window.TM_OrderModal.roundMoney
+                ? window.TM_OrderModal.roundMoney(v)
+                : Math.round((Number(v) || 0) * 100) / 100;
+        }
+
+        function tmRefreshDetailItemsLayout() {
+            if (window.TM_OrderModal && window.TM_OrderModal.refreshItemsScroll) {
+                window.TM_OrderModal.refreshItemsScroll('order-detail-modal');
+            }
+        }
+
+        function tmRefreshManualItemsLayout() {
+            if (window.TM_OrderModal && window.TM_OrderModal.refreshItemsScroll) {
+                window.TM_OrderModal.refreshItemsScroll('manual-order-modal');
+            }
+        }
+        window.tmRefreshManualItemsLayout = tmRefreshManualItemsLayout;
 
         let bizAccountById = {};
         let bizAccountsList = [];
@@ -1396,7 +1274,8 @@
             if (!raw) return '';
             if (raw === 'PENDING' || raw === 'ALLOCATING') return 'D010001';
             if (raw === 'PROCESSING' || raw === 'PICKING') return 'D010002';
-            if (raw === 'SHIPPED') return 'D010003';
+            if (raw === 'SHIPPED' || raw === 'FULL_SHIPPED') return 'D010003';
+            if (raw === 'PARTIAL_SHIPPED' || raw === 'PARTIALSHIP') return 'D010006';
             if (raw === 'COMPLETED' || raw === 'RECEIVED') return 'D010004';
             if (raw === 'CANCELLED' || raw === 'CANCELED' || raw === 'RETURNED') return 'D010005';
             var m = raw.match(/^D010[_-]?0*(\d{1,3})$/);
@@ -1420,12 +1299,32 @@
         }
 
         function isValidOrderStatusCanonical(code) {
-            return /^D01000[1-5]$/.test(toCanonicalOrderStatusCode(code));
+            var s = toCanonicalOrderStatusCode(code);
+            return /^D01000[1-6]$/.test(s);
         }
 
         function isInProgressOrderStatus(statusCode) {
             var s = toCanonicalOrderStatusCode(statusCode);
-            return s === 'D010001' || s === 'D010002' || s === 'D010003';
+            return s === 'D010001' || s === 'D010002' || s === 'D010003' || s === 'D010006';
+        }
+
+        /** 工作台进行中：未全部发货或未结清（与后端 OrderStatusCodes.isWorkbenchOpen 一致） */
+        function isWorkbenchOpenOrder(order) {
+            if (!order) return false;
+            var st = toCanonicalOrderStatusCode(order.orderStatus);
+            if (st === 'D010005') return false;
+            var fullyShipped = st === 'D010003' || st === 'D010004';
+            var settled = normalizeFinStatus(order.finStatus) === 'SETTLED';
+            return !fullyShipped || !settled;
+        }
+
+        function isClosedWorkbenchOrder(order) {
+            return order && !isWorkbenchOpenOrder(order);
+        }
+
+        function orderStatusAllowsShipSelect(statusCode) {
+            var s = toCanonicalOrderStatusCode(statusCode);
+            return s === 'D010001' || s === 'D010002' || s === 'D010006';
         }
 
         function finStatusLabel(code) {
@@ -1525,11 +1424,11 @@
             order = order || currentDetailOrder;
             remaining = remaining != null ? remaining : getOrderRemainingAmount(order);
             var whSel = document.getElementById('detail-order-warehouse');
-            var whLabel = '默认仓库';
-            if (whSel && whSel.value) {
-                var opt = whSel.options[whSel.selectedIndex];
-                whLabel = opt ? opt.textContent : whLabel;
-            }
+            var whLabel = window.TM_TenantOps
+                ? window.TM_TenantOps.warehouseLabelFromSelect(whSel, orderWarehousesList, window.__tmOpsProfile)
+                : (whSel && whSel.value && whSel.selectedIndex >= 0
+                    ? whSel.options[whSel.selectedIndex].textContent
+                    : '默认仓库');
             var fin = normalizeFinStatus(order && order.finStatus ? order.finStatus : (document.getElementById('detail-fin-status') || {}).value);
             el.textContent = whLabel + ' · ' + finStatusLabel(fin) + ' · 剩 ' + (Number(remaining) || 0).toFixed(2);
         }
@@ -1537,8 +1436,15 @@
         function updateDetailBadges(order) {
             var logEl = document.getElementById('detail-badge-logistics');
             var finEl = document.getElementById('detail-badge-finance');
-            var st = order && order.orderStatus ? order.orderStatus : '';
-            var fin = normalizeFinStatus(order && order.finStatus ? order.finStatus : 'UNPAID');
+            var statusSel = document.getElementById('detail-order-status');
+            var finSel = document.getElementById('detail-fin-status');
+            var st = order && order.orderStatus ? order.orderStatus
+                : (statusSel ? statusSel.value : '');
+            if (statusSel && statusSel.value) {
+                st = statusSel.value;
+            }
+            var fin = finSel ? normalizeFinStatus(finSel.value)
+                : normalizeFinStatus(order && order.finStatus ? order.finStatus : 'UNPAID');
             if (logEl) logEl.innerHTML = '<i class="ph ph-truck"></i> ' + getOrderStatusLabel(st);
             if (finEl) {
                 finEl.innerHTML = '<i class="ph ph-currency-cny"></i> ' + finStatusLabel(fin);
@@ -1550,20 +1456,34 @@
             }
         }
 
-        function syncDetailFinStatusUI(order) {
+        function syncDetailFinStatusUI(order, opts) {
+            opts = opts || {};
             order = order || currentDetailOrder;
             var finSel = document.getElementById('detail-fin-status');
             var amountEl = document.getElementById('detail-receive-amount');
             var payBtn = document.getElementById('detail-confirm-receive-btn');
-            var shipBtn = document.getElementById('detail-ship-btn');
             var hintUnpaid = document.getElementById('detail-fin-hint-unpaid');
             var hintDisabled = document.getElementById('detail-fin-disabled-hint');
+            if (opts.applyOrderFin && order && order.finStatus && finSel) {
+                finSel.value = normalizeFinStatus(order.finStatus);
+            }
             var finVal = finSel ? finSel.value : 'UNPAID';
-            if (order && order.finStatus && finSel) finSel.value = normalizeFinStatus(order.finStatus);
-            if (finSel) finVal = finSel.value;
             var totals = updateDetailRemainingHint(order);
             var hasSaved = !!(currentDetailOrderId);
-            if (hintDisabled) hintDisabled.classList.toggle('hidden', hasSaved);
+            var canPay = hasSaved && finVal !== 'UNPAID' && finVal !== 'BAD_DEBT' && totals.remaining > 0.001;
+            if (hintDisabled) {
+                if (canPay) {
+                    hintDisabled.classList.add('hidden');
+                } else if (!hasSaved) {
+                    hintDisabled.textContent = '确认收款将自动保存订单';
+                    hintDisabled.classList.remove('hidden');
+                } else if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
+                    hintDisabled.textContent = '选择「部分收款」或「已结清」后可确认收款';
+                    hintDisabled.classList.remove('hidden');
+                } else {
+                    hintDisabled.classList.add('hidden');
+                }
+            }
             if (hintUnpaid) {
                 hintUnpaid.classList.toggle('hidden', !(hasSaved && finVal === 'UNPAID' && totals.received > 0));
             }
@@ -1579,15 +1499,113 @@
                 }
             }
             if (payBtn) {
-                var canPay = hasSaved && finVal !== 'UNPAID' && finVal !== 'BAD_DEBT' && totals.remaining > 0.001;
                 payBtn.disabled = !canPay;
+                payBtn.title = finVal === 'SETTLED' && totals.remaining <= 0.001 ? '货款已结清，无需再收款' : '';
             }
-            var st = order && order.orderStatus ? toCanonicalOrderStatusCode(order.orderStatus) : '';
-            if (shipBtn) {
-                if (st === 'D010001' || st === 'D010002') shipBtn.classList.remove('hidden');
-                else shipBtn.classList.add('hidden');
-            }
+            syncDetailShipUi(order);
             updateDetailBadges(order);
+        }
+
+        function syncDetailShipUi(order) {
+            order = order || currentDetailOrder;
+            var statusSel = document.getElementById('detail-order-status');
+            var st = order && order.orderStatus ? toCanonicalOrderStatusCode(order.orderStatus)
+                : (statusSel ? toCanonicalOrderStatusCode(statusSel.value) : '');
+            var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
+            var hasUnprocessed = (detailOrderItemsCache || []).some(function (it) {
+                return !(it.isProcessed === true || it.is_processed === true);
+            });
+            document.querySelectorAll('#order-detail-modal .detail-ship-col').forEach(function (el) {
+                el.classList.toggle('hidden', !showShip);
+            });
+            var shipBtn = document.getElementById('detail-ship-btn');
+            var shipHint = document.getElementById('detail-ship-hint');
+            if (shipBtn) shipBtn.classList.toggle('hidden', !(showShip && hasUnprocessed));
+            if (shipHint) {
+                shipHint.classList.toggle('hidden', !(showShip && hasUnprocessed));
+                if (showShip && hasUnprocessed) shipHint.textContent = '勾选本次发货的明细行，再点「确认发货」';
+            }
+        }
+
+        function renderDetailOrderItems(items) {
+            detailOrderItemsCache = items || [];
+            var tbody = document.getElementById('detail-order-items-body');
+            var cards = document.getElementById('detail-order-items-cards');
+            var statusSel = document.getElementById('detail-order-status');
+            var st = currentDetailOrder && currentDetailOrder.orderStatus
+                ? toCanonicalOrderStatusCode(currentDetailOrder.orderStatus)
+                : (statusSel ? toCanonicalOrderStatusCode(statusSel.value) : '');
+            var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
+            if (!items || !items.length) {
+                if (tbody) tbody.innerHTML = '<tr><td class="px-3 py-4 text-center text-slate-400" colspan="5">暂无商品明细</td></tr>';
+                if (cards) cards.innerHTML = '<p class="text-center text-slate-400 text-xs py-4">暂无商品明细</p>';
+                tmRefreshDetailItemsLayout();
+                syncDetailShipUi(currentDetailOrder);
+                return;
+            }
+            if (tbody) {
+                tbody.innerHTML = items.map(function (item) {
+                    var p = getProductDisplayById(item.productId);
+                    var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit || p.unit || '件';
+                    var proc = item.isProcessed === true || item.is_processed === true;
+                    var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
+                    var chk = showShip
+                        ? ('<td class="detail-ship-col px-2 py-2 text-center' + (showShip ? '' : ' hidden') + '">' +
+                            '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '"' +
+                            (proc ? ' checked disabled' : '') + ' aria-label="本次发货"></td>')
+                        : '<td class="detail-ship-col hidden px-2 py-2"></td>';
+                    return '<tr class="order-item-row">' + chk +
+                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p></td>' +
+                        '<td class="tm-col-qty px-3 py-2 text-center font-mono">' + Number(item.quantity || 0) + '</td>' +
+                        '<td class="tm-col-unit px-3 py-2 text-center text-slate-600">' + unit + '</td>' +
+                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(item.totalAmount || 0) + '</td></tr>';
+                }).join('');
+            }
+            if (cards) {
+                cards.innerHTML = items.map(function (item) {
+                    var p = getProductDisplayById(item.productId);
+                    var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit || p.unit || '件';
+                    var proc = item.isProcessed === true || item.is_processed === true;
+                    var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
+                    var chkRow = showShip
+                        ? ('<label class="detail-ship-col flex items-center gap-1.5 text-[10px] text-teal-700 font-bold mb-2">' +
+                            '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '"' +
+                            (proc ? ' checked disabled' : '') + '> 本次发货</label>')
+                        : '';
+                    return '<div class="order-item-row tm-purchase-item-card border border-slate-200 rounded-xl p-3 bg-slate-50">' +
+                        chkRow +
+                        '<div class="flex justify-between gap-2"><span class="font-bold text-sm">' + p.name + '</span>' +
+                        '<span class="font-mono font-bold">' + formatCurrency(item.totalAmount || 0) + '</span></div>' +
+                        '<p class="text-[10px] text-slate-500 mt-1">数量 ' + Number(item.quantity || 0) + ' ' + unit + '</p></div>';
+                }).join('');
+            }
+            tmRefreshDetailItemsLayout();
+            syncDetailShipUi(currentDetailOrder);
+        }
+
+        function collectDetailShipItemIds() {
+            var ids = [];
+            var seen = {};
+            document.querySelectorAll('#order-detail-modal .detail-ship-check:checked:not(:disabled)').forEach(function (cb) {
+                var raw = cb.getAttribute('data-item-id') || cb.dataset.itemId || '';
+                var n = parseInt(raw, 10);
+                if (!Number.isNaN(n) && n > 0 && !seen[n]) {
+                    seen[n] = true;
+                    ids.push(n);
+                }
+            });
+            if (!ids.length && detailOrderItemsCache.length) {
+                detailOrderItemsCache.forEach(function (it, idx) {
+                    if (it.isProcessed === true || it.is_processed === true) return;
+                    var row = document.querySelectorAll('#order-detail-modal .order-item-row')[idx];
+                    var cb = row ? row.querySelector('.detail-ship-check') : null;
+                    if (cb && cb.checked && !cb.disabled) {
+                        var mid = it.itemId != null ? it.itemId : it.item_id;
+                        if (mid != null && !seen[mid]) { seen[mid] = true; ids.push(parseInt(mid, 10)); }
+                    }
+                });
+            }
+            return ids;
         }
 
         function bindDetailFinEvents() {
@@ -1595,28 +1613,53 @@
             window._detailFinBound = true;
             var finSel = document.getElementById('detail-fin-status');
             var whSel = document.getElementById('detail-order-warehouse');
+            var statusSel = document.getElementById('detail-order-status');
             if (finSel) finSel.addEventListener('change', function () { syncDetailFinStatusUI(); });
             if (whSel) whSel.addEventListener('change', function () { updateDetailAuxSummary(); });
+            if (statusSel) statusSel.addEventListener('change', function () {
+                updateDetailBadges(currentDetailOrder);
+                renderDetailOrderItems(detailOrderItemsCache);
+            });
         }
 
-        function populateOrderWarehouseSelect() {
+        function populateOrderWarehouseSelect(preferredWarehouseId) {
             var sel = document.getElementById('detail-order-warehouse');
             if (!sel) return;
-            var html = '<option value="">默认仓库</option>';
-            (orderWarehousesList || []).forEach(function (w) {
-                html += '<option value="' + w.warehouseId + '">' + (w.name || ('仓库#' + w.warehouseId)) + '</option>';
-            });
-            sel.innerHTML = html;
+            var profile = window.__tmOpsProfile || null;
+            var pick = preferredWarehouseId != null ? preferredWarehouseId
+                : (currentDetailOrder && (currentDetailOrder.warehouseId != null ? currentDetailOrder.warehouseId : currentDetailOrder.warehouse_id));
+            if (window.TM_TenantOps) {
+                sel.innerHTML = window.TM_TenantOps.buildWarehouseOptionsHtml(orderWarehousesList, profile, pick);
+            } else if ((orderWarehousesList || []).length) {
+                var html = '';
+                (orderWarehousesList || []).forEach(function (w, idx) {
+                    var id = w.warehouseId != null ? w.warehouseId : w.id;
+                    var name = w.name || ('仓库#' + id);
+                    var selFlag = (pick != null && String(id) === String(pick)) || (pick == null && idx === 0);
+                    html += '<option value="' + id + '"' + (selFlag ? ' selected' : '') + '>' + name + '</option>';
+                });
+                sel.innerHTML = html;
+            } else {
+                sel.innerHTML = '<option value="">暂无仓库</option>';
+            }
         }
 
         function loadOrderWarehouses() {
-            return window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' })
+            var whPromise = window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' })
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
-                    orderWarehousesList = (res && res.data) ? res.data : (res || []);
-                    populateOrderWarehouseSelect();
+                    var rows = (res && res.success && Array.isArray(res.data)) ? res.data : [];
+                    orderWarehousesList = rows;
                 })
                 .catch(function () { orderWarehousesList = []; });
+            var profilePromise = window.TM_TenantOps
+                ? window.TM_TenantOps.fetchOpsProfile()
+                : Promise.resolve(null);
+            return Promise.all([whPromise, profilePromise]).then(function (arr) {
+                window.__tmOpsProfile = arr[1];
+                populateOrderWarehouseSelect(currentDetailOrder && (currentDetailOrder.warehouseId != null
+                    ? currentDetailOrder.warehouseId : currentDetailOrder.warehouse_id));
+            });
         }
 
         async function recordOrderPayment() {
@@ -1628,21 +1671,33 @@
             var amountEl = document.getElementById('detail-receive-amount');
             var accEl = document.getElementById('detail-receipt-account');
             var totals = updateDetailRemainingHint(currentDetailOrder);
-            var amount = parseFloat(amountEl && amountEl.value ? amountEl.value : '0');
+            var remaining = tmRoundMoney(totals.remaining);
+            var amount = tmRoundMoney(amountEl && amountEl.value ? amountEl.value : 0);
             var accountId = accEl && accEl.value ? parseInt(accEl.value, 10) : null;
-            if (finVal === 'SETTLED' && totals.remaining > 0 && (!amount || amount <= 0)) amount = totals.remaining;
-            if (!amount || amount <= 0) { showToast('请输入有效收款金额'); return; }
-            if (amount > totals.remaining + 0.01 + 1e-9) {
-                showToast('收款金额不能超过剩余应收 ¥' + totals.remaining.toFixed(2));
+            if (finVal === 'SETTLED' && remaining > 0) {
+                amount = remaining;
+                if (amountEl) amountEl.value = remaining.toFixed(2);
+            }
+            if (!amount || amount <= 0) {
+                showToast(finVal === 'SETTLED' && remaining <= 0 ? '货款已结清，无需再收款' : '请输入有效收款金额');
                 return;
             }
-            if (Math.abs(amount - totals.remaining) <= 0.01 + 1e-9) amount = totals.remaining;
-            if (!accountId) { showToast('请选择收款账户'); return; }
+            var amountCents = Math.round(amount * 100);
+            var remainingCents = Math.round(remaining * 100);
+            if (amountCents > remainingCents) {
+                if (amountCents - remainingCents <= 1) amount = remaining;
+                else { showToast('收款金额不能超过剩余应收 ¥' + remaining.toFixed(2)); return; }
+            }
+            amount = tmRoundMoney(amount);
+            var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+            if (!virtualFin && !accountId) { showToast('请选择收款账户'); return; }
             try {
+                var payBody = { amount: amount, bizTypeCode: 'SALES_INCOME' };
+                if (accountId) payBody.accountId = accountId;
                 var resp = await window.wrappedFetch('/api/v1/rd/orders/' + currentDetailOrderId + '/record-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accountId: accountId, amount: amount, bizTypeCode: 'SALES_INCOME' })
+                    body: JSON.stringify(payBody)
                 });
                 var result = await resp.json();
                 if (!result || !result.success) throw new Error((result && result.message) || '收款失败');
@@ -1654,6 +1709,12 @@
                 if (amountEl) amountEl.value = '';
                 if (finSel && result.data.finStatus) finSel.value = result.data.finStatus;
                 syncDetailFinStatusUI(result.data);
+                if (isClosedWorkbenchOrder(result.data)) {
+                    inProgressOrdersCacheFull = inProgressOrdersCacheFull.filter(function (o) {
+                        return String(o.orderId || o.id) !== String(currentDetailOrderId);
+                    });
+                    closeOrderDetail();
+                }
                 filterInProgressOrders();
                 showToast('收款记账成功');
             } catch (e) {
@@ -1666,11 +1727,13 @@
             if (!currentDetailOrderId) { showToast('请先保存订单'); return; }
             var wh = document.getElementById('detail-order-warehouse');
             var warehouseId = wh && wh.value ? parseInt(wh.value, 10) : null;
+            var itemIds = collectDetailShipItemIds();
+            if (!itemIds.length) { showToast('请勾选本次发货的明细行'); return; }
             try {
                 var resp = await window.wrappedFetch('/api/v1/rd/orders/' + currentDetailOrderId + '/ship', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ warehouseId: warehouseId })
+                    body: JSON.stringify({ warehouseId: warehouseId, itemIds: itemIds })
                 });
                 var result = await resp.json();
                 if (!result || !result.success) throw new Error((result && result.message) || '发货失败');
@@ -1678,7 +1741,20 @@
                 var hit = inProgressOrdersCacheFull.find(function (o) { return String(o.orderId || o.id) === String(currentDetailOrderId); });
                 if (hit) Object.assign(hit, result.data);
                 fillDetailOrderStatusSelect(result.data.orderStatus);
-                syncDetailFinStatusUI(result.data);
+                syncDetailFinStatusUI(result.data, { applyOrderFin: true });
+                window.wrappedFetch('/api/v1/rd/orders/' + currentDetailOrderId + '/items', { method: 'GET' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        var items = res && res.success && Array.isArray(res.data) ? res.data : [];
+                        renderDetailOrderItems(items);
+                        updateDetailRemainingHint(result.data);
+                    });
+                if (isClosedWorkbenchOrder(result.data)) {
+                    inProgressOrdersCacheFull = inProgressOrdersCacheFull.filter(function (o) {
+                        return String(o.orderId || o.id) !== String(currentDetailOrderId);
+                    });
+                    closeOrderDetail();
+                }
                 filterInProgressOrders();
                 showToast('发货成功');
             } catch (e) {
@@ -1695,6 +1771,7 @@
             return [
                 { code: 'D010001', name: TM_ORDER_STATUS_FALLBACK.D010001 },
                 { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 },
+                { code: 'D010006', name: TM_ORDER_STATUS_FALLBACK.D010006 },
                 { code: 'D010003', name: TM_ORDER_STATUS_FALLBACK.D010003 }
             ];
         }
@@ -1707,6 +1784,7 @@
             return [
                 { code: 'D010001', name: TM_ORDER_STATUS_FALLBACK.D010001 },
                 { code: 'D010002', name: TM_ORDER_STATUS_FALLBACK.D010002 },
+                { code: 'D010006', name: TM_ORDER_STATUS_FALLBACK.D010006 },
                 { code: 'D010003', name: TM_ORDER_STATUS_FALLBACK.D010003 },
                 { code: 'D010004', name: TM_ORDER_STATUS_FALLBACK.D010004 },
                 { code: 'D010005', name: TM_ORDER_STATUS_FALLBACK.D010005 }
@@ -1776,6 +1854,16 @@
                 && date.getDate() === now.getDate();
         }
 
+        /** 与 IMService 营收报表一致的订单过滤 */
+        function isReportRevenueOrder(item) {
+            const status = String(item.orderStatus || item.order_status || '').toUpperCase().trim();
+            const fin = String(item.finStatus || item.fin_status || 'UNPAID').toUpperCase().trim();
+            if (fin === 'BAD_DEBT') return false;
+            const excluded = ['CANCELLED', 'CANCELED', 'RETURNED', 'D010005', 'D010001', 'D010002',
+                'ALLOCATING', 'PICKING', 'PENDING', 'PROCESSING', 'DRAFT'];
+            return status && !excluded.includes(status);
+        }
+
         function setTextById(id, text) {
             const el = document.getElementById(id);
             if (el) el.textContent = text;
@@ -1821,8 +1909,7 @@
                 }).length;
 
                 const todayRevenue = orders.reduce((sum, item) => {
-                    const status = String(item.orderStatus || '').toUpperCase();
-                    if (!isToday(item.createTime) || status === 'CANCELLED' || status === 'CANCELED') return sum;
+                    if (!isToday(item.createTime) || !isReportRevenueOrder(item)) return sum;
                     return sum + Number(item.totalAmount || 0);
                 }, 0);
 
@@ -1959,14 +2046,24 @@
 
         function readAuditProductFormToDraft(index) {
             var draft = auditState.newProductDrafts[index] || {};
-            var nameEl = document.getElementById('audit-detail-product-name');
-            draft.name = nameEl ? nameEl.value.trim() : (draft.name || '');
-            draft.sku = (document.getElementById('audit-detail-product-sku-input') || {}).value || draft.sku || '';
-            draft.price = (document.getElementById('audit-detail-product-price') || {}).value || draft.price || '';
-            draft.base_unit = (document.getElementById('audit-detail-product-base-unit') || {}).value || draft.base_unit || '件';
-            draft.stock = (document.getElementById('audit-detail-product-stock') || {}).value || draft.stock || '';
-            draft.description = (document.getElementById('audit-detail-product-description') || {}).value || draft.description || '';
-            var catEl = document.getElementById('audit-detail-product-category');
+            var root = document.getElementById('audit-product-registry-root');
+            function fieldVal(id) {
+                var el = root ? root.querySelector('#' + id) : null;
+                if (!el && window.ProductModule && typeof window.ProductModule.el === 'function') {
+                    el = window.ProductModule.el(id);
+                }
+                return el ? el.value : '';
+            }
+            draft.name = fieldVal('detail-product-name').trim() || draft.name || '';
+            draft.sku = fieldVal('detail-product-sku-input') || draft.sku || '';
+            draft.price = fieldVal('detail-product-price') || draft.price || '';
+            draft.base_unit = fieldVal('detail-product-base-unit') || draft.base_unit || '件';
+            draft.stock = fieldVal('detail-product-stock') || draft.stock || '';
+            draft.description = fieldVal('detail-product-description') || draft.description || '';
+            var catEl = root ? root.querySelector('#detail-product-category') : null;
+            if (!catEl && window.ProductModule && window.ProductModule.el) {
+                catEl = window.ProductModule.el('detail-product-category', 'product-category-select');
+            }
             if (catEl && catEl.value) draft.category_id = catEl.value;
             auditState.newProductDrafts[index] = draft;
         }
@@ -2063,8 +2160,22 @@
             return product && (product.sku || product.productSku || product.product_sku || '');
         }
 
+        function getProductUnit(product) {
+            if (!product) return '件';
+            return product.salesUnit || product.sales_unit || product.baseUnit || product.base_unit || product.unit || '件';
+        }
+
+        function getProductUnitById(productId) {
+            var hit = productLookupById[String(productId)];
+            if (hit && hit.unit) return hit.unit;
+            var full = (window.productList || []).find(function (p) {
+                return String(getProductId(p)) === String(productId);
+            });
+            return full ? getProductUnit(full) : '件';
+        }
+
         function formatCurrency(amount) {
-            return '$' + Number(amount || 0).toFixed(2);
+            return '¥' + Number(amount || 0).toFixed(2);
         }
 
         function getOrderStatusLabel(statusCode) {
@@ -2078,7 +2189,7 @@
         }
 
         window.loadBizAccounts = function loadBizAccounts() {
-            return window.wrappedFetch('/api/v1/im/accounts', {
+            var accP = window.wrappedFetch('/api/v1/im/accounts', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             })
@@ -2096,6 +2207,12 @@
                 console.warn('加载收款账户列表失败:', err);
                 bizAccountsList = [];
                 bizAccountById = {};
+            });
+            var prP = window.TM_TenantOps
+                ? window.TM_TenantOps.fetchOpsProfile()
+                : Promise.resolve(null);
+            return Promise.all([accP, prP]).then(function (arr) {
+                window.__tmOpsProfile = arr[1];
             });
         }
 
@@ -2121,6 +2238,11 @@
         function fillBizAccountSelect(selectEl, preferredAccountId) {
             if (!selectEl) return;
             var list = bizAccountsList || [];
+            var profile = window.__tmOpsProfile || null;
+            if (window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(profile)) {
+                selectEl.innerHTML = window.TM_TenantOps.buildAccountOptionsHtml(list, profile, preferredAccountId);
+                return;
+            }
             var pick = preferredAccountId;
             selectEl.innerHTML = '<option value="">— 请选择收款账户 —</option>';
             list.forEach(function (a) {
@@ -2161,10 +2283,24 @@
             return hit ? hit.name : ('客户#' + custId);
         }
 
+        function resolveOrderCustomerName(order) {
+            if (!order) return '--';
+            var fromOrder = order.customerName || order.customer_name;
+            if (fromOrder && String(fromOrder).trim()) {
+                return String(fromOrder).trim();
+            }
+            var custId = order.custId != null ? order.custId : order.cust_id;
+            return getCustomerNameById(custId);
+        }
+
         function getProductDisplayById(productId) {
             const hit = productLookupById[String(productId)];
-            if (!hit) return { name: '产品#' + productId, sku: '' };
-            return { name: hit.name || ('产品#' + productId), sku: hit.sku || '' };
+            if (!hit) return { name: '产品#' + productId, sku: '', unit: getProductUnitById(productId) };
+            return {
+                name: hit.name || ('产品#' + productId),
+                sku: hit.sku || '',
+                unit: hit.unit || getProductUnitById(productId)
+            };
         }
 
         function setInputValueIfExists(id, value) {
@@ -2218,8 +2354,8 @@
                         const pname = (getProductName(product) || '').trim();
                         const psku = (getProductSku(product) || '').trim();
                         if (!pid || !pname) return;
-                        productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku };
-                        productLookupById[String(pid)] = { id: Number(pid), name: pname, sku: psku };
+                        productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
+                        productLookupById[String(pid)] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
                     });
                 }
             })
@@ -2238,7 +2374,7 @@
         function loadCustomerList() {
             const customerSelect = document.getElementById('order-customer');
             
-            window.wrappedFetch('/api/v1/crm/customers', {
+            return window.wrappedFetch('/api/v1/crm/customers', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
@@ -2273,6 +2409,9 @@
                         customerSelect.appendChild(option);
                     }
                 });
+                if (inProgressOrdersCacheFull.length) {
+                    renderInProgressOrders();
+                }
             })
             .catch(error => {
                 console.error('加载客户列表失败:', error);
@@ -2400,7 +2539,7 @@
         function mergeInProgressOrdersFromList(orders, fromFallbackApi) {
             var list = Array.isArray(orders) ? orders : [];
             var inProgress = list.filter(function (order) {
-                return isInProgressOrderStatus(order.orderStatus);
+                return isWorkbenchOpenOrder(order);
             });
             inProgress.sort(function (a, b) {
                 return new Date(b.createTime || 0) - new Date(a.createTime || 0);
@@ -2412,48 +2551,47 @@
             filterInProgressOrders();
         }
 
+        function inProgressListPlaceholder(iconClass, message) {
+            return '<div class="tm-inprogress-list-placeholder flex items-center justify-center py-10 text-slate-400 text-sm">' +
+                '<div class="text-center"><i class="ph ' + iconClass + ' text-xl mb-2"></i><p>' + message + '</p></div></div>';
+        }
+
         function loadInProgressOrders() {
-            const listEl = document.getElementById('inprogress-list');
-            if (!listEl) return;
-            listEl.innerHTML = `
-                <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                    <div class="text-center">
-                        <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
-                        <p>加载进行中单据中...</p>
-                    </div>
-                </div>
-            `;
-            window.wrappedFetch('/api/v1/rd/orders/in-progress', {
+            var listEl = document.getElementById('inprogress-list');
+            if (!listEl) return Promise.resolve();
+            if (!window.wrappedFetch) {
+                listEl.innerHTML = inProgressListPlaceholder('ph-x-circle', '网络组件未就绪，请刷新页面');
+                return Promise.resolve();
+            }
+            listEl.innerHTML = inProgressListPlaceholder('ph-spinner ph-spin', '加载进行中单据中...');
+            return window.wrappedFetch('/api/v1/rd/orders/in-progress', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             })
-            .then(response => response.json())
-            .then(result => {
-                const orders = result && result.success && Array.isArray(result.data) ? result.data : [];
+            .then(function (response) { return response.json(); })
+            .then(function (result) {
+                if (result && result.success === false) {
+                    throw new Error(result.message || '查询进行中订单失败');
+                }
+                var orders = result && result.success && Array.isArray(result.data) ? result.data : [];
                 mergeInProgressOrdersFromList(orders, false);
             })
-            .catch(error => {
+            .catch(function (error) {
                 console.warn('in-progress接口不可用，回退全量订单筛选:', error);
-                window.wrappedFetch('/api/v1/rd/orders', {
+                return window.wrappedFetch('/api/v1/rd/orders', {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 })
-                .then(response => response.json())
-                .then(result => {
-                    const orders = result && result.success && Array.isArray(result.data) ? result.data : [];
+                .then(function (response) { return response.json(); })
+                .then(function (result) {
+                    var orders = result && result.success && Array.isArray(result.data) ? result.data : [];
                     mergeInProgressOrdersFromList(orders, true);
-                })
-                .catch(innerError => {
-                    console.error('加载进行中订单失败:', innerError);
-                    listEl.innerHTML = `
-                        <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                            <div class="text-center">
-                                <i class="ph ph-x-circle text-xl mb-2"></i>
-                                <p>进行中单据加载失败</p>
-                            </div>
-                        </div>
-                    `;
                 });
+            })
+            .catch(function (err) {
+                console.error('加载进行中订单失败:', err);
+                var el = document.getElementById('inprogress-list');
+                if (el) el.innerHTML = inProgressListPlaceholder('ph-x-circle', '进行中单据加载失败');
             });
         }
 
@@ -2461,6 +2599,7 @@
             var orderCode = inProgressFilterState.orderStatus || '';
             var finCode = inProgressFilterState.finStatus || '';
             inProgressOrdersCache = inProgressOrdersCacheFull.filter(function (o) {
+                if (!isWorkbenchOpenOrder(o)) return false;
                 var matchOrder = !orderCode || toCanonicalOrderStatusCode(o.orderStatus) === orderCode;
                 var matchFin = !finCode || normalizeFinStatus(o.finStatus) === finCode;
                 return matchOrder && matchFin;
@@ -2473,13 +2612,12 @@
             const listEl = document.getElementById('inprogress-list');
             if (!listEl) return;
             if (!inProgressOrdersCache.length) {
-                listEl.innerHTML = '<div class="flex items-center justify-center h-full text-slate-400 text-sm"><div class="text-center"><i class="ph ph-check-circle text-xl mb-2"></i><p>暂无进行中单据</p></div></div>';
+                listEl.innerHTML = inProgressListPlaceholder('ph-check-circle', '暂无进行中单据');
                 return;
             }
             listEl.innerHTML = inProgressOrdersCache.map(function (order) {
                 var orderId = order.orderId || order.id;
-                var orderCode = order.orderCode || ('ORD-' + orderId);
-                var custName = getCustomerNameById(order.custId);
+                var custName = resolveOrderCustomerName(order);
                 var statusLabel = getOrderStatusLabel(order.orderStatus);
                 var finLabel = finStatusLabel(order.finStatus);
                 var total = Number(order.totalAmount || 0);
@@ -2493,8 +2631,8 @@
                     : 'font-black text-sm text-brand-600 font-mono';
                 var subLine = received > 0 ? ('应收 ¥' + total.toFixed(0) + ' · 已收 ¥' + received.toFixed(0)) : ('应收 ¥' + total.toFixed(0));
                 return '<div onclick="openOrderDetail(\'' + orderId + '\')" class="p-3 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center gap-2 group">' +
-                    '<div class="min-w-0 flex-1"><p class="text-xs font-bold text-slate-800 truncate">' + orderCode + '</p>' +
-                    '<div class="flex flex-wrap items-center gap-1.5 mt-1"><span class="text-[9px] text-slate-400">' + custName + '</span>' +
+                    '<div class="min-w-0 flex-1"><p class="text-xs font-bold text-slate-800 truncate">' + custName + '</p>' +
+                    '<div class="flex flex-wrap items-center gap-1.5 mt-1">' +
                     '<span class="text-[9px] text-teal-600 font-bold">' + statusLabel + '</span>' +
                     '<span class="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold">' + finLabel + '</span></div>' +
                     '<p class="text-[9px] text-slate-400 mt-0.5">' + subLine + '</p></div>' +
@@ -2503,127 +2641,11 @@
         }
 
 
-        // 加载待确认单据
+        // 待确认单据加载已迁移至 dashboard-workbench.js（TM_PendingOrdersStore）
         function loadPendingOrders() {
-            const pendingOrdersList = document.getElementById('pending-orders-list');
-            
-            // 检查 DOM 元素是否存在
-            if (!pendingOrdersList) {
-                console.error('pending-orders-list 元素不存在');
-                return;
+            if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.refresh === 'function') {
+                return window.TM_PendingOrdersStore.refresh(true);
             }
-            
-            // 显示加载状态
-            pendingOrdersList.innerHTML = `
-                <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                    <div class="text-center">
-                        <i class="ph ph-spinner ph-spin text-xl mb-2"></i>
-                        <p>加载待确认单据中...</p>
-                    </div>
-                </div>
-            `;
-
-            // 调用 API 获取最近 20 条状态为 SUCCESS 或 EXTRACTING 的记录
-            window.wrappedFetch('/api/v1/ai/records', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(async response => {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") === -1) {
-                    const text = await response.text();
-                    throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
-                }
-                return response.json();
-            })
-            .then(data => {
-                // 检查 DOM 元素是否存在
-                if (!pendingOrdersList) {
-                    console.error('pending-orders-list 元素不存在');
-                    return;
-                }
-
-                const rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
-                if (!rows) {
-                    console.error("预期返回数组或 { data: [] }，收到:", data);
-                    pendingOrdersList.innerHTML = `
-                        <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                            <div class="text-center">
-                                <i class="ph ph-x-circle text-xl mb-2"></i>
-                                <p>数据加载失败，请刷新页面重试</p>
-                            </div>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // 过滤状态为 SUCCESS 或 EXTRACTING 的记录，并按时间倒序排序
-                const filteredRecords = rows.filter(record =>
-                    record.status === 'SUCCESS' || record.status === 'EXTRACTING'
-                ).sort((a, b) => new Date(b.createTime || 0) - new Date(a.createTime || 0)).slice(0, 20);
-                pendingRecordsCache = filteredRecords;
-
-                // 渲染待确认单据列表
-                if (filteredRecords.length > 0) {
-                    pendingOrdersList.innerHTML = filteredRecords.map(record => {
-                        const parsed = parseAiEnvelope(record.aiResult || record.ai_result || '');
-                        const customerName = getStructuredCustomerName(parsed.data);
-                        const orderItems = (parsed.data && parsed.data.order_data && Array.isArray(parsed.data.order_data.items))
-                            ? parsed.data.order_data.items : [];
-
-                        // 格式化识别时间
-                        const recognitionTime = record.createTime ? new Date(record.createTime).toLocaleString('zh-CN') : '--';
-
-                        return `
-                            <div onclick="openAuditModal('${record.id}')" class="p-4 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center group">
-                                <div>
-                                    <p class="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition-colors">客户：${customerName}</p>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <span class="text-[9px] text-slate-400 uppercase tracking-tighter">${recognitionTime}</span>
-                                        <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                        <span class="text-[9px] ${record.status === 'SUCCESS' ? 'text-brand-600' : 'text-orange-500'} font-bold">${record.status === 'SUCCESS' ? '已提取' : '提取中'}</span>
-                                    </div>
-                                </div>
-                                <div class="w-10 h-10 bg-brand-50 rounded-full flex items-center justify-center text-brand-600 font-black text-[10px]">
-                                    ${orderItems.length}
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                } else {
-                    pendingOrdersList.innerHTML = `
-                        <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                            <div class="text-center">
-                                <i class="ph ph-check-circle text-xl mb-2"></i>
-                                <p>暂无待确认单据</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            })
-            .catch(error => {
-                console.error('加载待确认单据失败:', error);
-                // 检查是否为 401 错误
-                if (error.status === 401 && !loginExpiredShown) {
-                    loginExpiredShown = true;
-                    // 引导至登录页
-                    window.location.href = '../../login.html';
-                } else {
-                    // 检查 DOM 元素是否存在
-                    if (pendingOrdersList) {
-                        pendingOrdersList.innerHTML = `
-                            <div class="flex items-center justify-center h-full text-slate-400 text-sm">
-                                <div class="text-center">
-                                    <i class="ph ph-x-circle text-xl mb-2"></i>
-                                    <p>加载失败，请刷新页面重试</p>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-            });
         }
 
         // 提单后轮询刷新待确认单据（覆盖异步处理延迟）
@@ -2640,6 +2662,69 @@
         }
 
         // 打开审核弹窗
+        var auditCustomerRegistryReady = null;
+        var auditProductRegistryReady = null;
+
+        function ensureAuditProductRegistryMounted() {
+            if (!window.TmProductRegistry) {
+                return Promise.reject(new Error('产品档案表单模块未加载'));
+            }
+            var root = document.getElementById('audit-product-registry-root');
+            if (!root) {
+                return Promise.reject(new Error('产品信息 Tab 容器不存在'));
+            }
+            if (!auditProductRegistryReady || root.dataset.tmProductMounted !== '1') {
+                auditProductRegistryReady = window.TmProductRegistry.mount(root);
+            }
+            return auditProductRegistryReady;
+        }
+
+        function showAuditOrderError(message, opts) {
+            opts = opts || {};
+            var text = String(message || '操作失败').trim();
+            if (!text) text = '操作失败';
+            if (window.TM_UI && typeof window.TM_UI.openError === 'function') {
+                window.TM_UI.openError(text, {
+                    title: opts.title || (text.indexOf('库存不足') !== -1 ? '库存不足' : '订单确认失败'),
+                    confirmLabel: '我知道了'
+                });
+                return;
+            }
+            if (window.TmConfirm && typeof window.TmConfirm.openError === 'function') {
+                window.TmConfirm.openError(text, { title: opts.title || '订单确认失败' });
+                return;
+            }
+            alert(text);
+        }
+
+        function extractOrderErrorMessage(result, httpStatus) {
+            if (!result || typeof result !== 'object') {
+                return httpStatus ? ('请求失败 (HTTP ' + httpStatus + ')') : '订单创建失败';
+            }
+            return result.message || result.msg || result.error || ('HTTP ' + (httpStatus || ''));
+        }
+
+        function ensureAuditCustomerRegistryMounted() {
+            if (!window.TmCustomerRegistry) {
+                return Promise.reject(new Error('客户档案表单模块未加载'));
+            }
+            var root = document.getElementById('audit-customer-registry-root');
+            if (!root) {
+                return Promise.reject(new Error('客户资料 Tab 容器不存在'));
+            }
+            if (!auditCustomerRegistryReady || root.dataset.tmCustMounted !== '1') {
+                auditCustomerRegistryReady = window.TmCustomerRegistry.mount(root);
+            }
+            return auditCustomerRegistryReady;
+        }
+
+        function fillAuditCustomerFormFromAi(aiStructured) {
+            var root = document.getElementById('audit-customer-registry-root');
+            if (!window.TmCustomerRegistry || !root) return;
+            var prefill = window.TmCustomerRegistry.buildPrefillFromAudit(aiStructured || {});
+            window.TmCustomerRegistry.fill(root, prefill);
+        }
+
         async function openAuditModal(recordId) {
             if (typeof loadCustomerList === 'function' && typeof loadProductList === 'function') {
                 await Promise.all([loadCustomerList(), loadProductList()]);
@@ -2712,16 +2797,16 @@
             }
             setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || getTodayDateInput());
 
-            // 预填新增客户tab
-            const firstNewCustomer = newCustomers[0] || {};
-            setInputValueIfExists('customer-name', firstNewCustomer.name || '');
-            setInputValueIfExists('customer-phone', firstNewCustomer.phone || '');
-            setInputValueIfExists('customer-region', firstNewCustomer.region || '');
-            setInputValueIfExists('customer-address', firstNewCustomer.address || '');
-            setInputValueIfExists('customer-summary', firstNewCustomer.summary || '');
+            await ensureAuditCustomerRegistryMounted().catch(function (err) {
+                console.error('[Audit] 客户档案表单加载失败:', err);
+            });
+            fillAuditCustomerFormFromAi(auditState.aiStructured);
 
             syncAuditNewProductSubtabs();
             if (hasNewProducts(auditState.aiStructured)) {
+                await ensureAuditProductRegistryMounted().catch(function (err) {
+                    console.error('[Audit] 产品档案表单加载失败:', err);
+                });
                 const firstNewProduct = newProducts[0] || {};
                 if (typeof window.TM_initAuditProductForm === 'function') {
                     await window.TM_initAuditProductForm(firstNewProduct, 0);
@@ -2910,8 +2995,6 @@
             if (tabName === 'product') {
                 const pane = document.getElementById('confirm-product-tab');
                 if (pane) pane.classList.remove('hidden');
-                syncAuditNewProductSubtabs();
-                switchAuditNewProductIndex(auditState.activeNewProductIndex || 0);
             } else if (tabName === 'customer') {
                 const pane = document.getElementById('confirm-customer-tab');
                 if (pane) pane.classList.remove('hidden');
@@ -2920,10 +3003,18 @@
                 if (pane) pane.classList.remove('hidden');
             }
 
-            // 添加选中标签按钮的活动状态
             const tabBtn = document.getElementById(`tab-${tabName}`);
             if (tabBtn) tabBtn.classList.add('active');
             updateAuditFooterActions(tabName);
+
+            if (tabName === 'product' && hasNewProducts(auditState.aiStructured)) {
+                ensureAuditProductRegistryMounted().then(function () {
+                    syncAuditNewProductSubtabs();
+                    return switchAuditNewProductIndex(auditState.activeNewProductIndex || 0);
+                }).catch(function (err) {
+                    console.error('[Audit] 产品 Tab 表单加载失败:', err);
+                });
+            }
         }
 
         function updateAuditFooterActions(tabName) {
@@ -2961,29 +3052,7 @@
             set('audit-np-desc', item.description || item.summary || '');
         }
 
-        // 审核弹窗：客户资料高级配置（勿与产品中心 toggleProductDetailAdvanced 同名，避免污染全局）
-        function toggleAuditCustAdvanced(event) {
-            if (event) event.preventDefault();
-            const drawer = document.getElementById('drawer-cust');
-            const icon = document.getElementById('icon-cust') || document.getElementById('advanced-icon-cust');
-            if (!drawer) return;
-
-            if (drawer.classList.contains('open')) {
-                drawer.classList.remove('open');
-                drawer.classList.add('hidden');
-                if (icon) {
-                    icon.classList.remove('ph-caret-up');
-                    icon.classList.add('ph-caret-down');
-                }
-            } else {
-                drawer.classList.remove('hidden');
-                drawer.classList.add('open');
-                if (icon) {
-                    icon.classList.remove('ph-caret-down');
-                    icon.classList.add('ph-caret-up');
-                }
-            }
-        }
+        // 审核弹窗：客户资料高级配置已迁移至 TmCustomerRegistry 共用组件
 
         async function saveNewProduct() {
             if (!window.ProductModule || typeof window.ProductModule.saveAuditNewProduct !== 'function') {
@@ -3055,16 +3124,20 @@
 
         // 保存新客户信息
         async function saveNewCustomer() {
-            const customerData = {
-                name: document.getElementById('customer-name').value,
-                phone: document.getElementById('customer-phone').value,
-                email: document.getElementById('customer-email').value,
-                source: document.getElementById('customer-source').value,
-                custStatus: document.getElementById('customer-status').value,
-                region: document.getElementById('customer-region').value,
-                address: document.getElementById('customer-address').value,
-                summary: document.getElementById('customer-summary').value
-            };
+            const registryRoot = document.getElementById('audit-customer-registry-root');
+            if (!window.TmCustomerRegistry || !registryRoot) {
+                alert('客户档案表单尚未加载，请刷新后重试');
+                return;
+            }
+            const customerData = window.TmCustomerRegistry.readPayloadWithMeta(registryRoot, {
+                source: 'OTHER',
+                custStatus: 'ACTIVE'
+            });
+            if (!customerData.name) {
+                alert('客户姓名不能为空');
+                return;
+            }
+            if (!customerData.phone) customerData.phone = null;
 
             try {
                 const response = await window.wrappedFetch('/api/v1/crm/customers/save', {
@@ -3137,9 +3210,8 @@
             const custId = document.getElementById('order-customer').value;
             const deliveryDate = document.getElementById('order-delivery-date').value || getTodayDateInput();
             
-            // 检查客户 ID 是否为空
             if (!custId) {
-                alert('请选择客户');
+                showAuditOrderError('请选择客户', { title: '无法下单' });
                 return;
             }
 
@@ -3168,9 +3240,8 @@
                 });
             });
 
-            // 检查是否有产品 ID 为空
             if (hasEmptyProductId) {
-                alert('请选择所有产品');
+                showAuditOrderError('请选择所有产品', { title: '无法下单' });
                 return;
             }
 
@@ -3195,32 +3266,33 @@
                     },
                     body: JSON.stringify(orderData)
                 });
-
-                if (response.ok) {
-                    await response.json();
-                    // 删除已确认的待确认单据
-                    if (auditState.currentRecordId) {
-                        await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId, { method: 'DELETE' });
-                    }
-                    showToast('订单确认成功，已生成待支付订单');
-                    closeAuditModal();
-                    // 重新加载待确认单据列表
-                    loadPendingOrders();
-                    // 重新加载进行中订单列表
-                    loadInProgressOrders();
-                } else {
-                    const error = await response.json();
-                    alert('订单确认失败: ' + (error.message || '未知错误'));
+                const raw = await response.text();
+                const result = safeJsonParse(raw) || {};
+                const ok = response.ok && result.success !== false;
+                if (!ok) {
+                    const message = extractOrderErrorMessage(result, response.status);
+                    showAuditOrderError(message);
+                    return;
                 }
+
+                if (auditState.currentRecordId) {
+                    try {
+                        await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId, { method: 'DELETE' });
+                    } catch (delErr) {
+                        console.warn('待确认单据删除失败（订单已创建）:', delErr);
+                    }
+                }
+                showToast('订单确认成功，已生成待支付订单');
+                closeAuditModal();
+                loadPendingOrders();
+                await loadInProgressOrders();
             } catch (error) {
                 console.error('确认订单失败:', error);
-                // 检查是否为 401 错误
                 if (error.status === 401 && !loginExpiredShown) {
                     loginExpiredShown = true;
-                    // 引导至登录页
                     window.location.href = '../../login.html';
                 } else {
-                    alert('确认订单失败，请重试');
+                    showAuditOrderError(error.message || '确认订单失败，请重试');
                 }
             }
         }
@@ -3292,15 +3364,16 @@
                     throw new Error((result && result.message) || '保存失败');
                 }
                 var updated = result.data || {};
-                var terminal = isTerminalOrderStatus(status);
+                updated.orderStatus = status;
+                updated.finStatus = body.finStatus;
                 var oid = String(currentDetailOrderId);
-                if (terminal) {
+                if (isClosedWorkbenchOrder(updated)) {
                     inProgressOrdersCacheFull = inProgressOrdersCacheFull.filter(function (o) {
                         return String(o.orderId || o.id) !== oid;
                     });
-                    closeOrderDetail();
                     filterInProgressOrders();
-                    showToast('订单已' + getOrderStatusLabel(status) + '，已从进行中列表移除');
+                    closeOrderDetail();
+                    showToast('订单已完成，已从进行中列表移除');
                     return;
                 }
                 inProgressOrdersCacheFull.forEach(function (o) {
@@ -3309,9 +3382,8 @@
                         o.orderStatus = status;
                     }
                 });
-                currentDetailOrder = updated;
-                syncDetailFinStatusUI(updated);
                 filterInProgressOrders();
+                closeOrderDetail();
                 showToast('订单已保存');
             })
             .catch(function (err) {
@@ -3347,6 +3419,8 @@
             }
             if (!orderWarehousesList.length) {
                 await loadOrderWarehouses();
+            } else {
+                populateOrderWarehouseSelect(order.warehouseId != null ? order.warehouseId : order.warehouse_id);
             }
             currentDetailOrderId = order.orderId || order.id;
             currentDetailOrder = order;
@@ -3366,20 +3440,25 @@
                 hintEl.textContent = '';
             }
             var auxDetails = document.getElementById('detail-aux-details');
-            if (auxDetails) auxDetails.open = true;
-            document.getElementById('detail-order-id').textContent = order.orderCode || ('ORD-' + orderId);
+            if (auxDetails) auxDetails.open = false;
+            if (window.TM_OrderModal && window.TM_OrderModal.setAuxOpen) {
+                window.TM_OrderModal.setAuxOpen('detail-aux-details', false);
+            }
+            var custName = resolveOrderCustomerName(order);
+            var orderCode = order.orderCode || ('ORD-' + orderId);
+            var codeEl = document.getElementById('detail-order-code');
+            if (codeEl) codeEl.textContent = orderCode;
             const dateLabel = order.createTime ? normalizeDateInput(order.createTime) : '--';
             const sub = document.getElementById('detail-order-meta');
-            if (sub) sub.textContent = '创建时间: ' + dateLabel;
-            setInputValueIfExists('detail-customer-name', getCustomerNameById(order.custId));
+            if (sub) sub.textContent = custName + ' · 创建 ' + dateLabel;
+            setInputValueIfExists('detail-customer-name', custName);
             setInputValueIfExists('detail-delivery-date', normalizeDateInput(order.deliveryDate));
             fillDetailOrderStatusSelect(order.orderStatus);
             fillDetailReceiptAccountSelect(order);
             var finSel = document.getElementById('detail-fin-status');
             if (finSel) finSel.value = normalizeFinStatus(order.finStatus);
-            var whSel = document.getElementById('detail-order-warehouse');
-            if (whSel && order.warehouseId) whSel.value = String(order.warehouseId);
-            syncDetailFinStatusUI(order);
+            populateOrderWarehouseSelect(order.warehouseId != null ? order.warehouseId : order.warehouse_id);
+            syncDetailFinStatusUI(order, { applyOrderFin: true });
 
             window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
                 method: 'GET',
@@ -3393,8 +3472,8 @@
                     fillDetailOrderStatusSelect(order.orderStatus);
                     fillDetailReceiptAccountSelect(order);
                     if (finSel) finSel.value = normalizeFinStatus(order.finStatus);
-                    if (whSel && order.warehouseId) whSel.value = String(order.warehouseId);
-                    syncDetailFinStatusUI(order);
+                    populateOrderWarehouseSelect(order.warehouseId != null ? order.warehouseId : order.warehouse_id);
+                    syncDetailFinStatusUI(order, { applyOrderFin: true });
                 }
             })
             .catch(function () { /* 列表数据已展示 */ });
@@ -3406,18 +3485,7 @@
             .then(response => response.json())
             .then(result => {
                 const items = result && result.success && Array.isArray(result.data) ? result.data : [];
-                const tbody = document.getElementById('detail-order-items-body');
-                if (!tbody) return;
-                if (!items.length) {
-                    tbody.innerHTML = '<tr><td class="px-3 py-4 text-center text-slate-400" colspan="3">暂无商品明细</td></tr>';
-                } else {
-                    tbody.innerHTML = items.map(item => {
-                        const p = getProductDisplayById(item.productId);
-                        return '<tr><td class="px-3 py-2"><p class="font-bold">' + p.name + '</p></td>' +
-                            '<td class="px-3 py-2 text-center font-mono">' + Number(item.quantity || 0) + '</td>' +
-                            '<td class="px-3 py-2 text-right font-mono font-bold">' + formatCurrency(item.totalAmount || 0) + '</td></tr>';
-                    }).join('');
-                }
+                renderDetailOrderItems(items);
                 updateDetailRemainingHint(order);
             })
             .catch(error => {
@@ -4195,18 +4263,11 @@
         // 处理图片数据
         async function processImageWithAIService(imageBlob) {
             try {
-                // 确保 OSS 服务已初始化
-                if (!OSSService) {
-                    await initOSSService();
-                    if (!OSSService) {
-                        throw new Error('OSS 服务初始化失败');
-                    }
+                var ossUpload = resolveTmOssUpload();
+                if (!ossUpload || typeof ossUpload.uploadDashboardImage !== 'function') {
+                    throw new Error('OSS 上传模块未加载，请刷新页面');
                 }
-                
-                // 上传到 OSS
-                const fileName = `image-${Date.now()}.jpg`;
-                const result = await OSSService.put(fileName, imageBlob);
-                var imageUrl = (result && (result.url || (result.res && result.res.requestUrls && result.res.requestUrls[0]))) || '';
+                var imageUrl = await ossUpload.uploadDashboardImage(imageBlob);
                 if (!imageUrl) {
                     throw new Error('上传成功但未获得图片访问地址，请检查 OSS 配置');
                 }
@@ -4417,7 +4478,9 @@
         window.loadCustomerList = loadCustomerList;
         window.loadProductList = loadProductList;
     </script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260525mo"></script>
+    <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
+    <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260526inprog"></script>
 </body>
 </html>
 

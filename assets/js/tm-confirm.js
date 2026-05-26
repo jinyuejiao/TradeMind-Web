@@ -63,7 +63,8 @@
 
         var danger = opts.danger === true || opts.confirmLabel === '确认删除';
         var success = opts.variant === 'success' || opts.success === true;
-        var hideCancel = opts.hideCancel === true || success;
+        var error = opts.variant === 'error' || opts.error === true;
+        var hideCancel = opts.hideCancel === true || success || error;
         var cancelBtn = modal.querySelector('[data-tm-confirm-cancel]');
         if (iconWrap) {
             var iconClass = 'ph ph-warning-circle text-3xl';
@@ -71,6 +72,9 @@
             if (danger) {
                 wrapClass = 'bg-rose-100 text-rose-500';
                 iconClass = 'ph ph-trash text-3xl';
+            } else if (error) {
+                wrapClass = 'bg-rose-50 text-rose-600';
+                iconClass = 'ph ph-warning-circle text-3xl';
             } else if (success) {
                 wrapClass = 'bg-teal-50 text-teal-600';
                 iconClass = 'ph ph-check-circle text-3xl';
@@ -83,6 +87,8 @@
             okBtn.textContent = opts.confirmLabel || (success ? '好的' : '确定');
             var okClass = 'flex-1 py-3 rounded-2xl text-sm font-bold text-white transition-colors shadow-lg ';
             if (danger) {
+                okBtn.className = okClass + 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25';
+            } else if (error) {
                 okBtn.className = okClass + 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25';
             } else if (success) {
                 okBtn.className = okClass + 'bg-[#0D9488] hover:bg-[#0F766E] shadow-teal-500/25';
@@ -117,9 +123,22 @@
         });
     }
 
+    function openError(message, opts) {
+        opts = opts || {};
+        open({
+            title: opts.title || '操作失败',
+            message: message || '请稍后重试',
+            confirmLabel: opts.confirmLabel || '我知道了',
+            variant: 'error',
+            hideCancel: true,
+            onConfirm: opts.onConfirm
+        });
+    }
+
     window.TmConfirm = {
         open: open,
         openSuccess: openSuccess,
+        openError: openError,
         close: close
     };
 })();

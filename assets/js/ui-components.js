@@ -118,6 +118,9 @@
                         <span class="font-bold text-slate-800 truncate">${pageTitle}</span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof TM_MerchantFeedback!=='undefined'&&TM_MerchantFeedback.open()" title="问题与建议" aria-label="问题与建议">
+                            <i class="ph ph-chat-circle-dots text-xl"></i>
+                        </button>
                         <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof openMemberModal==='function'&&openMemberModal()" title="会员中心" aria-label="会员中心">
                             <i class="ph ph-user-circle text-xl"></i>
                         </button>

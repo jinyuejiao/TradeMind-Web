@@ -2331,6 +2331,55 @@ function ensureMobileShellAssets() {
     document.head.appendChild(script);
 }
 
+/** 站点根路径静态资源（勿用 resolveStaticPageUrl，避免 embed 模块页解析成 /modules/.../assets/） */
+function siteRootAsset(path) {
+    var p = String(path || '').replace(/^\//, '');
+    return '/' + p;
+}
+
+/** 独立模块页按需加载「问题与建议」弹窗（主壳 index-app 已在 HTML 中静态引入） */
+function ensureMerchantFeedbackAssets() {
+    if (window.TM_MerchantFeedback) {
+        return;
+    }
+    if (document.getElementById('tm-app-header')) {
+        return;
+    }
+    try {
+        if (window.parent && window.parent !== window && window.parent.TM_MerchantFeedback) {
+            window.TM_MerchantFeedback = window.parent.TM_MerchantFeedback;
+            if (window.parent.TMOssUpload) {
+                window.TMOssUpload = window.parent.TMOssUpload;
+            }
+            return;
+        }
+    } catch (eParent) { /* ignore */ }
+    var cssId = 'tm-merchant-feedback-css';
+    if (!document.getElementById(cssId)) {
+        var link = document.createElement('link');
+        link.id = cssId;
+        link.rel = 'stylesheet';
+        link.href = siteRootAsset('assets/css/tm-merchant-feedback.css?v=20260526fb2');
+        document.head.appendChild(link);
+    }
+    function appendScript(id, src, onload) {
+        if (document.getElementById(id)) {
+            if (onload) onload();
+            return;
+        }
+        var s = document.createElement('script');
+        s.id = id;
+        s.src = siteRootAsset(src);
+        s.onload = onload || null;
+        document.head.appendChild(s);
+    }
+    appendScript('tm-oss-path-js', 'assets/js/tm-oss-path.js?v=20260527', function () {
+        appendScript('tm-oss-upload-js', 'assets/js/tm-oss-upload.js?v=20260527', function () {
+            appendScript('tm-merchant-feedback-js', 'assets/js/tm-merchant-feedback.js?v=20260526fb3');
+        });
+    });
+}
+
 window.injectCommonUI = function() {
     console.log('========== TradeMindUI: injectCommonUI 开始执行 ==========');
     console.log('TradeMindUI.injectCommonUI: 函数被调用');
@@ -2346,6 +2395,10 @@ window.injectCommonUI = function() {
         
         const pathLower = (window.location.pathname || '').toLowerCase();
         const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
+
+        if (!isPublicAuthPage) {
+            ensureMerchantFeedbackAssets();
+        }
 
         // 1. 弹窗注入（登录/注册页不注入，避免无 Tailwind 时 .hidden 失效导致会员中心等内容露出）
         console.log('TradeMindUI.injectCommonUI: 步骤1 - 检查并注入弹窗模板');
@@ -2712,8 +2765,8 @@ window.TradeMindUI = {
                     <span class="font-bold text-slate-800">${pageTitle}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button type="button" class="tm-header-icon-btn relative text-slate-400 hover:text-brand-600 transition" title="通知" aria-label="通知">
-                        <i class="ph ph-bell text-xl"></i>
+                    <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof TM_MerchantFeedback!=='undefined'&&TM_MerchantFeedback.open()" title="问题与建议" aria-label="问题与建议">
+                        <i class="ph ph-chat-circle-dots text-xl"></i>
                     </button>
                     <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof openMemberModal==='function'&&openMemberModal()" title="会员中心" aria-label="会员中心">
                         <i class="ph ph-user-circle text-xl"></i>

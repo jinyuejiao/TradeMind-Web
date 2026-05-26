@@ -1,0 +1,59 @@
+/* 商户问题与建议弹窗 */
+#tm-feedback-modal.tm-feedback-open {
+    display: flex;
+}
+
+#tm-feedback-modal {
+    display: none;
+}
+
+.tm-feedback-sheet {
+    width: 100%;
+    max-width: 32rem;
+    max-height: min(92vh, 720px);
+}
+
+@media (max-width: 767px) {
+    #tm-feedback-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .tm-feedback-sheet {
+        max-width: 100%;
+        border-radius: 1.25rem 1.25rem 0 0;
+        max-height: 92vh;
+    }
+}
+
+.tm-feedback-thumb {
+    aspect-ratio: 1;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    position: relative;
+    background: #f1f5f9;
+}
+
+.tm-feedback-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tm-feedback-add-cell {
+    aspect-ratio: 1;
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.tm-feedback-add-cell:hover {
+    border-color: #14b8a6;
+    color: #0d9488;
+}

@@ -1,0 +1,94 @@
+<div class="space-y-6 fade-in" id="ops-feedback-page">
+    <div class="tm-ops-glass rounded-tm-3xl p-5 md:p-6">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-1"><i class="ph ph-chats-circle text-ops-600"></i> 用户问题与建议</h2>
+        <p class="text-[10px] text-slate-500 leading-relaxed">查看商户提交的问题与建议，更新处理状态并记录跟进备注。</p>
+        <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/feedback · PATCH .../status · POST .../followups</p>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="ops-fb-summary-cards"></div>
+
+    <div class="tm-ops-glass rounded-tm-3xl p-3 md:p-4">
+        <form class="ops-fb-filter-bar" role="search" autocomplete="off" onsubmit="return false;">
+            <div class="ops-fb-filter-item ops-fb-filter-item--status">
+                <span class="ops-fb-filter-label">状态</span>
+                <select id="ops-fb-filter-status" class="ops-fb-filter-control ops-fb-filter-select" aria-label="状态">
+                    <option value="ALL">全部</option>
+                    <option value="OPEN">待处理</option>
+                    <option value="IN_PROGRESS">处理中</option>
+                    <option value="RESOLVED">已解决</option>
+                    <option value="CLOSED">已关闭</option>
+                </select>
+            </div>
+            <div class="ops-fb-filter-item ops-fb-filter-item--tenant">
+                <span class="ops-fb-filter-label">租户</span>
+                <input type="text" id="ops-fb-filter-tenant" name="tm_ops_fb_tenant_q" placeholder="租户 ID" class="ops-fb-filter-control ops-fb-filter-tenant" aria-label="租户 ID" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" value="" />
+            </div>
+            <div class="ops-fb-filter-item ops-fb-filter-item--date">
+                <span class="ops-fb-filter-label ops-fb-filter-label--date">起</span>
+                <input type="date" id="ops-fb-filter-from" name="tm_ops_fb_date_from" class="ops-fb-filter-control ops-fb-filter-date" aria-label="开始日期" autocomplete="off" />
+            </div>
+            <div class="ops-fb-filter-item ops-fb-filter-item--date">
+                <span class="ops-fb-filter-label ops-fb-filter-label--date">止</span>
+                <input type="date" id="ops-fb-filter-to" name="tm_ops_fb_date_to" class="ops-fb-filter-control ops-fb-filter-date" aria-label="结束日期" autocomplete="off" />
+            </div>
+            <span class="ops-fb-filter-spacer" aria-hidden="true"></span>
+            <button type="button" id="ops-fb-btn-refresh" class="ops-fb-filter-refresh">刷新</button>
+        </form>
+    </div>
+
+    <div class="tm-ops-glass rounded-tm-3xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-ops-50/80 text-[10px] uppercase font-bold text-ops-800">
+                    <tr>
+                        <th class="px-4 py-3">单号</th>
+                        <th class="px-4 py-3">租户</th>
+                        <th class="px-4 py-3">提交人</th>
+                        <th class="px-4 py-3">摘要</th>
+                        <th class="px-4 py-3 text-center">图</th>
+                        <th class="px-4 py-3">状态</th>
+                        <th class="px-4 py-3">时间</th>
+                        <th class="px-4 py-3 text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="ops-fb-tbody" class="divide-y divide-indigo-50 bg-white/60"></tbody>
+            </table>
+        </div>
+        <p id="ops-fb-empty" class="hidden text-center text-slate-400 text-xs py-10">暂无反馈记录</p>
+    </div>
+</div>
+
+<div id="ops-fb-drawer" class="hidden fixed inset-0 z-[210]">
+    <div class="absolute inset-0 bg-slate-900/40" id="ops-fb-drawer-backdrop"></div>
+    <aside class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col border-l border-indigo-100">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+            <div class="min-w-0">
+                <p class="text-[10px] text-slate-400 font-mono" id="ops-fb-drawer-no"></p>
+                <h3 class="text-sm font-bold text-slate-800 truncate">反馈详情</h3>
+            </div>
+            <button type="button" id="ops-fb-drawer-close" class="w-9 h-9 rounded-full text-slate-400 hover:bg-slate-100 flex items-center justify-center"><i class="ph ph-x text-lg"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4 list-scrollbar-ops" id="ops-fb-drawer-body"></div>
+        <div class="shrink-0 border-t border-slate-100 p-4 space-y-3 bg-slate-50/80">
+            <div class="flex flex-wrap gap-2 items-center">
+                <label class="text-[10px] font-bold text-slate-500">状态</label>
+                <select id="ops-fb-drawer-status" class="text-xs border border-slate-200 rounded-xl px-2 py-1.5 bg-white flex-1 min-w-[7rem]">
+                    <option value="OPEN">待处理</option>
+                    <option value="IN_PROGRESS">处理中</option>
+                    <option value="RESOLVED">已解决</option>
+                    <option value="CLOSED">已关闭</option>
+                </select>
+                <button type="button" id="ops-fb-btn-save-status" class="px-3 py-1.5 rounded-xl bg-ops-600 text-white text-[10px] font-bold">更新状态</button>
+            </div>
+            <textarea id="ops-fb-drawer-note" rows="2" placeholder="添加跟进备注…" class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 resize-none"></textarea>
+            <div class="flex gap-2">
+                <button type="button" id="ops-fb-btn-add-note" class="flex-1 py-2.5 rounded-xl border border-ops-200 text-ops-700 text-xs font-bold hover:bg-ops-50">保存备注</button>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<div id="ops-fb-lightbox" class="hidden fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/80">
+    <button type="button" id="ops-fb-lightbox-close" class="absolute top-4 right-4 text-white"><i class="ph ph-x text-2xl"></i></button>
+    <img id="ops-fb-lightbox-img" src="" alt="预览" class="max-w-full max-h-[90vh] rounded-lg shadow-2xl" />
+</div>

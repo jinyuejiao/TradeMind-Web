@@ -10,9 +10,10 @@
     var TM_ORDER_STATUS_FALLBACK = {
         D010001: '待配货',
         D010002: '拣货中',
-        D010003: '已发货',
+        D010003: '全部发货',
         D010004: '已签收',
-        D010005: '退货'
+        D010005: '退货',
+        D010006: '部分发货'
     };
 
     var TM_ORDER_FIN_FALLBACK = {
@@ -46,7 +47,8 @@
         if (!raw) return '';
         if (raw === 'PENDING' || raw === 'ALLOCATING') return 'D010001';
         if (raw === 'PROCESSING' || raw === 'PICKING') return 'D010002';
-        if (raw === 'SHIPPED') return 'D010003';
+        if (raw === 'SHIPPED' || raw === 'FULL_SHIPPED') return 'D010003';
+        if (raw === 'PARTIAL_SHIPPED' || raw === 'PARTIALSHIP') return 'D010006';
         if (raw === 'COMPLETED' || raw === 'RECEIVED') return 'D010004';
         if (raw === 'CANCELLED' || raw === 'CANCELED' || raw === 'RETURNED') return 'D010005';
         var m = raw.match(/^D010[_-]?0*(\d{1,3})$/);
@@ -182,6 +184,58 @@
             || '—';
     }
 
+    function normalizeFinStatus(statusCode) {
+        var raw = String(statusCode || 'UNPAID').trim().toUpperCase();
+        if (raw === 'PAID' || raw === 'FULL_PAID') return 'SETTLED';
+        if (raw === 'PARTIAL' || raw === 'PARTIALPAID') return 'PARTIAL_PAID';
+        if (raw === 'BAD_DEBT' || raw === 'BADDEBT') return 'BAD_DEBT';
+        return raw || 'UNPAID';
+    }
+
+    function getLogisticsBadgeClass(statusCode) {
+        var code = toCanonicalOrderStatusCode(statusCode);
+        switch (code) {
+            case 'D010004':
+                return 'crm-status-badge bg-emerald-50 text-emerald-700';
+            case 'D010005':
+                return 'crm-status-badge bg-slate-100 text-slate-600';
+            case 'D010003':
+                return 'crm-status-badge bg-blue-50 text-blue-700';
+            case 'D010002':
+                return 'crm-status-badge bg-sky-50 text-sky-700';
+            case 'D010006':
+                return 'crm-status-badge bg-indigo-50 text-indigo-700';
+            default:
+                return 'crm-status-badge bg-teal-50 text-teal-700';
+        }
+    }
+
+    function getFinBadgeClass(statusCode) {
+        var fin = normalizeFinStatus(statusCode);
+        switch (fin) {
+            case 'SETTLED':
+                return 'crm-status-badge bg-emerald-50 text-emerald-700';
+            case 'PARTIAL_PAID':
+                return 'crm-status-badge bg-sky-50 text-sky-700';
+            case 'BAD_DEBT':
+                return 'crm-status-badge bg-slate-100 text-slate-600';
+            default:
+                return 'crm-status-badge bg-amber-50 text-amber-700';
+        }
+    }
+
+    function renderOrderStatusBadgesHtml(order) {
+        var logisticsLabel = getLogisticsStatusLabel(order && (order.orderStatus || order.order_status));
+        var finLabel = getFinStatusLabel(order && (order.finStatus || order.fin_status || 'UNPAID'));
+        var logisticsClass = getLogisticsBadgeClass(order && (order.orderStatus || order.order_status));
+        var finClass = getFinBadgeClass(order && (order.finStatus || order.fin_status || 'UNPAID'));
+        return ''
+            + '<span class="' + logisticsClass + '" title="' + escapeHtml(logisticsLabel) + '">'
+            + '<span class="truncate">' + escapeHtml(logisticsLabel) + '</span></span>'
+            + '<span class="' + finClass + '" title="' + escapeHtml(finLabel) + '">'
+            + '<span class="truncate">' + escapeHtml(finLabel) + '</span></span>';
+    }
+
     function formatOrderStatusPair(order) {
         var logistics = getLogisticsStatusLabel(order && (order.orderStatus || order.order_status));
         var fin = getFinStatusLabel(order && (order.finStatus || order.fin_status || 'UNPAID'));
@@ -266,7 +320,7 @@
             var summaryDisplay = items.length
                 ? summarizeOrderItems(items, order)
                 : summaryFull;
-            var statusPair = formatOrderStatusPair(order);
+            var statusBadges = renderOrderStatusBadgesHtml(order);
             var amount = order.totalAmount != null ? order.totalAmount : (order.total_amount != null ? order.total_amount : 0);
 
             return ''
@@ -274,9 +328,7 @@
                 + '  <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm shrink-0"></span>'
                 + '  <div class="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 mb-1 min-w-0">'
                 + '    <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase shrink-0">' + escapeHtml(timeText) + '</p>'
-                + '    <span class="inline-flex max-w-[min(100%,14rem)] items-center rounded-md border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold leading-tight text-brand-600" title="' + escapeHtml(statusPair) + '">'
-                + '      <span class="truncate">' + escapeHtml(statusPair) + '</span>'
-                + '    </span>'
+                + '    <div class="flex flex-wrap items-center justify-end gap-1.5 min-w-0 max-w-full">' + statusBadges + '</div>'
                 + '  </div>'
                 + '  <p class="text-xs font-bold text-slate-800 tracking-tight truncate" title="' + escapeHtml(summaryFull) + '">' + escapeHtml(summaryDisplay) + '</p>'
                 + '  <p class="mt-1 text-xs font-bold text-brand-600">订单金额: ¥' + escapeHtml(amount) + '</p>'
@@ -335,6 +387,9 @@
         resetTimelinePlaceholder: resetTimelinePlaceholder,
         renderTimeline: renderTimeline,
         formatOrderStatusPair: formatOrderStatusPair,
+        renderOrderStatusBadgesHtml: renderOrderStatusBadgesHtml,
+        getLogisticsBadgeClass: getLogisticsBadgeClass,
+        getFinBadgeClass: getFinBadgeClass,
         buildOrderItemsSummary: buildOrderItemsSummary,
         truncateOrderSummary: truncateOrderSummary,
         summarizeOrderItems: summarizeOrderItems,

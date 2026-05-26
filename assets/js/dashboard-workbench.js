@@ -24,6 +24,18 @@
         }
     }
 
+    function pendingListPlaceholderHtml(iconClass, message) {
+        return '<div class="tm-pending-list-placeholder flex items-center justify-center py-10 text-slate-400 text-sm">' +
+            '<div class="text-center"><i class="ph ' + iconClass + ' text-xl mb-2"></i><p>' + message + '</p></div></div>';
+    }
+
+    function clearPendingListPlaceholders(list) {
+        if (!list) return;
+        list.querySelectorAll(':scope > :not(.pending-draft-card)').forEach(function (el) {
+            el.remove();
+        });
+    }
+
     /* ---------- 待确认单据 Store ---------- */
     var TM_PendingOrdersStore = {
         records: [],
@@ -36,9 +48,7 @@
             if (!list || !window.wrappedFetch) return Promise.resolve();
 
             if (showSpinner && !this.initialLoaded) {
-                list.innerHTML =
-                    '<div class="flex items-center justify-center h-full text-slate-400 text-sm">' +
-                    '<div class="text-center"><i class="ph ph-spinner ph-spin text-xl mb-2"></i><p>加载待确认单据中...</p></div></div>';
+                list.innerHTML = pendingListPlaceholderHtml('ph-spinner ph-spin', '加载待确认单据中...');
             } else {
                 list.classList.add('tm-pending-list-refreshing');
             }
@@ -61,9 +71,7 @@
                     list.classList.remove('tm-pending-list-refreshing');
                     var rows = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
                     if (!rows) {
-                        list.innerHTML =
-                            '<div class="flex items-center justify-center h-full text-slate-400 text-sm">' +
-                            '<div class="text-center"><i class="ph ph-x-circle text-xl mb-2"></i><p>数据加载失败</p></div></div>';
+                        list.innerHTML = pendingListPlaceholderHtml('ph-x-circle', '数据加载失败');
                         return;
                     }
                     var filtered = rows
@@ -86,20 +94,18 @@
                     list.classList.remove('tm-pending-list-refreshing');
                     console.error('[PendingStore] 加载失败', err);
                     if (!self.initialLoaded) {
-                        list.innerHTML =
-                            '<div class="flex items-center justify-center h-full text-slate-400 text-sm">' +
-                            '<div class="text-center"><i class="ph ph-x-circle text-xl mb-2"></i><p>加载失败，请刷新</p></div></div>';
+                        list.innerHTML = pendingListPlaceholderHtml('ph-x-circle', '加载失败，请刷新');
                     }
                 });
         },
 
         renderList: function (list, records) {
             if (!records.length) {
-                list.innerHTML =
-                    '<div class="flex items-center justify-center h-full text-slate-400 text-sm">' +
-                    '<div class="text-center"><i class="ph ph-check-circle text-xl mb-2"></i><p>暂无待确认单据</p></div></div>';
+                list.innerHTML = pendingListPlaceholderHtml('ph-check-circle', '暂无待确认单据');
                 return;
             }
+
+            clearPendingListPlaceholders(list);
 
             var existingMap = {};
             list.querySelectorAll('.pending-draft-card[data-record-id]').forEach(function (el) {
@@ -402,16 +408,22 @@
     }
 
     async function saveCustomerInline(name, phone) {
-        var customerData = {
+        var registryRoot = document.getElementById('audit-customer-registry-root');
+        var fromRegistry = (window.TmCustomerRegistry && registryRoot)
+            ? window.TmCustomerRegistry.readPayloadWithMeta(registryRoot, { source: 'OTHER', custStatus: 'ACTIVE' })
+            : null;
+        var customerData = fromRegistry || {
             name: name,
-            phone: phone,
-            email: (document.getElementById('customer-email') && document.getElementById('customer-email').value) || '',
-            source: (document.getElementById('customer-source') && document.getElementById('customer-source').value) || 'OTHER',
-            custStatus: (document.getElementById('customer-status') && document.getElementById('customer-status').value) || 'ACTIVE',
-            region: (document.getElementById('customer-region') && document.getElementById('customer-region').value) || '',
-            address: (document.getElementById('customer-address') && document.getElementById('customer-address').value) || '',
-            summary: (document.getElementById('customer-summary') && document.getElementById('customer-summary').value) || ''
+            email: '',
+            source: 'OTHER',
+            custStatus: 'ACTIVE',
+            region: '',
+            address: '',
+            summary: ''
         };
+        if (name) customerData.name = name;
+        if (phone) customerData.phone = phone;
+        else if (!customerData.phone) customerData.phone = null;
         var response = await window.wrappedFetch('/api/v1/crm/customers/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -435,10 +447,14 @@
         var val = customerSelect.value;
         if (/^\d+$/.test(val)) return parseInt(val, 10);
 
-        var nameEl = document.getElementById('customer-name');
-        var phoneEl = document.getElementById('customer-phone');
-        var name = nameEl ? nameEl.value.trim() : '';
-        var phone = phoneEl ? phoneEl.value.trim() : '';
+        var registryRoot = document.getElementById('audit-customer-registry-root');
+        var registryPayload = (window.TmCustomerRegistry && registryRoot)
+            ? window.TmCustomerRegistry.readPayload(registryRoot)
+            : null;
+        var nameEl = registryRoot && registryRoot.querySelector('#cust-name');
+        var phoneEl = registryRoot && registryRoot.querySelector('#cust-phone');
+        var name = registryPayload ? registryPayload.name : (nameEl ? nameEl.value.trim() : '');
+        var phone = registryPayload ? (registryPayload.phone || '') : (phoneEl ? phoneEl.value.trim() : '');
         if (window.auditState && window.auditState.aiStructured) {
             var nc = window.auditState.aiStructured.new_customers_found;
             if (Array.isArray(nc) && nc[0]) {
@@ -451,9 +467,8 @@
             name = opt ? (opt.getAttribute('data-name') || opt.textContent || '').trim() : '';
         }
         if (!name) throw new Error('无法确定客户名称，请先填写客户资料');
-        if (!phone) phone = '00000000000';
 
-        var custId = await saveCustomerInline(name, phone);
+        var custId = await saveCustomerInline(name, phone || null);
         if (window.auditState && window.auditState.aiStructured) {
             if (!window.auditState.aiStructured.customer_data) {
                 window.auditState.aiStructured.customer_data = {};
@@ -712,6 +727,45 @@
         return TM_MANUAL_FIN_LABELS[c] || c;
     }
 
+    function tmRoundMoney(v) {
+        return window.TM_OrderModal && window.TM_OrderModal.roundMoney
+            ? window.TM_OrderModal.roundMoney(v)
+            : Math.round((Number(v) || 0) * 100) / 100;
+    }
+
+    function tmGetManualOrderTotal() {
+        var totalEl = document.getElementById('manual-pay-total');
+        if (!totalEl) return 0;
+        var txt = String(totalEl.textContent || '').replace(/[¥$,]/g, '').trim();
+        return tmRoundMoney(parseFloat(txt) || 0);
+    }
+
+    function tmRefreshManualItemsLayout() {
+        if (window.TM_OrderModal && window.TM_OrderModal.refreshItemsScroll) {
+            window.TM_OrderModal.refreshItemsScroll('manual-order-modal');
+        }
+    }
+
+    function tmSyncManualFinStatusUI() {
+        var finSel = document.getElementById('manual-fin-status');
+        var amountEl = document.getElementById('manual-receive-amount');
+        var finVal = finSel ? finSel.value : 'UNPAID';
+        var remaining = tmGetManualOrderTotal();
+        var remEl = document.getElementById('manual-remaining-sum');
+        if (remEl) remEl.textContent = '¥' + remaining.toFixed(2);
+        if (amountEl) {
+            if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
+                amountEl.value = '';
+                amountEl.disabled = true;
+            } else {
+                amountEl.disabled = false;
+                if (finVal === 'SETTLED' && remaining > 0) {
+                    amountEl.value = remaining.toFixed(2);
+                }
+            }
+        }
+    }
+
     function tmSyncManualOrderUI() {
         var statusSel = document.getElementById('manual-order-status');
         var finSel = document.getElementById('manual-fin-status');
@@ -735,11 +789,12 @@
                         finVal === 'BAD_DEBT' ? 'bg-slate-100 text-slate-600' :
                             'bg-amber-50 text-amber-700');
         }
+        tmSyncManualFinStatusUI();
         if (auxEl) {
-            var whLabel = '默认仓库';
-            if (whSel && whSel.value && whSel.selectedIndex >= 0) {
-                whLabel = whSel.options[whSel.selectedIndex].textContent || whLabel;
-            }
+            var whSel = document.getElementById('manual-order-warehouse');
+            var whLabel = window.TM_TenantOps
+                ? window.TM_TenantOps.warehouseLabelFromSelect(whSel, null, window.__tmOpsProfile)
+                : (whSel && whSel.selectedIndex >= 0 ? whSel.options[whSel.selectedIndex].textContent : '暂无仓库');
             var remEl = document.getElementById('manual-remaining-sum');
             var remText = remEl ? remEl.textContent.replace('¥', '') : '0.00';
             auxEl.textContent = whLabel + ' · ' + tmManualFinLabel(finVal) + ' · 剩 ' + remText;
@@ -755,24 +810,49 @@
         if (statusSel) statusSel.addEventListener('change', tmSyncManualOrderUI);
         if (finSel) finSel.addEventListener('change', tmSyncManualOrderUI);
         if (whSel) whSel.addEventListener('change', tmSyncManualOrderUI);
+        var amountEl = document.getElementById('manual-receive-amount');
+        if (amountEl && !amountEl.__tmManualAmtBound) {
+            amountEl.__tmManualAmtBound = true;
+            amountEl.addEventListener('input', function () {
+                var finSel2 = document.getElementById('manual-fin-status');
+                if (finSel2 && finSel2.value === 'SETTLED') {
+                    var rem = tmGetManualOrderTotal();
+                    var val = tmRoundMoney(amountEl.value);
+                    if (rem > 0 && Math.abs(val - rem) > 0.009) {
+                        finSel2.value = 'PARTIAL_PAID';
+                        tmSyncManualOrderUI();
+                    }
+                }
+            });
+        }
     }
 
     function tmPopulateManualWarehouseSelect() {
         var sel = document.getElementById('manual-order-warehouse');
         if (!sel) return Promise.resolve();
-        return window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' })
+        var whP = window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' })
             .then(function (r) { return r.json(); })
             .then(function (res) {
-                var list = (res && res.data) ? res.data : (res || []);
-                var html = '<option value="">默认仓库</option>';
-                (list || []).forEach(function (w) {
-                    html += '<option value="' + w.warehouseId + '">' + (w.name || ('仓库#' + w.warehouseId)) + '</option>';
+                return (res && res.success && Array.isArray(res.data)) ? res.data : [];
+            })
+            .catch(function () { return []; });
+        var prP = window.TM_TenantOps ? window.TM_TenantOps.fetchOpsProfile() : Promise.resolve(null);
+        return Promise.all([whP, prP]).then(function (arr) {
+            window.__tmOpsProfile = arr[1];
+            if (window.TM_TenantOps) {
+                sel.innerHTML = window.TM_TenantOps.buildWarehouseOptionsHtml(arr[0], arr[1], null);
+            } else if ((arr[0] || []).length) {
+                var html = '';
+                (arr[0] || []).forEach(function (w, idx) {
+                    var id = w.warehouseId != null ? w.warehouseId : w.id;
+                    html += '<option value="' + id + '"' + (idx === 0 ? ' selected' : '') + '>' +
+                        (w.name || ('仓库#' + id)) + '</option>';
                 });
                 sel.innerHTML = html;
-            })
-            .catch(function () {
-                sel.innerHTML = '<option value="">默认仓库</option>';
-            });
+            } else {
+                sel.innerHTML = '<option value="">暂无仓库</option>';
+            }
+        });
     }
 
     function tmRecalcManualOrderTotal() {
@@ -794,6 +874,7 @@
             if (el) el.textContent = fmt;
         });
         tmSyncManualOrderUI();
+        tmRefreshManualItemsLayout();
     }
 
     async function tmApplyManualOrderLastPrices() {
@@ -863,6 +944,7 @@
             del.addEventListener('click', function () {
                 row.remove();
                 tmRecalcManualOrderTotal();
+                tmRefreshManualItemsLayout();
             });
         }
     }
@@ -871,14 +953,14 @@
         var tbody = document.getElementById('manual-order-tbody');
         if (!tbody) return null;
         var tr = document.createElement('tr');
-        tr.className = 'border-t border-slate-100';
+        tr.className = 'order-item-row border-t border-slate-100';
         tr.innerHTML =
-            '<td class="px-3 py-2"><select class="form-input form-input--compact font-bold text-slate-700 manual-product-select w-full min-w-[8rem]">' +
+            '<td class="tm-col-product px-3 py-2"><select class="form-input form-input--compact font-bold text-slate-700 manual-product-select tm-order-product-select">' +
             tmBuildManualProductOptions() + '</select></td>' +
-            '<td class="px-3 py-2 text-center"><input type="number" min="1" step="1" value="1" class="manual-qty w-16 text-center form-input form-input--compact py-1 font-bold" /></td>' +
-            '<td class="px-3 py-2 text-center"><input type="number" min="0" step="0.01" value="0" class="manual-price w-20 text-center form-input form-input--compact py-1 font-mono font-bold" /></td>' +
-            '<td class="px-3 py-2 text-right font-mono font-bold manual-row-total">¥0.00</td>' +
-            '<td class="px-1 py-2 text-center"><button type="button" class="manual-row-delete text-slate-400 hover:text-red-500" title="删除行"><i class="ph ph-trash"></i></button></td>';
+            '<td class="tm-col-qty px-3 py-2 text-center"><input type="number" min="1" step="1" value="1" class="manual-qty tm-order-qty-input text-center form-input form-input--compact py-1 font-bold" /></td>' +
+            '<td class="tm-col-price px-3 py-2 text-center"><input type="number" min="0" step="0.01" value="0" class="manual-price tm-order-price-input text-center form-input form-input--compact py-1 font-mono font-bold" /></td>' +
+            '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold manual-row-total whitespace-nowrap">¥0.00</td>' +
+            '<td class="tm-col-action px-1 py-2 text-center"><button type="button" class="manual-row-delete text-slate-400 hover:text-red-500" title="删除行"><i class="ph ph-trash"></i></button></td>';
         tbody.appendChild(tr);
         tmBindManualOrderRow(tr);
         return tr;
@@ -910,7 +992,7 @@
         if (typeof window.loadProductList === 'function') await window.loadProductList();
         if (typeof window.loadOrderStatusDict === 'function') await window.loadOrderStatusDict();
         if (typeof window.loadBizAccounts === 'function') await window.loadBizAccounts();
-        await tmPopulateManualWarehouseSelect();
+        if (window.TM_TenantOps) await window.TM_TenantOps.fetchOpsProfile().then(function (p) { window.__tmOpsProfile = p; });
         tmBindManualOrderPanelEvents();
         if (typeof window.populateOrderStatusSelects === 'function') {
             window.populateOrderStatusSelects();
@@ -924,10 +1006,14 @@
         }
         var finSel = document.getElementById('manual-fin-status');
         if (finSel) finSel.value = 'UNPAID';
-        var whSel = document.getElementById('manual-order-warehouse');
-        if (whSel) whSel.value = '';
+        await tmPopulateManualWarehouseSelect();
         var auxDetails = document.getElementById('manual-aux-details');
-        if (auxDetails) auxDetails.open = true;
+        if (auxDetails) auxDetails.open = false;
+        if (window.TM_OrderModal && window.TM_OrderModal.setAuxOpen) {
+            window.TM_OrderModal.setAuxOpen('manual-aux-details', false);
+        }
+        var receiveEl = document.getElementById('manual-receive-amount');
+        if (receiveEl) receiveEl.value = '';
         var custSel = document.getElementById('manual-order-customer');
         if (custSel && !custSel.__tmManualCustBound) {
             custSel.__tmManualCustBound = true;
@@ -951,6 +1037,7 @@
         document.body.style.overflow = 'hidden';
         tmRecalcManualOrderTotal();
         tmSyncManualOrderUI();
+        tmRefreshManualItemsLayout();
     };
 
     window.TM_closeManualOrderModal = function () {
@@ -962,6 +1049,7 @@
     window.TM_addManualOrderRow = function () {
         tmCreateManualOrderRow();
         tmRecalcManualOrderTotal();
+        tmRefreshManualItemsLayout();
     };
 
     window.TM_saveManualOrder = async function () {
@@ -1059,6 +1147,17 @@
         console.log('[DashboardWorkbench] 工作台增强已加载');
         if (document.getElementById('pending-orders-list')) {
             TM_PendingOrdersStore.refresh(true);
+        }
+        if (document.getElementById('inprogress-list')) {
+            var loadCust = typeof window.loadCustomerList === 'function'
+                ? window.loadCustomerList()
+                : Promise.resolve();
+            var loadProg = typeof window.loadInProgressOrders === 'function'
+                ? window.loadInProgressOrders()
+                : Promise.resolve();
+            Promise.all([loadCust, loadProg]).catch(function (err) {
+                console.warn('[DashboardWorkbench] 工作台列表初始化失败', err);
+            });
         }
     }
 

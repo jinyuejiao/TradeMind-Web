@@ -72,3 +72,127 @@ body.tm-ops-portal {
         font-size: 1.5rem;
     }
 }
+
+/* 用户问题页：筛选条 Grid 单行平铺，列宽按内容撑开，避免溢出压到下一项 */
+.ops-fb-filter-bar {
+    display: grid;
+    grid-template-columns: max-content max-content max-content max-content minmax(0, 1fr) max-content;
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    box-sizing: border-box;
+}
+
+.ops-fb-filter-spacer {
+    min-width: 0;
+    width: 100%;
+}
+
+.ops-fb-filter-item {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 0.5rem;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.ops-fb-filter-item--status {
+    min-width: max-content;
+}
+
+.ops-fb-filter-item--tenant {
+    min-width: max-content;
+    margin-right: 0.125rem;
+}
+
+.ops-fb-filter-item--date {
+    min-width: max-content;
+}
+
+.ops-fb-filter-label {
+    display: inline-block;
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    white-space: nowrap;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+    position: static;
+}
+
+.ops-fb-filter-label--date {
+    width: 1.125rem;
+    text-align: center;
+}
+
+.ops-fb-filter-control {
+    display: block;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    height: 2rem;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.25;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: #fff;
+    color: #334155;
+    appearance: auto;
+}
+
+.ops-fb-filter-select {
+    width: 6.5rem;
+    min-width: 6.5rem;
+}
+
+.ops-fb-filter-tenant {
+    width: 9rem;
+    min-width: 9rem;
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ops-fb-filter-date {
+    width: 10.25rem;
+    min-width: 10.25rem;
+    max-width: 10.25rem;
+    padding-right: 0.25rem;
+}
+
+.ops-fb-filter-refresh {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    margin-left: 0;
+    justify-self: end;
+    height: 2rem;
+    padding: 0 0.875rem;
+    border: none;
+    border-radius: 0.75rem;
+    background: #4f46e5;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+    white-space: nowrap;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.ops-fb-filter-refresh:hover {
+    background: #4338ca;
+}

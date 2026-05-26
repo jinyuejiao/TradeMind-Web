@@ -233,6 +233,33 @@
     opacity: 0.92;
 }
 
+.tm-pending-list-placeholder,
+.tm-inprogress-list-placeholder {
+    min-height: 0;
+    flex-shrink: 0;
+}
+
+/* 工作台：待确认 / 进行中单据列表 — 卡片内纵向滚动，与左侧样式一致 */
+.tm-dashboard-doc-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+#pending-orders-list.tm-dashboard-doc-list,
+#inprogress-list.tm-dashboard-doc-list {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#pending-orders-list.tm-dashboard-doc-list::-webkit-scrollbar,
+#inprogress-list.tm-dashboard-doc-list::-webkit-scrollbar {
+    display: none;
+}
+
 @media (min-width: 768px) {
     .tm-audit-lines-table {
         width: 100%;
@@ -255,6 +282,19 @@
 
 #audit-modal #drawer-cust.advanced-drawer.open {
     display: grid;
+}
+
+#audit-modal .crm-modal-head-icon {
+    background-color: #14B8A6;
+    color: #fff;
+}
+
+#audit-modal #audit-customer-registry-root .advanced-drawer.open {
+    display: block;
+}
+
+#audit-modal #audit-product-registry-root .tm-product-advanced-drawer.open {
+    display: block;
 }
 
 .tm-audit-product-summary {

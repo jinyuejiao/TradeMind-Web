@@ -75,9 +75,19 @@
         toast(message, 'success');
     }
 
+    function openError(message, opts) {
+        opts = opts || {};
+        if (window.TmConfirm && typeof window.TmConfirm.openError === 'function') {
+            window.TmConfirm.openError(message, opts);
+            return;
+        }
+        toast(message, 'error');
+    }
+
     window.TM_UI = window.TM_UI || {};
     window.TM_UI.toast = toast;
     window.TM_UI.alert = alert;
     window.TM_UI.confirm = confirm;
     window.TM_UI.openSuccess = openSuccess;
+    window.TM_UI.openError = openError;
 })();
