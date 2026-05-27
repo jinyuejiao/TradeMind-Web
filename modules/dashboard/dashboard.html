@@ -15,7 +15,7 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260527audit3">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260527ordunit">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260527ordfix">
 
     <style>
         body {
@@ -712,6 +712,7 @@
                                     <th class="tm-col-product px-3 py-2 text-left">产品</th>
                                     <th class="tm-col-qty px-3 py-2 text-center">数量</th>
                                     <th class="tm-col-unit px-3 py-2 text-center">单位</th>
+                                    <th class="tm-col-price px-3 py-2 text-center">单价</th>
                                     <th class="tm-col-sub px-3 py-2 text-right">小计</th>
                                 </tr>
                             </thead>
@@ -1537,7 +1538,7 @@
                 : (statusSel ? toCanonicalOrderStatusCode(statusSel.value) : '');
             var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
             if (!items || !items.length) {
-                if (tbody) tbody.innerHTML = '<tr><td class="px-3 py-4 text-center text-slate-400" colspan="5">暂无商品明细</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td class="px-3 py-4 text-center text-slate-400" colspan="6">暂无商品明细</td></tr>';
                 if (cards) cards.innerHTML = '<p class="text-center text-slate-400 text-xs py-4">暂无商品明细</p>';
                 tmRefreshDetailItemsLayout();
                 syncDetailShipUi(currentDetailOrder);
@@ -1546,7 +1547,7 @@
             if (tbody) {
                 tbody.innerHTML = items.map(function (item) {
                     var p = getProductDisplayById(item.productId);
-                    var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit || p.unit || '件';
+                    var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
                     var chk = showShip
@@ -1556,15 +1557,16 @@
                         : '<td class="detail-ship-col hidden px-2 py-2"></td>';
                     return '<tr class="order-item-row">' + chk +
                         '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p></td>' +
-                        '<td class="tm-col-qty px-3 py-2 text-center font-mono">' + Number(item.quantity || 0) + '</td>' +
-                        '<td class="tm-col-unit px-3 py-2 text-center text-slate-600">' + unit + '</td>' +
-                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(item.totalAmount || 0) + '</td></tr>';
+                        '<td class="tm-col-qty px-3 py-2 text-center font-mono">' + line.qty + '</td>' +
+                        '<td class="tm-col-unit px-3 py-2 text-center text-slate-600">' + line.unit + '</td>' +
+                        '<td class="tm-col-price px-3 py-2 text-center font-mono text-slate-700">' + formatCurrency(line.unitPrice) + '</td>' +
+                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(line.total) + '</td></tr>';
                 }).join('');
             }
             if (cards) {
                 cards.innerHTML = items.map(function (item) {
                     var p = getProductDisplayById(item.productId);
-                    var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit || p.unit || '件';
+                    var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
                     var chkRow = showShip
@@ -1575,9 +1577,17 @@
                     return '<div class="order-item-row tm-purchase-item-card border border-slate-200 rounded-xl p-3 bg-slate-50">' +
                         chkRow +
                         '<div class="flex justify-between gap-2"><span class="font-bold text-sm">' + p.name + '</span>' +
-                        '<span class="font-mono font-bold">' + formatCurrency(item.totalAmount || 0) + '</span></div>' +
-                        '<p class="text-[10px] text-slate-500 mt-1">数量 ' + Number(item.quantity || 0) + ' ' + unit + '</p></div>';
+                        '<span class="font-mono font-bold">' + formatCurrency(line.total) + '</span></div>' +
+                        '<div class="grid grid-cols-3 gap-2 mt-2 text-[10px]">' +
+                        '<div><span class="text-slate-400 block">数量</span><span class="font-mono font-bold text-slate-800">' + line.qty + '</span></div>' +
+                        '<div><span class="text-slate-400 block">单位</span><span class="font-bold text-slate-700">' + line.unit + '</span></div>' +
+                        '<div><span class="text-slate-400 block">单价</span><span class="font-mono text-slate-700">' + formatCurrency(line.unitPrice) + '</span></div>' +
+                        '</div></div>';
                 }).join('');
+            }
+            if (currentDetailOrder) {
+                syncOrderHeaderTotalFromItems(currentDetailOrder, items);
+                updateDetailRemainingHint(currentDetailOrder);
             }
             tmRefreshDetailItemsLayout();
             syncDetailShipUi(currentDetailOrder);
@@ -2172,6 +2182,49 @@
                 return String(getProductId(p)) === String(productId);
             });
             return full ? getProductUnit(full) : '件';
+        }
+
+        function getProductPriceById(productId) {
+            var full = (window.productList || []).find(function (p) {
+                return String(getProductId(p)) === String(productId);
+            });
+            if (!full) return 0;
+            var price = full.price != null ? full.price : (full.salePrice != null ? full.salePrice : full.unit_price);
+            return Number(price) || 0;
+        }
+
+        function resolveOrderItemLine(item) {
+            item = item || {};
+            var qty = Number(item.quantity != null ? item.quantity : 0) || 0;
+            var unitPrice = item.unitPrice != null ? Number(item.unitPrice)
+                : (item.unit_price != null ? Number(item.unit_price) : 0);
+            var total = item.totalAmount != null ? Number(item.totalAmount)
+                : (item.total_amount != null ? Number(item.total_amount) : 0);
+            if ((!unitPrice || unitPrice <= 0) && qty > 0 && total > 0) {
+                unitPrice = Math.round((total / qty) * 100) / 100;
+            }
+            if ((!total || total <= 0) && qty > 0 && unitPrice > 0) {
+                total = Math.round(qty * unitPrice * 100) / 100;
+            }
+            var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit
+                || getProductUnitById(item.productId) || '件';
+            return { qty: qty, unitPrice: unitPrice, total: total, unit: unit };
+        }
+
+        function sumOrderItemsTotal(items) {
+            if (!Array.isArray(items) || !items.length) return 0;
+            return items.reduce(function (sum, it) {
+                return sum + (resolveOrderItemLine(it).total || 0);
+            }, 0);
+        }
+
+        function syncOrderHeaderTotalFromItems(order, items) {
+            if (!order) return order;
+            var sum = Math.round(sumOrderItemsTotal(items) * 100) / 100;
+            if (sum > 0) {
+                order.totalAmount = sum;
+            }
+            return order;
         }
 
         function formatCurrency(amount) {
@@ -2954,6 +3007,19 @@
             item.matched_product_name = selectedName;
             item.product_name_raw = selectedName;
             if (selectedSku) item.sku = selectedSku;
+            var priceInp = row.querySelector('.price-input');
+            if (priceInp && /^\d+$/.test(selectedValue)) {
+                var catalogPrice = selectedOption && selectedOption.getAttribute('data-price')
+                    ? parseFloat(selectedOption.getAttribute('data-price'))
+                    : getProductPriceById(selectedValue);
+                if (catalogPrice > 0 && (!priceInp.value || parseFloat(priceInp.value) <= 0)) {
+                    priceInp.value = catalogPrice.toFixed(2);
+                    item.price_at_time = catalogPrice;
+                }
+            }
+            if (typeof window.recalcAuditOrderTotals === 'function') {
+                window.recalcAuditOrderTotals();
+            }
         }
 
         function handleAuditCustomerSelectChange(selectEl) {
@@ -3205,6 +3271,45 @@
             switchAuditTab('order');
         }
 
+        function collectAuditOrderItemsForSubmit(deliveryDate) {
+            const items = [];
+            const errors = [];
+            const rows = document.querySelectorAll('#order-items-body tr');
+            rows.forEach(function (row, rowIndex) {
+                const productSelect = row.querySelector('.product-select');
+                const qtyInput = row.querySelector('.audit-qty-input') || row.querySelector('.tm-audit-td--qty input[type="number"]');
+                const priceInput = row.querySelector('.price-input');
+                const rawPid = productSelect ? String(productSelect.value || '').trim() : '';
+                if (!rawPid || !/^\d+$/.test(rawPid)) {
+                    errors.push('第 ' + (rowIndex + 1) + ' 行：请选择有效产品');
+                    return;
+                }
+                const qty = parseInt(qtyInput && qtyInput.value ? qtyInput.value : '0', 10);
+                let unitPrice = parseFloat(priceInput && priceInput.value ? priceInput.value : '0');
+                if ((!unitPrice || unitPrice <= 0) || isNaN(unitPrice)) {
+                    unitPrice = getProductPriceById(rawPid);
+                }
+                if (!qty || qty <= 0) {
+                    errors.push('第 ' + (rowIndex + 1) + ' 行：数量须大于 0');
+                    return;
+                }
+                if (!unitPrice || unitPrice <= 0) {
+                    errors.push('第 ' + (rowIndex + 1) + ' 行：请填写单价');
+                    return;
+                }
+                const lineTotal = Math.round(qty * unitPrice * 100) / 100;
+                items.push({
+                    productId: parseInt(rawPid, 10),
+                    quantity: qty,
+                    unitPrice: unitPrice,
+                    totalAmount: lineTotal,
+                    itemStatus: 'PENDING',
+                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null
+                });
+            });
+            return { items: items, errors: errors };
+        }
+
         // 确认订单并下单
         async function confirmAuditOrder() {
             const custId = document.getElementById('order-customer').value;
@@ -3215,38 +3320,21 @@
                 return;
             }
 
-            // 收集订单明细
-            const items = [];
-            const rows = document.querySelectorAll('#order-items-body tr');
-            let hasEmptyProductId = false;
-
-            rows.forEach(row => {
-                const productSelect = row.querySelector('.product-select');
-                const quantityInput = row.querySelector('input[type="number"]');
-                const priceInput = row.querySelector('input[type="number"].price-input');
-                
-                const productId = productSelect ? productSelect.value : '';
-                if (!productId) {
-                    hasEmptyProductId = true;
-                }
-                
-                items.push({
-                    productId: Number(productId),
-                    quantity: parseInt(quantityInput.value || '0', 10),
-                    unitPrice: parseFloat(priceInput.value || '0'),
-                    totalAmount: parseFloat(priceInput.value || '0') * parseInt(quantityInput.value || '0', 10),
-                    itemStatus: 'PENDING',
-                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null
-                });
-            });
-
-            if (hasEmptyProductId) {
-                showAuditOrderError('请选择所有产品', { title: '无法下单' });
+            if (typeof window.recalcAuditOrderTotals === 'function') {
+                window.recalcAuditOrderTotals();
+            }
+            const collected = collectAuditOrderItemsForSubmit(deliveryDate);
+            if (collected.errors.length) {
+                showAuditOrderError(collected.errors[0], { title: '无法下单' });
+                return;
+            }
+            const items = collected.items;
+            if (!items.length) {
+                showAuditOrderError('请至少添加一行有效商品', { title: '无法下单' });
                 return;
             }
 
-            // 计算订单总金额
-            const totalAmount = items.reduce((sum, item) => sum + item.totalAmount, 0);
+            const totalAmount = items.reduce(function (sum, item) { return sum + item.totalAmount; }, 0);
 
             const orderData = {
                 order: {
@@ -3485,6 +3573,8 @@
             .then(response => response.json())
             .then(result => {
                 const items = result && result.success && Array.isArray(result.data) ? result.data : [];
+                syncOrderHeaderTotalFromItems(order, items);
+                currentDetailOrder = order;
                 renderDetailOrderItems(items);
                 updateDetailRemainingHint(order);
             })
@@ -4480,7 +4570,7 @@
     </script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260526inprog"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260527ordfix"></script>
 </body>
 </html>
 

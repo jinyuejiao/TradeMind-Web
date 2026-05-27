@@ -322,6 +322,16 @@
                 : summaryFull;
             var statusBadges = renderOrderStatusBadgesHtml(order);
             var amount = order.totalAmount != null ? order.totalAmount : (order.total_amount != null ? order.total_amount : 0);
+            if ((!amount || Number(amount) <= 0) && items.length) {
+                amount = items.reduce(function (sum, it) {
+                    var lineTotal = it.totalAmount != null ? it.totalAmount : it.total_amount;
+                    if (lineTotal != null && Number(lineTotal) > 0) return sum + Number(lineTotal);
+                    var qty = Number(it.quantity) || 0;
+                    var up = it.unitPrice != null ? it.unitPrice : it.unit_price;
+                    return sum + (qty * (Number(up) || 0));
+                }, 0);
+                amount = Math.round(amount * 100) / 100;
+            }
 
             return ''
                 + '<div class="relative' + (index > 4 ? ' opacity-80' : '') + '">'

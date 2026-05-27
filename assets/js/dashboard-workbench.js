@@ -352,6 +352,11 @@
             rowMeta.forEach(function (meta) {
                 var key = String(meta.productId);
                 var price = map[key] != null ? parseFloat(map[key]) : null;
+                if (price == null || price <= 0) {
+                    if (typeof window.getProductPriceById === 'function') {
+                        price = window.getProductPriceById(meta.productId);
+                    }
+                }
                 if (price != null && price > 0) {
                     meta.priceInp.value = price.toFixed(2);
                     meta.priceInp.classList.add('price-input--history');
@@ -563,8 +568,10 @@
                     var pid = window.getProductId(product);
                     var pname = window.getProductName(product);
                     var psku = window.getProductSku(product);
+                    var pprice = product.price != null ? product.price : (product.salePrice != null ? product.salePrice : '');
                     if (!pid || !pname) return '';
-                    return '<option value="' + pid + '" data-name="' + escapeHtml(pname) + '" data-sku="' + escapeHtml(psku) + '">' +
+                    return '<option value="' + pid + '" data-name="' + escapeHtml(pname) + '" data-sku="' + escapeHtml(psku) + '"' +
+                        (pprice !== '' ? (' data-price="' + escapeHtml(String(pprice)) + '"') : '') + '>' +
                         escapeHtml(pname) + (psku ? ' (' + escapeHtml(psku) + ')' : '') + '</option>';
                 }).join('');
 
@@ -757,10 +764,15 @@
             if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
                 amountEl.value = '';
                 amountEl.disabled = true;
+                amountEl.readOnly = true;
             } else {
                 amountEl.disabled = false;
+                amountEl.readOnly = false;
+                amountEl.removeAttribute('disabled');
                 if (finVal === 'SETTLED' && remaining > 0) {
                     amountEl.value = remaining.toFixed(2);
+                } else if (finVal === 'PARTIAL_PAID' && (!amountEl.value || parseFloat(amountEl.value) <= 0) && remaining > 0) {
+                    amountEl.placeholder = '最多 ¥' + remaining.toFixed(2);
                 }
             }
         }
@@ -1127,6 +1139,30 @@
             });
             var data = await window.handleApiResponse(response);
             if (!data) return;
+            var saved = data.data || {};
+            var orderId = saved.orderId || saved.order_id || saved.id;
+            var receiveEl = document.getElementById('manual-receive-amount');
+            var receiveAmt = receiveEl && receiveEl.value ? tmRoundMoney(receiveEl.value) : 0;
+            var needPay = finStatus === 'PARTIAL_PAID' || finStatus === 'SETTLED';
+            if (orderId && needPay && receiveAmt > 0) {
+                var payBody = { amount: receiveAmt, bizTypeCode: 'SALES_INCOME' };
+                if (accountId != null) payBody.accountId = accountId;
+                try {
+                    var payResp = await window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/record-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payBody)
+                    });
+                    await window.handleApiResponse(payResp);
+                } catch (payErr) {
+                    notify('订单已创建，但收款记账失败: ' + (payErr.message || ''), 'error');
+                    TM_closeManualOrderModal();
+                    if (typeof window.loadInProgressOrders === 'function') {
+                        window.loadInProgressOrders();
+                    }
+                    return;
+                }
+            }
             notify('订单创建成功', 'success');
             TM_closeManualOrderModal();
             if (typeof window.loadInProgressOrders === 'function') {

@@ -629,8 +629,14 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 }
 
 .tm-order-detail-table .tm-col-unit {
-    min-width: 4.5rem;
-    width: 4.5rem;
+    min-width: 3.5rem;
+    width: 3.5rem;
+}
+
+.tm-order-detail-card-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
 }
 
 .tm-order-detail-table .tm-col-price {
