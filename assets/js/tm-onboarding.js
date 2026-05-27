@@ -734,13 +734,12 @@
         var layer = document.createElement('div');
         layer.className = 'tm-onboarding-celebrate';
         layer.setAttribute('data-onb-celebrate', '1');
-        var label = getMerchantDisplayLabel();
         var text = (mandatoryProfile && mandatoryProfile.celebrateText) || '您已完成必学引导';
         layer.innerHTML =
             '<div class="tm-onboarding-celebrate__card">' +
             '<div class="tm-onboarding-celebrate__icon"><i class="ph ph-sparkle"></i></div>' +
             '<h3 class="tm-onboarding-celebrate__title">太棒了！</h3>' +
-            '<p class="tm-onboarding-celebrate__text">' + text + '。<br>现在可以正式开始<br><span class="tm-onboarding-celebrate__merchant">「' + label + '」</span> 的日常经营。</p>' +
+            '<p class="tm-onboarding-celebrate__text">' + text + '。<br>现在可以正式开始您的日常经营。</p>' +
             '<button type="button" class="tm-onboarding-btn tm-onboarding-btn--primary w-full" data-onb-celebrate-ok>进入系统</button>' +
             '</div>';
         document.body.appendChild(layer);

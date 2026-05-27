@@ -55,6 +55,11 @@
             if (!payload) return;
             var mt = payload.merchantType || 'WHOLESALE';
             var role = payload.roleType || null;
+            if (role) {
+                role = window.TM_ROLE_SCHEMA
+                    ? window.TM_ROLE_SCHEMA.normalizeRole(role)
+                    : String(role).trim().toUpperCase();
+            }
             applyMerchantDomAttrs(mt);
             window.TM_UI_CONTEXT.role = role;
         },
@@ -108,6 +113,9 @@
             if (p) chain = chain.then(function () { return window.TM_UI.injectSlots(p); });
             return chain.then(function () {
                 window.TM_RoleGate && window.TM_RoleGate.apply(document.body);
+                if (typeof window.applyRoleUI === 'function') {
+                    window.applyRoleUI();
+                }
             });
         }
     });
@@ -143,6 +151,9 @@
         if (token) {
             window.TM_UI.applyContextFromToken(token);
             window.TM_RoleGate.apply(document.body);
+            if (typeof window.applyRoleUI === 'function') {
+                window.applyRoleUI({ skipTabSync: true });
+            }
         }
         var chain = Promise.resolve();
         if (window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
@@ -151,6 +162,9 @@
         chain.finally(function () {
             dispatchRoleUiReady();
         });
+        if (typeof window.syncUserContext === 'function') {
+            window.syncUserContext();
+        }
         setTimeout(dispatchRoleUiReady, 600);
     });
 

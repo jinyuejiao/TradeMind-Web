@@ -305,6 +305,52 @@
     -webkit-overflow-scrolling: touch;
 }
 
+/* 主壳桌面端：产品 Tab 内列表滚动，备案 footer 固定在 content-area 底部且不遮挡末行 */
+@media (min-width: 768px) {
+    #content-area.tm-shell-tab-supply-active {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    #content-area.tm-shell-tab-supply-active > footer.tm-compliance-footer {
+        flex-shrink: 0;
+        margin-top: 0;
+    }
+
+    #content-area.tm-shell-tab-supply-active #view-supply.tm-view-supply-scroll:not(.hidden) {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+        max-height: none;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #content-area.tm-shell-tab-supply-active #view-supply.tm-view-supply-scroll #supply-inner-scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 1.25rem;
+        box-sizing: border-box;
+    }
+
+    #content-area.tm-shell-tab-supply-active #view-supply.tm-view-supply-scroll #product-pagination {
+        flex-shrink: 0;
+    }
+}
+
+/* 主壳手机端：备案 footer 在 Tab 内容后，为列表区预留底部空间 */
+@media (max-width: 767px) {
+    body.tm-layout-mobile #content-area.tm-shell-tab-supply-active #view-supply:not(.hidden) #supply-inner-scroll,
+    body.tm-layout-mobile #content-area.tm-shell-tab-supply-active #view-supply:not(.hidden) {
+        padding-bottom: 0.75rem;
+    }
+}
+
 /* 进货单弹窗：全高 sheet + 中间滚动 + 底栏固定（对齐 UI 工程 manual-order 弹窗） */
 html.tm-embedded #purchase-modal.tm-purchase-modal,
 #purchase-modal.tm-purchase-modal {

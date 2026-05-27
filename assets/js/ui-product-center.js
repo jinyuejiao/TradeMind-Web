@@ -594,6 +594,9 @@ window.ProductModule = {
             onPrev: 'window.ProductModule.setProductPage(' + (this.productCurrentPage - 1) + ')',
             onNext: 'window.ProductModule.setProductPage(' + (this.productCurrentPage + 1) + ')'
         });
+        if (typeof window.applyRoleUI === 'function') {
+            window.applyRoleUI({ skipTabSync: true });
+        }
         console.log('[ProductModule] renderProducts完成，当前页:', this.productCurrentPage, '总页数:', this.productTotalPages, '本页条数:', pageProducts.length);
     },
 
@@ -752,10 +755,10 @@ window.ProductModule = {
                     </div>
                 </td>
                 <td class="px-6 py-4 text-right font-mono font-bold text-slate-500 col-hide-mobile">
-                    $${(product.price || 0).toFixed(2)}
+                    <span data-field="sales_price">$${(product.price || 0).toFixed(2)}</span>
                 </td>
                 <td class="px-6 py-4 text-right font-mono font-bold text-brand-600 col-hide-mobile">
-                    $${(product.purchasePrice || 0).toFixed(2)}
+                    <span data-field="purchase_price">$${(product.purchasePrice || 0).toFixed(2)}</span>
                 </td>
                 <td class="px-6 py-4 text-right">
                     <p class="font-mono font-bold ${window.ProductModule.getStockColor(product.stockStatus)} tracking-tighter text-sm">
@@ -770,7 +773,7 @@ window.ProductModule = {
                         <button onclick="event.stopPropagation(); window.ProductModule.openProductDetail(${product.id})" title="编辑" class="action-icon-btn">
                             <i class="ph ph-pencil-simple-line text-lg"></i>
                         </button>
-                        <button onclick="event.stopPropagation(); window.ProductModule.confirmDeleteProduct(${product.id}, '${product.name}')" title="删除" class="action-icon-btn delete">
+                        <button data-action="product.delete" onclick="event.stopPropagation(); window.ProductModule.confirmDeleteProduct(${product.id}, '${product.name}')" title="删除" class="action-icon-btn delete">
                             <i class="ph ph-trash text-lg"></i>
                         </button>
                     </div>

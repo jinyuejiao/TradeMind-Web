@@ -8,9 +8,10 @@
     var SUBUSER_ROLE_MAP = {
         '管理员': 'ADMIN',
         '运营': 'SALES',
+        '业务员': 'SALES',
         '仓库': 'WAREHOUSE',
-        '财务': 'FINANCE',
-        '只读': 'READONLY'
+        '仓库员': 'WAREHOUSE',
+        '财务': 'FINANCE'
     };
 
     var CHECKLIST = [
@@ -167,13 +168,6 @@
                     fallback: '#view-supplier'
                 }
             ]
-        },
-        READONLY: {
-            id: 'readonly_map',
-            welcomeMandatory: '浏览与您权限匹配的功能地图（无阻塞操作）',
-            welcomeOptional: '可按清单逐项了解只读可见模块',
-            celebrateText: '您已了解只读权限下的功能范围',
-            steps: []
         }
     };
 
@@ -223,11 +217,15 @@
     }
 
     function getRoleLabel(roleCode) {
-        var perms = window.TM_ROLE_PERMISSIONS;
-        if (perms && perms[roleCode] && perms[roleCode].label) {
-            return perms[roleCode].label;
+        var code = normalizeRoleCode(roleCode);
+        if (window.tmRoleTypeDictMap && window.tmRoleTypeDictMap[code]) {
+            return window.tmRoleTypeDictMap[code];
         }
-        return roleCode;
+        var perms = window.TM_ROLE_PERMISSIONS;
+        if (perms && perms[code] && perms[code].label) {
+            return perms[code].label;
+        }
+        return code;
     }
 
     function isMobileLayout() {

@@ -52,8 +52,19 @@
 - **阴影风格**：使用 `shadow-lg` 或 `shadow-xl` 增强层次感
 
 ### 权限与角色（壳层）
-- 控件仅对部分角色展示：使用 `data-role="ADMIN"`（多个角色空格分隔）
-- 页面加载后由 `TM_RoleGate.apply(root)` 剔除无权限节点（须设置 `TM_UI_CONTEXT.role`，登录后由 JWT 同步）
+- 控件仅对部分角色展示：使用 `data-role="ADMIN"`（多个角色空格分隔，如 `data-role="ADMIN FINANCE"`）
+- 敏感按钮标注 `data-action`（见 `ui-permissions.js` 中 `TM_ROLE_SCHEMA.ACTION`）
+- 价格等字段标注 `data-field="purchase_price"` / `data-field="sales_price"`
+- 侧栏菜单使用 `data-tm-nav="dashboard|biz|crm|supply|supplier"`
+- 页面加载后由 `ui-role-engine.js` 的 `applyRoleUI()` 物理移除无权限节点（`element.remove()`，禁止仅 CSS 隐藏）
+- `switchTab` 内置路由守卫：无权模块自动回退至角色默认 Tab
+- 登录后 JWT `roleType` 与字典 **D003** 对齐（`ADMIN`/`FINANCE`/`SALES`/`WAREHOUSE`）
+- **后端**：删除/敏感写接口须在 Controller 层调用 `RoleGuard.requireAdmin()` 等；网关 `RoutePermissionMap` 硬拦截
+
+### 开发新功能检查清单
+1. HTML 上标注 `data-role` / `data-action` / `data-field`（如适用）
+2. 新增 API 路径同步更新 `trademind-gateway` 的 `RoutePermissionMap`
+3. 返回 DTO 对价格等字段做角色脱敏（RD/CRM Service）
 
 ### 弹窗规范
 - 所有模态框都应该有模糊背景 (`modal-blur`)

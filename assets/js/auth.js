@@ -753,7 +753,7 @@ window.injectMemberAuxModals = async function () {
         await window.tmMountReferralRewardsModal();
     }
     if (document.getElementById('member-accounts-manage-modal')) return;
-    document.body.insertAdjacentHTML('beforeend', "<div id=\"member-accounts-manage-modal\" class=\"hidden fixed inset-0 z-[108] flex items-end md:items-center justify-center p-0 md:p-6\"><div class=\"absolute inset-0 bg-slate-900/45 backdrop-blur-[2px]\" onclick=\"closeMemberAccountsManageModal()\"></div><div class=\"relative bg-white w-full md:max-w-lg md:rounded-[2rem] rounded-t-[2rem] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden border border-slate-100\"><div class=\"px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0\"><div><h3 class=\"text-sm font-black text-slate-800\">商户子账号</h3><p id=\"member-subuser-modal-desc\" class=\"text-[10px] text-slate-400 mt-0.5\">席位加载中…</p></div><button type=\"button\" onclick=\"closeMemberAccountsManageModal()\" class=\"p-2 hover:bg-slate-100 rounded-full\"><i class=\"ph ph-x text-xl text-slate-400\"></i></button></div><div class=\"flex-1 overflow-y-auto p-4 md:p-5 space-y-4\"><span id=\"member-subuser-count-badge\" class=\"text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg\"></span><p id=\"member-premium-users-gate-hint\" class=\"hidden text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2\">当前登录账号非主管理员，子账号增删改由主管理员操作。</p><div id=\"member-premium-users-editor\" class=\"space-y-4\"><table class=\"w-full text-left text-xs border border-slate-200 rounded-2xl overflow-hidden\"><thead class=\"bg-slate-50 text-slate-400 font-bold\"><tr><th class=\"px-4 py-3\">用户名</th><th class=\"px-4 py-3\">角色</th><th class=\"px-4 py-3 text-center\">操作</th></tr></thead><tbody id=\"member-subusers-tbody\" class=\"divide-y divide-slate-100\"></tbody></table><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4\"><input type=\"text\" id=\"member-new-user-name\" placeholder=\"用户名\" class=\"form-input text-sm\" maxlength=\"32\"/><input type=\"tel\" id=\"member-new-user-phone\" placeholder=\"手机号\" class=\"form-input text-sm\" maxlength=\"11\"/><input type=\"password\" id=\"member-new-user-password\" placeholder=\"初始密码\" class=\"form-input text-sm\"/><select id=\"member-new-user-role\" class=\"form-input text-sm\"></select><button type=\"button\" onclick=\"tmMemberAddSubUser()\" class=\"sm:col-span-2 bg-slate-900 text-white rounded-xl text-xs font-black py-2.5\">新建子账号</button></div><p id=\"member-subuser-limit-hint\" class=\"text-[10px] text-slate-400\"></p></div></div></div></div>");
+    document.body.insertAdjacentHTML('beforeend', "<div id=\"member-accounts-manage-modal\" class=\"hidden fixed inset-0 z-[108] flex items-end md:items-center justify-center p-0 md:p-6\"><div class=\"absolute inset-0 bg-slate-900/45 backdrop-blur-[2px]\" onclick=\"closeMemberAccountsManageModal()\"></div><div class=\"relative bg-white w-full md:max-w-lg md:rounded-[2rem] rounded-t-[2rem] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden border border-slate-100\"><div class=\"px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0\"><div><h3 class=\"text-sm font-black text-slate-800\">商户子账号</h3><p id=\"member-subuser-modal-desc\" class=\"text-[10px] text-slate-400 mt-0.5\">席位加载中…</p></div><button type=\"button\" onclick=\"closeMemberAccountsManageModal()\" class=\"p-2 hover:bg-slate-100 rounded-full\"><i class=\"ph ph-x text-xl text-slate-400\"></i></button></div><div class=\"flex-1 overflow-y-auto p-4 md:p-5 space-y-4\"><span id=\"member-subuser-count-badge\" class=\"text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg\"></span><p id=\"member-premium-users-gate-hint\" class=\"hidden text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2\">当前登录账号非主管理员，子账号增删改由主管理员操作。</p><div id=\"member-premium-users-editor\" class=\"space-y-4\"><table class=\"w-full text-left text-xs border border-slate-200 rounded-2xl overflow-hidden\"><thead class=\"bg-slate-50 text-slate-400 font-bold\"><tr><th class=\"px-4 py-3\">用户名</th><th class=\"px-4 py-3\">角色</th><th class=\"px-4 py-3 text-center\">操作</th></tr></thead><tbody id=\"member-subusers-tbody\" class=\"divide-y divide-slate-100\"></tbody></table><div class=\"grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4\"><form autocomplete=\"off\" data-tm-subuser-form=\"1\" class=\"contents\" onsubmit=\"return false;\"><input type=\"text\" id=\"member-new-user-name\" name=\"tm-subuser-login\" placeholder=\"用户名\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\" class=\"form-input text-sm\" maxlength=\"32\"/><input type=\"tel\" id=\"member-new-user-phone\" name=\"tm-subuser-phone\" placeholder=\"手机号\" autocomplete=\"off\" inputmode=\"numeric\" class=\"form-input text-sm\" maxlength=\"11\"/><input type=\"password\" id=\"member-new-user-password\" name=\"tm-subuser-password\" placeholder=\"初始密码\" autocomplete=\"new-password\" class=\"form-input text-sm\"/><select id=\"member-new-user-role\" name=\"tm-subuser-role\" autocomplete=\"off\" class=\"form-input text-sm\"></select><button type=\"button\" onclick=\"tmMemberAddSubUser()\" class=\"sm:col-span-2 bg-slate-900 text-white rounded-xl text-xs font-black py-2.5\">新建子账号</button></form></div><p id=\"member-subuser-limit-hint\" class=\"text-[10px] text-slate-400\"></p></div></div></div></div>");
 };
 
 
@@ -1703,7 +1703,7 @@ async function tmHydrateMemberCenter(modalEl) {
             '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' +
             '<span class="text-slate-500"> · 有效期至 </span><span class="font-mono font-bold">' + tmEscapeHtml(endLabel) + '</span>' +
             (me.pricePaidCny != null ? '<span class="text-slate-400"> · 实付 ¥' + tmEscapeHtml(tmFmtMoneyDisplay(me.pricePaidCny)) + '</span>' : '') + '</div>' +
-            (me.canManageUsers === true ? '<button type="button" onclick="openMemberAccountsManageModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#14B8A6] text-white text-[10px] font-black shadow-md"><i class="ph ph-users-three"></i> 账号管理</button>' : '') + '</div>';
+            (me.canManageUsers === true ? '<button type="button" data-role="ADMIN" data-action="member.manage" onclick="openMemberAccountsManageModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#14B8A6] text-white text-[10px] font-black shadow-md"><i class="ph ph-users-three"></i> 账号管理</button>' : '') + '</div>';
     } else {
         strip.innerHTML = '<div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">登录后可查看当前租户订阅状态，并进行续费或升级。</div>';
     }
@@ -2094,10 +2094,9 @@ function closeMemberModal() {
 
 var TM_MEMBER_ROLE_OPTS = [
     { code: 'ADMIN', label: '管理员' },
-    { code: 'OPERATOR', label: '运营' },
-    { code: 'WAREHOUSE', label: '仓库' },
-    { code: 'FINANCE', label: '财务' },
-    { code: 'READONLY', label: '只读' }
+    { code: 'SALES', label: '业务员' },
+    { code: 'WAREHOUSE', label: '仓库员' },
+    { code: 'FINANCE', label: '财务' }
 ];
 
 function tmFmtInviteDate(iso) {
@@ -2120,6 +2119,14 @@ function tmReferralStatusClass(status) {
 /* openReferralListModal / closeReferralListModal -> modules/membership/referral-rewards.js */
 
 
+function tmClearMemberSubUserForm() {
+    var ids = ['member-new-user-name', 'member-new-user-phone', 'member-new-user-password'];
+    ids.forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+}
+
 function tmFillMemberRoleSelect(sel, selected) {
     if (!sel) return;
     sel.innerHTML = TM_MEMBER_ROLE_OPTS.map(function (o) {
@@ -2138,6 +2145,7 @@ window.openMemberAccountsManageModal = async function () {
 window.closeMemberAccountsManageModal = function () {
     var modal = document.getElementById('member-accounts-manage-modal');
     if (modal) modal.classList.add('hidden');
+    tmClearMemberSubUserForm();
 };
 
 async function tmReloadMemberSubUsers() {
@@ -2148,7 +2156,8 @@ async function tmReloadMemberSubUsers() {
     var editor = document.getElementById('member-premium-users-editor');
     var desc = document.getElementById('member-subuser-modal-desc');
     var roleSel = document.getElementById('member-new-user-role');
-    tmFillMemberRoleSelect(roleSel, 'OPERATOR');
+    tmFillMemberRoleSelect(roleSel, 'SALES');
+    tmClearMemberSubUserForm();
     try {
         var res = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/users'), { method: 'GET' });
         var data = await res.json().catch(function () { return {}; });
@@ -2186,7 +2195,7 @@ window.tmMemberAddSubUser = async function () {
     var userName = nameEl ? nameEl.value.trim() : '';
     var phone = phoneEl ? phoneEl.value.trim() : '';
     var password = passEl ? passEl.value : '';
-    var roleType = roleEl ? roleEl.value : 'OPERATOR';
+    var roleType = roleEl ? roleEl.value : 'SALES';
     if (!userName || !phone || !password) {
         showNotification('请填写用户名、手机号和初始密码');
         return;
@@ -2210,6 +2219,7 @@ window.tmMemberAddSubUser = async function () {
         if (nameEl) nameEl.value = '';
         if (phoneEl) phoneEl.value = '';
         if (passEl) passEl.value = '';
+        tmClearMemberSubUserForm();
         await tmReloadMemberSubUsers();
     } catch (e) {
         showNotification('创建失败');
@@ -2635,12 +2645,41 @@ function getRoleDisplayName(roleValue) {
     if (role === 'ADMIN') return '管理员';
     if (role === 'MANAGER') return '经理';
     if (role === 'BOSS') return '老板';
-    if (role === 'OPERATOR') return '操作员';
+    if (role === 'SALES') return '业务员';
+    if (role === 'FINANCE') return '财务';
+    if (role === 'WAREHOUSE') return '仓库员';
     if (role === 'STAFF') return '员工';
     return roleValue || '用户';
 }
 
 let tmRoleTypeDictMap = null;
+
+function parseDictionaryListPayload(result) {
+    if (!result) return [];
+    if (Array.isArray(result)) return result;
+    if (Array.isArray(result.data)) return result.data;
+    if (result.data && Array.isArray(result.data.data)) return result.data.data;
+    return [];
+}
+
+function ingestDictionaryItems(list, targetMap) {
+    if (!Array.isArray(list)) return;
+    list.forEach(function (item) {
+        if (!item || typeof item !== 'object') return;
+        var key = String(
+            item.dictCode || item.dictcode || item.code
+                || item.dictValue || item.dictvalue || item.value || ''
+        ).trim().toUpperCase();
+        var label = String(
+            item.dictName || item.dictname || item.dict_name
+                || item.name || item.label || ''
+        ).trim();
+        if (key && label) {
+            targetMap[key] = label;
+        }
+    });
+}
+
 async function getRoleTypeDictMap() {
     if (tmRoleTypeDictMap) return tmRoleTypeDictMap;
     tmRoleTypeDictMap = {};
@@ -2648,23 +2687,44 @@ async function getRoleTypeDictMap() {
     if (!tok || tok.trim() === '' || tok === 'null' || tok === 'undefined') {
         return tmRoleTypeDictMap;
     }
-    try {
-        const gatewayUrl = typeof getApiUrl === 'function' ? getApiUrl('gateway') : '';
-        const url = (gatewayUrl || '') + '/api/v1/crm/dictionary/D002';
-        const response = await window.wrappedFetch(url, { method: 'GET' });
-        if (!response.ok) return tmRoleTypeDictMap;
-        const result = await response.json();
-        const list = Array.isArray(result) ? result : (Array.isArray(result && result.data) ? result.data : []);
-        list.forEach(function(item) {
-            const key = String(item.code || item.dictCode || item.dictcode || item.value || item.dictValue || item.dictvalue || '').trim().toUpperCase();
-            const label = String(item.dictname || item.dictName || item.name || item.label || '').trim();
-            if (key && label) tmRoleTypeDictMap[key] = label;
-        });
-    } catch (error) {
-        console.warn('加载角色字典 D002 失败，使用默认角色映射:', error);
+    const gatewayUrl = typeof getApiUrl === 'function' ? getApiUrl('gateway') : '';
+    const urls = [
+        (gatewayUrl || '') + '/api/v1/crm/dictionary/D003',
+        (gatewayUrl || '') + '/api/v1/rd/dictionaries/list/D003'
+    ];
+    for (var i = 0; i < urls.length; i++) {
+        try {
+            const response = await window.wrappedFetch(urls[i], { method: 'GET' });
+            if (!response.ok) continue;
+            const result = await response.json();
+            ingestDictionaryItems(parseDictionaryListPayload(result), tmRoleTypeDictMap);
+            if (Object.keys(tmRoleTypeDictMap).length > 0) {
+                break;
+            }
+        } catch (error) {
+            console.warn('加载角色字典失败:', urls[i], error);
+        }
     }
+    window.tmRoleTypeDictMap = tmRoleTypeDictMap;
     return tmRoleTypeDictMap;
 }
+
+async function resolveRoleLabel(roleType) {
+    const code = window.TM_ROLE_SCHEMA && window.TM_ROLE_SCHEMA.normalizeRole
+        ? window.TM_ROLE_SCHEMA.normalizeRole(roleType)
+        : String(roleType || 'ADMIN').trim().toUpperCase();
+    const roleMap = await getRoleTypeDictMap();
+    if (roleMap[code]) {
+        return roleMap[code];
+    }
+    if (window.TM_ROLE_PERMISSIONS && window.TM_ROLE_PERMISSIONS[code] && window.TM_ROLE_PERMISSIONS[code].label) {
+        return window.TM_ROLE_PERMISSIONS[code].label;
+    }
+    return getRoleDisplayName(code);
+}
+
+window.resolveRoleLabel = resolveRoleLabel;
+window.getRoleTypeDictMap = getRoleTypeDictMap;
 
 function parseTokenPayload(token) {
     try {
@@ -2695,12 +2755,17 @@ async function resolveAndApplyUserContext() {
 
     // 用户名展示优先使用登录账号字段（如 jin_tmp），而不是 realname
     const userName = user.userName || user.username || localStorage.getItem('username') || payload.userName || payload.username || user.realName || user.realname || payload.realName || payload.realname || '用户';
-    const roleType = user.roleType || user.roletype || payload.roleType || payload.roletype || payload.role || 'USER';
+    const rawRole = user.roleType || user.roletype || payload.roleType || payload.roletype || payload.role || 'ADMIN';
+    const roleType = window.TM_ROLE_SCHEMA && window.TM_ROLE_SCHEMA.normalizeRole
+        ? window.TM_ROLE_SCHEMA.normalizeRole(rawRole)
+        : String(rawRole || 'ADMIN').trim().toUpperCase();
+    if (window.TM_UI_CONTEXT) {
+        window.TM_UI_CONTEXT.role = roleType;
+    }
     const userId = user.userId || user.id || payload.userId || '100001';
     const referralCode = 'TM-' + String(userId).padStart(6, '0');
 
-    const roleMap = await getRoleTypeDictMap();
-    const roleLabel = roleMap[String(roleType || '').toUpperCase()] || getRoleDisplayName(roleType);
+    const roleLabel = await resolveRoleLabel(roleType);
 
     if (document.getElementById('sidebar-user-name')) {
         document.getElementById('sidebar-user-name').textContent = userName + '（' + roleLabel + '）';
@@ -2722,6 +2787,9 @@ async function resolveAndApplyUserContext() {
         document.getElementById('mobile-user-avatar').textContent = userName.substring(0, 2).toUpperCase();
     }
 
+    if (typeof window.applyRoleUI === 'function') {
+        window.applyRoleUI();
+    }
 }
 
 function loadUserInfo() {

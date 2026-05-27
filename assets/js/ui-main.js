@@ -642,6 +642,10 @@ function loadProductCenter() {
                 if (nestedContent) {
                     nestedContent.id = 'supply-inner-scroll';
                 }
+                var shellContent = document.getElementById('content-area');
+                if (shellContent) {
+                    shellContent.classList.add('tm-shell-tab-supply-active');
+                }
             }
             if (vs && window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
                 window.TM_UI.injectSlots(vs).then(function () {
@@ -698,6 +702,7 @@ function initNavigationFromConfig() {
         const cfg = TM_NAV_CONFIG[index];
         if (!cfg) return;
         btn.setAttribute('data-tab', cfg.tab);
+        btn.setAttribute('data-tm-nav', cfg.tab);
         btn.setAttribute('onclick', `switchTab('${cfg.tab}')`);
         const iconEl = btn.querySelector('i');
         const textEl = btn.querySelector('span');
@@ -714,6 +719,7 @@ function initNavigationFromConfig() {
         const cfg = TM_NAV_CONFIG[index];
         if (!cfg) return;
         btn.setAttribute('data-tab', cfg.tab);
+        btn.setAttribute('data-tm-nav', cfg.tab);
         btn.setAttribute('type', 'button');
         btn.removeAttribute('onclick');
         const iconEl = btn.querySelector('i');
@@ -951,14 +957,32 @@ function switchTab(tabId) {
         tabId = 'dashboard';
     }
 
+    if (window.TM_RoleEngine && typeof window.TM_RoleEngine.canAccessTab === 'function') {
+        if (!window.TM_RoleEngine.canAccessTab(tabId)) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('当前角色无权访问该模块', 'error');
+            }
+            tabId = window.TM_RoleEngine.getFirstVisibleTabForRole(
+                window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role
+            );
+        }
+    }
+
     if (tabId === 'crm') {
         hideCrmDetail();
     }
 
     document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
     const viewSupply = document.getElementById('view-supply');
+    const contentArea = document.getElementById('content-area');
     if (viewSupply && tabId !== 'supply') {
         viewSupply.classList.remove('tm-view-supply-scroll');
+    }
+    if (contentArea) {
+        contentArea.classList.toggle('tm-shell-tab-supply-active', tabId === 'supply');
+        if (tabId !== 'supply') {
+            contentArea.style.removeProperty('overflow');
+        }
     }
     const target = document.getElementById('view-' + tabId);
     if (target) target.classList.remove('hidden');
