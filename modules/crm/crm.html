@@ -375,10 +375,10 @@
         </div>
     </main>
 
-    <div id="client-edit-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
-        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeClientEditModal()"></div>
-        <div class="tm-mobile-sheet-panel relative bg-white w-full max-w-4xl h-full max-h-[90vh] md:max-h-[90vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+    <div id="client-edit-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+        <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeClientEditModal()"></div>
+        <div class="tm-mobile-sheet-panel relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
+            <div class="tm-mobile-modal-header tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="crm-modal-head-icon w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg">
                         <i id="client-modal-icon" class="ph ph-user-plus text-xl" aria-hidden="true"></i>
@@ -393,11 +393,11 @@
                 </button>
             </div>
 
-            <form id="client-edit-form" class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-8">
+            <form id="client-edit-form" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8">
                 <div id="crm-customer-registry-root"></div>
             </form>
 
-            <div class="tm-modal-footer-safe p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+            <div class="tm-mobile-modal-footer tm-product-edit-footer tm-modal-footer-safe p-4 md:p-6 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 pb-safe">
                 <p class="text-[10px] text-slate-400 italic">保存后将同步更新客户画像并自动分析采购周期</p>
                 <div class="flex gap-3 w-full md:w-auto">
                     <button onclick="closeClientEditModal()" class="flex-1 md:flex-none px-8 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消返回</button>
@@ -807,17 +807,31 @@
                 document.getElementById('client-modal-title').textContent = '新增客户档案';
                 setClientModalIcon('new');
             }
-            document.getElementById('client-edit-modal').classList.remove('hidden');
-            var applyDialogShell = (window.parent && window.parent.TM_applyDialogShell) || window.TM_applyDialogShell;
-            if (typeof applyDialogShell === 'function') {
-                applyDialogShell(document.getElementById('client-edit-modal'));
+            var modalEl = document.getElementById('client-edit-modal');
+            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
+            if (typeof openUnified === 'function') {
+                openUnified(modalEl);
+            } else {
+                modalEl.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                var applyDialogShell = (window.parent && window.parent.TM_applyDialogShell) || window.TM_applyDialogShell;
+                if (typeof applyDialogShell === 'function') {
+                    applyDialogShell(modalEl);
+                }
+                if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
             }
-            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
         }
 
         function closeClientEditModal() {
-            document.getElementById('client-edit-modal').classList.add('hidden');
-            if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
+            var modalEl = document.getElementById('client-edit-modal');
+            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
+            if (typeof closeUnified === 'function') {
+                closeUnified(modalEl);
+            } else {
+                modalEl.classList.add('hidden');
+                document.body.style.overflow = '';
+                if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
+            }
         }
 
         async function saveClient(event) {

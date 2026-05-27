@@ -265,16 +265,19 @@
                 </div>
             </div>
             <!-- ================= [2] 所有弹窗模块 (核心修复点：确保在页面底部) ================= -->
-            <div id="biz-account-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[130] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountModal()"></div>
-                <div class="relative bg-white w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden text-left">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                        <h4 id="biz-account-modal-title" class="text-sm font-black text-slate-800 tracking-tight">新增首付款账户</h4>
-                        <button onclick="window.closeBizAccountModal()" class="p-2 hover:bg-slate-200 rounded-full transition-colors">
+            <div id="biz-account-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[130] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="window.closeBizAccountModal()"></div>
+                <div class="modal-content-box relative bg-white w-full max-w-xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col text-left min-h-0">
+                    <div class="tm-mobile-modal-header tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-wallet text-lg"></i></div>
+                            <h4 id="biz-account-modal-title" class="text-sm font-black text-slate-800 tracking-tight truncate">新增首付款账户</h4>
+                        </div>
+                        <button onclick="window.closeBizAccountModal()" class="p-2 hover:bg-slate-200 rounded-full transition-colors shrink-0" aria-label="关闭">
                             <i class="ph ph-x text-lg text-slate-400"></i>
                         </button>
                     </div>
-                    <div class="p-6 md:p-7 space-y-5">
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-7 space-y-5 no-scrollbar">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-2">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">账户类型</label>
@@ -313,9 +316,9 @@
                             </label>
                         </div>
                     </div>
-                    <div class="px-6 py-4 border-t border-slate-100 bg-white flex gap-3">
-                        <button onclick="window.closeBizAccountModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
-                        <button onclick="window.saveBizAccount()" class="flex-1 py-2.5 rounded-xl bg-[#14B8A6] text-white text-xs font-black shadow-lg shadow-[#14B8A6]/25 hover:bg-[#0D9488] transition-colors">保存账户</button>
+                    <div class="tm-mobile-modal-footer tm-product-edit-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white flex gap-3 shrink-0 pb-safe">
+                        <button onclick="window.closeBizAccountModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
+                        <button onclick="window.saveBizAccount()" class="flex-[1.4] py-3 rounded-2xl bg-[#14B8A6] text-white text-xs font-black shadow-lg shadow-[#14B8A6]/25 hover:bg-[#0D9488] transition-colors flex items-center justify-center gap-2"><i class="ph ph-floppy-disk-back"></i> 保存账户</button>
                     </div>
                 </div>
             </div>
@@ -335,10 +338,10 @@
                 </div>
             </div>
 
-            <div id="biz-account-detail-modal" class="hidden fixed inset-0 z-[132] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountDetailModal()"></div>
-                <div class="relative bg-white w-full max-w-md rounded-[1.8rem] shadow-2xl overflow-hidden text-left">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2">
+            <div id="biz-account-detail-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[132] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="window.closeBizAccountDetailModal()"></div>
+                <div class="modal-content-box relative bg-white w-full max-w-md h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[1.8rem] shadow-2xl overflow-hidden flex flex-col text-left min-h-0">
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-5 md:py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2 shrink-0">
                         <h4 class="text-sm font-black text-slate-800">账户详情</h4>
                         <div class="flex items-center gap-1 shrink-0">
                             <button type="button" onclick="window.openBizAccountEditFromDetail()" class="tm-biz-acct-action w-9 h-9 rounded-xl border border-transparent flex items-center justify-center text-[#0D9488]" title="修改账户">
@@ -349,7 +352,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="p-5 space-y-4 text-xs">
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-5 space-y-4 text-xs no-scrollbar">
                         <div class="rounded-xl border border-[#CCFBF1] bg-gradient-to-br from-[#F0FDFA] to-slate-50 px-4 py-3">
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">账户余额</p>
                             <p id="biz-detail-balance" class="text-xl font-mono font-black text-[#0D9488] tabular-nums"></p>
@@ -368,17 +371,17 @@
                             <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
                         </div>
                     </div>
-                    <div class="px-5 py-4 border-t border-slate-100 bg-white">
-                        <button type="button" onclick="window.closeBizAccountDetailModal()" class="w-full py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
+                    <div class="tm-mobile-modal-footer px-4 py-3 md:px-5 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+                        <button type="button" onclick="window.closeBizAccountDetailModal()" class="w-full py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
                     </div>
                 </div>
             </div>
 
             <!-- 账户流水 -->
-            <div id="biz-account-ledger-modal" class="hidden fixed inset-0 z-[133] flex items-center justify-center p-3 md:p-4">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="window.closeBizAccountLedgerModal()"></div>
-                <div class="relative bg-white w-full max-w-4xl max-h-[92vh] flex flex-col rounded-[1.25rem] md:rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 text-left">
-                    <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/60 flex items-start md:items-center justify-between gap-3 shrink-0">
+            <div id="biz-account-ledger-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[133] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="window.closeBizAccountLedgerModal()"></div>
+                <div class="modal-content-box relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[92vh] flex flex-col rounded-t-[1.75rem] md:rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 text-left min-h-0">
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/60 flex items-start md:items-center justify-between gap-3 shrink-0">
                         <div class="min-w-0">
                             <h4 class="text-sm font-black text-slate-800 flex items-center gap-2">
                                 <i class="ph ph-arrows-left-right text-[#14B8A6]"></i> 账户流水
@@ -389,7 +392,7 @@
                             <i class="ph ph-x text-lg text-slate-400"></i>
                         </button>
                     </div>
-                    <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+                    <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 shrink-0">
                         <div class="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
                             <div class="flex-1 min-w-[8rem]">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">开始日期</label>
@@ -405,7 +408,7 @@
                             导出 Excel
                         </button>
                     </div>
-                    <div class="flex-1 overflow-y-auto overflow-x-auto p-4 md:p-5">
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto overflow-x-auto p-4 md:p-5 no-scrollbar">
                         <table class="w-full text-left border-collapse text-[11px] md:text-xs min-w-[520px]">
                             <thead>
                                 <tr class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
@@ -420,46 +423,44 @@
                         </table>
                         <p id="biz-ledger-empty" class="hidden text-center text-xs text-slate-400 py-10">所选时间范围内暂无流水记录</p>
                     </div>
+                    <div class="tm-mobile-modal-footer px-4 py-3 md:px-6 border-t border-slate-100 bg-white shrink-0 pb-safe">
+                        <button type="button" onclick="window.closeBizAccountLedgerModal()" class="w-full py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
+                    </div>
                 </div>
             </div>
 
-            <div id="clearance-modal" class="hidden fixed inset-0 z-[120] flex items-center justify-center p-0 md:p-8 modal-blur">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeClearanceModal()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
-                    <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                        <div class="flex items-center gap-4"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white"><i class="ph ph-lightning-bold text-xl"></i></div><h2 class="text-sm font-black text-slate-800 uppercase tracking-widest italic">AI Inventory Clearance Plan</h2></div>
-                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            <div id="clearance-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeClearanceModal()"></div>
+                <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-8 md:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                        <div class="flex items-center gap-3 md:gap-4 min-w-0"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-lightning-bold text-xl"></i></div><h2 class="text-sm font-black text-slate-800 uppercase tracking-widest italic truncate">AI Inventory Clearance Plan</h2></div>
+                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0"><i class="ph ph-x text-xl text-slate-400"></i></button>
                     </div>
-                    <div class="flex-1 overflow-y-auto p-10 no-scrollbar space-y-12 text-left">
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-12 text-left">
                         <section>
                             <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
                             <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">"监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理！"</div>
                         </section>
                     </div>
-                    <div class="p-6 border-t border-slate-100 bg-white"><button onclick="closeClearanceModal()" class="w-full py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                    <div class="tm-mobile-modal-footer px-4 py-3 md:p-6 border-t border-slate-100 bg-white shrink-0 pb-safe"><button onclick="closeClearanceModal()" class="w-full py-3 md:py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
                 </div>
             </div>
 
             <!-- AI 预测报告弹窗 --> 
-            <div id="ai-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet"> 
-                <!-- 遮罩 --> 
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm modal-overlay" onclick="closeAIAnalysis()"></div> 
-
-                <!-- 文档主体 --> 
-                <div class="relative bg-white w-full max-w-4xl h-full max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col modal-content"> 
-                    <!-- 弹窗页眉 --> 
-                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50"> 
-                        <div class="flex items-center gap-2"> 
-                            <i class="ph ph-file-text text-brand-600 text-xl font-bold"></i> 
-                            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">AI 经营决策分析报告 v2.4</h2> 
+            <div id="ai-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet"> 
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md modal-overlay" onclick="closeAIAnalysis()"></div> 
+                <div class="modal-content-box relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-0"> 
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0"> 
+                        <div class="flex items-center gap-2 min-w-0"> 
+                            <i class="ph ph-file-text text-brand-600 text-xl font-bold shrink-0"></i> 
+                            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider truncate">AI 经营决策分析报告 v2.4</h2> 
                         </div> 
-                        <button onclick="closeAIAnalysis()" class="p-2 hover:bg-slate-200 rounded-full transition-colors"> 
+                        <button onclick="closeAIAnalysis()" class="p-2 hover:bg-slate-200 rounded-full transition-colors shrink-0" aria-label="关闭"> 
                             <i class="ph ph-x text-xl text-slate-400"></i> 
                         </button> 
                     </div> 
 
-                    <!-- 文档内容区 (模拟专业报告排版) --> 
-                    <div class="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar space-y-10"> 
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-10"> 
                         <!-- 报告标题与时间 --> 
                         <div class="text-center border-b border-slate-100 pb-8"> 
                             <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">商户经营全项诊断与增长预测</h1> 
@@ -537,10 +538,9 @@
                         </div> 
                     </div> 
 
-                    <!-- 弹窗页脚 --> 
-                    <div class="p-4 border-t border-slate-100 bg-white flex gap-3"> 
-                        <button onclick="closeAIAnalysis()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">返回工作台</button> 
-                        <button class="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"> 
+                    <div class="tm-mobile-modal-footer p-4 border-t border-slate-100 bg-white flex gap-3 shrink-0 pb-safe"> 
+                        <button onclick="closeAIAnalysis()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">返回工作台</button> 
+                        <button class="flex-1 py-3 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"> 
                             <i class="ph ph-download"></i> 导出完整文档 
                         </button> 
                     </div> 
@@ -1011,12 +1011,26 @@
             if (title) {
                 title.textContent = current ? '编辑账户信息' : '新增首付款账户';
             }
-            modal.classList.remove('hidden');
+            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
+            if (typeof openUnified === 'function') {
+                openUnified(modal);
+            } else {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
         };
 
         window.closeBizAccountModal = function() {
             const modal = document.getElementById('biz-account-modal');
-            if (modal) modal.classList.add('hidden');
+            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
+            if (modal) {
+                if (typeof closeUnified === 'function') {
+                    closeUnified(modal);
+                } else {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            }
             window.bizEditingAccountId = null;
         };
 
@@ -1106,7 +1120,15 @@
                 window.renderBizAccountDetailFields(fb);
             }
             const modal = document.getElementById('biz-account-detail-modal');
-            if (modal) modal.classList.remove('hidden');
+            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
+            if (modal) {
+                if (typeof openUnified === 'function') {
+                    openUnified(modal);
+                } else {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
         };
 
         window.renderBizAccountDetailFields = function(item) {
@@ -1128,7 +1150,14 @@
 
         window.closeBizAccountDetailModal = function() {
             const modal = document.getElementById('biz-account-detail-modal');
-            if (modal) modal.classList.add('hidden');
+            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
+            if (modal) {
+                if (typeof closeUnified === 'function') {
+                    closeUnified(modal);
+                } else {
+                    modal.classList.add('hidden');
+                }
+            }
             window.bizAccountDetailId = null;
         };
 
@@ -1138,13 +1167,29 @@
             var sub = document.getElementById('biz-ledger-subtitle');
             if (sub) sub.textContent = item ? ((item.accountName || '') + ' · ' + (item.accountNo || '')) : ('账户 #' + accountId);
             var m = document.getElementById('biz-account-ledger-modal');
-            if (m) m.classList.remove('hidden');
+            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
+            if (m) {
+                if (typeof openUnified === 'function') {
+                    openUnified(m);
+                } else {
+                    m.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
             window.loadBizAccountLedger();
         };
 
         window.closeBizAccountLedgerModal = function() {
             var m = document.getElementById('biz-account-ledger-modal');
-            if (m) m.classList.add('hidden');
+            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
+            if (m) {
+                if (typeof closeUnified === 'function') {
+                    closeUnified(m);
+                } else {
+                    m.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            }
             window.bizLedgerAccountId = null;
         };
 
@@ -1222,20 +1267,48 @@
 
         // 打开AI分析弹窗
         function openAIAnalysis() {
-            document.getElementById('ai-modal').classList.remove('hidden');
+            var modal = document.getElementById('ai-modal');
+            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
+            if (modal && typeof openUnified === 'function') {
+                openUnified(modal);
+            } else if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
         }
 
         // 关闭AI分析弹窗
         function closeAIAnalysis() {
-            document.getElementById('ai-modal').classList.add('hidden');
+            var modal = document.getElementById('ai-modal');
+            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
+            if (modal && typeof closeUnified === 'function') {
+                closeUnified(modal);
+            } else if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         }
 
         function openClearanceModal() {
-            document.getElementById('clearance-modal').classList.remove('hidden');
+            var modal = document.getElementById('clearance-modal');
+            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
+            if (modal && typeof openUnified === 'function') {
+                openUnified(modal);
+            } else if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
         }
 
         function closeClearanceModal() {
-            document.getElementById('clearance-modal').classList.add('hidden');
+            var modal = document.getElementById('clearance-modal');
+            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
+            if (modal && typeof closeUnified === 'function') {
+                closeUnified(modal);
+            } else if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {

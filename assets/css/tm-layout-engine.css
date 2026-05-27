@@ -295,8 +295,8 @@
         width: 100% !important;
         max-width: 100% !important;
         max-height: min(
-            90dvh,
-            calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem))
+            96dvh,
+            calc(100dvh - env(safe-area-inset-top, 0px) - var(--tm-tabbar-h, 4.25rem))
         ) !important;
         height: auto !important;
         border-radius: 2.5rem 2.5rem 0 0 !important;

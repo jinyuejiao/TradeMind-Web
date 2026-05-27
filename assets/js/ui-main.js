@@ -834,6 +834,7 @@ function TM_setShellChromeHidden(hidden) {
     }
     var tabbar = document.getElementById('tm-app-tabbar');
     if (tabbar) tabbar.classList.toggle('tm-shell-chrome-hidden', !!hidden);
+    document.documentElement.classList.toggle('tm-embed-modal-open', !!hidden);
     document.body.classList.toggle('tm-embed-modal-open', !!hidden);
 }
 
@@ -855,9 +856,34 @@ function TM_applyDialogShell(modalEl, opts) {
     if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
         window.TM_ShellInsets.applyModalRoot(modalEl, { variant: variant });
     } else if (variant === 'sheet') {
-        modalEl.classList.add('tm-mobile-sheet-modal');
+        modalEl.classList.add('tm-mobile-sheet-modal', 'tm-unified-mobile-modal');
     }
 }
+
+/** 打开统一移动端弹窗：应用壳层、锁定滚动、隐藏底栏 */
+function TM_openUnifiedModal(modalEl, opts) {
+    if (!modalEl) return;
+    opts = opts || {};
+    if (typeof TM_applyDialogShell === 'function') {
+        TM_applyDialogShell(modalEl, { variant: opts.variant || 'sheet' });
+    }
+    modalEl.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
+}
+window.TM_openUnifiedModal = TM_openUnifiedModal;
+
+function TM_closeUnifiedModal(modalEl) {
+    if (!modalEl) return;
+    modalEl.classList.add('hidden');
+    if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
+        document.body.style.overflow = '';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+        if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
+    }
+}
+window.TM_closeUnifiedModal = TM_closeUnifiedModal;
 window.TM_applyDialogShell = TM_applyDialogShell;
 
 if (!window.__tmEmbedModalListenerBound) {
@@ -1026,8 +1052,16 @@ function TM_restoreShellNavigationGlobals() {
 
 TM_captureShellNavigationGlobals();
 
-function openAIAnalysis() { document.getElementById('ai-modal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-function closeAIAnalysis() { document.getElementById('ai-modal').classList.add('hidden'); document.body.style.overflow = ''; }
+function openAIAnalysis() {
+    var modal = document.getElementById('ai-modal');
+    if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
+    else if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+}
+function closeAIAnalysis() {
+    var modal = document.getElementById('ai-modal');
+    if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
+    else if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+}
 
 // 手机端侧边栏切换
 function toggleSidebar() {
@@ -2009,11 +2043,15 @@ function openClientEditModal(mode, name) {
         title.innerText = "编辑客户详情";
         document.getElementById('cust-name').value = name === 'Ahmed' ? "Ahmed Al-Fayed" : "John Smith";
     }
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
+    else { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 }
 
-function closeClientEditModal() { document.getElementById('client-edit-modal').classList.add('hidden'); document.body.style.overflow = ''; }
+function closeClientEditModal() {
+    var modal = document.getElementById('client-edit-modal');
+    if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
+    else { if (modal) modal.classList.add('hidden'); document.body.style.overflow = ''; }
+}
 
 function toggleAdvancedLegacy() {
     const drawer = document.getElementById('advanced-drawer');
@@ -2048,17 +2086,23 @@ function openPromoProductPickerModal() {
     if (typeof window.renderPromoProductPickerList === 'function') {
         window.renderPromoProductPickerList('');
     }
-    if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
+    else {
+        if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    }
 }
 
 function closePromoProductPickerModal() {
     var modal = document.getElementById('promo-product-picker-modal');
-    if (modal) modal.classList.add('hidden');
-    document.body.style.overflow = '';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
+    else {
+        if (modal) modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    }
 }
 
 window.filterPromoProductPicker = function () {
@@ -2147,16 +2191,22 @@ function openClearanceModal(productIds) {
             ? ('针对产品：' + names.join('、'))
             : '针对所选产品生成促销建议';
     }
-    if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
+    else {
+        if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    }
 }
 function closeClearanceModal() {
     var modal = document.getElementById('clearance-modal');
-    if (modal) modal.classList.add('hidden');
-    document.body.style.overflow = '';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
+    else {
+        if (modal) modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    }
 }
 window.openClearanceModal = openClearanceModal;
 

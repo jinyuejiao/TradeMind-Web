@@ -1135,22 +1135,29 @@ window.SupplierModule = {
         document.getElementById('supplier-address').value = '';
         var modal = document.getElementById('supplier-modal');
         if (modal) {
-            if (typeof window.TM_applyDialogShell === 'function') {
-                window.TM_applyDialogShell(modal, { variant: 'sheet' });
-            } else if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
-                window.TM_ShellInsets.applyModalRoot(modal, { variant: 'sheet' });
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
+            } else {
+                if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(modal, { variant: 'sheet' });
+                }
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
             }
-            modal.classList.remove('hidden');
         }
-        document.body.style.overflow = 'hidden';
-        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
 
     closeSupplierModal: function() {
-        document.getElementById('supplier-modal').classList.add('hidden');
-        document.body.style.overflow = '';
+        var modal = document.getElementById('supplier-modal');
+        if (modal && typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
+        }
         this.currentSupplier = null;
-        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
     },
 
     editSupplier: async function(supplierId) {
@@ -1170,13 +1177,17 @@ window.SupplierModule = {
         document.getElementById('supplier-address').value = supplier.address || '';
         var modal = document.getElementById('supplier-modal');
         if (modal) {
-            if (typeof window.TM_applyDialogShell === 'function') {
-                window.TM_applyDialogShell(modal, { variant: 'sheet' });
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
+            } else {
+                if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(modal, { variant: 'sheet' });
+                }
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
             }
-            modal.classList.remove('hidden');
         }
-        document.body.style.overflow = 'hidden';
-        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
     },
 
     saveSupplier: async function() {

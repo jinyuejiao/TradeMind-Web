@@ -706,6 +706,103 @@ textarea {
     }
 }
 
+/* —— 统一手机端弹窗协议（对齐产品详情 tm-product-edit-modal） —— */
+@media (max-width: 767px) {
+    .tm-unified-mobile-modal,
+    .tm-product-edit-modal {
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+
+    .tm-unified-mobile-modal > .tm-modal-backdrop,
+    .tm-unified-mobile-modal > .absolute.inset-0:first-child,
+    .tm-product-edit-modal > .absolute.inset-0:first-child {
+        inset: 0 !important;
+    }
+
+    .tm-unified-mobile-modal .modal-content-box,
+    .tm-unified-mobile-modal .tm-dialog-panel,
+    .tm-unified-mobile-modal .modal-content,
+    .tm-product-edit-modal .modal-content-box {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: min(96dvh, 100%) !important;
+        max-height: min(96dvh, 100%) !important;
+        border-radius: 1.75rem 1.75rem 0 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .tm-unified-mobile-modal .tm-mobile-modal-header,
+    .tm-unified-mobile-modal .tm-product-edit-header,
+    .tm-product-edit-modal .tm-product-edit-header {
+        flex-shrink: 0;
+    }
+
+    .tm-unified-mobile-modal .tm-mobile-modal-body,
+    .tm-unified-mobile-modal .modal-content-box > .flex-1,
+    .tm-unified-mobile-modal form.flex-1,
+    .tm-product-edit-modal .modal-content-box > .flex-1.min-h-0 {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tm-unified-mobile-modal .tm-mobile-modal-footer,
+    .tm-unified-mobile-modal .tm-product-edit-footer,
+    .tm-product-edit-modal .tm-product-edit-footer {
+        flex-shrink: 0 !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 10;
+        background: #fff;
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    .tm-unified-mobile-modal .tm-modal-footer-safe,
+    body.tm-embed-modal-open .tm-unified-mobile-modal .tm-modal-footer-safe,
+    html.tm-embedded .tm-unified-mobile-modal .tm-modal-footer-safe {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* 弹窗打开时隐藏功能导览 FAB，避免遮挡底部按钮 */
+    body.tm-embed-modal-open .tm-onboarding-checklist-fab,
+    body.tm-embed-modal-open .tm-onboarding-checklist-panel,
+    html.tm-embed-modal-open .tm-onboarding-checklist-fab,
+    html.tm-embed-modal-open .tm-onboarding-checklist-panel {
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    /* 仓库管理：桌面端保持右侧 Drawer */
+    #warehouse-drawer.tm-unified-mobile-modal {
+        justify-content: flex-end !important;
+    }
+
+    #warehouse-drawer.tm-unified-mobile-modal .modal-content-box {
+        border-radius: 1.75rem 1.75rem 0 0 !important;
+    }
+}
+
+@media (min-width: 768px) {
+    #warehouse-drawer.tm-unified-mobile-modal .modal-content-box {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 24rem !important;
+        max-width: 24rem !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        border-radius: 0 !important;
+    }
+}
+
 html.tm-embedded #content-area {
     padding-top: 0.5rem !important;
     padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.25rem) !important;

@@ -130,8 +130,8 @@
         </div>
     </main>
 
-    <div id="supplier-modal" class="tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
-        <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="closeSupplierModal()"></div>
+    <div id="supplier-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+        <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeSupplierModal()"></div>
         <div class="relative bg-white w-full max-w-lg md:max-w-md h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
             <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3 min-w-0">
@@ -143,7 +143,7 @@
                 </div>
                 <button type="button" onclick="closeSupplierModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
             </div>
-            <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar">
+            <div class="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar tm-mobile-modal-body">
                 <section class="tm-product-edit-section">
                     <h3 class="tm-product-edit-section__title">基本信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
                     <div class="tm-product-edit-grid">
@@ -166,7 +166,7 @@
                     </div>
                 </section>
             </div>
-            <div class="tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+            <div class="tm-product-edit-footer tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
                 <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存后可在进货单中选择该供应商</p>
                 <div class="flex gap-2 md:gap-3 w-full">
                     <button type="button" onclick="closeSupplierModal()" class="flex-1 md:flex-none md:px-6 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>

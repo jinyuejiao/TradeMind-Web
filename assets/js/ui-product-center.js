@@ -1627,7 +1627,12 @@ window.ProductModule = {
         console.log('[ProductModule] openWarehouseDrawer 被调用 ===');
         const drawer = document.getElementById('warehouse-drawer');
         if (drawer) {
-            drawer.classList.remove('hidden');
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(drawer);
+            } else {
+                drawer.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
             await this.loadWarehousesAndRender();
         }
     },
@@ -1686,7 +1691,12 @@ window.ProductModule = {
         console.log('[ProductModule] closeWarehouseDrawer 被调用 ===');
         const drawer = document.getElementById('warehouse-drawer');
         if (drawer) {
-            drawer.classList.add('hidden');
+            if (typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(drawer);
+            } else {
+                drawer.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         }
     },
 
@@ -1837,8 +1847,12 @@ window.ProductModule = {
         var modal = document.getElementById('purchase-suggestion-modal');
         var content = document.getElementById('purchase-suggestion-content');
         if (!modal || !content) return;
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        if (typeof window.TM_openUnifiedModal === 'function') {
+            window.TM_openUnifiedModal(modal);
+        } else {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
         this.purchaseGenGroups = [];
         this.purchaseGenPreviewRef = '';
         content.innerHTML = this._renderPurchaseGenLoading();
@@ -1862,9 +1876,13 @@ window.ProductModule = {
     closePurchaseSuggestionModal: function() {
         var modal = document.getElementById('purchase-suggestion-modal');
         if (modal) {
-            modal.classList.add('hidden');
+            if (typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(modal);
+            } else {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         }
-        document.body.style.overflow = '';
     },
 
     removePurchaseGenSupplierGroup: function(supplierId) {
@@ -2139,7 +2157,12 @@ window.ProductModule = {
         console.log('[ProductModule] openCategoryManager 被调用 ===');
         const modal = document.getElementById('category-modal-root');
         if (modal) {
-            modal.classList.remove('hidden');
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
+            } else {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
             await this.loadCategories();
             this.renderCategoryList();
         }
@@ -2149,7 +2172,12 @@ window.ProductModule = {
         console.log('[ProductModule] closeCategoryManager 被调用 ===');
         const modal = document.getElementById('category-modal-root');
         if (modal) {
-            modal.classList.add('hidden');
+            if (typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(modal);
+            } else {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
         }
     },
 

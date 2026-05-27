@@ -487,9 +487,9 @@
             </div>
 
             <!-- 促销方案 — 选品 -->
-            <div id="promo-product-picker-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[125] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
-                <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePromoProductPickerModal()"></div>
-                <div class="tm-dialog-panel relative bg-white w-full max-w-lg md:max-w-2xl max-h-[min(88dvh,100%)] md:max-h-[85vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+            <div id="promo-product-picker-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[125] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closePromoProductPickerModal()"></div>
+                <div class="tm-dialog-panel relative bg-white w-full max-w-lg md:max-w-2xl h-[min(96dvh,100%)] md:h-auto md:max-h-[85vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0">
                     <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
                         <div>
                             <h2 class="text-sm font-black text-slate-800">选择促销产品</h2>
@@ -503,9 +503,9 @@
                             <input type="search" id="promo-product-search" oninput="filterPromoProductPicker()" placeholder="搜索产品名称或 SKU…" class="form-input w-full pl-9 text-sm" autocomplete="off" />
                         </div>
                     </div>
-                    <div id="promo-product-picker-list" class="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 no-scrollbar"></div>
+                    <div id="promo-product-picker-list" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-3 space-y-2 no-scrollbar"></div>
                     <div id="promo-picker-selected-bar" class="hidden px-4 py-2 bg-brand-50 border-t border-brand-100 text-[10px] font-bold text-brand-700 shrink-0">已选 <span id="promo-picker-count">0</span> 件产品</div>
-                    <div class="tm-modal-footer-safe pb-safe p-4 border-t border-slate-100 flex gap-2 shrink-0">
+                    <div class="tm-mobile-modal-footer tm-modal-footer-safe pb-safe p-4 border-t border-slate-100 flex gap-2 shrink-0">
                         <button type="button" onclick="closePromoProductPickerModal()" class="tm-btn-secondary flex-1 py-3 text-xs">取消</button>
                         <button type="button" onclick="confirmPromoProductSelection()" class="tm-btn-primary flex-[1.4] py-3 text-xs shadow-lg">生成促销方案</button>
                     </div>
@@ -513,10 +513,10 @@
             </div>
 
             <!-- ================= [沉浸式弹窗 4] 呆滞品清理方案 ================= -->
-            <div id="clearance-modal" class="tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8 modal-blur" data-tm-dialog-variant="sheet">
-                <div class="absolute inset-0" onclick="closeClearanceModal()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box">
-                    <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div id="clearance-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeClearanceModal()"></div>
+                <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-8 md:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                         <div class="flex items-center gap-4 min-w-0">
                             <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-megaphone-simple text-xl"></i></div>
                             <div class="min-w-0">
@@ -526,7 +526,7 @@
                         </div>
                         <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
                     </div>
-                    <div class="flex-1 overflow-y-auto p-10 no-scrollbar space-y-12 text-left">
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-12 text-left">
                         <section>
                             <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
                             <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">“监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理。”</div>
@@ -545,7 +545,7 @@
                             </div>
                         </section>
                     </div>
-                    <div class="p-6 border-t border-slate-100 bg-white"><button onclick="closeClearanceModal()" class="w-full py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                    <div class="tm-mobile-modal-footer p-4 md:p-6 border-t border-slate-100 bg-white shrink-0 pb-safe"><button onclick="closeClearanceModal()" class="w-full py-3 md:py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
                 </div>
             </div>
 
