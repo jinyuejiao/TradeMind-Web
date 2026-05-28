@@ -873,13 +873,13 @@
 
                                         <!-- 应收账款（品牌青，对应收付款能力展示） -->
                                         <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[${receivableHeight}%] rounded-t-lg shadow-sm hover:shadow-lg transition-all" style="background-color:#14B8A6"></div>
+                                            <div class="w-10 md:w-12 rounded-t-lg shadow-sm hover:shadow-lg transition-all" style="height:${receivableHeight}%;min-height:${receivable > 0 ? '4px' : '0'};background-color:#14B8A6"></div>
                                             <span class="axis-text mt-3 text-center text-[#0D9488] font-bold">应收账款</span>
                                         </div>
 
                                         <!-- 应付账款 -->
                                         <div class="flex flex-col items-center flex-1 h-full justify-end z-10">
-                                            <div class="w-10 md:w-12 h-[${payableHeight}%] bg-yellow-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all"></div>
+                                            <div class="w-10 md:w-12 bg-yellow-500 rounded-t-lg shadow-sm hover:shadow-lg transition-all" style="height:${payableHeight}%;min-height:${payable > 0 ? '4px' : '0'}"></div>
                                             <span class="axis-text mt-3 text-center">应付账款</span>
                                         </div>
                                     </div>

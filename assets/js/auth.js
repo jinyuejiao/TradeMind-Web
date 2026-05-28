@@ -87,6 +87,10 @@ window.tmApplyPosterReferralData = function (referralCode, merchantType) {
         linkEl.href = landing;
         linkEl.textContent = 'trademind.com.cn';
     }
+    if (arguments.length >= 3 && arguments[2]) {
+        var benefitEl = document.getElementById('poster-ref-benefit-text');
+        if (benefitEl) benefitEl.textContent = String(arguments[2]);
+    }
 };
 
 window.tmSyncPosterReferral = async function () {
@@ -98,6 +102,7 @@ window.tmSyncPosterReferral = async function () {
             var refRes = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/referral/summary'), { method: 'GET' });
             var refJson = await refRes.json().catch(function () { return {}; });
             if (refJson.success && refJson.referralCode) code = String(refJson.referralCode).trim();
+            if (refJson.refereeBenefitPosterHint) window._tmPosterBenefitHint = refJson.refereeBenefitPosterHint;
             try {
                 var meRes = await wrappedFetch(tmMemberApiUrl('/api/v1/tenant/subscription/me'), { method: 'GET' });
                 var meJson = await meRes.json().catch(function () { return {}; });
@@ -113,7 +118,7 @@ window.tmSyncPosterReferral = async function () {
             if (t && !tmIsPlaceholderReferralCode(t)) code = t;
         }
     }
-    if (code) tmApplyPosterReferralData(code, mt);
+    if (code) tmApplyPosterReferralData(code, mt, window._tmPosterBenefitHint || '');
     return code;
 };
 
@@ -2593,6 +2598,11 @@ window.injectCommonUI = function() {
                 console.log('TradeMindUI.injectCommonUI: 嵌入模块页（iframe/embed），跳过注入式顶栏/底栏与侧栏覆盖');
             } else {
                 console.log('TradeMindUI.injectCommonUI: 主壳页面 (tm-app-tabbar) 已含内置导航，跳过注入式顶栏/底栏与侧栏覆盖');
+                if (typeof window.TM_scheduleShellOverlayRecovery === 'function') {
+                    window.TM_scheduleShellOverlayRecovery();
+                } else if (typeof window.TM_resetShellOverlay === 'function') {
+                    window.TM_resetShellOverlay();
+                }
             }
         } else if (!isPublicAuthPage) {
             console.log('TradeMindUI.injectCommonUI: 检测到桌面设备，跳过移动端适配');
@@ -3150,6 +3160,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    async function tmValidateInviteCodeOnBlur() {
+        var el = document.getElementById('inviteCode');
+        var hint = document.getElementById('inviteCodeHint');
+        if (!el || !hint) return;
+        var code = (el.value || '').trim();
+        if (!code) {
+            hint.classList.add('hidden');
+            hint.textContent = '';
+            return;
+        }
+        try {
+            var url = getApiUrl('gateway') + '/api/v1/tenant/referral/validate';
+            var res = await window.wrappedFetch(url, {
+                skipAuth: true,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code })
+            });
+            var data = await res.json().catch(function () { return {}; });
+            hint.classList.remove('hidden');
+            if (data.valid) {
+                hint.textContent = data.refereeBenefitHint || '推荐码有效';
+                hint.classList.remove('text-red-600');
+                hint.classList.add('text-teal-700');
+            } else {
+                hint.textContent = data.message || '推荐码无效';
+                hint.classList.add('text-red-600');
+                hint.classList.remove('text-teal-700');
+            }
+        } catch (err) {
+            hint.classList.add('hidden');
+        }
+    }
+
+    var inviteCodeInput = document.getElementById('inviteCode');
+    if (inviteCodeInput) {
+        inviteCodeInput.addEventListener('blur', tmValidateInviteCodeOnBlur);
+    }
+
     // 验证码发送逻辑（TenantService + 阿里云 Dysms SendSms）
     let registerSmsToken = null;
     const sendCodeBtn = document.getElementById('sendCodeBtn');

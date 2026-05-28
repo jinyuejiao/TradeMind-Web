@@ -45,6 +45,9 @@ function TM_syncProductCenterOverlays() {
             if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
                 window.TM_bindProductCenterGlobalFns();
             }
+            if (typeof TM_resetShellOverlay === 'function') {
+                TM_resetShellOverlay();
+            }
         })
         .catch(function (e) {
             console.warn('[TM] 同步产品中心弹窗失败:', e);
@@ -96,6 +99,9 @@ function TM_syncDashboardOverlays(htmlString) {
         TM_rebindVoiceStopAfterOverlaySync();
         window._detailFinBound = false;
         window._manualFinBound = false;
+        if (typeof TM_resetShellOverlay === 'function') {
+            TM_resetShellOverlay();
+        }
     } catch (e) {
         console.warn('[TM] 同步 dashboard 弹窗节点失败:', e);
     }
@@ -203,6 +209,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 TM_refreshDashboardPendingOrders();
                 if (typeof window.loadInProgressOrders === 'function') {
                     window.loadInProgressOrders();
+                }
+                if (typeof TM_scheduleShellOverlayRecovery === 'function') {
+                    TM_scheduleShellOverlayRecovery();
                 }
                 return;
             }
@@ -593,6 +602,9 @@ function loadDashboard() {
         })
         .finally(function () {
             window.__TM_loadDashboardInFlight = null;
+            if (typeof TM_scheduleShellOverlayRecovery === 'function') {
+                TM_scheduleShellOverlayRecovery();
+            }
         });
     return window.__TM_loadDashboardInFlight;
 }
@@ -834,13 +846,29 @@ function TM_syncAppShellMetrics() {
 
 window.TM_syncAppShellMetrics = TM_syncAppShellMetrics;
 
+/** 弹窗节点是否处于「已打开」状态（class + aria + 计算样式，避免误判导致底栏被藏） */
+function TM_isShellOverlayElementOpen(el) {
+    if (!el || !el.isConnected) return false;
+    if (el.classList.contains('hidden')) return false;
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    try {
+        var st = window.getComputedStyle(el);
+        if (!st) return false;
+        if (st.display === 'none' || st.visibility === 'hidden') return false;
+        if (parseFloat(st.opacity) === 0) return false;
+    } catch (e) { /* ignore */ }
+    return true;
+}
+
 /** 是否仍有未关闭的壳层弹窗（DOM 层校验，用于纠偏） */
 function TM_anyShellOverlayOpenInDom() {
-    return !!document.querySelector(
-        '.tm-unified-mobile-modal:not(.hidden), ' +
-        '.tm-product-edit-modal:not(.hidden), ' +
-        '#member-modal:not(.hidden)'
-    );
+    var sel =
+        '.tm-unified-mobile-modal, .tm-product-edit-modal, #member-modal';
+    var nodes = document.querySelectorAll(sel);
+    for (var i = 0; i < nodes.length; i++) {
+        if (TM_isShellOverlayElementOpen(nodes[i])) return true;
+    }
+    return false;
 }
 
 /** 实际应用主壳底栏 / 备案区显隐（仅在引用计数为 0↔1 时调用） */
@@ -899,22 +927,60 @@ function TM_popShellOverlay() {
     }
 }
 
-/** 根据 DOM 与计数纠偏，修复「弹窗已关但底栏仍隐藏」 */
+/** 根据 DOM 与计数纠偏，修复「弹窗已关但底栏仍隐藏」（不向 depth=0 时自动 push，避免登录后误藏底栏） */
 function TM_reconcileShellOverlay() {
     var domOpen = TM_anyShellOverlayOpenInDom();
     var depth = window.__TM_shellOverlayDepth || 0;
     if (!domOpen && depth > 0) {
         window.__TM_shellOverlayDepth = 0;
         TM_applyShellOverlayHidden(false);
-    } else if (domOpen && depth === 0) {
-        TM_pushShellOverlay();
+        if (typeof TM_notifyEmbedModal === 'function') {
+            TM_notifyEmbedModal(false);
+        }
     }
+}
+
+/** 登录/刷新/模块弹窗同步后：强制恢复底栏与引用计数 */
+function TM_resetShellOverlay() {
+    window.__TM_shellOverlayDepth = 0;
+    TM_applyShellOverlayHidden(false);
+    if (typeof TM_notifyEmbedModal === 'function') {
+        TM_notifyEmbedModal(false);
+    }
+}
+
+/** 无弹窗打开时恢复底栏；有弹窗时仅做 depth 纠偏 */
+function TM_ensureShellOverlayVisible() {
+    if (TM_anyShellOverlayOpenInDom()) {
+        if (typeof TM_reconcileShellOverlay === 'function') {
+            TM_reconcileShellOverlay();
+        }
+        return;
+    }
+    TM_resetShellOverlay();
+}
+
+/** 捕获异步模块加载后误藏底栏（登录闪现后消失） */
+function TM_scheduleShellOverlayRecovery() {
+    if (!document.getElementById('tm-app-tabbar')) return;
+    function run() {
+        TM_ensureShellOverlayVisible();
+        if (typeof TM_syncAppShellMetrics === 'function') {
+            TM_syncAppShellMetrics();
+        }
+    }
+    run();
+    setTimeout(run, 150);
+    setTimeout(run, 600);
 }
 
 window.TM_applyShellOverlayHidden = TM_applyShellOverlayHidden;
 window.TM_pushShellOverlay = TM_pushShellOverlay;
 window.TM_popShellOverlay = TM_popShellOverlay;
 window.TM_reconcileShellOverlay = TM_reconcileShellOverlay;
+window.TM_resetShellOverlay = TM_resetShellOverlay;
+window.TM_ensureShellOverlayVisible = TM_ensureShellOverlayVisible;
+window.TM_scheduleShellOverlayRecovery = TM_scheduleShellOverlayRecovery;
 
 /** 订单/收款变更后通知 CRM 时间轴、智能经营报表等模块刷新 */
 function TM_emitOrderDataChanged(detail) {
@@ -1001,6 +1067,15 @@ if (!window.__tmEmbedModalListenerBound) {
     window.addEventListener('message', function (ev) {
         var data = ev.data;
         if (!data || data.type !== 'TM_EMBED_MODAL') return;
+        var fromModuleFrame = false;
+        try {
+            document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+                try {
+                    if (frame.contentWindow === ev.source) fromModuleFrame = true;
+                } catch (e0) { /* ignore */ }
+            });
+        } catch (e1) { /* ignore */ }
+        if (!fromModuleFrame) return;
         if (data.open) {
             if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
         } else if (typeof TM_popShellOverlay === 'function') {
@@ -1013,11 +1088,20 @@ if (!window.__tmEmbedModalListenerBound) {
 if (!window.__tmShellOverlayReconcileBound) {
     window.__tmShellOverlayReconcileBound = true;
     window.addEventListener('pageshow', function () {
-        if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
+        if (typeof TM_ensureShellOverlayVisible === 'function') {
+            TM_ensureShellOverlayVisible();
+        } else if (typeof TM_resetShellOverlay === 'function') {
+            TM_resetShellOverlay();
+        } else if (typeof TM_reconcileShellOverlay === 'function') {
+            TM_reconcileShellOverlay();
+        }
     });
 }
 
 function TM_bootIndexAppShell() {
+    if (typeof TM_resetShellOverlay === 'function') {
+        TM_resetShellOverlay();
+    }
     initNavigationFromConfig();
     TM_bindAppShellTabbar();
     TM_syncAppShellMetrics();
@@ -1034,6 +1118,9 @@ function TM_bootIndexAppShell() {
         }
     }
     switchTab(getInitialTabFromHash());
+    if (typeof TM_scheduleShellOverlayRecovery === 'function') {
+        TM_scheduleShellOverlayRecovery();
+    }
 }
 
 // 尽早绑定底栏；若脚本执行时 DOM 已就绪，则立即绑定（避免错过 DOMContentLoaded）
