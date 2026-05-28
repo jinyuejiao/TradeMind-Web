@@ -18,7 +18,7 @@
 
 ## 1. 数据库表结构设计
 
-**DDL 权威来源**：绿场新装由 **`InitCfgService`** 启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**，种子见 **`production-seed-v1.sql`**；存量增量位于 **`InitCfgService/src/main/resources/migrations/legacy/`**（`create_tables.sql`、`alter_subscription_referral.sql`、`alter_subscription_payment.sql`、`alter_tenants_merchant_type.sql`、`alter_ops_center.sql`、`alter_user_onboarding_state.sql`、**`alter_document_status_inventory.sql`** 等），其中已登记的增量脚本由 **`applyIncrementalMigrations()`** 在每次启动时幂等执行。**单据财务/库存扩展列**（`orders.fin_status`、`order_items.is_processed` 等）当前经 **`alter_document_status_inventory.sql`** 幂等补齐；绿场 **`production-schema-v1.sql`** 合入前以增量脚本为准。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**。
+**DDL 权威来源**：**仅 `InitCfgService`** 在启动时执行数据库初始化；**`DatabaseInitService.initProductionBaseline()`** 按序幂等执行 **`db/schema-production.sql`**（33 张表 + 索引 + 存量列补齐 `ALTER`）→ **`db/seed-data.sql`**（运维租户、D001–D017 字典、16 行订阅方案）→ **`validateCoreSchema()`**（Java 校验表/关键列/字典/索引与 spec 对齐）。**Hibernate `ddl-auto: none`** 全局禁用自动建表；业务微服务 **禁止** 在启动时执行 `CREATE TABLE` 或自带迁移脚本。上线前清库重置流程见 **`docs/Database_Deployment_Guide.md`**；手工自检见 **`db/check_schema.sql`**。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**。
 
 ### 1.1 核心业务表
 
@@ -67,12 +67,12 @@
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
 
-奖励归属 **用户**，与租户经营账户 **`biz_accounts`** 分离；详见 §2.8。**运维账号**：种子租户 **`SYSTEM_OPS`** / 用户 **`ops_admin`**（`role_type=ROLE_OPS_ADMIN`）见 **`production-seed-v1.sql`**。
+奖励归属 **用户**，与租户经营账户 **`biz_accounts`** 分离；详见 §2.8。**运维账号**：种子租户 **`SYSTEM_OPS`** / 用户 **`ops_admin`**（`role_type=ROLE_OPS_ADMIN`）见 **`db/seed-data.sql`**。
 
 
 #### 1.1.2.1 新手导览状态表（user_onboarding_state）
 
-按 **租户 + 登录主体 + 业态 + 角色** 持久化商户端新手导览进度；**DDL** 在 **`production-schema-v1.sql`**；存量库由 **`migrations/legacy/alter_user_onboarding_state.sql`** 幂等补齐，**`InitCfgService` 启动时**经 **`DatabaseInitService.applyIncrementalMigrations()`** 自动执行。读写 API 见 **`TenantService`** **`GET/PUT /onboarding/state`**（网关 **`/api/v1/tenant/onboarding/state`**）。
+按 **租户 + 登录主体 + 业态 + 角色** 持久化商户端新手导览进度；**DDL** 在 **`db/schema-production.sql`**（L2 **`user_onboarding_state`**）。读写 API 见 **`TenantService`** **`GET/PUT /onboarding/state`**（网关 **`/api/v1/tenant/onboarding/state`**）。
 
 | 字段名 | 类型 | 可空 | 说明 |
 | ----- | --- | --- | --- |
@@ -107,7 +107,7 @@
 
 #### 1.1.3 订阅方案表（subscription_plans）
 
-行业 × 等级一行方案；配额与功能矩阵以 JSONB 维护。默认种子见 **`TenantService.SubscriptionPlanSeedService`**（库为空时四类业态 × 四档等级）；**批发商（`WHOLESALE`）** 的试用/启航/优享定价与配额在**同次首次种子**末尾由 **`WholesaleSubscriptionPlanDefaults.apply`** 写入一次，**不在后续启动覆盖**（§2.8.6）。
+行业 × 等级一行方案；配额与功能矩阵以 JSONB 维护。默认种子见 **`InitCfgService`** **`db/seed-data.sql`**（`subscription_plans` 表为空时写入四类业态 × 四档等级共 16 行）；**批发商（`WHOLESALE`）** 的试用/启航/优享定价与配额在同次首次种子末尾写入，**不在后续启动覆盖**（§2.8.6）。**`TenantService.SubscriptionPlanSeedService`** 已废弃（移除 `@Component`）。
 
 | 字段名           | 类型        | 可空 | 说明 |
 | ------------- | --------- | --- | --- |
@@ -127,7 +127,7 @@
 | update_time   | TIMESTAMP | 是   | 更新时间 |
 | （约束） | UNIQUE(merchant_type, tier_code) | | 同一业态同一等级唯一 |
 
-存量库列补齐：DDL 见 **`production-schema-v1.sql`** 或 **`migrations/legacy/create_tables.sql`** 内 **`ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS ...`** 片段。
+**约束**：`UNIQUE(merchant_type, tier_code)`；列定义与 **`db/schema-production.sql`** 一致。
 
 #### 1.1.4 租户订阅履历表（tenant_subscriptions）
 
@@ -257,7 +257,7 @@
 
 ### 1.3 产品与订单模块表
 
-> **命名说明**：下列「字段名」与 **`production-schema-v1.sql`** 中 **PostgreSQL 物理列名（蛇形）** 一致；Java/JSON 为驼峰映射。
+> **命名说明**：下列「字段名」与 **`db/schema-production.sql`** 中 **PostgreSQL 物理列名（蛇形）** 一致；Java/JSON 为驼峰映射。
 
 #### 1.3.1 供应商表（supplier）
 
@@ -335,6 +335,8 @@
 | create_time   | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 创建时间                                    |
 | update_time   | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 更新时间                                    |
 
+*索引*：**`uq_products_tenant_sku(tenant_id, sku)`** 租户内 SKU 唯一；**`idx_products_tenant_id`**、**`idx_products_warehouse_id`**。
+
 #### 1.3.6 单位换算表（unitConversion）
 
 | 字段名           | 类型        | 长度   | 可空  | 默认值              | 说明     |
@@ -359,13 +361,15 @@
 | account_id | INT | - | 是 | NULL | 结算账户，FK → `biz_accounts.account_id`，ON DELETE SET NULL |
 | order_code | VARCHAR | 50 | 否 | - | 订单编号，**UNIQUE** |
 | total_amount | DECIMAL | 12,2 | 否 | 0 | 总金额 |
-| order_status | VARCHAR | 50 | 否 | - | 订单**物流**状态（字典 **D010** `dict_code`，持久化 **`D010001`…`D010005`**；兼容 `ALLOCATING`/`PICKING` 等别名，入库前经 **`OrderStatusCodes.normalizeForStorage`**） |
+| order_status | VARCHAR | 50 | 否 | D010001 | 订单**物流**状态（字典 **D010** `dict_code`，持久化 **`D010001`…`D010006`**；DDL 默认 **`D010001`（待配货）**；兼容 `ALLOCATING`/`PICKING` 等别名，入库前经 **`OrderStatusCodes.normalizeForStorage`**） |
 | fin_status | VARCHAR | 50 | 否 | UNPAID | 订单**财务**状态（字典 **D015**：`UNPAID`/`PARTIAL_PAID`/`SETTLED`/`BAD_DEBT`） |
 | warehouse_id | INT | - | 是 | NULL | 发出仓库 FK → `warehouse(warehouse_id)` ON DELETE SET NULL |
 | received_amount | DECIMAL | 12,2 | 否 | 0 | 累计已收金额；与 **`total_amount`** 比较驱动 **`fin_status`** |
 | delivery_date | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 交付日期 |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
+
+*索引*：**`idx_orders_tenant_create_time(tenant_id, create_time DESC)`**、**`idx_orders_tenant_status(tenant_id, order_status)`**、**`idx_orders_fin_status(tenant_id, fin_status)`**。
 
 #### 1.3.8 订单详情表（order_items）
 
@@ -387,14 +391,14 @@
 
 #### 1.3.9 生产表（production）
 
-> **说明**：当前 **`production-schema-v1.sql`** 未包含 **`production`** 表；**RDService** 仍通过 JPA 读写该表（历史库或手工建表）。物理列名以 **`Production.java`** 为准。
+> **说明**：**`production`** 表已纳入 **`db/schema-production.sql`**（L3 物料档案，依赖 `products`）；**RDService** 通过 JPA **`Production.java`** 读写。风险等级关联字典 **D007**。
 
 | 字段名 | 类型 | 长度 | 可空 | 默认值 | 说明 |
 | ----- | --- | --- | --- | --- | --- |
 | prod_id | SERIAL | - | 否 | - | 生产 ID，主键 |
-| tenant_id | VARCHAR | 32 | 否 | - | 租户 ID |
-| user_id | INT | - | 是 | - | 操作用户 ID |
-| product_id | INT | - | 是 | - | 产品 ID |
+| tenant_id | VARCHAR | 32 | 否 | - | 租户 ID，FK → `tenants` |
+| user_id | INT | - | 是 | - | 操作用户 ID，FK → `users` |
+| product_id | INT | - | 是 | - | 产品 ID，FK → `products` |
 | quantity | INT | - | 否 | - | 生产数量 |
 | delivery_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 交货时间 |
 | progress | INT | - | 是 | 0 | 生产进度（0–100） |
@@ -403,10 +407,12 @@
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
 
+索引：`idx_production_tenant_id`、`idx_production_product_id`、`idx_production_user_id`。
+
 
 ### 1.4 供应链模块表
 
-> **命名说明**：下列「字段名」与 **`production-schema-v1.sql`** 的 **PostgreSQL 物理列名（蛇形）** 一致。Java 实体 / JSON 侧为 **驼峰**（如 `purchase_id` → `purchaseId`），由 MyBatis `map-underscore-to-camel-case` 与 Jackson 默认策略映射。
+> **命名说明**：下列「字段名」与 **`db/schema-production.sql`** 的 **PostgreSQL 物理列名（蛇形）** 一致。Java 实体 / JSON 侧为 **驼峰**（如 `purchase_id` → `purchaseId`），由 MyBatis `map-underscore-to-camel-case` 与 Jackson 默认策略映射。
 
 #### 1.4.1 进货单主表（purchases）
 
@@ -422,7 +428,7 @@
 | total_amount    | DECIMAL   | 12,2 | 否   | -                | 总金额                                 |
 | paid_amount     | DECIMAL   | 12,2 | 否   | -                | 已付金额                                |
 | fin_status      | VARCHAR   | 50   | 否   | UNPAID           | 进货**财务**状态（字典 **D016**）              |
-| purchase_status | VARCHAR   | 20   | 否   | -                | 进货**物流**状态（字典 **D012** `dict_code`）   |
+| purchase_status | VARCHAR   | 20   | 否   | DRAFT            | 进货**物流**状态（字典 **D012** `dict_code`；DDL 默认 **`DRAFT`**）   |
 | purchase_date   | TIMESTAMP | -    | 否   | -                | 进货日期                                |
 | create_time     | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 创建时间                                |
 | update_time     | TIMESTAMP | -    | 是   | CURRENT_TIMESTAMP | 更新时间                                |
@@ -493,9 +499,9 @@
 | 元数据保存 | RDService | **`PUT /api/v1/rd/orders/{id}/save`** | 可改物流/财务状态标记与账户，**不**改 **`received_amount`**、**不写**流水 |
 | 手动调账 | IMService | 账户保存余额变更 | `source_type=BALANCE_EDIT` 轧差 |
 
-**说明**：物流状态变更（含旧版「已完成即入账」）**不再**自动产生流水；存量 **`COMPLETED`/`D010003`** 等已迁移为 **`D010004`（已签收）**（见 **`alter_document_status_inventory.sql`**）。进货单 **`updatePurchase`** 若仍变更 **`paid_amount`** 差额，经 **`AccountLedgerAppender.onPurchasePaidAmountChanged`** 记账（与独立 **`record-payment`** 并存，前端编辑场景优先显式 **`record-payment`**）。
+**说明**：物流状态变更（含旧版「已完成即入账」）**不再**自动产生流水；存量 **`COMPLETED`/`D010003`** 等迁移逻辑已内置于 **`db/schema-production.sql`** 末尾存量 `UPDATE` 段（历史增量脚本 **`alter_document_status_inventory.sql`** 已废弃并删除）。进货单 **`updatePurchase`** 若仍变更 **`paid_amount`** 差额，经 **`AccountLedgerAppender.onPurchasePaidAmountChanged`** 记账（与独立 **`record-payment`** 并存，前端编辑场景优先显式 **`record-payment`**）。
 
-**索引（与 `production-schema-v1.sql` 一致）**：`idx_biz_account_ledger_tenant_account_time(tenant_id, account_id, txn_time DESC)`；**`idx_biz_account_ledger_idempotency`** 为 **`UNIQUE (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL`**（部分流水幂等）。
+**索引（与 `db/schema-production.sql` 一致）**：`idx_biz_account_ledger_tenant_account_time(tenant_id, account_id, txn_time DESC)`；**`idx_biz_account_ledger_idempotency`** 为 **`UNIQUE (tenant_id, idempotency_key) WHERE idempotency_key IS NOT NULL`**（部分流水幂等）；**`idx_ledger_biz_type(tenant_id, biz_type_code)`**。
 
 
 ### 1.5 系统表
@@ -543,11 +549,11 @@
 
 ##### 1.5.2.2 字典子项详细列表
 
-> **实现说明**：`InitCfgService` 中 `DictionaryInitService` 物理写入的 `dict_code` 为大写下划线风格（如 `SUBSCRIPTION_TYPE`、`MERCHANT_TYPE`）；下表与 **代码初始化保持一致** 时可对照源码。本节大类列历史上存在连写写法，新建字典以 **`DictionaryInitService.java`** 为准。
+> **实现说明**：`InitCfgService` **`db/seed-data.sql`** 物理写入的 `dict_code` 为大写下划线风格（如 `SUBSCRIPTION_TYPE`、`MERCHANT_TYPE`）；下表与 **种子 SQL 保持一致**。字典编号 **D014** 预留未使用。
 
 **D001 - 订阅类型**
 
-> **物理主键**：`InitCfgService` / `DictionaryInitService` 写入字典行的 `dict_id` 为 **`D001_001`～`D001_004`**（下划线风格）。下表「dictid」列与产品文档编号对应关系：**D001001 ≡ D001_001**，以此类推。
+> **物理主键**：种子写入字典行的 `dict_id` 为 **`D001_001`～`D001_004`**（下划线风格）。下表「dictid」列与产品文档编号对应关系：**D001001 ≡ D001_001**，以此类推。
 
 
 | dictid  | parentid | dictcode   | dictname | dictlevel | sort | remark     |
@@ -718,7 +724,7 @@
 
 #### 1.5.3 订阅配额配置存储（方案约定）
 
-不同 **商户类型（D013）** 与 **订阅等级（D001 `dict_code`）** 组合下，「最大用户数、产品/SKU 数、客户数、供应商数」等上限允许各不相同。**权威配置**落在 **`subscription_plans`** 表中（§1.1.3），按 **`merchant_type` + `tier_code`** 唯一区分一行；各上限以 **`quota_limits` JSONB** 存放（键如 **`max_users`**、**`max_products`**、**`max_customers`**、**`max_suppliers`**）。**实现说明**：**`production-schema-v1.sql`** 负责建表；**`TenantService`** 启动时 **`SubscriptionPlanSeedService`**（`ApplicationRunner`，表为空则写入）为四种 **`merchant_type`** × 四档 **`tier_code`** 生成默认 **`quota_limits` / `feature_matrix`**。后续调整可通过 **SQL / 管理端** 改 JSONB。**RDService/CRMService 等写入前配额校验（AOP/Redis）** 仍为后续迭代。若需约束「某业态启用哪些配额键」，可另增 **`quota_metric_definitions`**。
+不同 **商户类型（D013）** 与 **订阅等级（D001 `dict_code`）** 组合下，「最大用户数、产品/SKU 数、客户数、供应商数」等上限允许各不相同。**权威配置**落在 **`subscription_plans`** 表中（§1.1.3），按 **`merchant_type` + `tier_code`** 唯一区分一行；各上限以 **`quota_limits` JSONB** 存放（键如 **`max_users`**、**`max_products`**、**`max_customers`**、**`max_suppliers`**）。**实现说明**：**`db/schema-production.sql`** 负责建表；**`db/seed-data.sql`** 在表为空时为四种 **`merchant_type`** × 四档 **`tier_code`** 生成默认 **`quota_limits` / `feature_matrix`**（含 WHOLESALE 定价覆盖）。后续调整可通过 **SQL / 管理端** 改 JSONB。**RDService/CRMService 等写入前配额校验（AOP/Redis）** 仍为后续迭代。若需约束「某业态启用哪些配额键」，可另增 **`quota_metric_definitions`**。
 
 #### 1.5.4 AI操作记录表（ai_operation_records）
 
@@ -738,7 +744,7 @@
 
 ### 1.6 运维中台表（OpsService）
 
-> 已并入 **`production-schema-v1.sql`**；存量库可执行 **`migrations/legacy/alter_ops_center.sql`** 幂等补齐。
+> 运维中台表定义见 **`db/schema-production.sql`** L5 段（**`ops_tenant_snapshot`、`ai_usage_stats`、`ops_subscription_logs`、`system_announcements`** 等）。
 
 #### 1.6.1 租户资源快照（ops_tenant_snapshot）
 
@@ -813,7 +819,7 @@
 | 服务名称    | 服务标识           | 技术栈                       | 主要职责                            |
 | ------- | -------------- | ------------------------- | ------------------------------- |
 | 租户服务    | TenantService  | Spring Boot 3.x           | 租户/用户/认证；**订阅试用与履历**（`SubscriptionLifecycleService`、`tenant_subscriptions`）；**推荐绑定与达标奖励**（`ReferralBindingService`、`ReferralQualificationService`）；**新手导览状态**（`OnboardingStateService`、`OnboardingController`）；JWT 含 **`merchantType`、`accessMode`、`subscriptionTier`、`subEndMs`**；注册 body 支持 **`referralCode`** |
-| 初始化配置服务 | InitCfgService | Spring Boot 3.x           | 配置管理、RDS/OSS/AI配置、数据库初始化        |
+| 初始化配置服务 | InitCfgService | Spring Boot 3.x           | 配置管理、RDS/OSS/AI 配置；**唯一数据库初始化引擎**（`db/schema-production.sql` + `db/seed-data.sql` + `validateCoreSchema()`） |
 | 客户关系服务  | CRMService     | Spring Boot 3.x           | 客户信息管理                          |
 | 进销存服务   | RDService      | Spring Boot 3.x           | 产品管理、订单管理、生产管理、单位换算、仓库管理、产品分类管理 |
 | 供应商服务   | SuppService    | Spring Boot 3.x + MyBatis | 供应商管理、进货单管理                     |
@@ -1067,8 +1073,7 @@
 
 #### 2.7.1 数据与字典
 
-- `tenants.merchant_type`：非空，默认 `WHOLESALE`；合法值仅限字典 **D013** 子项 `dict_code`。
-- 存量库若未重建表，可执行 `InitCfgService/src/main/resources/alter_tenants_merchant_type.sql` 追加列。
+- `tenants.merchant_type`：非空，默认 `WHOLESALE`；合法值仅限字典 **D013** 子项 `dict_code`。列定义见 **`db/schema-production.sql`**；重启 **InitCfgService** 可幂等补齐。
 
 #### 2.7.2 注册与登录（TenantService）
 
@@ -1102,12 +1107,12 @@
 
 #### 2.8.2 订阅等级展示名（D001）
 
-- 字典 **D001** 子项中文展示已与 **`DictionaryInitService`** 对齐：**试用版 / 启航会员 / 优享会员 / 尊享会员**（`dict_code` 仍为 `TRIAL`、`BASIC`、`PREMIUM`、`ENTERPRISE`）。详见 §1.5.2.2。
+- 字典 **D001** 子项中文展示与 **`db/seed-data.sql`** 对齐：**试用版 / 启航会员 / 优享会员 / 尊享会员**（`dict_code` 仍为 `TRIAL`、`BASIC`、`PREMIUM`、`ENTERPRISE`）。详见 §1.5.2.2。
 
 #### 2.8.3 配额指标「可配置」位置 recap
 
 - **按业态 × 等级** 的数值上限：**`subscription_plans.quota_limits`（JSONB）**，键名约定见 §1.5.3。
-- **初始化**：表结构由 **`production-schema-v1.sql`** 落地（含 **`user_onboarding_state`**）；存量增量由 **`InitCfgService`** 启动时 **`applyIncrementalMigrations()`** 幂等执行（如 **`alter_user_onboarding_state.sql`**），亦可在 **`migrations/legacy/`** 手工执行；默认方案行由 **`TenantService.SubscriptionPlanSeedService`** 在库为空时写入。
+- **初始化**：表结构、索引与存量列补齐均由 **`InitCfgService`** 启动时幂等执行 **`db/schema-production.sql`**（33 张表，含 **`user_onboarding_state`**、**`production`**、**`tenant_ops_profile`**、**`merchant_feedback`** 等）；核心元数据（运维租户、字典 D001–D017、16 行订阅方案）由 **`db/seed-data.sql`** 注入；**`validateCoreSchema()`** 校验与 spec 对齐。上线前清库重置见 **`docs/Database_Deployment_Guide.md`**。
 - **演进**：不同商户类型在同一等级下的指标差异，仅需 **增删改方案行或 JSON 字段**，不依赖发版；必要时配合 **`quota_metric_definitions`** 约束可用键集合。
 
 #### 2.8.4 实现对照（代码与配置，2026-05-07）
@@ -1115,7 +1120,8 @@
 | 能力 | 说明 |
 | --- | --- |
 | 实体与表 | **`Tenant`/`User`** 扩展字段；**`SubscriptionPlan`、`TenantSubscription`、`ReferralRecord`、`ReferralReward`**（**`TenantService`** JPA） |
-| 种子方案 | **`SubscriptionPlanSeedService`**（**`@Order(0)`** `ApplicationRunner`） |
+| 种子方案 | **`InitCfgService`** **`db/seed-data.sql`**（表为空时 16 行）；**`SubscriptionPlanSeedService`** 已废弃 |
+| 字典种子 | **`InitCfgService`** **`db/seed-data.sql`**（D001–D017）；**`DictionaryInitService`** 已废弃 |
 | 注册试用 | **`SubscriptionLifecycleService.startTrial`** |
 | 内部付费 | **`InternalSubscriptionController`** + **`SubscriptionLifecycleService.applyPaidPlan`** |
 | 推荐码 | **`ReferralCodeAllocator`**（**`JY` + 6 位**，冲突重试） |
@@ -1171,8 +1177,9 @@
 - **入库**：**`POST /api/v1/supp/purchases/{id}/inbound`** — Body 可选 **`targetStatus`**（`PARTIAL_INBOUND`/`FULL_INBOUND`）、**`warehouseId`**、**`itemIds`**（部分入库必填）；**`warehouse_id` 可空**（前端允许不选，后端落默认仓）。
 - **付款**：**`POST /api/v1/supp/purchases/{id}/record-payment`** — 与订单对称，更新 **`paid_amount`** 与 **`fin_status`**（D016）。
 
-#### 2.9.4 存量迁移（`alter_document_status_inventory.sql`）
+#### 2.9.4 存量迁移（内置于 `db/schema-production.sql`）
 
+- 历史增量脚本（**`migrations/legacy/*`**）已废弃并删除；存量升级依赖 **`db/schema-production.sql`** 内 **`ALTER TABLE … ADD COLUMN IF NOT EXISTS`** 与下列 **`UPDATE`**（仅影响匹配旧码的行）：
 - 进货中文状态 **「已入库」→ `FULL_INBOUND`**；已入库明细标记 **`is_processed=true`**。
 - 订单 **`COMPLETED`/`D010003` → `D010004`（已签收）**；**`PENDING`/`PROCESSING` → D010001/D010002**。
 - 已签收且绑定了账户的历史订单：**`fin_status` 置 `SETTLED`**（仅当原值为 `UNPAID`）。
@@ -1368,7 +1375,15 @@
 
 #### 3.2.2 初始化配置服务（InitCfgService）
 
-应用启动时 **`DatabaseInitService.initProductionBaseline()`** 执行 **`production-schema-v1.sql`**（仅绿场空库）/ **`production-seed-v1.sql`**（幂等种子），随后 **`applyIncrementalMigrations()`** 幂等执行 **`migrations/legacy/`** 下增量 DDL（如 **`alter_user_onboarding_state.sql`**、**`alter_document_status_inventory.sql`**）；字典初始化含 **D010–D017**（**`DictionaryInitService`**，含物流/财务拆分）。
+应用启动时 **`DatabaseInitService.initProductionBaseline()`** 按序幂等执行：
+
+1. **`db/schema-production.sql`** — 33 张表（L1 基础设施 → L5 运营管理）、索引、存量列 **`ALTER`**
+2. **`db/seed-data.sql`** — **`SYSTEM_OPS`** / **`ops_admin`**、字典 **D001–D017**（D014 预留）、**`subscription_plans`** 16 行（含 WHOLESALE 定价覆盖）
+3. **`validateCoreSchema()`** — Java 校验表存在性、关键列（如 **`orders.fin_status`**、**`production`**）、字典大类、**`uq_products_tenant_sku`** 等
+
+初始化失败则 **InitCfgService 终止启动**。手工自检：**`db/check_schema.sql`**；清库重建流程：**`docs/Database_Deployment_Guide.md`**。
+
+**已废弃**：**`production-schema-v1.sql`**、**`production-seed-v1.sql`**、**`migrations/legacy/`** 增量脚本、**`DictionaryInitService`** Java 字典写入、**`TenantService.SubscriptionPlanSeedService`**。
 
 **主要接口**：
 
@@ -1855,13 +1870,16 @@ dictionary (字典表)
 
 ```
 TM_Project/
+├── docs/
+│   └── Database_Deployment_Guide.md   # 清库重置与自检流程
 ├── TenantService/              # 租户服务
 │   └── 结构同其他服务
-├── InitCfgService/             # 初始化配置服务
+├── InitCfgService/             # 初始化配置服务（唯一 DDL 入口）
 │   └── src/main/resources/
-│       ├── production-schema-v1.sql      # 绿场 DDL（含 user_onboarding_state）
-│       ├── production-seed-v1.sql
-│       └── migrations/legacy/            # 存量增量；启动时 applyIncrementalMigrations
+│       └── db/
+│           ├── schema-production.sql   # 生产基线 DDL（33 表 + 索引 + 存量 ALTER）
+│           ├── seed-data.sql           # 运维租户、字典、订阅方案
+│           └── check_schema.sql        # 手工自检
 ├── CRMService/                 # 客户关系服务
 │   └── 结构同其他服务
 ├── RDService/                  # 进销存服务
@@ -1875,7 +1893,7 @@ TM_Project/
 ├── OpsService/                 # 运维中台服务
 │   └── 结构同其他服务
 ├── scripts/
-│   └── postgresql/            # 运维手工脚本（DDL 权威在 InitCfgService，见 §1 文首）
+│   └── postgresql/            # 运维/验收手工脚本（非自动启动；DDL 权威在 InitCfgService/db/）
 └── TradeMind-Web/              # 前端Web应用
     ├── index-app.html         # 商户主壳（侧栏/顶栏/底栏、member-modal）
     ├── docs/
@@ -1952,6 +1970,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.22 | 2026-05-28 | **数据库初始化引擎规整**：废弃 **`production-schema-v1.sql`** / **`production-seed-v1.sql`** / **`migrations/legacy/`**；统一为 **`InitCfgService/db/schema-production.sql`**（33 表，含 **`production`**、双维度状态列、**`uq_products_tenant_sku`**）+ **`seed-data.sql`** + **`validateCoreSchema()`**；字典/订阅种子迁入 SQL；**`DictionaryInitService`**、**`SubscriptionPlanSeedService`** 废弃；新增 **`docs/Database_Deployment_Guide.md`**、**`db/check_schema.sql`**；§1 文首、§2.8.3–§2.8.4、§2.9.4、§3.2.2、§8 同步 |
 | v1.21 | 2026-05-25 | **单据状态机与库存**：§1 增补 `orders`/`order_items`/`purchases`/`purchase_items` 财务与 **`is_processed`** 列、**`biz_account_ledger.biz_type_code`**；**`alter_document_status_inventory.sql`**；字典 **D010–D012** 物流重构、**D015–D017** 全表；§1.4.4 入账规则改为 **`record-payment`/`ship`/`inbound`** 双线解耦；§2.9 状态机与迁移。**前端**：§3.1.0 **`tm-layout-engine.css`** 三段式壳层 + **`TM_applyDialogShell`** Sheet；§3.1.1 工作台进行中单据双维筛选/详情编辑/终态移除；§3.1.3 产品类别可空、单位换算最多 2 行、高级配置展开修复；§3.1.4 供应链弹窗 Sheet 与进货底部仓库/付款区；§3.2.3 CRM 时间轴 Badge；§3.2.4–3.2.5 新 API；§6.3–§6.4 流程；§7.5、§8 目录树 |
 | v1.20 | 2026-05-24 | **新手导览**：§1.1.2.1 **`user_onboarding_state`** 快照字段与双写策略；**`InitCfgService.applyIncrementalMigrations()`**；§3.1.6、`OnboardingController`；§3.2.1 **`/onboarding/state`**、登录 **`onboarding`** 摘要。**会员/壳层 UI**：§3.1.0 主壳顶栏表、§3.1.7 会员中心（**`member-referral-banner-snippet`** 品牌青 hero，废弃主路径 **`gold-referral-card`**）；PC 顶栏去重新手引导/退出；移动 **`tm-app-header-brand`** 固定「商贸智脑」。§8 目录树同步 |
 | v1.19 | 2026-05-20 | DDL 权威切换至 **`production-schema-v1.sql`** / **`production-seed-v1.sql`**；§1.1.2 **`last_login_ip`**；§1.6 运维表（**`ops_tenant_snapshot`、`ai_usage_stats`、`ops_subscription_logs`、`system_announcements`**）；新增 **OpsService** 与网关 **`/api/v1/ops/**`** RBAC（§2.4.5）；§3.2.1 子账号/续费升级/推荐扩展接口；§3.2.4–3.2.6 补齐 RD/Supp/AI 接口；§3.2.8 运维 API；网关 **保留 Authorization** 转发说明 |
