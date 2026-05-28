@@ -727,9 +727,9 @@ textarea {
     .tm-product-edit-modal .modal-content-box {
         width: 100% !important;
         max-width: 100% !important;
-        height: min(96dvh, 100%) !important;
-        max-height: min(96dvh, 100%) !important;
-        border-radius: 1.75rem 1.75rem 0 0 !important;
+        height: min(90dvh, 100%) !important;
+        max-height: min(90dvh, 100%) !important;
+        border-radius: 2.5rem 2.5rem 0 0 !important;
         display: flex !important;
         flex-direction: column !important;
         min-height: 0 !important;
@@ -785,7 +785,54 @@ textarea {
     }
 
     #warehouse-drawer.tm-unified-mobile-modal .modal-content-box {
-        border-radius: 1.75rem 1.75rem 0 0 !important;
+        border-radius: 2.5rem 2.5rem 0 0 !important;
+    }
+
+    /* 单据类弹窗：中间区滚动，底栏固定（进货单 / 订单 / 待确认核对） */
+    .tm-document-modal .modal-content-box,
+    .tm-document-modal .tm-dialog-panel,
+    .tm-document-modal.tm-audit-modal .tm-audit-panel {
+        height: min(90dvh, 100%) !important;
+        max-height: min(90dvh, 100%) !important;
+        border-radius: 2.5rem 2.5rem 0 0 !important;
+    }
+
+    .tm-document-modal .tm-document-modal-scroll,
+    .tm-document-modal .tm-mobile-modal-body.tm-document-modal-scroll {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tm-document-modal .tm-purchase-modal-body,
+    .tm-document-modal .tm-order-detail-modal .flex-1.min-h-0 {
+        overflow: visible !important;
+    }
+
+    .tm-document-modal #purchase-bottom-panel,
+    .tm-document-modal #detail-bottom-panel,
+    .tm-document-modal #manual-bottom-panel {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .tm-document-modal .tm-mobile-modal-footer,
+    .tm-document-modal .tm-purchase-modal-footer,
+    .tm-document-modal .tm-product-edit-footer,
+    .tm-document-modal .tm-audit-footer {
+        flex-shrink: 0 !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+        box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+    }
+
+    .tm-document-modal .tm-mobile-modal-header,
+    .tm-document-modal .tm-product-edit-header {
+        flex-shrink: 0;
+        z-index: 2;
     }
 }
 

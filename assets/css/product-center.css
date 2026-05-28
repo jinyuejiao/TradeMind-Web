@@ -351,12 +351,10 @@
     }
 }
 
-/* 进货单弹窗：全高 sheet + 中间滚动 + 底栏固定（对齐 UI 工程 manual-order 弹窗） */
+/* 进货单弹窗：全高 sheet + 中间滚动 + 底栏固定（对齐产品编辑弹窗） */
 html.tm-embedded #purchase-modal.tm-purchase-modal,
 #purchase-modal.tm-purchase-modal {
     z-index: 200;
-    height: 100%;
-    max-height: 100%;
 }
 
 #purchase-modal.tm-purchase-modal .modal-content-box,
@@ -364,8 +362,6 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
     display: flex;
     flex-direction: column;
     min-height: 0;
-    height: 100%;
-    max-height: 100%;
 }
 
 #purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
@@ -479,32 +475,66 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 
 @media (max-width: 767px) {
     #purchase-modal.tm-purchase-modal {
-        align-items: stretch !important;
-        justify-content: flex-end !important;
+        align-items: flex-end !important;
+        justify-content: center !important;
         padding: 0 !important;
     }
 
     #purchase-modal.tm-purchase-modal .modal-content-box,
     #purchase-modal.tm-purchase-modal .tm-dialog-panel {
         width: 100%;
-        height: min(96dvh, 100%);
-        max-height: min(96dvh, 100%) !important;
-        border-radius: 1rem 1rem 0 0;
+        height: min(90dvh, 100%);
+        max-height: min(90dvh, 100%) !important;
+        border-radius: 2.5rem 2.5rem 0 0;
+    }
+
+    #purchase-modal.tm-purchase-modal .tm-document-modal-scroll {
+        flex: 1 1 0%;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
-        flex: 1 1 auto;
+        flex: none;
         min-height: 0;
-        overflow: hidden;
+        overflow: visible;
+    }
+
+    #purchase-modal.tm-purchase-modal #purchase-bottom-panel {
+        max-height: none;
+        overflow: visible;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
+        flex-shrink: 0;
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer .tm-btn-primary,
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer .tm-btn-secondary {
         min-height: 44px;
+    }
+
+    #order-detail-modal.tm-order-detail-modal .modal-content-box,
+    #manual-order-modal.tm-order-detail-modal .modal-content-box {
+        height: min(90dvh, 100%);
+        max-height: min(90dvh, 100%) !important;
+        border-radius: 2.5rem 2.5rem 0 0;
+    }
+
+    #order-detail-modal.tm-order-detail-modal .tm-document-modal-scroll,
+    #manual-order-modal.tm-order-detail-modal .tm-document-modal-scroll {
+        flex: 1 1 0%;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #order-detail-modal.tm-order-detail-modal #detail-bottom-panel,
+    #manual-order-modal.tm-order-detail-modal #manual-bottom-panel {
+        max-height: none;
+        overflow: visible;
     }
 
     #tm-main-scroll,
@@ -515,7 +545,7 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     }
 
     .tm-product-edit-modal .modal-content-box {
-        max-height: min(96dvh, 100%);
+        max-height: min(90dvh, 100%);
     }
 
     .tm-transfer-th {

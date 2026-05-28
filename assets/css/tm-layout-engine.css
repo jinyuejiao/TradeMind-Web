@@ -295,7 +295,7 @@
         width: 100% !important;
         max-width: 100% !important;
         max-height: min(
-            96dvh,
+            90dvh,
             calc(100dvh - env(safe-area-inset-top, 0px) - var(--tm-tabbar-h, 4.25rem))
         ) !important;
         height: auto !important;

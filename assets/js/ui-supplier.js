@@ -1489,27 +1489,33 @@ window.SupplierModule = {
         this.syncFinStatusUI();
         var modal = document.getElementById('purchase-modal');
         if (modal) {
-            if (typeof window.TM_applyDialogShell === 'function') {
-                window.TM_applyDialogShell(modal, { variant: 'sheet' });
-            } else if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyModalRoot === 'function') {
-                window.TM_ShellInsets.applyModalRoot(modal, { variant: 'sheet' });
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
+            } else {
+                if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(modal, { variant: 'sheet' });
+                }
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
             }
-            modal.classList.remove('hidden');
         }
-        document.body.style.overflow = 'hidden';
-        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
-        var self = this;
         requestAnimationFrame(function () {
-            var body = document.querySelector('#purchase-modal .tm-purchase-modal-body');
+            var body = document.querySelector('#purchase-modal .tm-document-modal-scroll');
             if (body) body.scrollTop = 0;
         });
     },
 
     closePurchaseModal: function() {
-        document.getElementById('purchase-modal').classList.add('hidden');
-        document.body.style.overflow = '';
+        var modal = document.getElementById('purchase-modal');
+        if (modal && typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
+        }
         this.currentPurchase = null;
-        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
     },
 
     resetPurchaseForm: function() {
@@ -1723,15 +1729,19 @@ window.SupplierModule = {
         this.syncInboundUi();
         var editModal = document.getElementById('purchase-modal');
         if (editModal) {
-            if (typeof window.TM_applyDialogShell === 'function') {
-                window.TM_applyDialogShell(editModal, { variant: 'sheet' });
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(editModal);
+            } else {
+                if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(editModal, { variant: 'sheet' });
+                }
+                editModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
             }
-            editModal.classList.remove('hidden');
         }
-        document.body.style.overflow = 'hidden';
-        if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
         requestAnimationFrame(function () {
-            var body = document.querySelector('#purchase-modal .tm-purchase-modal-body');
+            var body = document.querySelector('#purchase-modal .tm-document-modal-scroll');
             if (body) body.scrollTop = 0;
         });
     },

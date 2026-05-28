@@ -1238,10 +1238,13 @@ function openOrderDetail(orderId) {
     if (idEl) idEl.innerText = orderId || '';
     var modal = document.getElementById('order-detail-modal');
     if (!modal) return;
-    if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
+    else {
+        if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    }
 }
 
 function closeOrderDetail() {
@@ -1249,9 +1252,12 @@ function closeOrderDetail() {
         return window.__TM_dashboardCloseOrderDetail();
     }
     var modal = document.getElementById('order-detail-modal');
-    if (modal) modal.classList.add('hidden');
-    document.body.style.overflow = '';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
+    else {
+        if (modal) modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    }
 }
 
 // 弹窗开关
@@ -1261,10 +1267,14 @@ function openAuditModal(name) {
         return window.__TM_DASHBOARD_OPEN_AUDIT(name);
     }
     var modal = document.getElementById('audit-modal');
-    if (modal) modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+    if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
+    else if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 }
-function closeAuditModal() { document.getElementById('audit-modal').classList.add('hidden'); document.body.style.overflow = ''; }
+function closeAuditModal() {
+    var modal = document.getElementById('audit-modal');
+    if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
+    else if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+}
 
 // 高级信息抽屉切换
 function toggleAdvancedPanel(type) {

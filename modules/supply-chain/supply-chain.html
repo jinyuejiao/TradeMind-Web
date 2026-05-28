@@ -178,10 +178,10 @@
         </div>
     </div>
 
-    <div id="purchase-modal" class="tm-dialog-root tm-product-edit-modal tm-purchase-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
-        <div class="absolute inset-0 bg-slate-900/55 backdrop-blur-sm" onclick="closePurchaseModal()"></div>
-        <div class="tm-dialog-panel relative bg-white w-full max-w-5xl h-full max-h-full md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
-            <div class="tm-product-edit-header px-4 py-2.5 md:px-6 md:py-3 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 gap-2">
+    <div id="purchase-modal" class="tm-unified-mobile-modal tm-document-modal tm-dialog-root tm-product-edit-modal tm-purchase-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+        <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closePurchaseModal()"></div>
+        <div class="tm-dialog-panel relative bg-white w-full max-w-5xl h-[min(90dvh,100%)] max-h-[min(90dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[2.5rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
+            <div class="tm-product-edit-header tm-mobile-modal-header px-4 py-2.5 md:px-6 md:py-3 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 gap-2">
                 <div class="flex items-center gap-2 min-w-0 flex-1">
                     <div class="w-8 h-8 bg-[#14B8A6] rounded-lg flex items-center justify-center text-white shrink-0"><i class="ph ph-receipt"></i></div>
                     <div class="min-w-0 flex-1">
@@ -196,7 +196,8 @@
                 <button type="button" onclick="closePurchaseModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
             </div>
             <div id="purchase-form-errors" class="hidden mx-4 mt-2 md:mx-6 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700 shrink-0" role="alert"></div>
-            <div class="tm-purchase-modal-body flex-1 min-h-0 flex flex-col overflow-hidden px-4 py-3 md:px-6">
+            <div class="tm-document-modal-scroll tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <div class="tm-purchase-modal-body flex flex-col px-4 py-3 md:px-6 md:flex-1 md:min-h-0 md:overflow-hidden">
                 <section class="shrink-0">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
@@ -243,7 +244,7 @@
                     </div>
                 </section>
             </div>
-            <div id="purchase-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
+            <div id="purchase-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5 md:shrink-0">
                 <details id="purchase-aux-details" class="tm-purchase-aux-details group">
                     <summary class="tm-purchase-aux-summary-row flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1">
                         <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·付款</span>
@@ -291,10 +292,11 @@
                     </div>
                 </details>
             </div>
+            </div>
 
-<div class="tm-product-edit-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+            <div class="tm-product-edit-footer tm-mobile-modal-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white/95 backdrop-blur-md shrink-0 pb-safe">
                 <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存单据；部分入库请在明细区勾选后确认；付款请展开「仓库·付款」</p>
-                <div class="flex gap-2 md:gap-3 w-full">
+                <div class="flex gap-3 w-full">
                     <button type="button" onclick="closePurchaseModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3.5 text-xs font-bold min-h-[44px]">取消</button>
                     <button type="button" onclick="savePurchase()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3.5 text-xs font-black shadow-lg shadow-brand-500/25 active:scale-[0.98] min-h-[44px] flex items-center justify-center gap-2">
                         <i class="ph ph-floppy-disk-back md:hidden"></i>

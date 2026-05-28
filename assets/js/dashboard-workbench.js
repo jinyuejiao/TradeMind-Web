@@ -1042,11 +1042,19 @@
         if (dateEl && typeof window.getTodayDateInput === 'function') {
             dateEl.value = window.getTodayDateInput();
         }
-        if (typeof window.TM_applyDialogShell === 'function') {
-            window.TM_applyDialogShell(modal);
+        if (typeof window.TM_openUnifiedModal === 'function') {
+            window.TM_openUnifiedModal(modal);
+        } else {
+            if (typeof window.TM_applyDialogShell === 'function') {
+                window.TM_applyDialogShell(modal);
+            }
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
         }
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(function () {
+            var scrollEl = document.querySelector('#manual-order-modal .tm-document-modal-scroll');
+            if (scrollEl) scrollEl.scrollTop = 0;
+        });
         tmRecalcManualOrderTotal();
         tmSyncManualOrderUI();
         tmRefreshManualItemsLayout();
@@ -1054,8 +1062,12 @@
 
     window.TM_closeManualOrderModal = function () {
         var modal = document.getElementById('manual-order-modal');
-        if (modal) modal.classList.add('hidden');
-        document.body.style.overflow = '';
+        if (modal && typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
     };
 
     window.TM_addManualOrderRow = function () {
