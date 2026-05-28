@@ -94,6 +94,8 @@ function TM_syncDashboardOverlays(htmlString) {
             }
         });
         TM_rebindVoiceStopAfterOverlaySync();
+        window._detailFinBound = false;
+        window._manualFinBound = false;
     } catch (e) {
         console.warn('[TM] 同步 dashboard 弹窗节点失败:', e);
     }
@@ -832,16 +834,117 @@ function TM_syncAppShellMetrics() {
 
 window.TM_syncAppShellMetrics = TM_syncAppShellMetrics;
 
-/** 弹窗打开时隐藏主壳底栏，避免 iframe 内弹窗被遮挡 */
-function TM_setShellChromeHidden(hidden) {
-    if (window.TM_ShellInsets && typeof window.TM_ShellInsets.hideChromeForOverlay === 'function') {
-        window.TM_ShellInsets.hideChromeForOverlay(hidden);
+/** 是否仍有未关闭的壳层弹窗（DOM 层校验，用于纠偏） */
+function TM_anyShellOverlayOpenInDom() {
+    return !!document.querySelector(
+        '.tm-unified-mobile-modal:not(.hidden), ' +
+        '.tm-product-edit-modal:not(.hidden), ' +
+        '#member-modal:not(.hidden)'
+    );
+}
+
+/** 实际应用主壳底栏 / 备案区显隐（仅在引用计数为 0↔1 时调用） */
+function TM_applyShellOverlayHidden(hidden) {
+    var on = !!hidden;
+    if (window.TM_ShellInsets && typeof window.TM_ShellInsets.applyShellOverlayHidden === 'function') {
+        window.TM_ShellInsets.applyShellOverlayHidden(on);
         return;
     }
     var tabbar = document.getElementById('tm-app-tabbar');
-    if (tabbar) tabbar.classList.toggle('tm-shell-chrome-hidden', !!hidden);
-    document.documentElement.classList.toggle('tm-embed-modal-open', !!hidden);
-    document.body.classList.toggle('tm-embed-modal-open', !!hidden);
+    if (tabbar) {
+        tabbar.classList.toggle('tm-shell-chrome-hidden', on);
+        if (!on) {
+            tabbar.classList.remove('tm-shell-chrome-hidden');
+            tabbar.style.removeProperty('visibility');
+            tabbar.style.removeProperty('pointer-events');
+        }
+    }
+    document.documentElement.classList.toggle('tm-embed-modal-open', on);
+    document.body.classList.toggle('tm-embed-modal-open', on);
+    if (!on) {
+        document.documentElement.classList.remove('tm-embed-modal-open');
+        document.body.classList.remove('tm-embed-modal-open');
+    }
+    var complianceFoot = document.querySelector('#content-area > footer.tm-compliance-footer');
+    if (complianceFoot) {
+        complianceFoot.style.display = on ? 'none' : '';
+    }
+    if (on) {
+        document.documentElement.style.setProperty('--tm-tabbar-h', '0px');
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+        if (typeof TM_syncAppShellMetrics === 'function') {
+            TM_syncAppShellMetrics();
+        }
+    }
+}
+
+/** 弹窗壳层引用计数 +1（每次打开弹窗调用一次） */
+function TM_pushShellOverlay() {
+    window.__TM_shellOverlayDepth = (window.__TM_shellOverlayDepth || 0) + 1;
+    if (window.__TM_shellOverlayDepth === 1) {
+        TM_applyShellOverlayHidden(true);
+    }
+}
+
+/** 弹窗壳层引用计数 -1（每次关闭弹窗调用一次） */
+function TM_popShellOverlay() {
+    window.__TM_shellOverlayDepth = Math.max(0, (window.__TM_shellOverlayDepth || 0) - 1);
+    if (window.__TM_shellOverlayDepth === 0) {
+        TM_applyShellOverlayHidden(false);
+        if (typeof TM_notifyEmbedModal === 'function') {
+            TM_notifyEmbedModal(false);
+        }
+    }
+}
+
+/** 根据 DOM 与计数纠偏，修复「弹窗已关但底栏仍隐藏」 */
+function TM_reconcileShellOverlay() {
+    var domOpen = TM_anyShellOverlayOpenInDom();
+    var depth = window.__TM_shellOverlayDepth || 0;
+    if (!domOpen && depth > 0) {
+        window.__TM_shellOverlayDepth = 0;
+        TM_applyShellOverlayHidden(false);
+    } else if (domOpen && depth === 0) {
+        TM_pushShellOverlay();
+    }
+}
+
+window.TM_applyShellOverlayHidden = TM_applyShellOverlayHidden;
+window.TM_pushShellOverlay = TM_pushShellOverlay;
+window.TM_popShellOverlay = TM_popShellOverlay;
+window.TM_reconcileShellOverlay = TM_reconcileShellOverlay;
+
+/** 订单/收款变更后通知 CRM 时间轴、智能经营报表等模块刷新 */
+function TM_emitOrderDataChanged(detail) {
+    detail = detail || {};
+    try {
+        window.dispatchEvent(new CustomEvent('tm-order-data-changed', { detail: detail }));
+    } catch (e) { /* ignore */ }
+    try {
+        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+            try {
+                if (frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'TM_ORDER_DATA_CHANGED',
+                        custId: detail.custId,
+                        orderId: detail.orderId
+                    }, '*');
+                }
+            } catch (e2) { /* ignore */ }
+        });
+    } catch (e3) { /* ignore */ }
+}
+window.TM_emitOrderDataChanged = TM_emitOrderDataChanged;
+
+/** 弹窗打开时隐藏主壳底栏（兼容旧调用，内部走引用计数） */
+function TM_setShellChromeHidden(hidden) {
+    if (hidden) {
+        TM_pushShellOverlay();
+    } else {
+        TM_popShellOverlay();
+    }
 }
 
 window.TM_setShellChromeHidden = TM_setShellChromeHidden;
@@ -874,10 +977,8 @@ function TM_openUnifiedModal(modalEl, opts) {
         TM_applyDialogShell(modalEl, { variant: opts.variant || 'sheet' });
     }
     modalEl.classList.remove('hidden');
-    document.documentElement.classList.add('tm-embed-modal-open');
-    document.body.classList.add('tm-embed-modal-open');
-    document.body.style.overflow = 'hidden';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+    modalEl.setAttribute('aria-hidden', 'false');
+    TM_pushShellOverlay();
     if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
 }
 window.TM_openUnifiedModal = TM_openUnifiedModal;
@@ -885,13 +986,12 @@ window.TM_openUnifiedModal = TM_openUnifiedModal;
 function TM_closeUnifiedModal(modalEl) {
     if (!modalEl) return;
     modalEl.classList.add('hidden');
-    if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
-        document.documentElement.classList.remove('tm-embed-modal-open');
-        document.body.classList.remove('tm-embed-modal-open');
+    modalEl.setAttribute('aria-hidden', 'true');
+    TM_popShellOverlay();
+    if ((window.__TM_shellOverlayDepth || 0) === 0) {
         document.body.style.overflow = '';
-        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
-        if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
     }
+    TM_reconcileShellOverlay();
 }
 window.TM_closeUnifiedModal = TM_closeUnifiedModal;
 window.TM_applyDialogShell = TM_applyDialogShell;
@@ -901,9 +1001,19 @@ if (!window.__tmEmbedModalListenerBound) {
     window.addEventListener('message', function (ev) {
         var data = ev.data;
         if (!data || data.type !== 'TM_EMBED_MODAL') return;
-        if (typeof TM_setShellChromeHidden === 'function') {
-            TM_setShellChromeHidden(!!data.open);
+        if (data.open) {
+            if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
+        } else if (typeof TM_popShellOverlay === 'function') {
+            TM_popShellOverlay();
+            if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
         }
+    });
+}
+
+if (!window.__tmShellOverlayReconcileBound) {
+    window.__tmShellOverlayReconcileBound = true;
+    window.addEventListener('pageshow', function () {
+        if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
     });
 }
 
@@ -911,6 +1021,9 @@ function TM_bootIndexAppShell() {
     initNavigationFromConfig();
     TM_bindAppShellTabbar();
     TM_syncAppShellMetrics();
+    if (typeof TM_reconcileShellOverlay === 'function') {
+        TM_reconcileShellOverlay();
+    }
     if (typeof TM_syncProductCenterOverlays === 'function') {
         TM_syncProductCenterOverlays();
     }
@@ -1246,8 +1359,9 @@ function openOrderDetail(orderId) {
     else {
         if (typeof TM_applyDialogShell === 'function') TM_applyDialogShell(modal);
         modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+        if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
+        else if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
+        else document.body.style.overflow = 'hidden';
     }
 }
 
@@ -1259,8 +1373,10 @@ function closeOrderDetail() {
     if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
     else {
         if (modal) modal.classList.add('hidden');
+        if (typeof TM_popShellOverlay === 'function') TM_popShellOverlay();
+        else if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
         document.body.style.overflow = '';
-        if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+        if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
     }
 }
 
@@ -2353,7 +2469,12 @@ function closePurchaseDetail() {
     var modal = document.getElementById('purchase-detail-modal');
     if (modal) modal.classList.add('hidden');
     document.body.style.overflow = '';
-    if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
+    if (typeof TM_popShellOverlay === 'function') {
+        TM_popShellOverlay();
+        if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
+    } else if (typeof TM_setShellChromeHidden === 'function') {
+        TM_setShellChromeHidden(false);
+    }
 }
 
 // 其他辅助函数

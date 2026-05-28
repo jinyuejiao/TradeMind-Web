@@ -1473,10 +1473,14 @@
             if (opts.applyOrderFin && order && order.finStatus && finSel) {
                 finSel.value = normalizeFinStatus(order.finStatus);
             }
-            var finVal = finSel ? finSel.value : 'UNPAID';
+            var finVal = finSel ? normalizeFinStatus(finSel.value) : 'UNPAID';
             var totals = updateDetailRemainingHint(order);
             var hasSaved = !!(currentDetailOrderId);
+            var payAmount = amountEl && amountEl.value ? tmRoundMoney(amountEl.value) : 0;
             var canPay = hasSaved && finVal !== 'UNPAID' && finVal !== 'BAD_DEBT' && totals.remaining > 0.001;
+            if (finVal === 'PARTIAL_PAID') {
+                canPay = canPay && payAmount > 0;
+            }
             if (hintDisabled) {
                 if (canPay) {
                     hintDisabled.classList.add('hidden');
@@ -1501,6 +1505,9 @@
                     amountEl.disabled = false;
                     if (finVal === 'SETTLED' && totals.remaining > 0) {
                         amountEl.value = totals.remaining.toFixed(2);
+                    } else if (finVal === 'PARTIAL_PAID' && totals.remaining > 0) {
+                        var curAmt = amountEl.value ? tmRoundMoney(amountEl.value) : 0;
+                        if (curAmt <= 0) amountEl.value = totals.remaining.toFixed(2);
                     }
                 }
             }
@@ -1624,17 +1631,30 @@
         }
 
         function bindDetailFinEvents() {
-            if (window._detailFinBound) return;
-            window._detailFinBound = true;
             var finSel = document.getElementById('detail-fin-status');
             var whSel = document.getElementById('detail-order-warehouse');
             var statusSel = document.getElementById('detail-order-status');
-            if (finSel) finSel.addEventListener('change', function () { syncDetailFinStatusUI(); });
-            if (whSel) whSel.addEventListener('change', function () { updateDetailAuxSummary(); });
-            if (statusSel) statusSel.addEventListener('change', function () {
-                updateDetailBadges(currentDetailOrder);
-                renderDetailOrderItems(detailOrderItemsCache);
-            });
+            var amountEl = document.getElementById('detail-receive-amount');
+            if (finSel && finSel.getAttribute('data-tm-fin-bound') !== '1') {
+                finSel.setAttribute('data-tm-fin-bound', '1');
+                finSel.addEventListener('change', function () { syncDetailFinStatusUI(); });
+            }
+            if (amountEl && amountEl.getAttribute('data-tm-fin-bound') !== '1') {
+                amountEl.setAttribute('data-tm-fin-bound', '1');
+                amountEl.addEventListener('input', function () { syncDetailFinStatusUI(); });
+            }
+            if (whSel && whSel.getAttribute('data-tm-wh-bound') !== '1') {
+                whSel.setAttribute('data-tm-wh-bound', '1');
+                whSel.addEventListener('change', function () { updateDetailAuxSummary(); });
+            }
+            if (statusSel && statusSel.getAttribute('data-tm-status-bound') !== '1') {
+                statusSel.setAttribute('data-tm-status-bound', '1');
+                statusSel.addEventListener('change', function () {
+                    updateDetailBadges(currentDetailOrder);
+                    renderDetailOrderItems(detailOrderItemsCache);
+                });
+            }
+            window._detailFinBound = true;
         }
 
         function populateOrderWarehouseSelect(preferredWarehouseId) {
@@ -1732,6 +1752,16 @@
                 }
                 filterInProgressOrders();
                 showToast('收款记账成功');
+                if (typeof window.TM_emitOrderDataChanged === 'function' && currentDetailOrder) {
+                    var emitCust = currentDetailOrder.custId != null ? currentDetailOrder.custId : currentDetailOrder.cust_id;
+                    window.TM_emitOrderDataChanged({
+                        custId: emitCust,
+                        orderId: currentDetailOrderId
+                    });
+                }
+                if (typeof loadDashboardOverviewStats === 'function') {
+                    loadDashboardOverviewStats();
+                }
             } catch (e) {
                 showToast(e.message || '收款失败');
             }
@@ -1880,8 +1910,7 @@
             const status = String(item.orderStatus || item.order_status || '').toUpperCase().trim();
             const fin = String(item.finStatus || item.fin_status || 'UNPAID').toUpperCase().trim();
             if (fin === 'BAD_DEBT') return false;
-            const excluded = ['CANCELLED', 'CANCELED', 'RETURNED', 'D010005', 'D010001', 'D010002',
-                'ALLOCATING', 'PICKING', 'PENDING', 'PROCESSING', 'DRAFT'];
+            const excluded = ['CANCELLED', 'CANCELED', 'RETURNED', 'D010005', 'DRAFT'];
             return status && !excluded.includes(status);
         }
 
@@ -3408,6 +3437,17 @@
                 closeAuditModal();
                 loadPendingOrders();
                 await loadInProgressOrders();
+                var created = result.data || {};
+                var newOrderId = created.orderId != null ? created.orderId : created.order_id;
+                if (typeof window.TM_emitOrderDataChanged === 'function') {
+                    window.TM_emitOrderDataChanged({
+                        custId: Number(custId),
+                        orderId: newOrderId
+                    });
+                }
+                if (typeof loadDashboardOverviewStats === 'function') {
+                    loadDashboardOverviewStats();
+                }
             } catch (error) {
                 console.error('确认订单失败:', error);
                 if (error.status === 401 && !loginExpiredShown) {
@@ -3546,25 +3586,29 @@
             }
             currentDetailOrderId = order.orderId || order.id;
             currentDetailOrder = order;
-            bindDetailFinEvents();
             var detailModal = document.getElementById('order-detail-modal');
+            bindDetailFinEvents();
             if (detailModal) {
                 if (typeof window.TM_openUnifiedModal === 'function') {
                     window.TM_openUnifiedModal(detailModal);
-                } else {
-                    if (typeof window.TM_applyDialogShell === 'function') {
-                        window.TM_applyDialogShell(detailModal);
-                    }
-                    detailModal.classList.remove('hidden');
-                    document.body.style.overflow = 'hidden';
-                    if (typeof window.TM_setShellChromeHidden === 'function') {
-                        window.TM_setShellChromeHidden(true);
-                    }
+            } else {
+                if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(detailModal);
                 }
+                detailModal.classList.remove('hidden');
+                if (typeof window.TM_pushShellOverlay === 'function') {
+                    window.TM_pushShellOverlay();
+                } else if (typeof window.TM_setShellChromeHidden === 'function') {
+                    window.TM_setShellChromeHidden(true);
+                } else {
+                    document.body.style.overflow = 'hidden';
+                }
+            }
             }
             requestAnimationFrame(function () {
                 var scrollEl = document.querySelector('#order-detail-modal .tm-document-modal-scroll');
                 if (scrollEl) scrollEl.scrollTop = 0;
+                syncDetailFinStatusUI(order, { applyOrderFin: true });
             });
             var hintEl = document.getElementById('detail-order-status-hint');
             if (hintEl) {
@@ -3636,9 +3680,14 @@
                 window.TM_closeUnifiedModal(detailModal);
             } else if (detailModal) {
                 detailModal.classList.add('hidden');
-                document.body.style.overflow = '';
-                if (typeof window.TM_setShellChromeHidden === 'function') {
+                if (typeof window.TM_popShellOverlay === 'function') {
+                    window.TM_popShellOverlay();
+                } else if (typeof window.TM_setShellChromeHidden === 'function') {
                     window.TM_setShellChromeHidden(false);
+                }
+                document.body.style.overflow = '';
+                if (typeof window.TM_reconcileShellOverlay === 'function') {
+                    window.TM_reconcileShellOverlay();
                 }
             }
         }

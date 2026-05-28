@@ -773,6 +773,19 @@ textarea {
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
     }
 
+    /* 弹窗打开：底栏占位清零，弹层可贴满视口底部 */
+    html.tm-embed-modal-open,
+    body.tm-embed-modal-open {
+        --tm-tabbar-h: 0px !important;
+    }
+
+    html.tm-embed-modal-open .tm-unified-mobile-modal .modal-content-box,
+    html.tm-embed-modal-open .tm-unified-mobile-modal .tm-dialog-panel,
+    body.tm-embed-modal-open .tm-unified-mobile-modal .modal-content-box,
+    body.tm-embed-modal-open .tm-unified-mobile-modal .tm-dialog-panel {
+        max-height: min(90dvh, 100dvh) !important;
+    }
+
     /* 弹窗打开时隐藏备案 footer，避免在「取消/保存」下方露出 ICP 信息 */
     html.tm-embed-modal-open .tm-compliance-footer,
     body.tm-embed-modal-open .tm-compliance-footer,

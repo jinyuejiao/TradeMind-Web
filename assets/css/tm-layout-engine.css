@@ -265,6 +265,17 @@
         overflow: visible !important;
     }
 
+    /* CRM 字母条宿主：保持裁切与最小高度，避免索引条只露出中间几个字母 */
+    html.tm-embedded.tm-embed-parent-flow .crm-list-body-host {
+        overflow: hidden !important;
+        flex: 1 1 auto !important;
+        min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 8.5rem) !important;
+    }
+
+    html.tm-embedded.tm-embed-parent-flow #customer-list-container {
+        overflow-y: auto !important;
+    }
+
     html.tm-embedded .tm-compliance-footer {
         display: none !important;
     }
@@ -340,8 +351,22 @@
         padding-bottom: max(0.75rem, var(--tm-safe-b)) !important;
     }
 
+    html.tm-embed-modal-open,
+    body.tm-embed-modal-open {
+        --tm-tabbar-h: 0px !important;
+    }
+
+    html.tm-embed-modal-open .tm-mobile-sheet-modal .tm-dialog-panel,
+    html.tm-embed-modal-open .tm-mobile-sheet-modal .modal-content-box,
+    html.tm-embed-modal-open .tm-dialog-root[data-tm-dialog-variant="sheet"] .tm-dialog-panel,
+    html.tm-embed-modal-open .tm-dialog-root[data-tm-dialog-variant="sheet"] .modal-content-box {
+        max-height: min(90dvh, 100dvh) !important;
+    }
+
     html.tm-embed-modal-open .tm-compliance-footer,
-    body.tm-embed-modal-open .tm-compliance-footer {
+    body.tm-embed-modal-open .tm-compliance-footer,
+    html.tm-embed-modal-open #content-area > footer.tm-compliance-footer,
+    body.tm-embed-modal-open #content-area > footer.tm-compliance-footer {
         display: none !important;
     }
 

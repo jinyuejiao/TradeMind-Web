@@ -65,11 +65,11 @@
         PM._bodyScrollLock += on ? 1 : -1;
         if (PM._bodyScrollLock < 0) PM._bodyScrollLock = 0;
         try {
-            document.body.style.overflow = PM._bodyScrollLock > 0 ? 'hidden' : '';
+            if ((window.__TM_shellOverlayDepth || 0) === 0) {
+                document.body.style.overflow = PM._bodyScrollLock > 0 ? 'hidden' : '';
+            }
         } catch (e) { /* ignore */ }
-        if (typeof window.TM_setShellChromeHidden === 'function') {
-            window.TM_setShellChromeHidden(PM._bodyScrollLock > 0);
-        }
+        /* 底栏显隐由 TM_openUnifiedModal / TM_closeUnifiedModal 引用计数统一管理，此处不再重复调用 */
     };
 
     PM.showFormErrors = function (boxId, messages) {

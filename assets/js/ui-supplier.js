@@ -30,6 +30,39 @@ function switchSupplierMainView(viewType) {
 }
 window.switchSupplierView = switchSupplierMainView;
 
+function TM_embedModalMarkOpen(open) {
+    var on = !!open;
+    if (on) {
+        document.body.style.overflow = 'hidden';
+    } else if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
+        document.body.style.overflow = '';
+    }
+    /* 主壳底栏由父页 postMessage → TM_pushShellOverlay / TM_popShellOverlay 控制 */
+    if (typeof window.TM_notifyEmbedModal === 'function') {
+        window.TM_notifyEmbedModal(on);
+    }
+}
+
+function TM_openEmbedModalFallback(modal, opts) {
+    if (!modal) return;
+    opts = opts || {};
+    if (typeof window.TM_applyDialogShell === 'function') {
+        window.TM_applyDialogShell(modal, { variant: opts.variant || 'sheet' });
+    }
+    modal.classList.remove('hidden');
+    TM_embedModalMarkOpen(true);
+}
+window.TM_openEmbedModalFallback = TM_openEmbedModalFallback;
+
+function TM_closeEmbedModalFallback(modal) {
+    if (!modal) return;
+    modal.classList.add('hidden');
+    if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
+        TM_embedModalMarkOpen(false);
+    }
+}
+window.TM_closeEmbedModalFallback = TM_closeEmbedModalFallback;
+
 window.SupplierModule = {
     PAGE_SIZE: 20,
     states: [],
@@ -1138,12 +1171,7 @@ window.SupplierModule = {
             if (typeof window.TM_openUnifiedModal === 'function') {
                 window.TM_openUnifiedModal(modal);
             } else {
-                if (typeof window.TM_applyDialogShell === 'function') {
-                    window.TM_applyDialogShell(modal, { variant: 'sheet' });
-                }
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
+                TM_openEmbedModalFallback(modal);
             }
         }
     },
@@ -1153,9 +1181,7 @@ window.SupplierModule = {
         if (modal && typeof window.TM_closeUnifiedModal === 'function') {
             window.TM_closeUnifiedModal(modal);
         } else if (modal) {
-            modal.classList.add('hidden');
-            document.body.style.overflow = '';
-            if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
+            TM_closeEmbedModalFallback(modal);
         }
         this.currentSupplier = null;
     },
@@ -1180,12 +1206,7 @@ window.SupplierModule = {
             if (typeof window.TM_openUnifiedModal === 'function') {
                 window.TM_openUnifiedModal(modal);
             } else {
-                if (typeof window.TM_applyDialogShell === 'function') {
-                    window.TM_applyDialogShell(modal, { variant: 'sheet' });
-                }
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
+                TM_openEmbedModalFallback(modal);
             }
         }
     },
@@ -1492,12 +1513,7 @@ window.SupplierModule = {
             if (typeof window.TM_openUnifiedModal === 'function') {
                 window.TM_openUnifiedModal(modal);
             } else {
-                if (typeof window.TM_applyDialogShell === 'function') {
-                    window.TM_applyDialogShell(modal, { variant: 'sheet' });
-                }
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
+                TM_openEmbedModalFallback(modal);
             }
         }
         requestAnimationFrame(function () {
@@ -1511,9 +1527,7 @@ window.SupplierModule = {
         if (modal && typeof window.TM_closeUnifiedModal === 'function') {
             window.TM_closeUnifiedModal(modal);
         } else if (modal) {
-            modal.classList.add('hidden');
-            document.body.style.overflow = '';
-            if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(false);
+            TM_closeEmbedModalFallback(modal);
         }
         this.currentPurchase = null;
     },
@@ -1732,12 +1746,7 @@ window.SupplierModule = {
             if (typeof window.TM_openUnifiedModal === 'function') {
                 window.TM_openUnifiedModal(editModal);
             } else {
-                if (typeof window.TM_applyDialogShell === 'function') {
-                    window.TM_applyDialogShell(editModal, { variant: 'sheet' });
-                }
-                editModal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
-                if (typeof window.TM_notifyEmbedModal === 'function') window.TM_notifyEmbedModal(true);
+                TM_openEmbedModalFallback(editModal);
             }
         }
         requestAnimationFrame(function () {

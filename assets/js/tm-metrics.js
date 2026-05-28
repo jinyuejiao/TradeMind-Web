@@ -5,8 +5,7 @@
     'use strict';
 
     var REVENUE_EXCLUDED_STATUSES = [
-        'CANCELLED', 'CANCELED', 'RETURNED', 'D010005', 'D010001', 'D010002',
-        'ALLOCATING', 'PICKING', 'PENDING', 'PROCESSING', 'DRAFT'
+        'CANCELLED', 'CANCELED', 'RETURNED', 'D010005', 'DRAFT'
     ];
 
     function toNumber(value) {

@@ -109,7 +109,7 @@
         modalEl.querySelectorAll('.tm-dialog-footer, .tm-mobile-modal-footer, .tm-product-edit-footer, footer[class*="border-t"], .modal-content-box > div[class*="border-t"]:last-child').forEach(function (foot) {
             if (foot.closest('.tm-mobile-modal-body')) return;
             if (!foot.classList.contains('tm-modal-footer-safe')) {
-                foot.classList.add('tm-modal-footer-safe', 'pb-safe');
+                foot.classList.add('tm-modal-footer-safe');
             }
             if (!foot.classList.contains('tm-mobile-modal-footer') && !foot.classList.contains('tm-product-edit-footer')) {
                 foot.classList.add('tm-mobile-modal-footer');
@@ -117,16 +117,40 @@
         });
     }
 
-    function hideChromeForOverlay(hidden) {
+    function applyShellOverlayHidden(hidden) {
+        var on = !!hidden;
         var tabbar = document.getElementById('tm-app-tabbar');
-        if (tabbar) tabbar.classList.toggle('tm-shell-chrome-hidden', !!hidden);
-        document.documentElement.classList.toggle('tm-embed-modal-open', !!hidden);
-        document.body.classList.toggle('tm-embed-modal-open', !!hidden);
-        if (hidden) {
-            document.body.style.overflow = 'hidden';
-        } else if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
-            document.body.style.overflow = '';
+        if (tabbar) {
+            tabbar.classList.toggle('tm-shell-chrome-hidden', on);
+            if (!on) {
+                tabbar.classList.remove('tm-shell-chrome-hidden');
+                tabbar.style.removeProperty('visibility');
+                tabbar.style.removeProperty('pointer-events');
+            }
         }
+        document.documentElement.classList.toggle('tm-embed-modal-open', on);
+        document.body.classList.toggle('tm-embed-modal-open', on);
+        if (!on) {
+            document.documentElement.classList.remove('tm-embed-modal-open');
+            document.body.classList.remove('tm-embed-modal-open');
+        }
+        var complianceFoot = document.querySelector('#content-area > footer.tm-compliance-footer');
+        if (complianceFoot) {
+            complianceFoot.style.display = on ? 'none' : '';
+        }
+        if (on) {
+            document.documentElement.style.setProperty('--tm-tabbar-h', '0px');
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+            if (typeof window.TM_syncAppShellMetrics === 'function') {
+                window.TM_syncAppShellMetrics();
+            }
+        }
+    }
+
+    function hideChromeForOverlay(hidden) {
+        applyShellOverlayHidden(hidden);
     }
 
     function bindResize() {
@@ -148,6 +172,7 @@
         sync: sync,
         applyContentArea: applyContentArea,
         applyModalRoot: applyModalRoot,
+        applyShellOverlayHidden: applyShellOverlayHidden,
         hideChromeForOverlay: hideChromeForOverlay,
         initEmbeddedDocument: initEmbeddedDocument,
         isMobile: isMobile

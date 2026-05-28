@@ -1180,6 +1180,12 @@
             if (typeof window.loadInProgressOrders === 'function') {
                 window.loadInProgressOrders();
             }
+            if (typeof window.TM_emitOrderDataChanged === 'function') {
+                window.TM_emitOrderDataChanged({ custId: custId, orderId: orderId });
+            }
+            if (typeof window.loadDashboardOverviewStats === 'function') {
+                window.loadDashboardOverviewStats();
+            }
         } catch (e) {
             notify(e.message || '创建订单失败', 'error');
         }

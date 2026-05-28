@@ -141,6 +141,14 @@
             '#view-crm, #crm-list-pane, #customer-list-container, ' +
             '#orders-list-view, #suppliers-list-view, #sup-list-view, #sup-supplier-view'
         ).forEach(function (el) {
+            if (el.classList && el.classList.contains('crm-list-body-host')) return;
+            if (el.id === 'customer-list-container') {
+                el.style.setProperty('height', 'auto', 'important');
+                el.style.setProperty('max-height', 'none', 'important');
+                el.style.setProperty('overflow-x', 'hidden', 'important');
+                el.style.setProperty('overflow-y', 'auto', 'important');
+                return;
+            }
             el.style.setProperty('height', 'auto', 'important');
             el.style.setProperty('max-height', 'none', 'important');
             el.style.setProperty('overflow', 'visible', 'important');
