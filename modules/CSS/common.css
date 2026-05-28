@@ -756,10 +756,13 @@ textarea {
     .tm-unified-mobile-modal .tm-product-edit-footer,
     .tm-product-edit-modal .tm-product-edit-footer {
         flex-shrink: 0 !important;
+        margin-top: auto !important;
         position: sticky !important;
         bottom: 0 !important;
         z-index: 10;
-        background: #fff;
+        background: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
         box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
     }
@@ -767,6 +770,33 @@ textarea {
     .tm-unified-mobile-modal .tm-modal-footer-safe,
     body.tm-embed-modal-open .tm-unified-mobile-modal .tm-modal-footer-safe,
     html.tm-embedded .tm-unified-mobile-modal .tm-modal-footer-safe {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* 弹窗打开时隐藏备案 footer，避免在「取消/保存」下方露出 ICP 信息 */
+    html.tm-embed-modal-open .tm-compliance-footer,
+    body.tm-embed-modal-open .tm-compliance-footer,
+    html.tm-embed-modal-open #content-area > footer.tm-compliance-footer {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        pointer-events: none !important;
+    }
+
+    /* 弹窗打开时底栏仅保留 safe-area，去掉 Tab 栏占位（否则会露出下方备案区） */
+    html.tm-embed-modal-open .tm-modal-footer-safe,
+    body.tm-embed-modal-open .tm-modal-footer-safe,
+    html.tm-embed-modal-open .tm-product-edit-footer,
+    body.tm-embed-modal-open .tm-product-edit-footer,
+    html.tm-embed-modal-open .tm-mobile-modal-footer,
+    body.tm-embed-modal-open .tm-mobile-modal-footer,
+    html.tm-embed-modal-open .tm-purchase-modal-footer,
+    body.tm-embed-modal-open .tm-purchase-modal-footer,
+    html.tm-embed-modal-open .tm-audit-footer,
+    body.tm-embed-modal-open .tm-audit-footer {
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
     }
 

@@ -329,6 +329,22 @@
         padding-bottom: max(0.75rem, var(--tm-safe-b)) !important;
     }
 
+    html.tm-embed-modal-open .tm-modal-footer-safe,
+    body.tm-embed-modal-open .tm-modal-footer-safe,
+    html.tm-embed-modal-open .tm-product-edit-footer,
+    body.tm-embed-modal-open .tm-product-edit-footer,
+    html.tm-embed-modal-open .tm-mobile-modal-footer,
+    body.tm-embed-modal-open .tm-mobile-modal-footer,
+    html.tm-embed-modal-open .tm-purchase-modal-footer,
+    body.tm-embed-modal-open .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, var(--tm-safe-b)) !important;
+    }
+
+    html.tm-embed-modal-open .tm-compliance-footer,
+    body.tm-embed-modal-open .tm-compliance-footer {
+        display: none !important;
+    }
+
     #supplier-modal.tm-mobile-sheet-modal {
         align-items: flex-end !important;
         padding: 0 !important;

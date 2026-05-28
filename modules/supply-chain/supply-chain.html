@@ -130,9 +130,9 @@
         </div>
     </main>
 
-    <div id="supplier-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+    <div id="supplier-modal" class="tm-unified-mobile-modal tm-document-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
         <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeSupplierModal()"></div>
-        <div class="relative bg-white w-full max-w-lg md:max-w-md h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
+        <div class="relative bg-white w-full max-w-lg md:max-w-md h-[min(90dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[2.5rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left min-h-0">
             <div class="tm-product-edit-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-9 h-9 md:w-10 md:h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"><i class="ph ph-warehouse text-lg" aria-hidden="true"></i></div>
@@ -166,9 +166,9 @@
                     </div>
                 </section>
             </div>
-            <div class="tm-product-edit-footer tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white shrink-0 pb-safe">
+            <div class="tm-product-edit-footer tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white/95 backdrop-blur-md shrink-0 mt-auto">
                 <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存后可在进货单中选择该供应商</p>
-                <div class="flex gap-2 md:gap-3 w-full">
+                <div class="flex gap-3 w-full">
                     <button type="button" onclick="closeSupplierModal()" class="flex-1 md:flex-none md:px-6 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">取消</button>
                     <button type="button" onclick="saveSupplier()" class="flex-[1.4] md:flex-none md:px-10 py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/25 hover:bg-brand-700 transition active:scale-[0.98] flex items-center justify-center gap-2">
                         <i class="ph ph-floppy-disk-back"></i> 保存
@@ -294,7 +294,7 @@
             </div>
             </div>
 
-            <div class="tm-product-edit-footer tm-mobile-modal-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white/95 backdrop-blur-md shrink-0 pb-safe">
+            <div class="tm-product-edit-footer tm-mobile-modal-footer tm-purchase-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 bg-white/95 backdrop-blur-md shrink-0 mt-auto">
                 <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存单据；部分入库请在明细区勾选后确认；付款请展开「仓库·付款」</p>
                 <div class="flex gap-3 w-full">
                     <button type="button" onclick="closePurchaseModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3.5 text-xs font-bold min-h-[44px]">取消</button>

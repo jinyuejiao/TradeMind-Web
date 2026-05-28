@@ -1,5 +1,14 @@
 console.log('[ProductModule] 产品中心模块加载中...');
 
+function formatPurchasePriceDisplay(value) {
+    if (window.TM_METRICS && window.TM_METRICS.formatPurchasePrice) {
+        var n = window.TM_METRICS.formatPurchasePrice(value);
+        return n != null ? '$' + n.toFixed(2) : '—';
+    }
+    var x = Number(value);
+    return isFinite(x) && x > 0 ? '$' + x.toFixed(2) : '—';
+}
+
 window.ProductModule = {
     // ==================== API数据映射函数 ====================
     mapProductFromApi: function(apiProduct) {
@@ -17,7 +26,14 @@ window.ProductModule = {
             supplier: apiProduct.supplierName || apiProduct.supplier,
             region: apiProduct.marketRegion || apiProduct.region,
             price: apiProduct.salePrice != null ? apiProduct.salePrice : apiProduct.price,
-            purchasePrice: apiProduct.costPrice || apiProduct.purchasePrice,
+            purchasePrice: (function () {
+                var raw = apiProduct.costPrice != null ? apiProduct.costPrice : apiProduct.purchasePrice;
+                if (window.TM_METRICS && window.TM_METRICS.formatPurchasePrice) {
+                    return window.TM_METRICS.formatPurchasePrice(raw);
+                }
+                var n = Number(raw);
+                return isFinite(n) && n > 0 ? n : null;
+            })(),
             stock: stockNum,
             salesVolume: apiProduct.salesCount || apiProduct.salesVolume,
             icon: apiProduct.productIcon || apiProduct.icon || 'package',
@@ -758,7 +774,7 @@ window.ProductModule = {
                     <span data-field="sales_price">$${(product.price || 0).toFixed(2)}</span>
                 </td>
                 <td class="px-6 py-4 text-right font-mono font-bold text-brand-600 col-hide-mobile">
-                    <span data-field="purchase_price">$${(product.purchasePrice || 0).toFixed(2)}</span>
+                    <span data-field="purchase_price">${formatPurchasePriceDisplay(product.purchasePrice)}</span>
                 </td>
                 <td class="px-6 py-4 text-right">
                     <p class="font-mono font-bold ${window.ProductModule.getStockColor(product.stockStatus)} tracking-tighter text-sm">
@@ -818,7 +834,7 @@ window.ProductModule = {
                 </div>
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-0 mt-0.5 text-[10px]">
                     <span class="text-slate-600">销售 <span class="font-mono font-bold">$${(product.price || 0).toFixed(2)}</span></span>
-                    <span class="text-brand-600">进货 <span class="font-mono font-bold">$${(product.purchasePrice || 0).toFixed(2)}</span></span>
+                    <span class="text-brand-600">进货 <span class="font-mono font-bold">${formatPurchasePriceDisplay(product.purchasePrice)}</span></span>
                 </div>
                 <div class="w-full max-w-[11rem] h-0.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
                     <div class="${barClass} h-full ${pulse}" style="width:${pct}%"></div>
@@ -1935,8 +1951,9 @@ window.ProductModule = {
             }
             return;
         }
+        var parsedSid = sid === 'null' || sid === '' || sid === '0' ? null : parseInt(sid, 10);
         var purchaseData = {
-            supplierId: parseInt(sid, 10),
+            supplierId: parsedSid,
             purchaseStatus: 'PENDING_REVIEW',
             purchaseDate: purchaseDate,
             totalAmount: total,
@@ -2003,7 +2020,7 @@ window.ProductModule = {
                 '<div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-500">' +
                 '<i class="ph ph-check-circle text-3xl"></i></div>' +
                 '<p class="text-sm font-bold text-slate-700">当前无可展示的进货建议</p>' +
-                '<p class="text-xs text-slate-400 mt-2">无「库存&gt;0 且缺货或预警」且可计算建议量的产品，或已全部生成/移除。</p>' +
+                '<p class="text-xs text-slate-400 mt-2">无「近14天有销量且库存≤预警」且可计算建议量的产品，或已全部生成/移除。</p>' +
                 '</div>';
             return;
         }
@@ -2019,10 +2036,10 @@ window.ProductModule = {
             groups.length +
             ' 家供应商</p></div>' +
             '<div class="flex items-center gap-2 text-[10px] font-bold text-teal-700 bg-teal-50 px-3 py-1.5 rounded-xl w-fit">' +
-            '<i class="ph ph-info"></i> 建议量 = 进货周期内销售件数 ÷ 采购单位换算比（向上取整）</div></div>';
+            '<i class="ph ph-info"></i> 建议量 = (日均×进货周期+预警−库存)÷采购单位比（向上取整）</div></div>';
 
         groups.forEach(function (g) {
-            var sid = String(g.supplierId);
+            var sid = g.supplierId == null ? '0' : String(g.supplierId);
             var sname = self._escHtml(g.supplierName || '');
             var items = g.items || [];
             html +=

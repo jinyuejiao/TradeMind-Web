@@ -874,6 +874,8 @@ function TM_openUnifiedModal(modalEl, opts) {
         TM_applyDialogShell(modalEl, { variant: opts.variant || 'sheet' });
     }
     modalEl.classList.remove('hidden');
+    document.documentElement.classList.add('tm-embed-modal-open');
+    document.body.classList.add('tm-embed-modal-open');
     document.body.style.overflow = 'hidden';
     if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
     if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
@@ -884,6 +886,8 @@ function TM_closeUnifiedModal(modalEl) {
     if (!modalEl) return;
     modalEl.classList.add('hidden');
     if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
+        document.documentElement.classList.remove('tm-embed-modal-open');
+        document.body.classList.remove('tm-embed-modal-open');
         document.body.style.overflow = '';
         if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
         if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(false);
