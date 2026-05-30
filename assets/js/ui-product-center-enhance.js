@@ -14,6 +14,12 @@
     PM.auditSaveCallback = null;
     PM._bodyScrollLock = 0;
 
+    PM.isAuditContextActive = function () {
+        if (window.auditState && window.auditState.currentRecordId) return true;
+        var modal = document.getElementById('audit-modal');
+        return !!(modal && !modal.classList.contains('hidden'));
+    };
+
     PM.isAuditProductFormActive = function () {
         var pane = document.getElementById('confirm-product-tab');
         var root = document.getElementById('audit-product-registry-root');
@@ -21,12 +27,23 @@
     };
 
     PM.getAuditProductRoot = function () {
-        if (!PM.isAuditProductFormActive()) return null;
-        return document.getElementById('audit-product-registry-root');
+        var root = document.getElementById('audit-product-registry-root');
+        if (root && root.dataset.tmProductMounted === '1' && PM.isAuditContextActive()) {
+            return root;
+        }
+        return null;
     };
 
     PM.el = function () {
         var ids = Array.prototype.slice.call(arguments);
+        var productModal = PM.getProductDetailModal();
+        if (productModal && !productModal.classList.contains('hidden')) {
+            for (var p = 0; p < ids.length; p++) {
+                if (!ids[p]) continue;
+                var inModal = productModal.querySelector('#' + ids[p]);
+                if (inModal) return inModal;
+            }
+        }
         var auditRoot = PM.getAuditProductRoot();
         if (auditRoot) {
             for (var i = 0; i < ids.length; i++) {
@@ -35,23 +52,11 @@
                 if (scoped) return scoped;
             }
         }
-        var useAudit = PM.isAuditProductFormActive();
-        if (useAudit) {
-            var mapped = [];
-            ids.forEach(function (id) {
-                if (id && id.indexOf('detail-') === 0) {
-                    mapped.push('audit-' + id);
-                } else {
-                    mapped.push(id);
-                }
-            });
-            for (var k = 0; k < mapped.length; k++) {
-                var auditNode = document.getElementById(mapped[k]);
-                if (auditNode) return auditNode;
-            }
-        }
         for (var j = 0; j < ids.length; j++) {
-            var node = document.getElementById(ids[j]);
+            var id = ids[j];
+            if (!id) continue;
+            if (id.indexOf('detail-') === 0) continue;
+            var node = document.getElementById(id);
             if (node) return node;
         }
         return null;
@@ -203,7 +208,7 @@
         var baseUnitStr = baseUnitInput ? baseUnitInput.value.trim() : '';
         var sk = skuInput ? skuInput.value.trim() : '';
         if (!sk) {
-            sk = 'SKU-' + Date.now().toString().slice(-8);
+            sk = 'SKU-' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
             if (skuInput) skuInput.value = sk;
         }
 
@@ -871,10 +876,25 @@
         });
     };
 
+    PM.mergeAuditProductPrefill = function (aiItem, draft) {
+        var base = Object.assign({}, aiItem || {});
+        if (!draft || typeof draft !== 'object') return base;
+        Object.keys(draft).forEach(function (key) {
+            var val = draft[key];
+            if (val != null && String(val).trim() !== '') {
+                base[key] = val;
+            }
+        });
+        return base;
+    };
+
     window.TM_initAuditProductForm = async function (np, index) {
         np = np || {};
+        if (window.TmProductRegistry && typeof window.TmProductRegistry.normalizeAiProduct === 'function') {
+            np = window.TmProductRegistry.normalizeAiProduct(np);
+        }
         if (window.auditState && window.auditState.newProductDrafts && index != null && window.auditState.newProductDrafts[index]) {
-            np = Object.assign({}, np, window.auditState.newProductDrafts[index]);
+            np = PM.mergeAuditProductPrefill(np, window.auditState.newProductDrafts[index]);
         }
         try {
             await Promise.all([PM.loadCategories(), PM.loadSuppliers(), PM.loadWarehouses()]);
@@ -890,8 +910,9 @@
         };
         var price = np.price != null ? np.price : (np.sale_price != null ? np.sale_price : np.unit_price);
         var stock = np.stock != null ? np.stock : np.stock_quantity;
+        var aiSku = np.sku || np.product_sku || '';
         set('detail-product-name', np.name || np.product_name || '');
-        set('detail-product-sku-input', np.sku || np.product_sku || '');
+        set('detail-product-sku-input', aiSku);
         set('detail-product-price', price != null && price !== '' ? price : '');
         set('detail-product-base-unit', np.base_unit || np.baseUnit || np.unit || '件');
         set('detail-product-stock', stock != null && stock !== '' ? stock : '');
@@ -929,7 +950,7 @@
     PM.saveAuditNewProduct = async function () {
         PM.showFormErrors('audit-product-form-errors', []);
         if (!PM.validateProductForm()) return;
-        PM.currentProduct = PM.currentProduct || {};
+        PM.currentProduct = {};
         var validUnitConv = PM.resolveUnitConversionsForSave();
         var built = PM.buildProductSaveBodyWithUnits(validUnitConv);
         if (built.error) {
@@ -945,6 +966,18 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(built.body)
             });
+            if (!response.ok) {
+                var errBody = await response.json().catch(function () { return {}; });
+                var errMsg = (errBody && (errBody.message || errBody.error)) || ('保存失败 (' + response.status + ')');
+                if (errMsg.indexOf('uq_products_tenant_sku') !== -1 || errMsg.indexOf('duplicate key') !== -1) {
+                    errMsg = '产品 SKU 已存在，请清空高级配置中的 SKU 后重试，或刷新页面重新加载';
+                }
+                PM.showFormErrors('audit-product-form-errors', [errMsg]);
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification(errMsg, 'error');
+                }
+                return;
+            }
             var data = await window.handleApiResponse(response);
             if (!data) return;
             var saved = data.data || {};

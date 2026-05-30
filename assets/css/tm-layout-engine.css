@@ -265,9 +265,9 @@
         overflow: visible !important;
     }
 
-    /* CRM 字母条宿主：保持裁切与最小高度，避免索引条只露出中间几个字母 */
+    /* CRM 字母条宿主：列表区滚动，索引不被裁切 */
     html.tm-embedded.tm-embed-parent-flow .crm-list-body-host {
-        overflow: hidden !important;
+        overflow: visible !important;
         flex: 1 1 auto !important;
         min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 8.5rem) !important;
     }
@@ -402,4 +402,30 @@
         max-width: 100%;
         border-radius: 2.5rem 2.5rem 0 0 !important;
     }
+
+    /* 嵌入 iframe 弹窗打开：子页与 iframe 均占满视口 */
+    html.tm-embedded.tm-embed-modal-open,
+    html.tm-embedded.tm-embed-modal-open body {
+        height: 100dvh !important;
+        min-height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow: hidden !important;
+    }
+
+    html.tm-embedded.tm-embed-modal-open .tm-unified-mobile-modal,
+    html.tm-embedded.tm-embed-modal-open .tm-product-edit-modal {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
+}
+
+iframe.tm-module-frame.tm-embed-frame-modal-open {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    z-index: 105 !important;
+    border: 0 !important;
+    margin: 0 !important;
 }

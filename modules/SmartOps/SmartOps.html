@@ -112,7 +112,7 @@
         };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260530modal2">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
@@ -320,7 +320,7 @@
                             </label>
                         </div>
                     </div>
-                    <div class="tm-mobile-modal-footer tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
+                    <div class="tm-mobile-modal-footer tm-product-edit-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
                         <button onclick="window.closeBizAccountModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
                         <button onclick="window.saveBizAccount()" class="flex-[1.4] py-3 rounded-2xl bg-[#14B8A6] text-white text-xs font-black shadow-lg shadow-[#14B8A6]/25 hover:bg-[#0D9488] transition-colors flex items-center justify-center gap-2"><i class="ph ph-floppy-disk-back"></i> 保存账户</button>
                     </div>
@@ -375,7 +375,7 @@
                             <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
                         </div>
                     </div>
-                    <div class="tm-mobile-modal-footer tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-5 md:py-4 border-t border-slate-100 shrink-0 mt-auto">
+                    <div class="tm-mobile-modal-footer tm-product-edit-footer px-4 py-3 md:px-5 md:py-4 border-t border-slate-100 shrink-0 mt-auto">
                         <button type="button" onclick="window.closeBizAccountDetailModal()" class="w-full py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
                     </div>
                 </div>
@@ -423,7 +423,7 @@
                             <p id="biz-ledger-empty" class="hidden text-center text-xs text-slate-400 py-10">所选时间范围内暂无流水记录</p>
                         </div>
                     </div>
-                    <div class="tm-mobile-modal-footer tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 border-t border-slate-100 flex flex-col gap-2 shrink-0 mt-auto">
+                    <div class="tm-mobile-modal-footer tm-product-edit-footer px-4 py-3 md:px-6 border-t border-slate-100 flex flex-col gap-2 shrink-0 mt-auto">
                         <button type="button" onclick="window.exportBizAccountLedgerExcel()" class="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black hover:bg-slate-800 transition-colors shadow-lg">
                             <i class="ph ph-download-simple text-base"></i>
                             导出 Excel
@@ -938,6 +938,15 @@
             return x.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
+        function getBizAccountModalEl(id) {
+            var modal = document.getElementById('biz-account-modal');
+            if (modal) {
+                var scoped = modal.querySelector('#' + id);
+                if (scoped) return scoped;
+            }
+            return document.getElementById(id);
+        }
+
         function escapeHtml(value) {
             return String(value || '')
                 .replace(/&/g, '&amp;')
@@ -1010,16 +1019,16 @@
 
             window.bizEditingAccountId = accountId || null;
             const current = window.bizAccounts.find(a => Number(a.accountId) === Number(accountId));
-            document.getElementById('biz-account-type').value = current ? (current.accountType || '支付宝账户') : '支付宝账户';
-            document.getElementById('biz-account-name').value = current ? (current.accountName || '') : '';
-            document.getElementById('biz-account-no').value = current ? (current.accountNo || '') : '';
-            document.getElementById('biz-account-holder').value = current ? (current.accountHolder || '') : '';
-            var balEl = document.getElementById('biz-account-balance');
+            getBizAccountModalEl('biz-account-type').value = current ? (current.accountType || '支付宝账户') : '支付宝账户';
+            getBizAccountModalEl('biz-account-name').value = current ? (current.accountName || '') : '';
+            getBizAccountModalEl('biz-account-no').value = current ? (current.accountNo || '') : '';
+            getBizAccountModalEl('biz-account-holder').value = current ? (current.accountHolder || '') : '';
+            var balEl = getBizAccountModalEl('biz-account-balance');
             if (balEl) {
-                balEl.value = current && current.balance !== undefined && current.balance !== null ? String(current.balance) : '0';
+                balEl.value = current && current.balance !== undefined && current.balance !== null ? String(current.balance) : '';
             }
-            document.getElementById('biz-account-default-receive').checked = !!(current && current.isDefaultReceive);
-            document.getElementById('biz-account-default-pay').checked = !!(current && current.isDefaultPay);
+            getBizAccountModalEl('biz-account-default-receive').checked = !!(current && current.isDefaultReceive);
+            getBizAccountModalEl('biz-account-default-pay').checked = !!(current && current.isDefaultPay);
             if (title) {
                 title.textContent = current ? '编辑账户信息' : '新增首付款账户';
             }
@@ -1046,18 +1055,19 @@
 
         window.saveBizAccount = async function() {
             try {
-                var balInput = document.getElementById('biz-account-balance');
-                var balNum = balInput ? parseFloat(balInput.value) : 0;
+                var balInput = getBizAccountModalEl('biz-account-balance');
+                var balRaw = balInput ? String(balInput.value).trim() : '';
+                var balNum = balRaw === '' ? 0 : parseFloat(balRaw);
                 if (!Number.isFinite(balNum)) balNum = 0;
                 const payload = {
                     accountId: window.bizEditingAccountId || null,
-                    accountType: document.getElementById('biz-account-type').value,
-                    accountName: document.getElementById('biz-account-name').value.trim(),
-                    accountNo: document.getElementById('biz-account-no').value.trim(),
-                    accountHolder: document.getElementById('biz-account-holder').value.trim(),
+                    accountType: getBizAccountModalEl('biz-account-type').value,
+                    accountName: getBizAccountModalEl('biz-account-name').value.trim(),
+                    accountNo: getBizAccountModalEl('biz-account-no').value.trim(),
+                    accountHolder: getBizAccountModalEl('biz-account-holder').value.trim(),
                     balance: balNum,
-                    isDefaultReceive: document.getElementById('biz-account-default-receive').checked,
-                    isDefaultPay: document.getElementById('biz-account-default-pay').checked
+                    isDefaultReceive: getBizAccountModalEl('biz-account-default-receive').checked,
+                    isDefaultPay: getBizAccountModalEl('biz-account-default-pay').checked
                 };
 
                 if (!payload.accountName || !payload.accountNo) {

@@ -714,7 +714,9 @@ window.SupplierModule = {
                         list = result.data.records;
                     }
                 }
-                this.products = list;
+                this.products = list.map(function (p) {
+                    return SupplierModule.normalizeProductFromApi(p);
+                });
             }
             var tid = this.getTenantIdFromStorage();
             if (this.products.length === 0 && tid) {
@@ -724,13 +726,114 @@ window.SupplierModule = {
                 if (r2.ok) {
                     const j2 = await r2.json();
                     if (j2 && j2.success && Array.isArray(j2.data)) {
-                        this.products = j2.data;
+                        this.products = j2.data.map(function (p) {
+                            return SupplierModule.normalizeProductFromApi(p);
+                        });
                     }
                 }
             }
         } catch (error) {
             console.error('Error loading products:', error);
             this.products = [];
+        }
+    },
+
+    /** 与产品中心对齐：归一化 baseUnit / purchaseUnit / unitConversions */
+    normalizeProductFromApi: function(apiProduct) {
+        if (!apiProduct) return {};
+        if (window.ProductModule && typeof window.ProductModule.mapProductFromApi === 'function') {
+            var mapped = window.ProductModule.mapProductFromApi(apiProduct);
+            mapped.productId = mapped.id != null ? mapped.id : apiProduct.productId;
+            return mapped;
+        }
+        var ucList = apiProduct.unitConversions || apiProduct.unit_conversions;
+        return {
+            productId: apiProduct.productId != null ? apiProduct.productId : apiProduct.id,
+            id: apiProduct.productId != null ? apiProduct.productId : apiProduct.id,
+            name: apiProduct.name || apiProduct.productName,
+            productName: apiProduct.productName || apiProduct.name,
+            baseUnit: (apiProduct.baseUnit || apiProduct.base_unit || '').trim(),
+            purchaseUnit: (apiProduct.purchaseUnit || apiProduct.purchase_unit || '').trim(),
+            salesUnit: (apiProduct.salesUnit || apiProduct.sales_unit || '').trim(),
+            price: apiProduct.price != null ? apiProduct.price : (apiProduct.purchasePrice || apiProduct.costPrice),
+            purchasePrice: apiProduct.purchasePrice != null ? apiProduct.purchasePrice : apiProduct.costPrice,
+            unitConversions: Array.isArray(ucList) ? ucList : []
+        };
+    },
+
+    /** 进货行可选单位：基本单位 + unitConversion 表（去重） */
+    collectPurchaseUnitOptions: function(product) {
+        if (!product) return [];
+        var base = (product.baseUnit || '').trim();
+        var opts = [];
+        var seen = {};
+
+        function addUnit(value, label) {
+            var v = (value || '').trim();
+            if (!v) return;
+            var key = v.toLowerCase();
+            if (seen[key]) return;
+            seen[key] = true;
+            opts.push({ value: v, label: label || v });
+        }
+
+        if (base) {
+            addUnit(base, base + '（基本单位）');
+        }
+        var convs = product.unitConversions || [];
+        for (var i = 0; i < convs.length; i++) {
+            var c = convs[i];
+            var un = (c.unitName || c.unit_name || '').trim();
+            var ratioNum = parseFloat(c.ratio);
+            if (!un || !ratioNum || ratioNum <= 0 || isNaN(ratioNum)) continue;
+            var label = base
+                ? un + '(1' + un + '=' + ratioNum + base + ')'
+                : un;
+            addUnit(un, label);
+        }
+        var pu = (product.purchaseUnit || '').trim();
+        if (pu) {
+            addUnit(pu, pu);
+        }
+        return opts;
+    },
+
+    fillPurchaseUnitSelect: function(unitSelect, product, preferredUnit) {
+        if (!unitSelect) return;
+        unitSelect.innerHTML = '';
+        var opts = this.collectPurchaseUnitOptions(product);
+        if (!opts.length) {
+            var empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '--- 单位 ---';
+            unitSelect.appendChild(empty);
+            return;
+        }
+        opts.forEach(function (o) {
+            var option = document.createElement('option');
+            option.value = o.value;
+            option.textContent = o.label;
+            unitSelect.appendChild(option);
+        });
+        var base = (product.baseUnit || '').trim();
+        var pu = (product.purchaseUnit || '').trim();
+        var target = (preferredUnit != null && String(preferredUnit).trim() !== '')
+            ? String(preferredUnit).trim()
+            : (pu || base || '');
+        var has = false;
+        for (var j = 0; j < unitSelect.options.length; j++) {
+            if (unitSelect.options[j].value === target) has = true;
+        }
+        if (!has && target) {
+            var extra = document.createElement('option');
+            extra.value = target;
+            extra.textContent = target;
+            unitSelect.appendChild(extra);
+        }
+        if (target) {
+            unitSelect.value = target;
+        } else if (unitSelect.options.length) {
+            unitSelect.selectedIndex = 0;
         }
     },
 
@@ -1393,21 +1496,8 @@ window.SupplierModule = {
             var sel = rows[idx].querySelector('.product-select');
             if (sel && (item.productId != null || item.product_id != null)) {
                 sel.value = String(item.productId != null ? item.productId : item.product_id);
-                self.onProductSelect(sel);
-            }
-            var unitSelect = rows[idx].querySelector('.unit-select');
-            if (unitSelect && item.unitName) {
-                var has = false;
-                for (var i = 0; i < unitSelect.options.length; i++) {
-                    if (unitSelect.options[i].value === item.unitName) has = true;
-                }
-                if (!has) {
-                    var opt = document.createElement('option');
-                    opt.value = item.unitName;
-                    opt.textContent = item.unitName;
-                    unitSelect.appendChild(opt);
-                }
-                unitSelect.value = item.unitName;
+                var savedUnit = item.unitName || item.unit_name || '';
+                self.onProductSelect(sel, savedUnit || undefined);
             }
             var cb = rows[idx].querySelector('.purchase-inbound-check');
             if (cb) {
@@ -1559,7 +1649,7 @@ window.SupplierModule = {
         });
     },
 
-    onProductSelect: function(selectEl) {
+    onProductSelect: function(selectEl, preferredUnit) {
         const row = selectEl.closest('.purchase-item-row');
         if (!row) return;
         const productId = selectEl.value;
@@ -1580,20 +1670,9 @@ window.SupplierModule = {
         });
         if (product) {
             unitSelect.className = 'form-input text-center unit-select';
-            unitSelect.innerHTML = '';
-            if (product.baseUnit) {
-                const option = document.createElement('option');
-                option.value = product.baseUnit;
-                option.textContent = product.baseUnit;
-                unitSelect.appendChild(option);
-            }
-            if (product.purchaseUnit && product.purchaseUnit !== product.baseUnit) {
-                const option = document.createElement('option');
-                option.value = product.purchaseUnit;
-                option.textContent = product.purchaseUnit;
-                unitSelect.appendChild(option);
-            }
-            if (product.price) {priceInput.value = product.price;}
+            this.fillPurchaseUnitSelect(unitSelect, product, preferredUnit);
+            var price = product.price != null ? product.price : (product.purchasePrice || 0);
+            if (price) priceInput.value = price;
         }
         this.calculatePurchaseTotal();
     },

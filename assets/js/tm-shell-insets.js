@@ -108,9 +108,6 @@
         });
         modalEl.querySelectorAll('.tm-dialog-footer, .tm-mobile-modal-footer, .tm-product-edit-footer, footer[class*="border-t"], .modal-content-box > div[class*="border-t"]:last-child').forEach(function (foot) {
             if (foot.closest('.tm-mobile-modal-body')) return;
-            if (!foot.classList.contains('tm-modal-footer-safe')) {
-                foot.classList.add('tm-modal-footer-safe');
-            }
             if (!foot.classList.contains('tm-mobile-modal-footer') && !foot.classList.contains('tm-product-edit-footer')) {
                 foot.classList.add('tm-mobile-modal-footer');
             }

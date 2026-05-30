@@ -449,6 +449,22 @@
     async function ensureCustomerIdBeforeConfirm() {
         var customerSelect = document.getElementById('order-customer');
         if (!customerSelect) return null;
+
+        if (window.auditState && window.auditState.aiStructured) {
+            var resolvedEarly = typeof window.getMatchedCustomerId === 'function'
+                ? window.getMatchedCustomerId(window.auditState.aiStructured)
+                : 0;
+            if (resolvedEarly > 0) {
+                var rname = (window.auditState.aiStructured.customer_data && window.auditState.aiStructured.customer_data.matched_customer_name) || '';
+                if (typeof window.ensureCustomerOptionInSelect === 'function') {
+                    window.ensureCustomerOptionInSelect(customerSelect, resolvedEarly, rname || ('客户#' + resolvedEarly));
+                } else {
+                    customerSelect.value = String(resolvedEarly);
+                }
+                return resolvedEarly;
+            }
+        }
+
         var val = customerSelect.value;
         if (/^\d+$/.test(val)) return parseInt(val, 10);
 
@@ -473,22 +489,36 @@
         }
         if (!name) throw new Error('无法确定客户名称，请先填写客户资料');
 
-        var custId = await saveCustomerInline(name, phone || null);
+        var lookupHit = window.customerLookupByName && window.customerLookupByName[name];
+        var custId;
+        if (lookupHit && lookupHit.id) {
+            custId = Number(lookupHit.id);
+        } else {
+            custId = await saveCustomerInline(name, phone || null);
+        }
         if (window.auditState && window.auditState.aiStructured) {
-            if (!window.auditState.aiStructured.customer_data) {
-                window.auditState.aiStructured.customer_data = {};
+            if (typeof window.markCustomerResolvedInAudit === 'function') {
+                window.markCustomerResolvedInAudit(custId, name);
+            } else {
+                if (!window.auditState.aiStructured.customer_data) {
+                    window.auditState.aiStructured.customer_data = {};
+                }
+                window.auditState.aiStructured.customer_data.matched_customer_id = custId;
+                window.auditState.aiStructured.customer_data.matched_customer_name = name;
+                window.auditState.aiStructured.new_customers_found = [];
             }
-            window.auditState.aiStructured.customer_data.matched_customer_id = custId;
-            window.auditState.aiStructured.customer_data.matched_customer_name = name;
-            window.auditState.aiStructured.new_customers_found = [];
             if (typeof window.persistAuditResult === 'function') await window.persistAuditResult();
         }
-        var option = document.createElement('option');
-        option.value = String(custId);
-        option.textContent = name;
-        option.setAttribute('data-name', name);
-        customerSelect.appendChild(option);
-        customerSelect.value = String(custId);
+        if (typeof window.ensureCustomerOptionInSelect === 'function') {
+            window.ensureCustomerOptionInSelect(customerSelect, custId, name);
+        } else {
+            var option = document.createElement('option');
+            option.value = String(custId);
+            option.textContent = name;
+            option.setAttribute('data-name', name);
+            customerSelect.appendChild(option);
+            customerSelect.value = String(custId);
+        }
         return custId;
     }
 
@@ -619,37 +649,8 @@
 
             var customerSelect = document.getElementById('order-customer');
             if (customerSelect && window.auditState && window.auditState.aiStructured) {
-                var customerData = window.auditState.aiStructured.customer_data || {};
-                var newCustomer = Array.isArray(window.auditState.aiStructured.new_customers_found)
-                    ? window.auditState.aiStructured.new_customers_found[0] : null;
-                if (customerData.matched_customer_name) {
-                    var matchedId = customerData.matched_customer_id ? String(customerData.matched_customer_id) : '';
-                    if (matchedId && customerSelect.querySelector('option[value="' + matchedId + '"]')) {
-                        customerSelect.value = matchedId;
-                    } else {
-                        var ph = customerSelect.querySelector('option[value="matched-customer-placeholder"]');
-                        if (!ph) {
-                            ph = document.createElement('option');
-                            ph.value = 'matched-customer-placeholder';
-                            customerSelect.insertBefore(ph, customerSelect.firstChild);
-                        }
-                        ph.textContent = customerData.matched_customer_name;
-                        ph.setAttribute('data-name', customerData.matched_customer_name);
-                        customerSelect.value = 'matched-customer-placeholder';
-                    }
-                } else if (newCustomer && newCustomer.name) {
-                    var ph2 = customerSelect.querySelector('option[value="new-customer-placeholder"]');
-                    if (!ph2) {
-                        ph2 = document.createElement('option');
-                        ph2.value = 'new-customer-placeholder';
-                        customerSelect.insertBefore(ph2, customerSelect.firstChild);
-                    }
-                    ph2.textContent = newCustomer.name;
-                    ph2.setAttribute('data-name', newCustomer.name);
-                    customerSelect.value = 'new-customer-placeholder';
-                }
-                if (typeof window.handleAuditCustomerSelectChange === 'function') {
-                    window.handleAuditCustomerSelectChange(customerSelect);
+                if (typeof window.applyAuditCustomerSelectState === 'function') {
+                    window.applyAuditCustomerSelectState(customerSelect);
                 }
             }
 

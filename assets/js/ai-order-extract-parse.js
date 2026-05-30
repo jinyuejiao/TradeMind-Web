@@ -119,9 +119,15 @@
         }
 
         const details = envelope.details && typeof envelope.details === 'object' ? envelope.details : {};
+        const matchedId = data.customer_data && data.customer_data.matched_customer_id != null
+            ? Number(data.customer_data.matched_customer_id)
+            : 0;
+        const customerAlreadyResolved = Number.isFinite(matchedId) && matchedId > 0;
         const ncFromDetails = details.newCustomersFound != null ? details.newCustomersFound : details.new_customers_found;
-        if (Array.isArray(ncFromDetails) && ncFromDetails.length > 0) {
+        if (!customerAlreadyResolved && Array.isArray(ncFromDetails) && ncFromDetails.length > 0) {
             data.new_customers_found = ncFromDetails;
+        } else if (customerAlreadyResolved) {
+            data.new_customers_found = [];
         }
         const npFromDetails = details.newProductsFound != null ? details.newProductsFound : details.new_products_found;
         if (Array.isArray(npFromDetails) && npFromDetails.length > 0 && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {

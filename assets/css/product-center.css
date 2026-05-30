@@ -525,8 +525,9 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
 
 #purchase-modal.tm-purchase-modal #purchase-bottom-panel {
     flex: 0 0 auto;
-    max-height: 42vh;
+    max-height: min(42vh, 18rem);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 #purchase-modal.tm-purchase-modal .tm-purchase-aux-details > summary {
@@ -638,8 +639,8 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     }
 
     #purchase-modal.tm-purchase-modal #purchase-bottom-panel {
-        max-height: none;
-        overflow: visible;
+        max-height: min(42vh, 18rem);
+        overflow-y: auto;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
@@ -669,8 +670,9 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 
     #order-detail-modal.tm-order-detail-modal #detail-bottom-panel,
     #manual-order-modal.tm-order-detail-modal #manual-bottom-panel {
-        max-height: none;
-        overflow: visible;
+        max-height: min(42vh, 18rem);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     #tm-main-scroll,

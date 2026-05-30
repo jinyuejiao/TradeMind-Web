@@ -38,6 +38,53 @@
             .replace(/'/g, '&#39;');
     }
 
+    function normalizeProductId(id) {
+        if (id == null || id === '') return '';
+        return String(id).trim();
+    }
+
+    function lookupProductEntry(lookup, pid) {
+        if (!lookup || pid == null) return null;
+        return lookup[pid] || lookup[normalizeProductId(pid)] || null;
+    }
+
+    function storeProductInIndex(p) {
+        if (!p) return;
+        var id = p.productId != null ? p.productId : p.product_id;
+        if (id == null) return;
+        var entry = {
+            name: (p.name || p.productName || p.product_name || '').trim(),
+            salesUnit: (p.salesUnit || p.sales_unit || '').trim(),
+            baseUnit: (p.baseUnit || p.base_unit || '').trim()
+        };
+        productById[id] = entry;
+        productById[normalizeProductId(id)] = entry;
+    }
+
+    function resolveProductDisplayName(item, lookup) {
+        lookup = lookup || productById;
+        var itemName = String(
+            (item && (item.productName || item.product_name || item.name)) || ''
+        ).trim();
+        if (itemName) return itemName;
+
+        var pid = item && (item.productId != null ? item.productId : item.product_id);
+        if (pid == null) return '未知产品';
+
+        var p = lookupProductEntry(lookup, pid) || {};
+        var name = (p.name || p.productName || '').trim();
+        if (name) return name;
+
+        return '已下架产品';
+    }
+
+    function resolveProductUnit(item, lookup, pid) {
+        var itemUnit = String((item && (item.unitName || item.unit_name)) || '').trim();
+        if (itemUnit) return itemUnit;
+        var p = lookupProductEntry(lookup, pid) || {};
+        return (p.salesUnit || p.baseUnit || '件').trim() || '件';
+    }
+
     function normalizeOrderStatusCode(statusCode) {
         return String(statusCode || '').trim().toUpperCase().replace(/_/g, '');
     }
@@ -153,17 +200,59 @@
             list.forEach(function (p) {
                 var id = p.productId != null ? p.productId : p.product_id;
                 if (id == null) return;
-                byId[id] = {
+                var entry = {
                     name: (p.name || p.productName || p.product_name || '').trim(),
                     salesUnit: (p.salesUnit || p.sales_unit || '').trim(),
                     baseUnit: (p.baseUnit || p.base_unit || '').trim()
                 };
+                byId[id] = entry;
+                byId[normalizeProductId(id)] = entry;
             });
             productById = byId;
         }).catch(function (err) {
-            console.warn('[TmCrm] 加载产品列表失败，摘要将使用产品 ID:', err);
+            console.warn('[TmCrm] 加载产品列表失败，摘要将尝试按需补全:', err);
             productById = {};
         });
+    }
+
+    function fetchProductById(pid) {
+        if (pid == null || !gatewayUrl) return Promise.resolve(null);
+        var url = gatewayUrl + '/api/v1/rd/products/' + encodeURIComponent(pid);
+        return fetchJson(url).then(function (result) {
+            var p = result && result.data != null ? result.data : result;
+            if (!p || (typeof p === 'object' && p.success === false)) return null;
+            storeProductInIndex(p);
+            return lookupProductEntry(productById, pid);
+        }).catch(function (err) {
+            console.warn('[TmCrm] 按需加载产品失败:', pid, err);
+            return null;
+        });
+    }
+
+    function collectMissingProductIds(items) {
+        var missing = [];
+        var seen = {};
+        (items || []).forEach(function (item) {
+            var pid = item.productId != null ? item.productId : item.product_id;
+            if (pid == null) return;
+            if (String(item.productName || item.product_name || item.name || '').trim()) return;
+            var p = lookupProductEntry(productById, pid);
+            if (p && p.name) return;
+            var key = normalizeProductId(pid);
+            if (!seen[key]) {
+                seen[key] = true;
+                missing.push(pid);
+            }
+        });
+        return missing;
+    }
+
+    function ensureProductsForItems(items) {
+        var missing = collectMissingProductIds(items);
+        if (!missing.length) return Promise.resolve();
+        return Promise.all(missing.map(function (pid) {
+            return fetchProductById(pid);
+        }));
     }
 
     function getLogisticsStatusLabel(statusCode) {
@@ -247,10 +336,9 @@
         if (!items || !items.length) return '';
         return items.map(function (item) {
             var pid = item.productId != null ? item.productId : item.product_id;
-            var p = lookup[pid] || {};
-            var name = (p.name || ('产品#' + pid)).trim();
+            var name = resolveProductDisplayName(item, lookup);
             var qty = item.quantity != null ? item.quantity : 0;
-            var unit = (p.salesUnit || p.baseUnit || '件').trim() || '件';
+            var unit = resolveProductUnit(item, lookup, pid);
             return name + '*' + qty + ' ' + unit;
         }).join(', ');
     }
@@ -352,7 +440,13 @@
         showTimelineLoading();
         var ordersUrl = gatewayUrl + '/api/v1/rd/orders/customer/' + encodeURIComponent(custId);
 
-        return fetchJson(ordersUrl).then(function (orderResult) {
+        var indexReady = Object.keys(productById).length
+            ? Promise.resolve()
+            : loadProductIndex();
+
+        return indexReady.then(function () {
+            return fetchJson(ordersUrl);
+        }).then(function (orderResult) {
             var orders = Array.isArray(orderResult.data) ? orderResult.data.slice() : [];
             orders.sort(function (a, b) {
                 var ta = new Date(a.createTime || a.create_time || 0).getTime();
@@ -370,7 +464,13 @@
                 });
             }));
         }).then(function (enriched) {
-            renderTimeline(enriched);
+            var allItems = [];
+            enriched.forEach(function (record) {
+                allItems = allItems.concat(record.items || []);
+            });
+            return ensureProductsForItems(allItems).then(function () {
+                renderTimeline(enriched);
+            });
         }).catch(function (error) {
             console.error('[TmCrm] 加载时间轴失败:', error);
             renderTimeline([]);
@@ -393,6 +493,7 @@
 
     window.TmCrm = {
         init: init,
+        reloadProductIndex: loadProductIndex,
         loadCustomerTimeline: loadCustomerTimeline,
         resetTimelinePlaceholder: resetTimelinePlaceholder,
         renderTimeline: renderTimeline,
@@ -405,6 +506,7 @@
         summarizeOrderItems: summarizeOrderItems,
         getLogisticsStatusLabel: getLogisticsStatusLabel,
         getFinStatusLabel: getFinStatusLabel,
+        resolveProductDisplayName: resolveProductDisplayName,
         TIMELINE_SUMMARY_MAX_CHARS: TIMELINE_SUMMARY_MAX_CHARS,
         TIMELINE_SUMMARY_MAX_ITEMS: TIMELINE_SUMMARY_MAX_ITEMS
     };

@@ -9,7 +9,7 @@
     <script src="../../assets/js/tm-oss-upload.js?v=20260527"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="../../assets/js/tm-product-registry-form.js?v=20260527prf"></script>
-    <script src="../../assets/js/ai-order-extract-parse.js?v=20260504r2"></script>
+    <script src="../../assets/js/ai-order-extract-parse.js?v=20260530cust"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
@@ -723,8 +723,9 @@
                     </div>
                 </section>
             </div>
-            <div id="detail-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
-                <details id="detail-aux-details" class="group">
+            </div>
+            <div id="detail-bottom-panel" class="tm-document-aux-dock shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
+                <details id="detail-aux-details" class="tm-aux-details-up group">
                     <summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">
                         <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>
                         <span id="detail-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>
@@ -770,8 +771,7 @@
                     </div>
                 </details>
             </div>
-            </div>
-            <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
+            <div class="tm-mobile-modal-footer tm-product-edit-footer p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
                 <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">返回工作台</button>
                 <button type="button" id="detail-order-status-save" onclick="saveOrderDetailStatus()" class="tm-btn-primary flex-[1.4] py-3 text-xs font-black min-h-[44px] shadow-lg shadow-brand-500/20 active:scale-[0.98]">保存</button>
             </div>
@@ -838,8 +838,9 @@
                     </div>
                 </section>
             </div>
-            <div id="manual-bottom-panel" class="shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
-                <details id="manual-aux-details" class="group">
+            </div>
+            <div id="manual-bottom-panel" class="tm-document-aux-dock shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">
+                <details id="manual-aux-details" class="tm-aux-details-up group">
                     <summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">
                         <span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>
                         <span id="manual-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>
@@ -880,8 +881,7 @@
                     </div>
                 </details>
             </div>
-            </div>
-            <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
+            <div class="tm-mobile-modal-footer tm-product-edit-footer p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
                 <button type="button" onclick="TM_closeManualOrderModal()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">取消</button>
                 <button type="button" onclick="TM_saveManualOrder()" class="tm-btn-primary flex-[1.4] py-3 text-xs font-black min-h-[44px] shadow-lg shadow-brand-500/20 active:scale-[0.98]">确认创建</button>
             </div>
@@ -2050,8 +2050,15 @@
                 }
             }
             const details = envelope.details && typeof envelope.details === 'object' ? envelope.details : {};
+            const matchedId = data.customer_data && data.customer_data.matched_customer_id != null
+                ? Number(data.customer_data.matched_customer_id) : 0;
+            const customerAlreadyResolved = Number.isFinite(matchedId) && matchedId > 0;
             const nc = details.newCustomersFound != null ? details.newCustomersFound : details.new_customers_found;
-            if (Array.isArray(nc) && nc.length > 0) data.new_customers_found = nc;
+            if (!customerAlreadyResolved && Array.isArray(nc) && nc.length > 0) {
+                data.new_customers_found = nc;
+            } else if (customerAlreadyResolved) {
+                data.new_customers_found = [];
+            }
             const np = details.newProductsFound != null ? details.newProductsFound : details.new_products_found;
             if (Array.isArray(np) && np.length > 0 && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
                 data.new_products_found = np;
@@ -2072,8 +2079,115 @@
             return '未知客户';
         }
 
+        function getMatchedCustomerId(aiData) {
+            var cd = aiData && aiData.customer_data ? aiData.customer_data : {};
+            var raw = cd.matched_customer_id != null ? cd.matched_customer_id : cd.matchedCustomerId;
+            var n = Number(raw);
+            return Number.isFinite(n) && n > 0 ? n : 0;
+        }
+
+        function isCustomerResolved(aiData) {
+            if (getMatchedCustomerId(aiData) > 0) return true;
+            var name = (aiData && aiData.customer_data && aiData.customer_data.matched_customer_name || '').trim();
+            if (!name) {
+                name = getStructuredCustomerName(aiData);
+            }
+            return !!(name && customerLookupByName[name] && customerLookupByName[name].id);
+        }
+
         function hasNewCustomers(aiData) {
+            if (isCustomerResolved(aiData)) return false;
             return Array.isArray(aiData && aiData.new_customers_found) && aiData.new_customers_found.length > 0;
+        }
+
+        function markCustomerResolvedInAudit(custId, name) {
+            if (!auditState.aiStructured) return;
+            if (!auditState.aiStructured.customer_data) auditState.aiStructured.customer_data = {};
+            auditState.aiStructured.customer_data.matched_customer_id = Number(custId);
+            auditState.aiStructured.customer_data.matched_customer_name = (name || '').trim();
+            auditState.aiStructured.new_customers_found = [];
+        }
+
+        function reconcileAuditCustomerOnOpen() {
+            if (!auditState.aiStructured) return;
+            var cid = getMatchedCustomerId(auditState.aiStructured);
+            if (cid > 0) {
+                auditState.aiStructured.new_customers_found = [];
+                return;
+            }
+            var name = getStructuredCustomerName(auditState.aiStructured);
+            var hit = name ? customerLookupByName[name] : null;
+            if (hit && hit.id) {
+                markCustomerResolvedInAudit(hit.id, hit.name || name);
+            }
+        }
+
+        function ensureCustomerOptionInSelect(customerSelect, custId, name) {
+            if (!customerSelect || !custId || !name) return;
+            var sid = String(custId);
+            if (!customerSelect.querySelector('option[value="' + sid + '"]')) {
+                var option = document.createElement('option');
+                option.value = sid;
+                option.textContent = name;
+                option.setAttribute('data-name', name);
+                customerSelect.appendChild(option);
+            }
+            customerSelect.value = sid;
+        }
+
+        function applyAuditCustomerSelectState(customerSelect) {
+            if (!customerSelect || !auditState.aiStructured) return;
+            var customerData = auditState.aiStructured.customer_data || {};
+            var resolvedId = getMatchedCustomerId(auditState.aiStructured);
+            if (resolvedId > 0) {
+                var rname = (customerData.matched_customer_name || getStructuredCustomerName(auditState.aiStructured) || '').trim();
+                ensureCustomerOptionInSelect(customerSelect, resolvedId, rname || ('客户#' + resolvedId));
+                if (typeof handleAuditCustomerSelectChange === 'function') {
+                    handleAuditCustomerSelectChange(customerSelect);
+                }
+                return;
+            }
+            var newCustomer = Array.isArray(auditState.aiStructured.new_customers_found)
+                ? auditState.aiStructured.new_customers_found[0] : null;
+            if (customerData.matched_customer_name) {
+                var matchedId = customerData.matched_customer_id ? String(customerData.matched_customer_id) : '';
+                if (matchedId && customerSelect.querySelector('option[value="' + matchedId + '"]')) {
+                    customerSelect.value = matchedId;
+                } else {
+                    var placeholder = customerSelect.querySelector('option[value="matched-customer-placeholder"]');
+                    if (!placeholder) {
+                        placeholder = document.createElement('option');
+                        placeholder.value = 'matched-customer-placeholder';
+                        customerSelect.insertBefore(placeholder, customerSelect.firstChild);
+                    }
+                    placeholder.textContent = customerData.matched_customer_name;
+                    placeholder.setAttribute('data-name', customerData.matched_customer_name);
+                    customerSelect.value = 'matched-customer-placeholder';
+                }
+            } else if (newCustomer && newCustomer.name) {
+                var ph2 = customerSelect.querySelector('option[value="new-customer-placeholder"]');
+                if (!ph2) {
+                    ph2 = document.createElement('option');
+                    ph2.value = 'new-customer-placeholder';
+                    customerSelect.insertBefore(ph2, customerSelect.firstChild);
+                }
+                ph2.textContent = newCustomer.name;
+                ph2.setAttribute('data-name', newCustomer.name);
+                customerSelect.value = 'new-customer-placeholder';
+            }
+            if (typeof handleAuditCustomerSelectChange === 'function') {
+                handleAuditCustomerSelectChange(customerSelect);
+            }
+        }
+
+        async function syncAuditDraftBeforePersist() {
+            if (!auditState.currentRecordId || !auditState.aiStructured) return;
+            var customerSelect = document.getElementById('order-customer');
+            if (customerSelect && typeof handleAuditCustomerSelectChange === 'function') {
+                handleAuditCustomerSelectChange(customerSelect);
+            }
+            reconcileAuditCustomerOnOpen();
+            await persistAuditResult();
         }
 
         function hasNewProducts(aiData) {
@@ -2105,7 +2219,7 @@
         }
 
         function readAuditProductFormToDraft(index) {
-            var draft = auditState.newProductDrafts[index] || {};
+            var draft = Object.assign({}, auditState.newProductDrafts[index] || {});
             var root = document.getElementById('audit-product-registry-root');
             function fieldVal(id) {
                 var el = root ? root.querySelector('#' + id) : null;
@@ -2114,18 +2228,48 @@
                 }
                 return el ? el.value : '';
             }
-            draft.name = fieldVal('detail-product-name').trim() || draft.name || '';
-            draft.sku = fieldVal('detail-product-sku-input') || draft.sku || '';
-            draft.price = fieldVal('detail-product-price') || draft.price || '';
-            draft.base_unit = fieldVal('detail-product-base-unit') || draft.base_unit || '件';
-            draft.stock = fieldVal('detail-product-stock') || draft.stock || '';
-            draft.description = fieldVal('detail-product-description') || draft.description || '';
+            var nameVal = fieldVal('detail-product-name').trim();
+            if (nameVal) draft.name = nameVal;
+            var skuVal = fieldVal('detail-product-sku-input').trim();
+            if (skuVal) draft.sku = skuVal;
+            var priceVal = fieldVal('detail-product-price');
+            if (priceVal !== '') draft.price = priceVal;
+            var baseUnitVal = fieldVal('detail-product-base-unit').trim();
+            if (baseUnitVal) draft.base_unit = baseUnitVal;
+            var stockVal = fieldVal('detail-product-stock');
+            if (stockVal !== '') draft.stock = stockVal;
+            var descVal = fieldVal('detail-product-description').trim();
+            if (descVal) draft.description = descVal;
             var catEl = root ? root.querySelector('#detail-product-category') : null;
             if (!catEl && window.ProductModule && window.ProductModule.el) {
                 catEl = window.ProductModule.el('detail-product-category', 'product-category-select');
             }
             if (catEl && catEl.value) draft.category_id = catEl.value;
             auditState.newProductDrafts[index] = draft;
+        }
+
+        function mergeAuditProductWithDraft(aiItem, draft) {
+            var base = Object.assign({}, aiItem || {});
+            if (!draft || typeof draft !== 'object') return base;
+            Object.keys(draft).forEach(function (key) {
+                var val = draft[key];
+                if (val != null && String(val).trim() !== '') {
+                    base[key] = val;
+                }
+            });
+            return base;
+        }
+
+        function reindexNewProductDraftsAfterRemove(removedIndex) {
+            var old = auditState.newProductDrafts || {};
+            var next = {};
+            Object.keys(old).forEach(function (k) {
+                var idx = parseInt(k, 10);
+                if (Number.isNaN(idx) || idx === removedIndex) return;
+                var newIdx = idx > removedIndex ? idx - 1 : idx;
+                next[newIdx] = old[k];
+            });
+            auditState.newProductDrafts = next;
         }
 
         function syncAuditNewProductSubtabs() {
@@ -2157,13 +2301,16 @@
             }
         }
 
-        async function switchAuditNewProductIndex(index) {
+        async function switchAuditNewProductIndex(index, options) {
+            options = options || {};
             var list = getAuditNewProductsList();
             if (!list.length || index < 0 || index >= list.length) return;
-            readAuditProductFormToDraft(auditState.activeNewProductIndex);
+            if (!options.skipDraftSave) {
+                readAuditProductFormToDraft(auditState.activeNewProductIndex);
+            }
             auditState.activeNewProductIndex = index;
             syncAuditNewProductSubtabs();
-            var np = Object.assign({}, list[index], auditState.newProductDrafts[index] || {});
+            var np = mergeAuditProductWithDraft(list[index], auditState.newProductDrafts[index]);
             if (typeof window.TM_initAuditProductForm === 'function') {
                 await window.TM_initAuditProductForm(np, index);
             }
@@ -2414,10 +2561,20 @@
         function buildUpdatedAiEnvelope() {
             const envelope = auditState.aiEnvelope || {};
             const data = auditState.aiStructured || {};
+            if (isCustomerResolved(data)) {
+                data.new_customers_found = [];
+            }
             const next = { ...envelope, result: JSON.stringify(data) };
             if (data.customer_data) next.customerInfo = JSON.stringify(data.customer_data);
             if (data.order_data) next.orderInfo = JSON.stringify(data.order_data);
             if (Array.isArray(data.new_products_found)) next.productInfo = JSON.stringify(data.new_products_found);
+            const details = next.details && typeof next.details === 'object' ? { ...next.details } : {};
+            details.newCustomersFound = [];
+            details.new_customers_found = [];
+            if (isCustomerResolved(data)) {
+                details.customerResolved = true;
+            }
+            next.details = details;
             return next;
         }
 
@@ -2512,6 +2669,8 @@
                         customerSelect.appendChild(option);
                     }
                 });
+                window.customerLookupByName = customerLookupByName;
+                window.customerLookupById = customerLookupById;
                 if (inProgressOrdersCacheFull.length) {
                     renderInProgressOrders();
                 }
@@ -2868,35 +3027,17 @@
                 auditState.aiStructured.order_data.items = auditState.aiStructured.order_data.items.map(normalizeAuditOrderItem);
             }
 
+            reconcileAuditCustomerOnOpen();
+
             const orderData = auditState.aiStructured.order_data || {};
-            const customerData = auditState.aiStructured.customer_data || {};
-            const newCustomers = Array.isArray(auditState.aiStructured.new_customers_found) ? auditState.aiStructured.new_customers_found : [];
             const newProducts = Array.isArray(auditState.aiStructured.new_products_found) ? auditState.aiStructured.new_products_found : [];
-            const aiCustomerName = getStructuredCustomerName(auditState.aiStructured);
 
             const titleEl = document.querySelector('#audit-modal h2 span');
             if (titleEl) titleEl.textContent = 'ID: ' + (record.id || '--');
 
-            // 客户下拉框：直接选中AI匹配客户，仍可切换全量客户
             const customerSelect = document.getElementById('order-customer');
             if (customerSelect) {
-                const matchedCustomerId = customerData.matched_customer_id ? Number(customerData.matched_customer_id) : 0;
-                const matchedCustomerName = (customerData.matched_customer_name || aiCustomerName || '').trim();
-                if (matchedCustomerId && customerSelect.querySelector('option[value="' + matchedCustomerId + '"]')) {
-                    customerSelect.value = String(matchedCustomerId);
-                } else if (matchedCustomerName) {
-                    let placeholder = customerSelect.querySelector('option[value="matched-customer-placeholder"]');
-                    if (!placeholder) {
-                        placeholder = document.createElement('option');
-                        placeholder.value = 'matched-customer-placeholder';
-                        customerSelect.insertBefore(placeholder, customerSelect.firstChild);
-                    }
-                    placeholder.textContent = matchedCustomerName;
-                    placeholder.setAttribute('data-name', matchedCustomerName);
-                    customerSelect.value = 'matched-customer-placeholder';
-                } else {
-                    customerSelect.value = '';
-                }
+                applyAuditCustomerSelectState(customerSelect);
             }
             setInputValueIfExists('order-delivery-date', normalizeDateInput(orderData.delivery_date) || getTodayDateInput());
 
@@ -3011,37 +3152,8 @@
             });
 
             const customerSelect = document.getElementById('order-customer');
-            const customerData = (auditState.aiStructured && auditState.aiStructured.customer_data) ? auditState.aiStructured.customer_data : {};
-            const newCustomer = Array.isArray(auditState.aiStructured && auditState.aiStructured.new_customers_found)
-                ? auditState.aiStructured.new_customers_found[0] : null;
             if (customerSelect) {
-                if (customerData.matched_customer_name) {
-                    const matchedId = customerData.matched_customer_id ? String(customerData.matched_customer_id) : '';
-                    if (matchedId && customerSelect.querySelector('option[value="' + matchedId + '"]')) {
-                        customerSelect.value = matchedId;
-                    } else {
-                        let placeholder = customerSelect.querySelector('option[value="matched-customer-placeholder"]');
-                        if (!placeholder) {
-                            placeholder = document.createElement('option');
-                            placeholder.value = 'matched-customer-placeholder';
-                            customerSelect.insertBefore(placeholder, customerSelect.firstChild);
-                        }
-                        placeholder.textContent = customerData.matched_customer_name;
-                        placeholder.setAttribute('data-name', customerData.matched_customer_name);
-                        customerSelect.value = 'matched-customer-placeholder';
-                    }
-                } else if (newCustomer && newCustomer.name) {
-                    let placeholder = customerSelect.querySelector('option[value="new-customer-placeholder"]');
-                    if (!placeholder) {
-                        placeholder = document.createElement('option');
-                        placeholder.value = 'new-customer-placeholder';
-                        customerSelect.insertBefore(placeholder, customerSelect.firstChild);
-                    }
-                    placeholder.textContent = newCustomer.name;
-                    placeholder.setAttribute('data-name', newCustomer.name);
-                    customerSelect.value = 'new-customer-placeholder';
-                }
-                handleAuditCustomerSelectChange(customerSelect);
+                applyAuditCustomerSelectState(customerSelect);
             }
 
             const totalAmount = Number(orderData.total_amount || 0);
@@ -3091,8 +3203,18 @@
                 : '';
         }
 
-        // 关闭审核弹窗
-        function closeAuditModal() {
+        // 关闭审核弹窗（存为草稿：持久化当前核对进度后再关闭）
+        async function closeAuditModal() {
+            try {
+                if (auditState.currentRecordId && auditState.aiStructured) {
+                    await syncAuditDraftBeforePersist();
+                }
+            } catch (e) {
+                console.warn('[Audit] 草稿保存失败:', e);
+                if (typeof showToast === 'function') {
+                    showToast('草稿保存失败，请重试', 'error');
+                }
+            }
             var auditModal = document.getElementById('audit-modal');
             if (auditModal && typeof window.TM_closeUnifiedModal === 'function') {
                 window.TM_closeUnifiedModal(auditModal);
@@ -3125,6 +3247,10 @@
                 const pane = document.getElementById('confirm-product-tab');
                 if (pane) pane.classList.remove('hidden');
             } else if (tabName === 'customer') {
+                if (!hasNewCustomers(auditState.aiStructured)) {
+                    switchAuditTab('order');
+                    return;
+                }
                 const pane = document.getElementById('confirm-customer-tab');
                 if (pane) pane.classList.remove('hidden');
             } else {
@@ -3194,7 +3320,7 @@
             var list = getAuditNewProductsList();
             var idx = auditState.activeNewProductIndex || 0;
             readAuditProductFormToDraft(idx);
-            var currentNp = Object.assign({}, list[idx] || {}, auditState.newProductDrafts[idx] || {});
+            var currentNp = mergeAuditProductWithDraft(list[idx] || {}, auditState.newProductDrafts[idx]);
             var name = (currentNp.name || currentNp.product_name || '').trim();
 
             window.ProductModule.auditSaveCallback = async function (saved, productPayload) {
@@ -3213,6 +3339,7 @@
                 }
                 if (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found)) {
                     auditState.aiStructured.new_products_found.splice(idx, 1);
+                    reindexNewProductDraftsAfterRemove(idx);
                     auditState.activeNewProductIndex = Math.min(idx, Math.max(0, auditState.aiStructured.new_products_found.length - 1));
                 }
                 await persistAuditResult();
@@ -3224,7 +3351,7 @@
                     generateProductSelects();
                     showToast('全部新产品已保存，请确认订单明细');
                 } else {
-                    await switchAuditNewProductIndex(auditState.activeNewProductIndex);
+                    await switchAuditNewProductIndex(auditState.activeNewProductIndex, { skipDraftSave: true });
                     showToast('产品「' + productName + '」已保存，请继续补全其余新产品');
                 }
                 window.ProductModule.auditSaveCallback = null;
@@ -3238,6 +3365,7 @@
             var idx = auditState.activeNewProductIndex || 0;
             if (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found)) {
                 auditState.aiStructured.new_products_found.splice(idx, 1);
+                reindexNewProductDraftsAfterRemove(idx);
                 auditState.activeNewProductIndex = Math.min(idx, Math.max(0, auditState.aiStructured.new_products_found.length - 1));
                 await persistAuditResult();
             }
@@ -3247,8 +3375,27 @@
                 if (tabBtn) tabBtn.classList.add('hidden');
                 switchAuditTab('order');
             } else {
-                await switchAuditNewProductIndex(auditState.activeNewProductIndex);
+                await switchAuditNewProductIndex(auditState.activeNewProductIndex, { skipDraftSave: true });
             }
+        }
+
+        async function finishAuditCustomerResolved(custId, name) {
+            var cname = (name || '').trim();
+            markCustomerResolvedInAudit(custId, cname);
+            if (cname) {
+                customerLookupByName[cname] = { id: Number(custId), name: cname };
+                window.customerLookupByName = customerLookupByName;
+            }
+            await persistAuditResult();
+            var confirmTab = document.getElementById('confirm-customer-tab');
+            if (confirmTab) confirmTab.classList.add('hidden');
+            var customerSelect = document.getElementById('order-customer');
+            if (customerSelect) {
+                ensureCustomerOptionInSelect(customerSelect, custId, cname);
+            }
+            var tabBtn = document.getElementById('tab-customer');
+            if (tabBtn) tabBtn.style.display = 'none';
+            switchAuditTab('order');
         }
 
         // 保存新客户信息
@@ -3267,6 +3414,20 @@
                 return;
             }
             if (!customerData.phone) customerData.phone = null;
+            var trimmedName = customerData.name.trim();
+
+            var existingId = getMatchedCustomerId(auditState.aiStructured);
+            if (existingId > 0) {
+                await finishAuditCustomerResolved(existingId, trimmedName);
+                showToast('客户已关联到待确认单据');
+                return;
+            }
+            var lookupHit = customerLookupByName[trimmedName];
+            if (lookupHit && lookupHit.id) {
+                await finishAuditCustomerResolved(lookupHit.id, lookupHit.name || trimmedName);
+                showToast('已关联已有客户到待确认单据');
+                return;
+            }
 
             try {
                 const response = await window.wrappedFetch('/api/v1/crm/customers/save', {
@@ -3282,28 +3443,11 @@
                 if (ok) {
                     const payload = result && result.data ? result.data : result;
                     const custId = payload && (payload.id || payload.custId || payload.cust_id) ? (payload.id || payload.custId || payload.cust_id) : null;
-                    if (auditState.aiStructured && auditState.aiStructured.customer_data && custId) {
-                        auditState.aiStructured.customer_data.matched_customer_id = Number(custId);
-                        auditState.aiStructured.customer_data.matched_customer_name = customerData.name || '';
+                    if (!custId) {
+                        alert('客户创建失败：未返回客户ID');
+                        return;
                     }
-                    auditState.aiStructured.new_customers_found = [];
-                    await persistAuditResult();
-                    document.getElementById('confirm-customer-tab').classList.add('hidden');
-                    const customerSelect = document.getElementById('order-customer');
-                    if (custId && customerData.name) {
-                        customerLookupByName[customerData.name] = { id: Number(custId), name: customerData.name };
-                        if (customerSelect) {
-                            const option = document.createElement('option');
-                            option.value = String(custId);
-                            option.textContent = customerData.name;
-                            option.setAttribute('data-name', customerData.name);
-                            customerSelect.appendChild(option);
-                            customerSelect.value = String(custId);
-                        }
-                    }
-                    const tabBtn = document.getElementById('tab-customer');
-                    if (tabBtn) tabBtn.style.display = 'none';
-                    switchAuditTab('order');
+                    await finishAuditCustomerResolved(custId, trimmedName);
                     showToast('新增客户成功，已关联到待确认单据');
                 } else {
                     const message = (result && (result.message || result.msg || result.error)) || ('HTTP ' + response.status);
@@ -3375,13 +3519,14 @@
 
         // 确认订单并下单
         async function confirmAuditOrder() {
-            const custId = document.getElementById('order-customer').value;
+            const custIdRaw = document.getElementById('order-customer').value;
             const deliveryDate = document.getElementById('order-delivery-date').value || getTodayDateInput();
             
-            if (!custId) {
-                showAuditOrderError('请选择客户', { title: '无法下单' });
+            if (!custIdRaw || !/^\d+$/.test(String(custIdRaw))) {
+                showAuditOrderError('请先保存客户资料，或从客户列表选择已建档客户', { title: '无法下单' });
                 return;
             }
+            const custId = custIdRaw;
 
             if (typeof window.recalcAuditOrderTotals === 'function') {
                 window.recalcAuditOrderTotals();
@@ -4656,6 +4801,15 @@
         window.syncAuditNewProductSubtabs = syncAuditNewProductSubtabs;
         window.getStructuredCustomerName = getStructuredCustomerName;
         window.hasNewCustomers = hasNewCustomers;
+        window.getMatchedCustomerId = getMatchedCustomerId;
+        window.isCustomerResolved = isCustomerResolved;
+        window.markCustomerResolvedInAudit = markCustomerResolvedInAudit;
+        window.reconcileAuditCustomerOnOpen = reconcileAuditCustomerOnOpen;
+        window.applyAuditCustomerSelectState = applyAuditCustomerSelectState;
+        window.ensureCustomerOptionInSelect = ensureCustomerOptionInSelect;
+        window.syncAuditDraftBeforePersist = syncAuditDraftBeforePersist;
+        window.customerLookupByName = customerLookupByName;
+        window.customerLookupById = customerLookupById;
         window.hasNewProducts = hasNewProducts;
         window.getProductId = getProductId;
         window.getProductName = getProductName;
@@ -4668,7 +4822,7 @@
     </script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260527ordfix"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260530cust"></script>
 </body>
 </html>
 

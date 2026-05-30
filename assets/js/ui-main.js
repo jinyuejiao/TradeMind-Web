@@ -871,6 +871,65 @@ function TM_anyShellOverlayOpenInDom() {
     return false;
 }
 
+function TM_findEmbedFrameByWindow(win) {
+    var found = null;
+    try {
+        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+            try {
+                if (frame.contentWindow === win) found = frame;
+            } catch (e0) { /* ignore */ }
+        });
+    } catch (e1) { /* ignore */ }
+    return found;
+}
+
+/** 嵌入 iframe 弹窗打开时铺满视口，使内部 fixed 弹层与产品中心一致贴底 */
+function TM_setEmbedFrameModalExpanded(frame, expanded) {
+    if (!frame) return;
+    var on = !!expanded;
+    if (on) {
+        frame.classList.add('tm-embed-frame-modal-open');
+        if (!frame.dataset.tmEmbedModalSaved) {
+            frame.dataset.tmEmbedModalSaved = '1';
+            frame.dataset.tmEmbedModalPosition = frame.style.position || '';
+            frame.dataset.tmEmbedModalWidth = frame.style.width || '';
+            frame.dataset.tmEmbedModalHeight = frame.style.height || '';
+            frame.dataset.tmEmbedModalZIndex = frame.style.zIndex || '';
+            frame.dataset.tmEmbedModalMaxHeight = frame.style.maxHeight || '';
+        }
+        frame.style.setProperty('position', 'fixed', 'important');
+        frame.style.setProperty('inset', '0', 'important');
+        frame.style.setProperty('width', '100%', 'important');
+        frame.style.setProperty('height', '100dvh', 'important');
+        frame.style.setProperty('max-height', '100dvh', 'important');
+        frame.style.setProperty('z-index', '105', 'important');
+        frame.style.setProperty('border', '0', 'important');
+    } else {
+        frame.classList.remove('tm-embed-frame-modal-open');
+        if (frame.dataset.tmEmbedModalSaved) {
+            frame.style.position = frame.dataset.tmEmbedModalPosition || '';
+            frame.style.width = frame.dataset.tmEmbedModalWidth || '';
+            frame.style.height = frame.dataset.tmEmbedModalHeight || '';
+            frame.style.zIndex = frame.dataset.tmEmbedModalZIndex || '';
+            frame.style.maxHeight = frame.dataset.tmEmbedModalMaxHeight || '';
+            frame.style.removeProperty('inset');
+            delete frame.dataset.tmEmbedModalSaved;
+        }
+        if (window.TM_Compliance && typeof window.TM_Compliance.syncIframeHeight === 'function') {
+            window.TM_Compliance.syncIframeHeight(frame);
+        }
+    }
+}
+
+function TM_restoreAllEmbedFramesFromModal() {
+    document.querySelectorAll('iframe.tm-module-frame.tm-embed-frame-modal-open').forEach(function (frame) {
+        TM_setEmbedFrameModalExpanded(frame, false);
+    });
+}
+
+window.TM_setEmbedFrameModalExpanded = TM_setEmbedFrameModalExpanded;
+window.TM_restoreAllEmbedFramesFromModal = TM_restoreAllEmbedFramesFromModal;
+
 /** 实际应用主壳底栏 / 备案区显隐（仅在引用计数为 0↔1 时调用） */
 function TM_applyShellOverlayHidden(hidden) {
     var on = !!hidden;
@@ -921,6 +980,7 @@ function TM_popShellOverlay() {
     window.__TM_shellOverlayDepth = Math.max(0, (window.__TM_shellOverlayDepth || 0) - 1);
     if (window.__TM_shellOverlayDepth === 0) {
         TM_applyShellOverlayHidden(false);
+        TM_restoreAllEmbedFramesFromModal();
         if (typeof TM_notifyEmbedModal === 'function') {
             TM_notifyEmbedModal(false);
         }
@@ -944,6 +1004,7 @@ function TM_reconcileShellOverlay() {
 function TM_resetShellOverlay() {
     window.__TM_shellOverlayDepth = 0;
     TM_applyShellOverlayHidden(false);
+    TM_restoreAllEmbedFramesFromModal();
     if (typeof TM_notifyEmbedModal === 'function') {
         TM_notifyEmbedModal(false);
     }
@@ -1076,10 +1137,16 @@ if (!window.__tmEmbedModalListenerBound) {
             });
         } catch (e1) { /* ignore */ }
         if (!fromModuleFrame) return;
+        var frame = TM_findEmbedFrameByWindow(ev.source);
         if (data.open) {
             if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
-        } else if (typeof TM_popShellOverlay === 'function') {
-            TM_popShellOverlay();
+            if (frame) TM_setEmbedFrameModalExpanded(frame, true);
+        } else {
+            if (typeof TM_popShellOverlay === 'function') {
+                TM_popShellOverlay();
+            } else if (frame) {
+                TM_setEmbedFrameModalExpanded(frame, false);
+            }
             if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
         }
     });
