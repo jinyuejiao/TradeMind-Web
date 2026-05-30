@@ -208,7 +208,8 @@
     <!-- 确保 auth.js 加载完成后再执行页面代码 -->
     <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
-    <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260530modal"></script>
+    <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/ui-crm.js?v=20260526crm"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -844,15 +845,13 @@
                 setClientModalIcon('new');
             }
             var modalEl = document.getElementById('client-edit-modal');
-            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
-            if (typeof openUnified === 'function') {
-                openUnified(modalEl);
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modalEl);
             } else {
                 modalEl.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
-                var applyDialogShell = (window.parent && window.parent.TM_applyDialogShell) || window.TM_applyDialogShell;
-                if (typeof applyDialogShell === 'function') {
-                    applyDialogShell(modalEl);
+                if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(modalEl);
                 }
                 if (typeof TM_notifyEmbedModal === 'function') TM_notifyEmbedModal(true);
             }
@@ -860,9 +859,8 @@
 
         function closeClientEditModal() {
             var modalEl = document.getElementById('client-edit-modal');
-            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
-            if (typeof closeUnified === 'function') {
-                closeUnified(modalEl);
+            if (typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(modalEl);
             } else {
                 modalEl.classList.add('hidden');
                 document.body.style.overflow = '';

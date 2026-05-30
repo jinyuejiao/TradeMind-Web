@@ -302,19 +302,29 @@
     .tm-mobile-sheet-modal > .tm-mobile-sheet-panel,
     .tm-mobile-sheet-modal .modal-content-box,
     .tm-dialog-root[data-tm-dialog-variant="sheet"] .tm-dialog-panel,
-    .tm-dialog-root[data-tm-dialog-variant="sheet"] .modal-content-box {
+    .tm-dialog-root[data-tm-dialog-variant="sheet"] .modal-content-box,
+    .tm-unified-mobile-modal .modal-content-box,
+    .tm-unified-mobile-modal .tm-dialog-panel,
+    .tm-product-edit-modal .modal-content-box {
         width: 100% !important;
         max-width: 100% !important;
-        max-height: min(
-            90dvh,
-            calc(100dvh - env(safe-area-inset-top, 0px) - var(--tm-tabbar-h, 4.25rem))
-        ) !important;
-        height: auto !important;
+        max-height: min(90dvh, 100dvh) !important;
+        height: min(90dvh, 100%) !important;
         border-radius: 2.5rem 2.5rem 0 0 !important;
         margin: 0;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+    }
+
+    /* 嵌入 iframe：底栏在主壳，子页弹层占满视口高度 */
+    html.tm-embedded .tm-mobile-sheet-modal .tm-dialog-panel,
+    html.tm-embedded .tm-mobile-sheet-modal .modal-content-box,
+    html.tm-embedded .tm-unified-mobile-modal .modal-content-box,
+    html.tm-embedded .tm-unified-mobile-modal .tm-dialog-panel,
+    html.tm-embedded .tm-product-edit-modal .modal-content-box {
+        max-height: min(90dvh, 100dvh) !important;
+        height: min(90dvh, 100%) !important;
     }
 
     .tm-mobile-sheet-modal .tm-sheet-body,
@@ -325,9 +335,22 @@
         overflow-y: auto;
     }
 
-    .tm-modal-footer-safe {
+    /* Sheet 弹窗底栏在遮罩层内，仅保留 safe-area，不预留 Tab 栏高度 */
+    .tm-unified-mobile-modal .tm-modal-footer-safe,
+    .tm-unified-mobile-modal .tm-mobile-modal-footer,
+    .tm-unified-mobile-modal .tm-product-edit-footer,
+    .tm-mobile-sheet-modal .tm-modal-footer-safe,
+    .tm-mobile-sheet-modal .tm-mobile-modal-footer,
+    .tm-mobile-sheet-modal .tm-product-edit-footer,
+    .tm-product-edit-modal .tm-mobile-modal-footer,
+    .tm-product-edit-modal .tm-product-edit-footer,
+    .tm-document-modal .tm-modal-footer-safe,
+    .tm-document-modal .tm-mobile-modal-footer,
+    .tm-document-modal .tm-product-edit-footer,
+    .tm-document-modal .tm-purchase-modal-footer,
+    .tm-document-modal .tm-audit-footer {
         flex-shrink: 0;
-        padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + var(--tm-safe-b) + 0.5rem) !important;
+        padding-bottom: max(0.75rem, var(--tm-safe-b)) !important;
     }
 
     html.tm-embedded .tm-modal-footer-safe,

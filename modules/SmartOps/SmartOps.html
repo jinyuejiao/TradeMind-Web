@@ -116,6 +116,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260530modal"></script>
+    <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
     <script>
         // 打开会员订阅弹窗
         // 使用 auth.js 中定义的全局函数
@@ -340,7 +342,7 @@
                 </div>
             </div>
 
-            <div id="biz-account-detail-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[132] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
+            <div id="biz-account-detail-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[132] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
                 <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="window.closeBizAccountDetailModal()"></div>
                 <div class="modal-content-box relative bg-white w-full max-w-md h-[min(90dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[2.5rem] md:rounded-[1.8rem] shadow-2xl overflow-hidden flex flex-col text-left min-h-0">
                     <div class="tm-mobile-modal-header px-4 py-3 md:px-5 md:py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between gap-2 shrink-0">
@@ -373,14 +375,14 @@
                             <div><p class="text-slate-400 mb-1">归属主体</p><p id="biz-detail-holder" class="text-slate-700"></p></div>
                         </div>
                     </div>
-                    <div class="tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:px-5 md:py-4 border-t border-slate-100 shrink-0 mt-auto">
+                    <div class="tm-mobile-modal-footer tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-5 md:py-4 border-t border-slate-100 shrink-0 mt-auto">
                         <button type="button" onclick="window.closeBizAccountDetailModal()" class="w-full py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
                     </div>
                 </div>
             </div>
 
             <!-- 账户流水 -->
-            <div id="biz-account-ledger-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[133] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
+            <div id="biz-account-ledger-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal tm-product-edit-modal hidden fixed inset-0 z-[133] flex items-end md:items-center justify-center p-0 md:p-4" data-tm-dialog-variant="sheet">
                 <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="window.closeBizAccountLedgerModal()"></div>
                 <div class="modal-content-box relative bg-white w-full max-w-4xl h-[min(90dvh,100%)] md:h-auto md:max-h-[92vh] flex flex-col rounded-t-[2.5rem] md:rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 text-left min-h-0">
                     <div class="tm-mobile-modal-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/60 flex items-start md:items-center justify-between gap-3 shrink-0">
@@ -394,38 +396,38 @@
                             <i class="ph ph-x text-lg text-slate-400"></i>
                         </button>
                     </div>
-                    <div class="px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 shrink-0">
-                        <div class="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
-                            <div class="flex-1 min-w-[8rem]">
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-5 no-scrollbar space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+                            <div>
                                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">开始日期</label>
                                 <input type="date" id="biz-ledger-date-start" class="form-input text-xs py-2 w-full" onchange="window.loadBizAccountLedger()">
                             </div>
-                            <div class="flex-1 min-w-[8rem]">
+                            <div>
                                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">结束日期</label>
                                 <input type="date" id="biz-ledger-date-end" class="form-input text-xs py-2 w-full" onchange="window.loadBizAccountLedger()">
                             </div>
                         </div>
-                        <button type="button" onclick="window.exportBizAccountLedgerExcel()" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black hover:bg-slate-800 transition-colors shadow-lg shrink-0 w-full sm:w-auto">
+                        <div class="overflow-x-auto -mx-1 px-1">
+                            <table class="w-full text-left border-collapse text-[11px] md:text-xs min-w-[520px]">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th class="px-3 py-2.5 rounded-tl-lg whitespace-nowrap">类型</th>
+                                        <th class="px-3 py-2.5">对方账号</th>
+                                        <th class="px-3 py-2.5 text-right whitespace-nowrap">金额</th>
+                                        <th class="px-3 py-2.5 whitespace-nowrap">日期</th>
+                                        <th class="px-3 py-2.5 text-right whitespace-nowrap rounded-tr-lg">账户余额</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="biz-ledger-tbody" class="divide-y divide-slate-50 text-slate-700"></tbody>
+                            </table>
+                            <p id="biz-ledger-empty" class="hidden text-center text-xs text-slate-400 py-10">所选时间范围内暂无流水记录</p>
+                        </div>
+                    </div>
+                    <div class="tm-mobile-modal-footer tm-product-edit-footer tm-modal-footer-safe px-4 py-3 md:px-6 border-t border-slate-100 flex flex-col gap-2 shrink-0 mt-auto">
+                        <button type="button" onclick="window.exportBizAccountLedgerExcel()" class="w-full inline-flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black hover:bg-slate-800 transition-colors shadow-lg">
                             <i class="ph ph-download-simple text-base"></i>
                             导出 Excel
                         </button>
-                    </div>
-                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto overflow-x-auto p-4 md:p-5 no-scrollbar">
-                        <table class="w-full text-left border-collapse text-[11px] md:text-xs min-w-[520px]">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
-                                    <th class="px-3 py-2.5 rounded-tl-lg whitespace-nowrap">类型</th>
-                                    <th class="px-3 py-2.5">对方账号</th>
-                                    <th class="px-3 py-2.5 text-right whitespace-nowrap">金额</th>
-                                    <th class="px-3 py-2.5 whitespace-nowrap">日期</th>
-                                    <th class="px-3 py-2.5 text-right whitespace-nowrap rounded-tr-lg">账户余额</th>
-                                </tr>
-                            </thead>
-                            <tbody id="biz-ledger-tbody" class="divide-y divide-slate-50 text-slate-700"></tbody>
-                        </table>
-                        <p id="biz-ledger-empty" class="hidden text-center text-xs text-slate-400 py-10">所选时间范围内暂无流水记录</p>
-                    </div>
-                    <div class="tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:px-6 border-t border-slate-100 shrink-0 mt-auto">
                         <button type="button" onclick="window.closeBizAccountLedgerModal()" class="w-full py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">关闭</button>
                     </div>
                 </div>
@@ -1021,9 +1023,8 @@
             if (title) {
                 title.textContent = current ? '编辑账户信息' : '新增首付款账户';
             }
-            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
-            if (typeof openUnified === 'function') {
-                openUnified(modal);
+            if (typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
             } else {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
@@ -1032,10 +1033,9 @@
 
         window.closeBizAccountModal = function() {
             const modal = document.getElementById('biz-account-modal');
-            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
             if (modal) {
-                if (typeof closeUnified === 'function') {
-                    closeUnified(modal);
+                if (typeof window.TM_closeUnifiedModal === 'function') {
+                    window.TM_closeUnifiedModal(modal);
                 } else {
                     modal.classList.add('hidden');
                     document.body.style.overflow = '';
@@ -1130,10 +1130,9 @@
                 window.renderBizAccountDetailFields(fb);
             }
             const modal = document.getElementById('biz-account-detail-modal');
-            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
             if (modal) {
-                if (typeof openUnified === 'function') {
-                    openUnified(modal);
+                if (typeof window.TM_openUnifiedModal === 'function') {
+                    window.TM_openUnifiedModal(modal);
                 } else {
                     modal.classList.remove('hidden');
                     document.body.style.overflow = 'hidden';
@@ -1160,10 +1159,9 @@
 
         window.closeBizAccountDetailModal = function() {
             const modal = document.getElementById('biz-account-detail-modal');
-            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
             if (modal) {
-                if (typeof closeUnified === 'function') {
-                    closeUnified(modal);
+                if (typeof window.TM_closeUnifiedModal === 'function') {
+                    window.TM_closeUnifiedModal(modal);
                 } else {
                     modal.classList.add('hidden');
                 }
@@ -1177,10 +1175,9 @@
             var sub = document.getElementById('biz-ledger-subtitle');
             if (sub) sub.textContent = item ? ((item.accountName || '') + ' · ' + (item.accountNo || '')) : ('账户 #' + accountId);
             var m = document.getElementById('biz-account-ledger-modal');
-            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
             if (m) {
-                if (typeof openUnified === 'function') {
-                    openUnified(m);
+                if (typeof window.TM_openUnifiedModal === 'function') {
+                    window.TM_openUnifiedModal(m);
                 } else {
                     m.classList.remove('hidden');
                     document.body.style.overflow = 'hidden';
@@ -1191,10 +1188,9 @@
 
         window.closeBizAccountLedgerModal = function() {
             var m = document.getElementById('biz-account-ledger-modal');
-            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
             if (m) {
-                if (typeof closeUnified === 'function') {
-                    closeUnified(m);
+                if (typeof window.TM_closeUnifiedModal === 'function') {
+                    window.TM_closeUnifiedModal(m);
                 } else {
                     m.classList.add('hidden');
                     document.body.style.overflow = '';
@@ -1278,9 +1274,8 @@
         // 打开AI分析弹窗
         function openAIAnalysis() {
             var modal = document.getElementById('ai-modal');
-            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
-            if (modal && typeof openUnified === 'function') {
-                openUnified(modal);
+            if (modal && typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
             } else if (modal) {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
@@ -1290,9 +1285,8 @@
         // 关闭AI分析弹窗
         function closeAIAnalysis() {
             var modal = document.getElementById('ai-modal');
-            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
-            if (modal && typeof closeUnified === 'function') {
-                closeUnified(modal);
+            if (modal && typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(modal);
             } else if (modal) {
                 modal.classList.add('hidden');
                 document.body.style.overflow = '';
@@ -1301,9 +1295,8 @@
 
         function openClearanceModal() {
             var modal = document.getElementById('clearance-modal');
-            var openUnified = (window.parent && window.parent.TM_openUnifiedModal) || window.TM_openUnifiedModal;
-            if (modal && typeof openUnified === 'function') {
-                openUnified(modal);
+            if (modal && typeof window.TM_openUnifiedModal === 'function') {
+                window.TM_openUnifiedModal(modal);
             } else if (modal) {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
@@ -1312,9 +1305,8 @@
 
         function closeClearanceModal() {
             var modal = document.getElementById('clearance-modal');
-            var closeUnified = (window.parent && window.parent.TM_closeUnifiedModal) || window.TM_closeUnifiedModal;
-            if (modal && typeof closeUnified === 'function') {
-                closeUnified(modal);
+            if (modal && typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(modal);
             } else if (modal) {
                 modal.classList.add('hidden');
                 document.body.style.overflow = '';

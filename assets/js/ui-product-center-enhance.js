@@ -556,7 +556,9 @@
         var sku = PM.currentProduct && PM.currentProduct.sku;
         if (hint) hint.textContent = sku ? ('SKU: ' + sku) : '填写必填项即可保存';
         await PM.loadProductWarehouseStocks(productId);
-        PM.lockBodyScroll(true);
+        if (typeof window.TM_openUnifiedModal !== 'function') {
+            PM.lockBodyScroll(true);
+        }
     };
 
     var _openCreate = PM.openCreateProductModal;
@@ -598,13 +600,17 @@
         var hint = PM.el('detail-sku-hint');
         if (hint) hint.textContent = '请填写名称、售价、基本单位与库存';
         await PM.loadProductWarehouseStocks(null);
-        PM.lockBodyScroll(true);
+        if (typeof window.TM_openUnifiedModal !== 'function') {
+            PM.lockBodyScroll(true);
+        }
     };
 
     var _closeDetail = PM.closeProductDetail;
     PM.closeProductDetail = function () {
         _closeDetail.call(PM);
-        PM.lockBodyScroll(false);
+        if (typeof window.TM_closeUnifiedModal !== 'function') {
+            PM.lockBodyScroll(false);
+        }
         PM.showFormErrors('product-form-errors', []);
     };
 

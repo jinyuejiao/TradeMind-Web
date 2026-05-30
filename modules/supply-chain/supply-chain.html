@@ -55,7 +55,8 @@
     <script src="../../assets/js/tm-format.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-confirm.js?v=20260524"></script>
-    <script src="../../assets/js/tm-embed-shell.js?v=20260524"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260530modal"></script>
+    <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526po"></script>
     <script src="../../assets/js/ui-supplier.js?v=20260527pay"></script>
@@ -224,22 +225,24 @@
                             <button type="button" onclick="addPurchaseItem()" class="tm-product-unit-btn shrink-0 text-[11px] py-1 px-2">+ 添加</button>
                         </div>
                     </div>
-                    <div id="purchase-items-cards" class="md:hidden space-y-2"></div>
-                    <div class="tm-purchase-items-scroll hidden md:block overflow-visible bg-slate-50 rounded-xl border border-slate-100">
-                        <table class="w-full text-xs min-w-[36rem]" id="purchase-items-table">
-                            <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
+                    <p class="tm-po-lines-scroll-hint md:hidden flex items-center gap-1 mb-2 text-[10px] text-slate-400">
+                        <i class="ph ph-arrows-horizontal"></i> 左右滑动查看完整明细列
+                    </p>
+                    <div class="tm-po-lines-wrap tm-purchase-items-scroll">
+                        <table class="tm-po-lines-table w-full text-xs min-w-[36rem]" id="purchase-items-table">
+                            <thead>
                                 <tr>
-                                    <th class="purchase-inbound-col hidden px-2 py-2 text-center w-10">入库</th>
-                                    <th class="px-2 py-2 text-left">产品</th>
-                                    <th class="px-2 py-2 text-center w-20">数量</th>
-                                    <th class="px-2 py-2 text-center w-24">单价</th>
-                                    <th class="px-2 py-2 text-center w-20">单位</th>
-                                    <th class="px-2 py-2 text-center w-32">批次</th>
-                                    <th class="px-2 py-2 text-right w-20">小计</th>
-                                    <th class="px-2 py-2 w-10"></th>
+                                    <th class="tm-po-th tm-po-th--check purchase-inbound-col hidden">入库</th>
+                                    <th class="tm-po-th tm-po-th--product">产品</th>
+                                    <th class="tm-po-th tm-po-th--qty">数量</th>
+                                    <th class="tm-po-th tm-po-th--price">单价</th>
+                                    <th class="tm-po-th tm-po-th--unit">单位</th>
+                                    <th class="tm-po-th tm-po-th--batch">批次</th>
+                                    <th class="tm-po-th tm-po-th--sub">小计</th>
+                                    <th class="tm-po-th tm-po-th--action" aria-label="操作"></th>
                                 </tr>
                             </thead>
-                            <tbody id="purchase-items-tbody" class="divide-y divide-slate-100 bg-white"></tbody>
+                            <tbody id="purchase-items-tbody" class="tm-po-lines-tbody divide-y divide-slate-100 bg-white"></tbody>
                         </table>
                     </div>
                 </section>

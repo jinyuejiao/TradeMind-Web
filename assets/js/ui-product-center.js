@@ -1001,7 +1001,11 @@ window.ProductModule = {
                 const skuEl = document.getElementById('detail-sku');
                 if (titleEl) titleEl.textContent = '产品详情';
                 if (skuEl) skuEl.textContent = 'SKU: ' + product.sku;
-                modal.classList.remove('hidden');
+                if (typeof window.TM_openUnifiedModal === 'function') {
+                    window.TM_openUnifiedModal(modal);
+                } else {
+                    modal.classList.remove('hidden');
+                }
             }
         } catch (error) {
             console.error('[ProductModule] 加载产品详情异常:', error);
@@ -1051,7 +1055,13 @@ window.ProductModule = {
             if (skuEl) skuEl.textContent = 'SKU: NEW';
 
             const modal = document.getElementById('product-detail-modal');
-            if (modal) modal.classList.remove('hidden');
+            if (modal) {
+                if (typeof window.TM_openUnifiedModal === 'function') {
+                    window.TM_openUnifiedModal(modal);
+                } else {
+                    modal.classList.remove('hidden');
+                }
+            }
 
             this.rebuildPurchaseSalesUnitSelects(null, null);
         } catch (error) {
@@ -1103,7 +1113,11 @@ window.ProductModule = {
         console.log('[ProductModule] closeProductDetail 被调用 ===');
         const modal = document.getElementById('product-detail-modal');
         if (modal) {
-            modal.classList.add('hidden');
+            if (typeof window.TM_closeUnifiedModal === 'function') {
+                window.TM_closeUnifiedModal(modal);
+            } else {
+                modal.classList.add('hidden');
+            }
         }
         this.currentProduct = null;
     },

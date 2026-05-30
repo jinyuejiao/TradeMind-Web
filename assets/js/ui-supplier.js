@@ -31,34 +31,33 @@ function switchSupplierMainView(viewType) {
 window.switchSupplierView = switchSupplierMainView;
 
 function TM_embedModalMarkOpen(open) {
-    var on = !!open;
-    if (on) {
-        document.body.style.overflow = 'hidden';
-    } else if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
-        document.body.style.overflow = '';
-    }
-    /* 主壳底栏由父页 postMessage → TM_pushShellOverlay / TM_popShellOverlay 控制 */
-    if (typeof window.TM_notifyEmbedModal === 'function') {
-        window.TM_notifyEmbedModal(on);
-    }
+    /* 由 TM_openUnifiedModal / TM_closeUnifiedModal 统一管理 */
 }
 
 function TM_openEmbedModalFallback(modal, opts) {
     if (!modal) return;
-    opts = opts || {};
-    if (typeof window.TM_applyDialogShell === 'function') {
-        window.TM_applyDialogShell(modal, { variant: opts.variant || 'sheet' });
+    if (typeof window.TM_openUnifiedModal === 'function') {
+        window.TM_openUnifiedModal(modal, opts);
+    } else {
+        modal.classList.remove('hidden');
+        if (typeof window.TM_notifyEmbedModal === 'function') {
+            window.TM_notifyEmbedModal(true);
+        }
+        document.body.style.overflow = 'hidden';
     }
-    modal.classList.remove('hidden');
-    TM_embedModalMarkOpen(true);
 }
 window.TM_openEmbedModalFallback = TM_openEmbedModalFallback;
 
 function TM_closeEmbedModalFallback(modal) {
     if (!modal) return;
-    modal.classList.add('hidden');
-    if (!document.querySelector('.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden)')) {
-        TM_embedModalMarkOpen(false);
+    if (typeof window.TM_closeUnifiedModal === 'function') {
+        window.TM_closeUnifiedModal(modal);
+    } else {
+        modal.classList.add('hidden');
+        if (typeof window.TM_notifyEmbedModal === 'function') {
+            window.TM_notifyEmbedModal(false);
+        }
+        document.body.style.overflow = '';
     }
 }
 window.TM_closeEmbedModalFallback = TM_closeEmbedModalFallback;
@@ -1351,77 +1350,37 @@ window.SupplierModule = {
         var price = opts.price != null ? opts.price : 0;
         var batch = opts.batch != null ? String(opts.batch) : '';
         var batchAttr = batch.replace(/"/g, '&quot;');
-        var inboundColClass = 'purchase-inbound-col px-2 py-3 text-center hidden';
         return (
             '<tr class="purchase-item-row">' +
-            '<td class="' + inboundColClass + '">' + this.buildInboundCheckboxHtml(opts) + '</td>' +
-            '<td class="px-4 py-3">' +
-            '<select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">' +
+            '<td class="tm-po-td tm-po-td--check purchase-inbound-col hidden text-center">' +
+            this.buildInboundCheckboxHtml(opts) + '</td>' +
+            '<td class="tm-po-td tm-po-td--product">' +
+            '<select class="form-input tm-po-product-select product-select" onchange="SupplierModule.onProductSelect(this)">' +
             '<option value="">--- 选择产品 ---</option></select></td>' +
-            '<td class="px-4 py-3 w-[9em] min-w-[9em] max-w-[11em]">' +
-            '<input type="number" class="form-input text-center qty-input w-full min-w-0" value="' + qty + '" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
-            '<td class="px-4 py-3">' +
-            '<input type="number" class="form-input text-center price-input" value="' + price + '" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
-            '<td class="px-4 py-3"><select class="form-input text-center unit-select"><option value="">--- 单位 ---</option></select></td>' +
-            '<td class="px-4 py-3 w-56 min-w-[14rem]">' +
-            '<input type="text" class="form-input text-center batch-input w-full min-w-0" placeholder="批次号" value="' + batchAttr + '"></td>' +
-            '<td class="px-4 py-3 text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>' +
-            '<td class="px-4 py-3 text-center">' +
-            '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="text-red-400 hover:text-red-600">' +
+            '<td class="tm-po-td tm-po-td--qty">' +
+            '<input type="number" class="form-input tm-po-cell-input text-center qty-input" value="' + qty + '" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
+            '<td class="tm-po-td tm-po-td--price">' +
+            '<input type="number" class="form-input tm-po-cell-input text-center price-input" value="' + price + '" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
+            '<td class="tm-po-td tm-po-td--unit">' +
+            '<select class="form-input tm-po-cell-input unit-select"><option value="">--- 单位 ---</option></select></td>' +
+            '<td class="tm-po-td tm-po-td--batch">' +
+            '<input type="text" class="form-input tm-po-cell-input batch-input" placeholder="批次号" value="' + batchAttr + '"></td>' +
+            '<td class="tm-po-td tm-po-td--sub text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>' +
+            '<td class="tm-po-td tm-po-td--action text-center">' +
+            '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="tm-po-row-delete" aria-label="删除行">' +
             '<i class="ph ph-trash"></i></button></td></tr>'
-        );
-    },
-
-    buildPurchaseCardHtml: function(opts) {
-        opts = opts || {};
-        var qty = opts.qty != null ? opts.qty : 1;
-        var price = opts.price != null ? opts.price : 0;
-        var batch = opts.batch != null ? String(opts.batch) : '';
-        var batchAttr = batch.replace(/"/g, '&quot;');
-        var inboundRow = (
-            '<label class="purchase-inbound-col hidden flex items-center gap-1.5 text-[10px] text-teal-700 font-bold mb-2">' +
-            this.buildInboundCheckboxHtml(opts) + ' 本次入库</label>'
-        );
-        return (
-            '<div class="purchase-item-row tm-purchase-item-card">' +
-            inboundRow +
-            '<div class="tm-purchase-item-card__head">' +
-            '<span class="tm-purchase-item-card__total row-total">¥0.00</span>' +
-            '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="tm-purchase-item-card__delete" aria-label="删除行">' +
-            '<i class="ph ph-trash"></i></button></div>' +
-            '<div class="tm-product-field tm-product-field--full">' +
-            '<label class="tm-product-label">产品</label>' +
-            '<select class="form-input product-select" onchange="SupplierModule.onProductSelect(this)">' +
-            '<option value="">--- 选择产品 ---</option></select></div>' +
-            '<div class="tm-product-edit-grid">' +
-            '<div class="tm-product-field"><label class="tm-product-label">数量</label>' +
-            '<input type="number" class="form-input qty-input" value="' + qty + '" min="1" oninput="SupplierModule.calculatePurchaseTotal()"></div>' +
-            '<div class="tm-product-field"><label class="tm-product-label">进货单价</label>' +
-            '<input type="number" class="form-input price-input" value="' + price + '" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></div>' +
-            '<div class="tm-product-field"><label class="tm-product-label">单位</label>' +
-            '<select class="form-input unit-select"><option value="">--- 单位 ---</option></select></div>' +
-            '<div class="tm-product-field"><label class="tm-product-label">批次号</label>' +
-            '<input type="text" class="form-input batch-input" placeholder="批次号" value="' + batchAttr + '"></div>' +
-            '</div></div>'
         );
     },
 
     clearPurchaseItems: function() {
         var tbody = document.getElementById('purchase-items-tbody');
-        var cards = document.getElementById('purchase-items-cards');
         if (tbody) tbody.innerHTML = '';
-        if (cards) cards.innerHTML = '';
     },
 
     appendPurchaseItem: function(opts) {
         opts = opts || {};
-        if (this.isMobilePurchaseView()) {
-            var cards = document.getElementById('purchase-items-cards');
-            if (cards) cards.insertAdjacentHTML('beforeend', this.buildPurchaseCardHtml(opts));
-        } else {
-            var tbody = document.getElementById('purchase-items-tbody');
-            if (tbody) tbody.insertAdjacentHTML('beforeend', this.buildPurchaseTableRowHtml(opts));
-        }
+        var tbody = document.getElementById('purchase-items-tbody');
+        if (tbody) tbody.insertAdjacentHTML('beforeend', this.buildPurchaseTableRowHtml(opts));
         this.refreshPurchaseItemsLayout();
         this.syncInboundUi();
     },
@@ -1470,7 +1429,6 @@ window.SupplierModule = {
         var n = rows.length;
         var maxRows = 5;
         var scroll = document.querySelector('#purchase-modal .tm-purchase-items-scroll');
-        var cards = document.getElementById('purchase-items-cards');
         var core = document.querySelector('#purchase-modal .tm-purchase-items-core');
         var rowH = '2.75rem';
         if (scroll) {
@@ -1478,12 +1436,7 @@ window.SupplierModule = {
             scroll.style.flex = n > maxRows ? '1 1 auto' : '0 0 auto';
             scroll.style.maxHeight = n > maxRows ? ('calc(' + rowH + ' * ' + maxRows + ' + 2.25rem)') : '';
             scroll.style.overflowY = n > maxRows ? 'auto' : 'visible';
-        }
-        if (cards) {
-            cards.classList.toggle('tm-purchase-items--scroll', n > maxRows);
-            cards.style.flex = n > maxRows ? '1 1 auto' : '0 0 auto';
-            cards.style.maxHeight = n > maxRows ? ('calc(' + rowH + ' * ' + maxRows + ' + 0.5rem)') : '';
-            cards.style.overflowY = n > maxRows ? 'auto' : 'visible';
+            scroll.style.overflowX = 'auto';
         }
         if (core) {
             core.classList.toggle('tm-purchase-items-core--compact', n <= maxRows);
