@@ -985,28 +985,28 @@ window.ProductModule = {
             this.currentProduct = product;
             this.syncDraftFromApiConversions(product.unitConversions);
             
-            // 加载类别和供应商列表并填充到下拉框
             await this.loadCategories();
             await this.loadSuppliers();
-            this.populateCategorySelect(product.categoryId);
-            this.populateSupplierSelect(product.supplierId || product.supplier);
-            
-            // 填充表单的初始值
-            this.populateProductForm(product);
-            
-            // 显示弹窗
+
             const modal = document.getElementById('product-detail-modal');
             if (modal) {
                 const titleEl = document.getElementById('detail-title');
-                const skuEl = document.getElementById('detail-sku');
+                const skuHintEl = document.getElementById('detail-sku-hint') || document.getElementById('detail-sku');
                 if (titleEl) titleEl.textContent = '产品详情';
-                if (skuEl) skuEl.textContent = 'SKU: ' + product.sku;
+                if (skuHintEl) {
+                    skuHintEl.textContent = product.sku ? ('SKU: ' + product.sku) : '填写必填项即可保存';
+                }
                 if (typeof window.TM_openUnifiedModal === 'function') {
                     window.TM_openUnifiedModal(modal);
                 } else {
                     modal.classList.remove('hidden');
+                    modal.setAttribute('aria-hidden', 'false');
                 }
             }
+
+            this.populateCategorySelect(product.categoryId);
+            this.populateSupplierSelect(product.supplierId || product.supplier);
+            this.populateProductForm(product);
         } catch (error) {
             console.error('[ProductModule] 加载产品详情异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -1026,43 +1026,33 @@ window.ProductModule = {
             this.currentProduct = {};
             this.unitConversionDraft = [{ unitName: '', ratio: '' }];
 
-            this.populateCategorySelect(null);
-            this.populateSupplierSelect(null);
-
-            const nameInput = document.getElementById('product-name-input');
-            const skuInput = document.getElementById('product-sku-input');
-            const priceInput = document.getElementById('product-price-input');
-            const stockInput = document.getElementById('product-stock-input');
-            const warningStockInput = document.getElementById('product-warning-stock-input');
-            const baseUnitInput = document.getElementById('product-base-unit-input');
-            const descTextarea = document.getElementById('product-desc-textarea');
-            const purchaseUnitSelect = document.getElementById('product-purchase-unit-select');
-            const salesUnitSelect = document.getElementById('product-sales-unit-select');
-
-            if (nameInput) nameInput.value = '';
-            if (skuInput) skuInput.value = '';
-            if (priceInput) priceInput.value = 0;
-            if (stockInput) stockInput.value = 0;
-            if (warningStockInput) warningStockInput.value = 0;
-            if (baseUnitInput) baseUnitInput.value = '';
-            if (descTextarea) descTextarea.value = '';
-            if (purchaseUnitSelect) purchaseUnitSelect.selectedIndex = 0;
-            if (salesUnitSelect) salesUnitSelect.selectedIndex = 0;
-
-            const titleEl = document.getElementById('detail-title');
-            const skuEl = document.getElementById('detail-sku');
-            if (titleEl) titleEl.textContent = '新增产品';
-            if (skuEl) skuEl.textContent = 'SKU: NEW';
-
             const modal = document.getElementById('product-detail-modal');
             if (modal) {
+                const titleEl = document.getElementById('detail-title');
+                const skuHintEl = document.getElementById('detail-sku-hint') || document.getElementById('detail-sku');
+                if (titleEl) titleEl.textContent = '新增产品';
+                if (skuHintEl) skuHintEl.textContent = '请填写名称、售价、基本单位与库存';
                 if (typeof window.TM_openUnifiedModal === 'function') {
                     window.TM_openUnifiedModal(modal);
                 } else {
                     modal.classList.remove('hidden');
+                    modal.setAttribute('aria-hidden', 'false');
                 }
             }
 
+            this.populateCategorySelect(null);
+            this.populateSupplierSelect(null);
+            this.populateProductForm({
+                name: '',
+                sku: '',
+                price: 0,
+                stock: 0,
+                baseUnit: '',
+                warningStock: '',
+                description: '',
+                purchaseUnit: null,
+                salesUnit: null
+            });
             this.rebuildPurchaseSalesUnitSelects(null, null);
         } catch (error) {
             console.error('[ProductModule] 打开新增产品弹窗失败:', error);

@@ -901,7 +901,13 @@
             try {
                 const efficiencyData = await fetchReportData('efficiency');
                 const inventoryTurnover = efficiencyData.inventory_turnover || 0;
-                const paymentCycle = efficiencyData.payment_cycle || 0;
+                const paymentCycleDisplay = efficiencyData.payment_cycle_display != null
+                    ? efficiencyData.payment_cycle_display
+                    : (efficiencyData.payment_cycle || 0);
+                const displayMethod = efficiencyData.payment_cycle_display_method || 'DSO';
+                const hint = window.TM_METRICS
+                    ? window.TM_METRICS.paymentCycleDisplayHint(displayMethod)
+                    : '';
 
                 const inventoryValueEl = document.getElementById('eff-inventory-value');
                 const inventoryBarEl = document.getElementById('eff-inventory-bar');
@@ -915,10 +921,11 @@
                     inventoryBarEl.style.width = `${Math.min(Number(inventoryTurnover) * 20, 100)}%`;
                 }
                 if (paymentValueEl) {
-                    paymentValueEl.textContent = Number(paymentCycle).toFixed(0) + '天';
+                    paymentValueEl.textContent = Number(paymentCycleDisplay).toFixed(0) + '天';
+                    if (hint) paymentValueEl.title = hint;
                 }
                 if (paymentBarEl) {
-                    paymentBarEl.style.width = `${Math.min((Number(paymentCycle) / 60) * 100, 100)}%`;
+                    paymentBarEl.style.width = `${Math.min((Number(paymentCycleDisplay) / 90) * 100, 100)}%`;
                 }
             } catch (error) {
                 console.error('Error loading efficiency data:', error);

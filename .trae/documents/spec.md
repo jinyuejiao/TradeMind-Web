@@ -246,14 +246,51 @@
 | name | VARCHAR | 100 | 否 | - | 客户名称 |
 | phone | VARCHAR | 20 | 否 | - | 联系电话，**UNIQUE** |
 | email | VARCHAR | 120 | 是 | NULL | 邮箱 |
-| source | VARCHAR | 50 | 是 | - | 来源（字典 **D008**） |
-| cust_status | VARCHAR | 50 | 是 | - | 客户状态（字典 **D009**） |
+| source | VARCHAR | 50 | 是 | - | 获客来源（字典 **D008**）；首单/AI 建客写入；**不占 CRM 标签位** |
+| cust_status | VARCHAR | 50 | 是 | - | **价值标签**（字典 **D009**）；系统根据订单活跃数据维护；映射 CRM **Badge 1** |
+| cust_segment | VARCHAR | 50 | 是 | - | **特色标签**码；系统维护；固定码见 **D014**，动态码 `PC:{category_id}`；映射 CRM **Badge 2** |
+| tags_computed_at | TIMESTAMP | - | 是 | NULL | 最近一次系统打标时间 |
 | summary | TEXT | - | 是 | - | 摘要 |
 | region | VARCHAR | 50 | 是 | - | 区域 |
 | address | VARCHAR | 200 | 是 | - | 地址 |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
 
+#### 1.2.2 客户双标签与打标规则（2026-05-31）
+
+CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/编辑弹窗 **不含标签字段**。联系信息（姓名、手机等）仍可编辑；`cust_status`、`cust_segment` 由 **`CustomerTaggingService`**（CRMService 或 RDService 订单事件回调）写入。
+
+**展示**
+
+| Badge | 语义 | 字段 | 字典 |
+| ----- | ---- | ---- | ---- |
+| Badge 1 | 价值标签（值不值得重点维护） | `cust_status` | **D009** |
+| Badge 2 | 特色标签（买什么、有何辨识度） | `cust_segment` | **D014** + 动态 `PC:{id}` → `product_categories.name` |
+
+**有效订单口径**（打标共用）：`orders.order_status <> D010005`（非退货）且 `orders.fin_status <> BAD_DEBT`；品类经 `order_items → products.category_id → product_categories`。
+
+**Badge 1 — `cust_status`（D009）优先级互斥**
+
+| dict_code | 展示名 | 规则（WHOLESALE 默认） |
+| --------- | ------ | ---------------------- |
+| NEW | 新客 | 建档 ≤ 30 天且有效订单数 ≤ 1 |
+| HIGH_VALUE | 高价值 | 近 12 月有效 GMV ≥ 租户 P80，且末单 ≤ 60 天 |
+| ACTIVE | 活跃 | 末单 ≤ 60 天，未达 HIGH_VALUE |
+| SLEEPING | 沉睡 | 末单 61–180 天 |
+| LOST | 流失 | 其余（含建档超 30 天仍 0 单） |
+
+判定顺序：`NEW` → `HIGH_VALUE` → `ACTIVE` → `SLEEPING` → `LOST`。
+
+**Badge 2 — `cust_segment`**
+
+| 存储值 | 展示名 | 规则 |
+| ------ | ------ | ---- |
+| `PENDING` | 待识别 | 无有效订单，或明细均无 `category_id` |
+| `PC:{category_id}` | `{product_categories.name}` | 近 6 月品类 GMV 占比 ≥ 50% |
+| `MIXED` | 混合 | Top1 品类占比 30%–50% |
+| `GENERAL` | 综合 | Top1 品类占比 < 30% |
+
+**更新时机**：订单创建/签收/结清 → 单客户重算；每日 02:00 全租户补算 Badge 1；每月 1 日全租户重算 Badge 2。
 
 ### 1.3 产品与订单模块表
 
@@ -537,7 +574,8 @@
 | D006   | NULL     | ENERGYCONSUMETYPE   | AI消费类型   | 1         | 6    | AI能量点变动的具体功能场景              |
 | D007   | NULL     | PRODUCTIONRISK      | 生产风险等级   | 1         | 7    | 生产计划/新品研发的风险等级分类            |
 | D008   | NULL     | CUSTOMERSOURCE      | 客户来源     | 1         | 8    | 商户客户的获取渠道分类                 |
-| D009   | NULL     | CUSTOMERSTATUS      | 客户状态     | 1         | 9    | 客户全生命周期状态分类                 |
+| D009   | NULL     | CUSTOMERSTATUS      | 客户价值标签   | 1         | 9    | CRM Badge 1；`customers.cust_status`；系统维护 |
+| D014   | NULL     | CUSTOMER_SEGMENT    | 客户特色标签   | 1         | 14   | CRM Badge 2 固定码；动态码 `PC:{category_id}` 见 §1.2.2 |
 | D010   | NULL     | ORDERSTATUS         | 订单物流状态   | 1         | 10   | 销售订单物流生命周期（与 D015 财务状态正交） |
 | D011   | NULL     | ITEMSTATUS          | 商品明细物流状态 | 1         | 11   | 订单/进货明细行物流处理状态 |
 | D012   | NULL     | PURCHASEORDERSTATUS | 进货单据物流状态 | 1         | 12   | 进货单物流：草稿、审核、入库等 |
@@ -638,15 +676,29 @@
 | D008004 | D008     | OTHER    | 其他       | 2         | 4    | 其他渠道获取  |
 
 
-**D009 - 客户状态**
+**D009 - 客户价值标签（CRM Badge 1，`customers.cust_status`）**
 
 
-| dictid  | parentid | dictcode | dictname | dictlevel | sort | remark |
-| ------- | -------- | -------- | -------- | --------- | ---- | ------ |
-| D009001 | D009     | ACTIVE   | 活跃       | 2         | 1    | 客户状态活跃 |
-| D009002 | D009     | SLEEPING | 沉睡       | 2         | 2    | 客户状态沉睡 |
-| D009003 | D009     | LOST     | 流失       | 2         | 3    | 客户状态流失 |
+| dictid  | parentid | dictcode   | dictname | dictlevel | sort | remark |
+| ------- | -------- | ---------- | -------- | --------- | ---- | ------ |
+| D009_004 | D009    | NEW        | 新客       | 2         | 0    | 建档初期，见 §1.2.2 |
+| D009_005 | D009    | HIGH_VALUE | 高价值     | 2         | 1    | 近 12 月 GMV Top 20% 且近期有单 |
+| D009_001 | D009    | ACTIVE     | 活跃       | 2         | 2    | 近 60 天有有效订单 |
+| D009_002 | D009    | SLEEPING   | 沉睡       | 2         | 3    | 末单 61–180 天 |
+| D009_003 | D009    | LOST       | 流失       | 2         | 4    | 超 180 天无单或长期 0 单 |
 
+> **迁移说明**：`D009_001`–`D009_003` 与 **`db/seed-data.sql`** 存量 `dict_code` 一致；v1.23 新增 **`NEW`（D009_004）**、**`HIGH_VALUE`（D009_005）**；首次全量打标后按 §1.2.2 重算各客户 `cust_status`。
+
+**D014 - 客户特色标签固定码（CRM Badge 2，`customers.cust_segment` 中非 `PC:*` 部分）**
+
+
+| dictid   | parentid | dictcode | dictname | dictlevel | sort | remark |
+| -------- | -------- | -------- | -------- | --------- | ---- | ------ |
+| D014_001 | D014     | MIXED    | 混合       | 2         | 1    | 多品类采购，Top1 占比 30%–50% |
+| D014_002 | D014     | GENERAL  | 综合       | 2         | 2    | 品类分散，Top1 < 30% |
+| D014_003 | D014     | PENDING  | 待识别     | 2         | 3    | 无有效订单或无分类数据 |
+
+> 主营品类展示：`cust_segment = PC:{category_id}` 时，展示名取租户 **`product_categories.name`**（不占 dictionary 行）。
 
 **D010 - 订单物流状态**
 
@@ -1237,10 +1289,10 @@
 
 - **路径**：`/modules/crm/crm.html`
 - **功能**：
-  - 客户信息增删改查
-  - 客户分类管理
-  - 客户状态跟踪
-  - 客户搜索和筛选
+  - 客户联系信息增删改查（姓名、手机、邮箱、地区、地址、摘要）
+  - **系统双标签**（§1.2.2）：列表/详情只读展示 **Badge 1 价值** + **Badge 2 特色**，最多 2 个；**不在**新增/编辑弹窗中出现
+  - 客户搜索和 A–Z 索引
+  - 交互时间轴、AI 营销建议（读取订单与标签上下文）
 
 #### 3.1.3 产品中心（Product Center）
 
@@ -1378,7 +1430,7 @@
 应用启动时 **`DatabaseInitService.initProductionBaseline()`** 按序幂等执行：
 
 1. **`db/schema-production.sql`** — 33 张表（L1 基础设施 → L5 运营管理）、索引、存量列 **`ALTER`**
-2. **`db/seed-data.sql`** — **`SYSTEM_OPS`** / **`ops_admin`**、字典 **D001–D017**（D014 预留）、**`subscription_plans`** 16 行（含 WHOLESALE 定价覆盖）
+2. **`db/seed-data.sql`** — **`SYSTEM_OPS`** / **`ops_admin`**、字典 **D001–D017**（**D014** 客户特色标签固定码）、**`subscription_plans`** 16 行（含 WHOLESALE 定价覆盖）
 3. **`validateCoreSchema()`** — Java 校验表存在性、关键列（如 **`orders.fin_status`**、**`production`**）、字典大类、**`uq_products_tenant_sku`** 等
 
 初始化失败则 **InitCfgService 终止启动**。手工自检：**`db/check_schema.sql`**；清库重建流程：**`docs/Database_Deployment_Guide.md`**。
@@ -1414,21 +1466,38 @@
 | `/customers/save` | POST   | 保存客户（用于AI提取数据）  |
 | `/customers/{id}` | PUT    | 更新客户信息          |
 | `/customers/{id}` | DELETE | 删除客户            |
+| `/customers/tags/recalc` | POST | 手动重算标签（`scope`: `CUSTOMER` \| `TENANT`；**ADMIN**） |
+
+**客户 JSON 响应扩展**（`GET /customers`、`GET /customers/{id}`，向后兼容）：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `status` / `custStatus` | string | Badge 1，`cust_status`，字典 **D009** |
+| `statusName` | string | Badge 1 展示名（服务端解析字典） |
+| `custSegment` | string | Badge 2 存储码（`PC:{id}` / `MIXED` / `GENERAL` / `PENDING`） |
+| `segmentName` | string | Badge 2 展示名（`PC:*` 解析为分类名） |
+| `tagsComputedAt` | string | ISO 时间，对应 `tags_computed_at` |
+| `source` | string | 获客来源 **D008**；可选于详情区，**不作为列表 Badge** |
+
+**写接口约束**：`POST /customers`、`PUT /customers/{id}`、`POST /customers/save` **忽略**请求体中的 `custStatus`、`custSegment`；保存联系信息后触发单客户打标（或依赖订单事件）。`source` 仅 **AI 建客 / 首单渠道** 可写。
+
+**打标服务**（实现名 **`CustomerTaggingService`**）：`recalcCustomer(tenantId, custId)`；日批生命周期；月批特色标签；规则见 §1.2.2。
 
 **字典接口**（context-path 下）：
 
 | 接口路径 | 方法 | 说明 |
 | --- | --- | --- |
 | `/dictionaries/list/{parentId}` | GET | 按父级 ID 获取字典子项 |
-| `/dictionary/{dictCode}` | GET | 按 dict_code 查询字典项 |
+| `/dictionary/{dictCode}` | GET | 按 dict_code 查询字典项（Badge 1 用 **D009**，固定特色码用 **D014**） |
 
-**TradeMind-Web CRM交互约束（2026-04-22）**：
+**TradeMind-Web CRM交互约束（2026-05-31）**：
 
 1. CRM页面采用「客户列表 + 客户详情」双栏结构，移动端按一级/二级页面切换。
 2. 客户列表右侧提供26字母索引（A-Z），点击后滚动到对应首字母客户分组。
-3. 客户新增/编辑统一使用同一套弹窗样式与表单结构，保存时调用CRMService真实接口（`POST /customers`、`PUT /customers/{id}`）。
-4. 客户删除由前端调用RDService桥接接口（`DELETE /api/v1/rd/customers/{id}`）执行，删除前校验当前租户下是否存在关联订单。
-5. 客户详情右侧电话按钮弹出轻量电话卡片；**交互时间轴**（2026-05-25）：按时间倒序展示订单项摘要（`产品名*数量 单位`，多项 **`, `** 分隔，超 **28 字符**或超过 **2 个 SKU** 以 **`...`** 省略）、双状态 Badge（**D010 物流 `dictname` | D015 财务 `dictname`**，品牌色 `#14B8A6` 浅底）、订单金额；进入 CRM 时 **`ui-crm.js`** 各拉取一次全量 **products** 索引与 **D010/D015** 字典。
+3. 客户新增/编辑统一使用 **`tm-customer-registry-form`** 弹窗；仅联系信息可编辑；保存调用 `POST /customers`、`PUT /customers/{id}`；**标签不在表单内**。
+4. 列表/详情 **仅 2 个标签 Badge**：**价值**（`statusName` / D009）+ **特色**（`segmentName`）；**禁止**用 `source`（D008）作第二 Badge。
+5. 客户删除由前端调用RDService桥接接口（`DELETE /api/v1/rd/customers/{id}`）执行，删除前校验当前租户下是否存在关联订单。
+6. 客户详情右侧电话按钮弹出轻量电话卡片；**交互时间轴**（2026-05-25）：按时间倒序展示订单项摘要（`产品名*数量 单位`，多项 **`, `** 分隔，超 **28 字符**或超过 **2 个 SKU** 以 **`...`** 省略）、双状态 Badge（**D010 物流 `dictname` | D015 财务 `dictname`**，品牌色 `#14B8A6` 浅底）、订单金额；进入 CRM 时 **`ui-crm.js`** 各拉取一次全量 **products** 索引与 **D010/D015** 字典。
 
 #### 3.2.4 进销存服务（RDService）
 
@@ -1970,6 +2039,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.23 | 2026-05-31 | **CRM 客户双标签**：§1.2.1 增补 `cust_segment`、`tags_computed_at`；§1.2.2 价值+特色打标规则；**D009** 扩展 `NEW`/`HIGH_VALUE`；启用 **D014** `CUSTOMER_SEGMENT`；§3.1.2、§3.2.3 API 响应与写约束、`/customers/tags/recalc` |
 | v1.22 | 2026-05-28 | **数据库初始化引擎规整**：废弃 **`production-schema-v1.sql`** / **`production-seed-v1.sql`** / **`migrations/legacy/`**；统一为 **`InitCfgService/db/schema-production.sql`**（33 表，含 **`production`**、双维度状态列、**`uq_products_tenant_sku`**）+ **`seed-data.sql`** + **`validateCoreSchema()`**；字典/订阅种子迁入 SQL；**`DictionaryInitService`**、**`SubscriptionPlanSeedService`** 废弃；新增 **`docs/Database_Deployment_Guide.md`**、**`db/check_schema.sql`**；§1 文首、§2.8.3–§2.8.4、§2.9.4、§3.2.2、§8 同步 |
 | v1.21 | 2026-05-25 | **单据状态机与库存**：§1 增补 `orders`/`order_items`/`purchases`/`purchase_items` 财务与 **`is_processed`** 列、**`biz_account_ledger.biz_type_code`**；**`alter_document_status_inventory.sql`**；字典 **D010–D012** 物流重构、**D015–D017** 全表；§1.4.4 入账规则改为 **`record-payment`/`ship`/`inbound`** 双线解耦；§2.9 状态机与迁移。**前端**：§3.1.0 **`tm-layout-engine.css`** 三段式壳层 + **`TM_applyDialogShell`** Sheet；§3.1.1 工作台进行中单据双维筛选/详情编辑/终态移除；§3.1.3 产品类别可空、单位换算最多 2 行、高级配置展开修复；§3.1.4 供应链弹窗 Sheet 与进货底部仓库/付款区；§3.2.3 CRM 时间轴 Badge；§3.2.4–3.2.5 新 API；§6.3–§6.4 流程；§7.5、§8 目录树 |
 | v1.20 | 2026-05-24 | **新手导览**：§1.1.2.1 **`user_onboarding_state`** 快照字段与双写策略；**`InitCfgService.applyIncrementalMigrations()`**；§3.1.6、`OnboardingController`；§3.2.1 **`/onboarding/state`**、登录 **`onboarding`** 摘要。**会员/壳层 UI**：§3.1.0 主壳顶栏表、§3.1.7 会员中心（**`member-referral-banner-snippet`** 品牌青 hero，废弃主路径 **`gold-referral-card`**）；PC 顶栏去重新手引导/退出；移动 **`tm-app-header-brand`** 固定「商贸智脑」。§8 目录树同步 |
@@ -1996,6 +2066,6 @@ TM_Project/
 
 ---
 
-**文档版本**：v1.21
-**最后更新**：2026-05-25
+**文档版本**：v1.23
+**最后更新**：2026-05-31
 **维护者**：TradeMind开发团队

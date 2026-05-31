@@ -1938,6 +1938,12 @@ window.SupplierModule = {
                 this.renderPurchases();
                 this.loadPurchaseSummary();
             }
+            var savedStatus = (requestData.purchaseStatus || (requestData.purchase && requestData.purchase.purchaseStatus) || '').toUpperCase();
+            if (savedStatus === 'FULL_INBOUND' || savedStatus === '全部入库' || savedStatus === 'STOCKED') {
+                if (window.ProductModule && typeof window.ProductModule.loadProducts === 'function') {
+                    try { await window.ProductModule.loadProducts(); } catch (refreshErr) { /* ignore */ }
+                }
+            }
             return result;
         } catch (error) {
             console.error('Error saving purchase:', error);

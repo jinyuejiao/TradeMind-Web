@@ -74,6 +74,54 @@
         return (recv / sales) * days;
     }
 
+    function weightedArAgeDays(weightedAgeSum, receivableBalance) {
+        var sum = toNumber(weightedAgeSum);
+        var balance = toNumber(receivableBalance);
+        if (balance <= 0) return 0;
+        return sum / balance;
+    }
+
+    function isPaymentCycleDataSufficient(settledOrderCount, receivedInPeriod, salesInPeriod, minSettledOrders, minReceivedRatio) {
+        var settled = toNumber(settledOrderCount);
+        var received = toNumber(receivedInPeriod);
+        var sales = toNumber(salesInPeriod);
+        var minOrders = toNumber(minSettledOrders) || 5;
+        var minRatio = toNumber(minReceivedRatio) || 0.2;
+        if (settled >= minOrders) return true;
+        return sales > 0 && received / sales >= minRatio;
+    }
+
+    function resolvePaymentCycleDisplay(dsoDays, arAgeDays, historicalDays, dataSufficient) {
+        var dso = toNumber(dsoDays);
+        var arAge = toNumber(arAgeDays);
+        var sufficient = !!dataSufficient;
+        if (sufficient && historicalDays != null && isFinite(Number(historicalDays)) && Number(historicalDays) >= 0) {
+            return Number(historicalDays);
+        }
+        if (sufficient && dso > 0) return dso;
+        return Math.max(0, arAge);
+    }
+
+    function resolvePaymentCycleDisplayMethod(dsoDays, arAgeDays, historicalDays, dataSufficient) {
+        var dso = toNumber(dsoDays);
+        var sufficient = !!dataSufficient;
+        if (sufficient && historicalDays != null && isFinite(Number(historicalDays)) && Number(historicalDays) >= 0) {
+            return 'HISTORICAL';
+        }
+        if (sufficient && dso > 0) return 'DSO';
+        return 'AR_AGE';
+    }
+
+    function paymentCycleDisplayHint(method) {
+        if (method === 'AR_AGE') {
+            return '基于应收账龄；登记收款后将显示历史回款天数';
+        }
+        if (method === 'HISTORICAL') {
+            return '基于近一年已结清订单平均回款天数';
+        }
+        return '基于 DSO 公式（应收账款 / 年赊销 × 365）';
+    }
+
     function suggestRestockBaseUnits(avgDailySales, leadTimeDays, warningStock, stockBase) {
         var raw = toNumber(avgDailySales) * Math.max(1, leadTimeDays) + toNumber(warningStock) - toNumber(stockBase);
         return Math.max(0, Math.round(raw));
@@ -127,6 +175,13 @@
         isToday: isToday,
         inventoryTurnover: inventoryTurnover,
         paymentCycleDays: paymentCycleDays,
+        weightedArAgeDays: weightedArAgeDays,
+        isPaymentCycleDataSufficient: isPaymentCycleDataSufficient,
+        resolvePaymentCycleDisplay: resolvePaymentCycleDisplay,
+        resolvePaymentCycleDisplayMethod: resolvePaymentCycleDisplayMethod,
+        paymentCycleDisplayHint: paymentCycleDisplayHint,
+        PAYMENT_CYCLE_MIN_SETTLED_ORDERS: 5,
+        PAYMENT_CYCLE_MIN_RECEIVED_RATIO: 0.2,
         suggestRestockBaseUnits: suggestRestockBaseUnits,
         formatPurchasePrice: formatPurchasePrice,
         unwrapReportPayload: unwrapReportPayload,

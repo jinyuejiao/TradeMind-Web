@@ -386,6 +386,32 @@
         max-height: min(90dvh, 100dvh) !important;
     }
 
+    html.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .tm-dialog-panel,
+    html.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .modal-content-box,
+    html.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .tm-dialog-panel,
+    html.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .modal-content-box,
+    html.tm-embed-modal-open #audit-modal.tm-audit-modal .tm-audit-panel,
+    html.tm-embed-modal-open #audit-modal.tm-audit-modal .modal-content-box,
+    body.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .tm-dialog-panel,
+    body.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .modal-content-box,
+    body.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .tm-dialog-panel,
+    body.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .modal-content-box,
+    body.tm-embed-modal-open #audit-modal.tm-audit-modal .tm-audit-panel,
+    body.tm-embed-modal-open #audit-modal.tm-audit-modal .modal-content-box {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
+
+    html.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal,
+    html.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal,
+    html.tm-embed-modal-open #audit-modal.tm-audit-modal,
+    body.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal,
+    body.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal,
+    body.tm-embed-modal-open #audit-modal.tm-audit-modal {
+        align-items: flex-end !important;
+        justify-content: center !important;
+    }
+
     html.tm-embed-modal-open .tm-compliance-footer,
     body.tm-embed-modal-open .tm-compliance-footer,
     html.tm-embed-modal-open #content-area > footer.tm-compliance-footer,

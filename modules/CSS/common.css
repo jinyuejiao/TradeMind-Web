@@ -784,6 +784,37 @@ textarea {
         max-height: min(90dvh, 100dvh) !important;
     }
 
+    /* 工作台单据弹窗（主壳 body 注入）：打开时面板贴满视口底，消除按钮下方灰条 */
+    html.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal,
+    html.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal,
+    html.tm-embed-modal-open #audit-modal.tm-audit-modal,
+    body.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal,
+    body.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal,
+    body.tm-embed-modal-open #audit-modal.tm-audit-modal {
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
+
+    html.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .tm-dialog-panel,
+    html.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .modal-content-box,
+    html.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .tm-dialog-panel,
+    html.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .modal-content-box,
+    html.tm-embed-modal-open #audit-modal.tm-audit-modal .tm-audit-panel,
+    html.tm-embed-modal-open #audit-modal.tm-audit-modal .modal-content-box,
+    body.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .tm-dialog-panel,
+    body.tm-embed-modal-open #order-detail-modal.tm-order-detail-modal .modal-content-box,
+    body.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .tm-dialog-panel,
+    body.tm-embed-modal-open #manual-order-modal.tm-order-detail-modal .modal-content-box,
+    body.tm-embed-modal-open #audit-modal.tm-audit-modal .tm-audit-panel,
+    body.tm-embed-modal-open #audit-modal.tm-audit-modal .modal-content-box {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        border-radius: 1rem 1rem 0 0 !important;
+    }
+
     /* 弹窗打开时隐藏备案 footer，避免在「取消/保存」下方露出 ICP 信息 */
     html.tm-embed-modal-open .tm-compliance-footer,
     body.tm-embed-modal-open .tm-compliance-footer,

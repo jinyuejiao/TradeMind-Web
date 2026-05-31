@@ -653,8 +653,18 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
         min-height: 44px;
     }
 
+    #order-detail-modal.tm-order-detail-modal,
+    #manual-order-modal.tm-order-detail-modal {
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+
     #order-detail-modal.tm-order-detail-modal .modal-content-box,
-    #manual-order-modal.tm-order-detail-modal .modal-content-box {
+    #order-detail-modal.tm-order-detail-modal .tm-dialog-panel,
+    #manual-order-modal.tm-order-detail-modal .modal-content-box,
+    #manual-order-modal.tm-order-detail-modal .tm-dialog-panel {
+        width: 100%;
         height: min(90dvh, 100%);
         max-height: min(90dvh, 100%) !important;
         border-radius: 2.5rem 2.5rem 0 0;
@@ -852,28 +862,6 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 }
 
 @media (max-width: 767px) {
-    #order-detail-modal.tm-order-detail-modal,
-    #manual-order-modal.tm-order-detail-modal {
-        align-items: stretch !important;
-        justify-content: flex-end !important;
-        padding: 0 !important;
-    }
-
-    #order-detail-modal.tm-order-detail-modal .modal-content-box,
-    #order-detail-modal.tm-order-detail-modal .tm-dialog-panel,
-    #manual-order-modal.tm-order-detail-modal .modal-content-box,
-    #manual-order-modal.tm-order-detail-modal .tm-dialog-panel {
-        width: 100%;
-        height: min(96dvh, 100%);
-        max-height: min(96dvh, 100%) !important;
-        border-radius: 1rem 1rem 0 0;
-    }
-
-    #order-detail-modal.tm-order-detail-modal .tm-modal-footer-safe,
-    #manual-order-modal.tm-order-detail-modal .tm-modal-footer-safe {
-        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
-    }
-
     #order-detail-modal.tm-order-detail-modal .tm-modal-footer-safe .tm-btn-primary,
     #order-detail-modal.tm-order-detail-modal .tm-modal-footer-safe .tm-btn-secondary,
     #manual-order-modal.tm-order-detail-modal .tm-modal-footer-safe .tm-btn-primary,

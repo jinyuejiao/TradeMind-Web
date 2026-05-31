@@ -58,6 +58,64 @@
         return parsed && typeof parsed === 'object' ? parsed : null;
     }
 
+    function trimUnit(val) {
+        if (val == null) return '';
+        var s = String(val).trim();
+        return s;
+    }
+
+    /** 订单行单位归一 → item.unit */
+    function normalizeOrderItemUnit(item) {
+        if (!item || typeof item !== 'object') return item;
+        var u = trimUnit(item.unit || item.unit_name || item.unitName
+            || item.sales_unit || item.salesUnit || item.base_unit || item.baseUnit);
+        if (u) item.unit = u;
+        return item;
+    }
+
+    /** 新产品单位归一 → base_unit / sales_unit */
+    function normalizeNewProductUnits(np) {
+        if (!np || typeof np !== 'object') return np;
+        var bu = trimUnit(np.base_unit || np.baseUnit || np.unit);
+        if (bu) {
+            np.base_unit = bu;
+            np.baseUnit = bu;
+        }
+        var su = trimUnit(np.sales_unit || np.salesUnit);
+        if (su) {
+            np.sales_unit = su;
+            np.salesUnit = su;
+        } else if (bu) {
+            np.sales_unit = bu;
+            np.salesUnit = bu;
+        }
+        return np;
+    }
+
+    function syncNewProductUnitsFromOrderItems(data) {
+        if (!data || !data.order_data || !Array.isArray(data.order_data.items)) return;
+        if (!Array.isArray(data.new_products_found)) return;
+        data.new_products_found.forEach(function (np) {
+            normalizeNewProductUnits(np);
+            if (trimUnit(np.base_unit || np.baseUnit)) return;
+            var name = trimUnit(np.name || np.product_name || np.productName);
+            if (!name) return;
+            for (var i = 0; i < data.order_data.items.length; i++) {
+                var it = data.order_data.items[i];
+                var raw = trimUnit(it.product_name_raw || it.matched_product_name || it.name);
+                if (raw === name && trimUnit(it.unit)) {
+                    np.base_unit = it.unit;
+                    np.baseUnit = it.unit;
+                    if (!trimUnit(np.sales_unit || np.salesUnit)) {
+                        np.sales_unit = it.unit;
+                        np.salesUnit = it.unit;
+                    }
+                    break;
+                }
+            }
+        });
+    }
+
     function normalizeEnvelopeRoot(rawAiResult) {
         if (rawAiResult == null || rawAiResult === '') {
             return {};
@@ -87,6 +145,13 @@
                 new_customers_found: Array.isArray(envelope.new_customers_found) ? envelope.new_customers_found : [],
                 new_products_found: Array.isArray(envelope.new_products_found) ? envelope.new_products_found : []
             };
+            if (data.order_data && Array.isArray(data.order_data.items)) {
+                data.order_data.items = data.order_data.items.map(normalizeOrderItemUnit);
+            }
+            if (Array.isArray(data.new_products_found)) {
+                data.new_products_found = data.new_products_found.map(normalizeNewProductUnits);
+                syncNewProductUnitsFromOrderItems(data);
+            }
             return { envelope: envelope, data: data };
         }
 
@@ -150,8 +215,12 @@
                 if (item.quantity == null || item.quantity === '') {
                     item.quantity = item.qty != null ? item.qty : 1;
                 }
-                return item;
+                return normalizeOrderItemUnit(item);
             });
+        }
+        if (Array.isArray(data.new_products_found)) {
+            data.new_products_found = data.new_products_found.map(normalizeNewProductUnits);
+            syncNewProductUnitsFromOrderItems(data);
         }
 
         const ok = data.customer_data && data.order_data;
@@ -160,4 +229,6 @@
 
     global.TM_safeJsonParseForOrderExtract = safeJsonParse;
     global.TM_parseOrderExtractStructured = TM_parseOrderExtractStructured;
+    global.TM_normalizeOrderItemUnit = normalizeOrderItemUnit;
+    global.TM_normalizeNewProductUnits = normalizeNewProductUnits;
 })(typeof window !== 'undefined' ? window : this);

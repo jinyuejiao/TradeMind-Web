@@ -13,6 +13,7 @@
             sku: raw.sku || raw.product_sku || raw.productSku || '',
             price: raw.price != null ? raw.price : (raw.sale_price != null ? raw.sale_price : raw.unit_price),
             base_unit: raw.base_unit || raw.baseUnit || raw.unit || '件',
+            sales_unit: raw.sales_unit || raw.salesUnit || raw.base_unit || raw.baseUnit || raw.unit || '件',
             stock: raw.stock != null ? raw.stock : raw.stock_quantity,
             description: raw.description || raw.summary || '',
             category_id: raw.category_id != null ? raw.category_id : raw.categoryId,

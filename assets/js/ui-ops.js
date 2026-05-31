@@ -58,6 +58,75 @@
         return String(r.id);
     }
 
+    function refRewardPending(st) {
+        return st === 'PAYABLE' || st === 'ACCRUED';
+    }
+
+    function refRewardStatusHtml(st) {
+        if (st === 'PAID') return '<span class="text-emerald-600 font-bold">已结算</span>';
+        if (st === 'REJECTED') return '<span class="text-rose-600 font-bold">已驳回</span>';
+        return '<span class="text-amber-600 font-bold">待结算</span>';
+    }
+
+    function refFormatTime(v) {
+        if (v == null || v === '') return '—';
+        return String(v).replace('T', ' ').slice(0, 10);
+    }
+
+    function refMaskPhone(phone) {
+        if (!phone) return '—';
+        var p = String(phone);
+        if (p.length >= 11) return p.slice(0, 3) + '****' + p.slice(-4);
+        return p;
+    }
+
+    function refBuildPayeeBlock(r) {
+        if (!r) return '（无数据）';
+        var lines = [];
+        if (r.real_name) lines.push('姓名：' + r.real_name);
+        if (r.phone) lines.push('手机：' + r.phone);
+        if (r.email) lines.push('邮箱：' + r.email);
+        var type = r.payout_pay_type ? String(r.payout_pay_type) : '';
+        if (type === 'bank' || r.payout_bank_name || (type === '' && r.payout_account_no)) {
+            lines.push('收款方式：银行卡');
+            if (r.payout_bank_name) lines.push('开户行：' + r.payout_bank_name);
+            if (r.payout_account_name) lines.push('户名：' + r.payout_account_name);
+            if (r.payout_account_no) lines.push('账号：' + r.payout_account_no);
+        } else if (type === 'alipay') {
+            lines.push('收款方式：支付宝');
+            if (r.payout_account_name) lines.push('户名：' + r.payout_account_name);
+            if (r.payout_account_no) lines.push('账号：' + r.payout_account_no);
+        } else if (type === 'wechat') {
+            lines.push('收款方式：微信');
+            if (r.payout_account_name) lines.push('户名：' + r.payout_account_name);
+            if (r.payout_account_no) lines.push('账号：' + r.payout_account_no);
+        } else if (r.payout_account_no || r.payout_account_name) {
+            if (r.payout_account_name) lines.push('户名：' + r.payout_account_name);
+            if (r.payout_account_no) lines.push('账号：' + r.payout_account_no);
+        }
+        if (r.payout_verified === true || r.payout_verified === 't') {
+            lines.push('（用户已核实收款信息）');
+        }
+        return lines.length ? lines.join('\n') : '（未登记提现收款信息，请电话联系推荐人）';
+    }
+
+    function refContactCell(r) {
+        var phone = r && r.phone ? String(r.phone) : '';
+        var parts = [];
+        if (phone) {
+            parts.push(
+                '<a href="tel:' + escapeHtml(phone) + '" class="text-ops-700 font-bold hover:underline whitespace-nowrap" title="点击拨号">' +
+                escapeHtml(refMaskPhone(phone)) + '</a>'
+            );
+        } else {
+            parts.push('<span class="text-slate-400">无手机</span>');
+        }
+        if (r && r.email) {
+            parts.push('<div class="text-[10px] text-slate-500 mt-0.5 truncate max-w-[140px]" title="' + escapeHtml(String(r.email)) + '">' + escapeHtml(String(r.email)) + '</div>');
+        }
+        return parts.join('');
+    }
+
     var AUDIT_KEY = 'tm_ops_audit_log_v1';
     var ANNOUNCE_KEY = 'tm_ops_site_announcement_v1';
     var TENANTS_KEY = 'tm_ops_demo_tenants_v1';
@@ -1571,16 +1640,18 @@
     function initReferralPageLive() {
         var list = [];
 
-        function isPendingStatus(st) {
-            return st === 'PAYABLE';
-        }
-
         function groupReferralEventsLive(events) {
             var m = {};
             events.forEach(function (e) {
                 var k = (e.referral_code || '') + '\u0000' + (e.user_name || e.referrer_user_id);
                 if (!m[k]) {
-                    m[k] = { key: k, code: e.referral_code || '—', referrer: e.user_name || ('#' + e.referrer_user_id), records: [] };
+                    m[k] = {
+                        key: k,
+                        code: e.referral_code || '—',
+                        referrer: e.user_name || ('#' + e.referrer_user_id),
+                        payee: e,
+                        records: []
+                    };
                 }
                 m[k].records.push(e);
             });
@@ -1590,7 +1661,7 @@
         function renderSummary(groups) {
             var box = el('ops-ref-summary-cards');
             if (!box) return;
-            var pending = list.filter(function (x) { return isPendingStatus(x.status); }).length;
+            var pending = list.filter(function (x) { return refRewardPending(x.status); }).length;
             var paid = list.filter(function (x) { return x.status === 'PAID'; }).length;
             function card(label, val, sub) {
                 return '<div class="tm-ops-glass rounded-2xl p-4 border border-indigo-100/80">' +
@@ -1599,9 +1670,21 @@
                     (sub ? '<p class="text-[10px] text-slate-500 mt-0.5">' + escapeHtml(sub) + '</p>' : '') + '</div>';
             }
             box.innerHTML = card('推荐分组', String(groups.length), '按推荐码聚合') +
-                card('奖励记录', String(list.length), '') +
-                card('待结算', String(pending), 'PAYABLE / ACCRUED') +
+                card('奖励记录', String(list.length), '每条 = 一次有效首订') +
+                card('待结算', String(pending), 'ACCRUED / PAYABLE') +
                 card('已结算', String(paid), '');
+        }
+
+        function renderRewardActions(r) {
+            var id = rewardIdStr(r);
+            var pending = refRewardPending(r.status);
+            var paid = r.status === 'PAID';
+            return (
+                '<button type="button" class="ops-ref-mark-paid mr-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' +
+                (pending ? '' : ' hidden') + '" data-record-id="' + escapeHtml(id) + '">标记已打款</button>' +
+                '<button type="button" class="ops-ref-mark-pending px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100' +
+                (paid ? '' : ' hidden') + '" data-record-id="' + escapeHtml(id) + '">改待结</button>'
+            );
         }
 
         function render() {
@@ -1611,43 +1694,122 @@
             renderSummary(groups);
             var rows = [];
             groups.forEach(function (g) {
-                var enc = encodeURIComponent(g.key);
+                var enc = encodeGroupKey(g.key);
                 var expanded = refExpandedGroupKeys.has(g.key);
-                var pendingN = g.records.filter(function (r) { return isPendingStatus(r.status); }).length;
+                var pendingN = g.records.filter(function (r) { return refRewardPending(r.status); }).length;
                 var paidN = g.records.filter(function (r) { return r.status === 'PAID'; }).length;
                 var caret = expanded ? 'ph-caret-down' : 'ph-caret-right';
+                var payee = g.payee || g.records[0] || {};
                 rows.push(
                     '<tr class="hover:bg-ops-50/40 bg-white/70">' +
-                    '<td class="px-2 py-3"><button type="button" class="ops-ref-toggle w-8 h-8 rounded-xl flex items-center justify-center text-ops-600 border border-transparent hover:border-ops-200" data-group-key="' + escapeHtml(enc) + '"><i class="ph ' + caret + '"></i></button></td>' +
-                    '<td class="px-4 py-3 font-mono text-xs">' + escapeHtml(g.code) + '</td>' +
-                    '<td class="px-4 py-3 font-semibold">' + escapeHtml(g.referrer) + '</td>' +
-                    '<td class="px-4 py-3 font-mono">' + g.records.length + '</td>' +
-                    '<td class="px-4 py-3 text-[11px]">待 ' + pendingN + ' · 已 ' + paidN + '</td>' +
-                    '<td class="px-4 py-3 text-right"></td></tr>'
+                    '<td class="px-2 py-3 align-middle">' +
+                    '<button type="button" class="ops-ref-toggle w-8 h-8 rounded-xl flex items-center justify-center text-ops-600 hover:bg-ops-50 border border-transparent hover:border-ops-200" data-group-key="' + escapeHtml(enc) + '" title="展开/收起">' +
+                    '<i class="ph ' + caret + ' text-lg"></i></button></td>' +
+                    '<td class="px-4 py-3 font-mono text-xs font-semibold text-slate-800">' + escapeHtml(g.code) + '</td>' +
+                    '<td class="px-4 py-3 font-semibold">' + escapeHtml(g.referrer) +
+                    (payee.real_name && payee.real_name !== g.referrer ? '<div class="text-[10px] text-slate-500 font-normal">' + escapeHtml(payee.real_name) + '</div>' : '') +
+                    '</td>' +
+                    '<td class="px-4 py-3 text-[11px]">' + refContactCell(payee) + '</td>' +
+                    '<td class="px-4 py-3"><span class="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-ops-100 text-ops-800 font-black font-mono">' + g.records.length + '</span></td>' +
+                    '<td class="px-4 py-3 text-[11px]"><span class="text-amber-600 font-bold">待 ' + pendingN + '</span> · <span class="text-emerald-600 font-bold">已 ' + paidN + '</span></td>' +
+                    '<td class="px-4 py-3 text-right whitespace-nowrap">' +
+                    '<button type="button" class="ops-bank px-3 py-1.5 rounded-xl text-[10px] font-bold bg-ops-50 text-ops-700 border border-ops-200 hover:bg-ops-100" data-group-key="' + escapeHtml(enc) + '">收款信息</button>' +
+                    '</td></tr>'
                 );
                 var detailHidden = expanded ? '' : 'hidden';
-                var inner = g.records.map(function (r) {
-                    var st = r.status === 'PAID' ? '<span class="text-emerald-600 font-bold">已结算</span>' : '<span class="text-amber-600 font-bold">待结算</span>';
-                    var canPay = isPendingStatus(r.status);
-                    return '<tr class="border-b border-indigo-50 last:border-0">' +
-                        '<td class="py-2 pr-3">' + escapeHtml(r.reward_amount) + '</td>' +
-                        '<td class="py-2 px-2 font-mono text-[10px]">' + escapeHtml(rewardIdStr(r).slice(0, 8)) + '…</td>' +
-                        '<td class="py-2 px-2">' + st + '</td>' +
-                        '<td class="py-2 pl-2 text-right">' +
-                        (canPay ? '<button type="button" class="ops-ref-mark-paid px-2 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" data-record-id="' + escapeHtml(rewardIdStr(r)) + '">标记已打款</button>' : '') +
-                        '</td></tr>';
+                var innerRows = g.records.slice().sort(function (a, b) {
+                    return String(b.qualified_at || b.create_time || '').localeCompare(String(a.qualified_at || a.create_time || ''));
+                }).map(function (r) {
+                    return (
+                        '<tr class="border-b border-indigo-100/60 last:border-0">' +
+                        '<td class="py-2 pr-3 font-medium text-slate-800">' + escapeHtml(r.referee_tenant_name || r.referee_tenant_id || '—') + '</td>' +
+                        '<td class="py-2 px-2 font-mono text-[10px] text-slate-500 whitespace-nowrap">' + escapeHtml(refFormatTime(r.qualified_at || r.create_time)) + '</td>' +
+                        '<td class="py-2 px-2 font-mono text-slate-700">¥' + escapeHtml(String(r.reward_amount != null ? r.reward_amount : '—')) + '</td>' +
+                        '<td class="py-2 px-2">' + refRewardStatusHtml(r.status) + '</td>' +
+                        '<td class="py-2 pl-2 text-right whitespace-nowrap">' + renderRewardActions(r) + '</td></tr>'
+                    );
                 }).join('');
                 rows.push(
-                    '<tr class="ops-ref-expand-row ' + detailHidden + ' bg-slate-50/90"><td colspan="6" class="p-3 pl-12">' +
-                    '<table class="w-full text-xs"><thead><tr><th class="text-left py-1">金额</th><th>ID</th><th>状态</th><th class="text-right">操作</th></tr></thead><tbody>' + inner + '</tbody></table></td></tr>'
+                    '<tr class="ops-ref-expand-row ' + detailHidden + ' bg-slate-50/90">' +
+                    '<td colspan="7" class="p-0">' +
+                    '<div class="px-3 py-3 pl-4 md:pl-14 border-t border-indigo-100/80">' +
+                    '<p class="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wider">组内有效推荐明细（逐笔结算）</p>' +
+                    '<div class="overflow-x-auto rounded-2xl border border-indigo-100/60 bg-white/90">' +
+                    '<table class="w-full text-left text-xs min-w-[640px]">' +
+                    '<thead class="bg-ops-50/60 text-[10px] uppercase font-bold text-ops-800">' +
+                    '<tr><th class="px-3 py-2">被推荐租户</th><th class="px-3 py-2">达标日</th><th class="px-3 py-2">奖励金额</th><th class="px-3 py-2">状态</th><th class="px-3 py-2 text-right">操作</th></tr></thead>' +
+                    '<tbody>' + innerRows + '</tbody></table></div></div></td></tr>'
                 );
             });
             tbody.innerHTML = rows.join('');
         }
 
+        function closeBank() {
+            var modal = el('ops-modal-bank');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function openBankModal(groupKey) {
+            selectedBankGroupKey = groupKey;
+            var groups = groupReferralEventsLive(list);
+            var g = groups.find(function (x) { return x.key === groupKey; });
+            if (!g) return;
+            var payee = g.payee || g.records[0] || {};
+            el('ops-modal-bank-sub').textContent = g.referrer + ' · ' + g.code;
+            var contactBox = el('ops-modal-bank-contact');
+            if (contactBox) {
+                var phone = payee.phone ? String(payee.phone) : '';
+                contactBox.innerHTML =
+                    (phone ? '<p>电话：<a href="tel:' + escapeHtml(phone) + '" class="text-ops-700 font-bold hover:underline">' + escapeHtml(phone) + '</a></p>' : '<p class="text-slate-400">未登记手机号</p>') +
+                    (payee.email ? '<p>邮箱：<span class="font-mono">' + escapeHtml(String(payee.email)) + '</span></p>' : '');
+            }
+            el('ops-modal-bank-content').textContent = refBuildPayeeBlock(payee);
+            var cnt = el('ops-modal-bank-count');
+            if (cnt) cnt.textContent = String(g.records.length);
+            el('ops-modal-bank').classList.remove('hidden');
+        }
+
+        async function markPaid(recordId) {
+            var r2 = await opsFetch('/api/v1/ops/referrals/rewards/' + recordId + '/mark-paid', { method: 'POST' });
+            var j2 = await r2.json();
+            if (!r2.ok) throw new Error((j2 && j2.message) || '标记失败');
+            appendAudit('REFERRAL_MARK_PAID', recordId);
+            return j2;
+        }
+
+        async function markPayable(recordId) {
+            var r2 = await opsFetch('/api/v1/ops/referrals/rewards/' + recordId + '/mark-payable', { method: 'POST' });
+            var j2 = await r2.json();
+            if (!r2.ok) throw new Error((j2 && j2.message) || '回退失败');
+            appendAudit('REFERRAL_MARK_PAYABLE', recordId);
+            return j2;
+        }
+
+        async function batchSettleGroupPending(groupKey) {
+            var pending = list.filter(function (r) {
+                return ((r.referral_code || '') + '\u0000' + (r.user_name || r.referrer_user_id)) === groupKey && refRewardPending(r.status);
+            });
+            if (!pending.length) {
+                alert('该组无待结算记录');
+                return;
+            }
+            if (!confirm('确认将本组 ' + pending.length + ' 笔待结算全部标记为已打款？')) return;
+            try {
+                for (var i = 0; i < pending.length; i++) {
+                    await markPaid(rewardIdStr(pending[i]));
+                }
+                closeBank();
+                await loadRewards();
+                alert('已批量标记 ' + pending.length + ' 笔');
+            } catch (err) {
+                alert(err.message || String(err));
+                loadRewards();
+            }
+        }
+
         async function loadRewards() {
             var tbody = el('ops-referral-body');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">加载中…</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">加载中…</td></tr>';
             try {
                 var res = await opsFetch('/api/v1/ops/referrals/rewards?status=ALL', { method: 'GET' });
                 var data = null;
@@ -1659,14 +1821,14 @@
                 }
                 list = Array.isArray(data) ? data : [];
                 if (!list.length) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">暂无推荐奖励记录</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">暂无推荐奖励记录</td></tr>';
                     var box = el('ops-ref-summary-cards');
                     if (box) box.innerHTML = '';
                     return;
                 }
                 render();
             } catch (e) {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-rose-600 text-sm">' + escapeHtml(e.message) + '</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-rose-600 text-sm">' + escapeHtml(e.message) + '</td></tr>';
             }
         }
 
@@ -1675,25 +1837,59 @@
             tbody.addEventListener('click', async function (e) {
                 var tgl = e.target.closest('.ops-ref-toggle');
                 if (tgl) {
-                    var k = decodeURIComponent(tgl.getAttribute('data-group-key') || '');
+                    var k = decodeGroupKey(tgl.getAttribute('data-group-key') || '');
                     if (refExpandedGroupKeys.has(k)) refExpandedGroupKeys.delete(k);
                     else refExpandedGroupKeys.add(k);
                     render();
+                    return;
+                }
+                var bank = e.target.closest('.ops-bank');
+                if (bank) {
+                    var gk = decodeGroupKey(bank.getAttribute('data-group-key') || '');
+                    if (gk) openBankModal(gk);
                     return;
                 }
                 var mp = e.target.closest('.ops-ref-mark-paid');
                 if (mp) {
                     var id = mp.getAttribute('data-record-id');
                     try {
-                        var r2 = await opsFetch('/api/v1/ops/referrals/rewards/' + id + '/mark-paid', { method: 'POST' });
-                        var j2 = await r2.json();
-                        appendAudit('REFERRAL_MARK_PAID', id);
-                        alert(j2.message || '已处理');
+                        var j = await markPaid(id);
+                        alert(j.message && j.idempotent ? j.message : '已标记为已打款');
+                        loadRewards();
+                    } catch (err) {
+                        alert(err.message || String(err));
+                    }
+                    return;
+                }
+                var mpen = e.target.closest('.ops-ref-mark-pending');
+                if (mpen) {
+                    var id2 = mpen.getAttribute('data-record-id');
+                    if (!confirm('确认将该笔奖励回退为待结算？')) return;
+                    try {
+                        var j2 = await markPayable(id2);
+                        alert(j2.message && j2.idempotent ? j2.message : '已改回待结算');
                         loadRewards();
                     } catch (err) {
                         alert(err.message || String(err));
                     }
                 }
+            });
+        }
+
+        var bclose = el('ops-modal-bank-close');
+        var bmodal = el('ops-modal-bank');
+        var bbatch = el('ops-btn-bank-batch-paid');
+        var bcloseOnly = el('ops-btn-bank-close-only');
+        if (bclose) bclose.addEventListener('click', closeBank);
+        if (bcloseOnly) bcloseOnly.addEventListener('click', closeBank);
+        if (bmodal) {
+            bmodal.addEventListener('click', function (ev) {
+                if (ev.target === bmodal) closeBank();
+            });
+        }
+        if (bbatch) {
+            bbatch.addEventListener('click', function () {
+                if (selectedBankGroupKey) batchSettleGroupPending(selectedBankGroupKey);
             });
         }
 

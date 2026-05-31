@@ -2,7 +2,7 @@
     <div class="tm-ops-glass rounded-tm-3xl p-5 md:p-6">
         <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-1"><i class="ph ph-seal-check text-ops-600"></i> 推荐奖励审批</h2>
         <p class="text-[10px] text-slate-500 leading-relaxed">仅统计「被推荐人已完成首次订阅」的有效记录。同一推荐人 / 同一推荐码可对应<strong class="text-ops-700">多条</strong>有效订阅，按组分列展示，结算按<strong class="text-ops-700">单条有效订阅</strong>标记。</p>
-        <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/referrals/rewards · POST /api/v1/ops/referrals/rewards/&#123;id&#125;/mark-paid</p>
+        <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/referrals/rewards · POST …/mark-paid · POST …/mark-payable</p>
     </div>
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="ops-ref-summary-cards"></div>
@@ -19,6 +19,7 @@
                         <th class="px-4 py-3 w-10"></th>
                         <th class="px-4 py-3">推荐码</th>
                         <th class="px-4 py-3">推荐人</th>
+                        <th class="px-4 py-3">联系方式</th>
                         <th class="px-4 py-3">有效订阅数</th>
                         <th class="px-4 py-3">结算进度</th>
                         <th class="px-4 py-3 text-right">操作</th>
@@ -33,9 +34,10 @@
 <div id="ops-modal-bank" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 tm-ops-modal-backdrop">
     <div class="bg-white rounded-tm-3xl shadow-2xl max-w-md w-full p-6 md:p-8 relative fade-in border border-indigo-100 max-h-[90vh] overflow-y-auto list-scrollbar-ops">
         <button type="button" id="ops-modal-bank-close" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
-        <h3 class="text-lg font-bold text-slate-800">收款信息</h3>
+        <h3 class="text-lg font-bold text-slate-800">收款与联系信息</h3>
         <p id="ops-modal-bank-sub" class="text-xs text-slate-500 mt-1 mb-2"></p>
-        <p id="ops-modal-bank-hint" class="text-[10px] text-slate-400 mb-4">该组内共 <span id="ops-modal-bank-count">0</span> 笔有效订阅；结算请在分组明细中逐笔操作。</p>
+        <div id="ops-modal-bank-contact" class="text-xs text-slate-600 mb-3 space-y-1"></div>
+        <p id="ops-modal-bank-hint" class="text-[10px] text-slate-400 mb-4">该组内共 <span id="ops-modal-bank-count">0</span> 笔有效订阅；结算请在分组明细中逐笔操作，或使用下方批量按钮。</p>
         <pre id="ops-modal-bank-content" class="text-[11px] bg-slate-50 rounded-2xl p-4 border border-slate-100 whitespace-pre-wrap font-mono text-slate-700"></pre>
         <div class="mt-4 flex flex-wrap gap-2">
             <button type="button" id="ops-btn-bank-batch-paid" class="flex-1 min-w-[140px] py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-xs font-bold shadow-md">本组待结全部标已结</button>

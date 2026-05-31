@@ -110,6 +110,18 @@
     text-align: center;
 }
 
+.tm-audit-th--unit,
+.tm-audit-td--unit {
+    width: 3.75rem;
+    min-width: 3.75rem;
+    text-align: center;
+}
+
+.tm-audit-unit-readonly {
+    background: #f8fafc;
+    color: #64748b;
+}
+
 .tm-audit-th--price,
 .tm-audit-td--price {
     width: 5.5rem;

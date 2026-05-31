@@ -36,20 +36,20 @@
 
     PM.el = function () {
         var ids = Array.prototype.slice.call(arguments);
-        var productModal = PM.getProductDetailModal();
-        if (productModal && !productModal.classList.contains('hidden')) {
-            for (var p = 0; p < ids.length; p++) {
-                if (!ids[p]) continue;
-                var inModal = productModal.querySelector('#' + ids[p]);
-                if (inModal) return inModal;
-            }
-        }
         var auditRoot = PM.getAuditProductRoot();
         if (auditRoot) {
             for (var i = 0; i < ids.length; i++) {
                 if (!ids[i]) continue;
                 var scoped = auditRoot.querySelector('#' + ids[i]);
                 if (scoped) return scoped;
+            }
+        }
+        var productModal = PM.getProductDetailModal();
+        if (productModal) {
+            for (var p = 0; p < ids.length; p++) {
+                if (!ids[p]) continue;
+                var inModal = productModal.querySelector('#' + ids[p]);
+                if (inModal) return inModal;
             }
         }
         for (var j = 0; j < ids.length; j++) {
@@ -553,9 +553,17 @@
         PM.showFormErrors('product-form-errors', []);
     };
 
+    PM.repopulateProductDetailForm = function (product) {
+        if (!product) return;
+        PM.populateCategorySelect(product.categoryId);
+        PM.populateSupplierSelect(product.supplierId || product.supplier);
+        PM.populateProductForm(product);
+    };
+
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
         await _openProductDetail.call(PM, productId);
+        PM.repopulateProductDetailForm(PM.currentProduct);
         PM.collapseAdvancedDrawer();
         var hint = PM.el('detail-sku-hint', 'detail-sku');
         var sku = PM.currentProduct && PM.currentProduct.sku;
@@ -896,6 +904,19 @@
         if (window.auditState && window.auditState.newProductDrafts && index != null && window.auditState.newProductDrafts[index]) {
             np = PM.mergeAuditProductPrefill(np, window.auditState.newProductDrafts[index]);
         }
+        var orderLineUnit = '';
+        if (window.auditState && window.auditState.aiStructured && window.auditState.aiStructured.order_data) {
+            var items = window.auditState.aiStructured.order_data.items || [];
+            var npName = String(np.name || np.product_name || '').trim();
+            for (var li = 0; li < items.length; li++) {
+                var it = items[li];
+                var raw = String(it.product_name_raw || it.matched_product_name || '').trim();
+                if (npName && raw === npName && it.unit) {
+                    orderLineUnit = String(it.unit).trim();
+                    break;
+                }
+            }
+        }
         try {
             await Promise.all([PM.loadCategories(), PM.loadSuppliers(), PM.loadWarehouses()]);
         } catch (e) { /* ignore */ }
@@ -914,7 +935,7 @@
         set('detail-product-name', np.name || np.product_name || '');
         set('detail-product-sku-input', aiSku);
         set('detail-product-price', price != null && price !== '' ? price : '');
-        set('detail-product-base-unit', np.base_unit || np.baseUnit || np.unit || '件');
+        set('detail-product-base-unit', orderLineUnit || np.base_unit || np.baseUnit || np.unit || '件');
         set('detail-product-stock', stock != null && stock !== '' ? stock : '');
         set('detail-product-warning-stock', np.warning_stock != null ? np.warning_stock : np.warningStock);
         set('detail-product-description', np.description || np.summary || '');

@@ -296,6 +296,7 @@
         window.auditState.aiStructured.order_data.items.push({
             product_name_raw: '',
             quantity: 1,
+            unit: '',
             price_at_time: 0,
             total_amount: 0,
             matched_product_id: 0
@@ -540,6 +541,11 @@
             if (item && item.product_name_raw && !pname) pname = item.product_name_raw;
 
             var baseUnit = '件';
+            if (typeof window.resolveAuditItemUnit === 'function') {
+                baseUnit = window.resolveAuditItemUnit(item, null);
+            } else if (item && item.unit) {
+                baseUnit = String(item.unit).trim() || '件';
+            }
             var sku = item && item.sku ? item.sku : '';
             var pid = await quickSaveProduct(pname, sku, baseUnit);
             var option = document.createElement('option');
@@ -551,6 +557,7 @@
             if (item) {
                 item.matched_product_id = pid;
                 item.matched_product_name = pname;
+                if (baseUnit) item.unit = baseUnit;
             }
             if (typeof window.handleAuditProductSelectChange === 'function') {
                 window.handleAuditProductSelectChange(sel);
@@ -564,6 +571,16 @@
             }
         }
     }
+
+    window.syncAuditOrderItemUnitFromDom = function (inp) {
+        var row = inp && inp.closest ? inp.closest('tr') : null;
+        if (!row || !window.auditState || !window.auditState.aiStructured) return;
+        var idx = Number(row.getAttribute('data-row-index'));
+        var items = window.auditState.aiStructured.order_data && window.auditState.aiStructured.order_data.items;
+        if (items && !isNaN(idx) && items[idx]) {
+            items[idx].unit = inp.value ? String(inp.value).trim() : '';
+        }
+    };
 
     /* ---------- 审核弹窗 / 列表 / 确认下单补丁 ---------- */
     function patchAuditAndPending() {
@@ -594,13 +611,18 @@
                 var displayMatchedName = (item.matched_product_name || '').trim();
                 var productNameValue = (displayMatchedName || item.product_name_raw || '').trim();
                 var matchedProductId = item.matched_product_id ? Number(item.matched_product_id) : 0;
+                var lineUnit = typeof window.resolveAuditItemUnit === 'function'
+                    ? window.resolveAuditItemUnit(item, matchedProductId > 0 ? matchedProductId : null)
+                    : (item.unit || '件');
+                var unitReadonly = matchedProductId > 0;
                 var selectOptions = (window.productList || []).map(function (product) {
                     var pid = window.getProductId(product);
                     var pname = window.getProductName(product);
                     var psku = window.getProductSku(product);
+                    var punit = typeof window.getProductUnit === 'function' ? window.getProductUnit(product) : '件';
                     var pprice = product.price != null ? product.price : (product.salePrice != null ? product.salePrice : '');
                     if (!pid || !pname) return '';
-                    return '<option value="' + pid + '" data-name="' + escapeHtml(pname) + '" data-sku="' + escapeHtml(psku) + '"' +
+                    return '<option value="' + pid + '" data-name="' + escapeHtml(pname) + '" data-sku="' + escapeHtml(psku) + '" data-unit="' + escapeHtml(punit) + '"' +
                         (pprice !== '' ? (' data-price="' + escapeHtml(String(pprice)) + '"') : '') + '>' +
                         escapeHtml(pname) + (psku ? ' (' + escapeHtml(psku) + ')' : '') + '</option>';
                 }).join('');
@@ -613,6 +635,11 @@
                     '<option value="">-- 选择产品 --</option>' + selectOptions + '</select></td>' +
                     '<td class="tm-audit-td tm-audit-td--qty">' +
                     '<input type="number" value="' + (item.quantity || 1) + '" min="1" class="form-input tm-audit-cell-input audit-qty-input text-center" oninput="recalcAuditOrderTotals()"></td>' +
+                    '<td class="tm-audit-td tm-audit-td--unit">' +
+                    '<input type="text" value="' + escapeHtml(lineUnit) + '" maxlength="20" class="form-input tm-audit-cell-input audit-unit-input text-center' +
+                    (unitReadonly ? ' tm-audit-unit-readonly' : '') + '"' +
+                    (unitReadonly ? ' readonly' : '') +
+                    ' oninput="syncAuditOrderItemUnitFromDom(this)"></td>' +
                     '<td class="tm-audit-td tm-audit-td--price">' +
                     '<input type="number" value="' + (item.price_at_time || 0) + '" step="0.01" min="0" class="form-input tm-audit-cell-input price-input text-center" oninput="recalcAuditOrderTotals()"></td>' +
                     '<td class="tm-audit-td tm-audit-td--sub text-right font-mono font-bold text-slate-900">' +
