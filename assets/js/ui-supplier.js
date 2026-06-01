@@ -252,6 +252,15 @@ window.SupplierModule = {
     setPurchaseAuxOpen: function(open) {
         var details = document.getElementById('purchase-aux-details');
         if (details) details.open = !!open;
+        if (open) {
+            var self = this;
+            requestAnimationFrame(function () {
+                var footer = document.querySelector('#purchase-modal .tm-purchase-modal-footer');
+                if (footer && typeof footer.scrollIntoView === 'function') {
+                    footer.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                }
+            });
+        }
     },
 
     syncFinStatusUI: function(purchase, opts) {
@@ -314,6 +323,13 @@ window.SupplierModule = {
         if (this._finEventsBound) return;
         this._finEventsBound = true;
         var self = this;
+        var auxDetails = document.getElementById('purchase-aux-details');
+        if (auxDetails && !auxDetails.__tmAuxToggleBound) {
+            auxDetails.__tmAuxToggleBound = true;
+            auxDetails.addEventListener('toggle', function () {
+                if (auxDetails.open) self.setPurchaseAuxOpen(true);
+            });
+        }
         var finSel = document.getElementById('purchase-fin-status');
         if (finSel) {
             finSel.addEventListener('change', function() { self.syncFinStatusUI(); });
@@ -1497,7 +1513,13 @@ window.SupplierModule = {
             if (sel && (item.productId != null || item.product_id != null)) {
                 sel.value = String(item.productId != null ? item.productId : item.product_id);
                 var savedUnit = item.unitName || item.unit_name || '';
-                self.onProductSelect(sel, savedUnit || undefined);
+                var savedPrice = item.unitPrice != null ? item.unitPrice : item.unit_price;
+                self.onProductSelect(sel, savedUnit || undefined, { preservePrice: true, unitPrice: savedPrice });
+            }
+            var priceInp = rows[idx].querySelector('.price-input');
+            if (priceInp && (item.unitPrice != null || item.unit_price != null)) {
+                var p = Number(item.unitPrice != null ? item.unitPrice : item.unit_price);
+                if (!isNaN(p)) priceInp.value = p;
             }
             var cb = rows[idx].querySelector('.purchase-inbound-check');
             if (cb) {
@@ -1649,7 +1671,8 @@ window.SupplierModule = {
         });
     },
 
-    onProductSelect: function(selectEl, preferredUnit) {
+    onProductSelect: function(selectEl, preferredUnit, options) {
+        options = options || {};
         const row = selectEl.closest('.purchase-item-row');
         if (!row) return;
         const productId = selectEl.value;
@@ -1659,7 +1682,7 @@ window.SupplierModule = {
         if (!productId) {
             unitSelect.innerHTML = '<option value="">--- 单位 ---</option>';
             unitSelect.className = 'form-input text-center unit-select';
-            priceInput.value = 0;
+            if (!options.preservePrice) priceInput.value = 0;
             this.calculatePurchaseTotal();
             return;
         }
@@ -1671,8 +1694,12 @@ window.SupplierModule = {
         if (product) {
             unitSelect.className = 'form-input text-center unit-select';
             this.fillPurchaseUnitSelect(unitSelect, product, preferredUnit);
-            var price = product.price != null ? product.price : (product.purchasePrice || 0);
-            if (price) priceInput.value = price;
+            if (!options.preservePrice) {
+                var price = product.price != null ? product.price : (product.purchasePrice || 0);
+                if (price) priceInput.value = price;
+            } else if (options.unitPrice != null && !isNaN(Number(options.unitPrice))) {
+                priceInput.value = Number(options.unitPrice);
+            }
         }
         this.calculatePurchaseTotal();
     },
@@ -1944,6 +1971,9 @@ window.SupplierModule = {
                     try { await window.ProductModule.loadProducts(); } catch (refreshErr) { /* ignore */ }
                 }
             }
+            try {
+                window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+            } catch (evErr) { /* ignore */ }
             return result;
         } catch (error) {
             console.error('Error saving purchase:', error);

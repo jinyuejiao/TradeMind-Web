@@ -368,16 +368,7 @@
         var su = PM.el('detail-product-sales-unit', 'product-sales-unit-select');
         if (!pu || !su) return;
 
-        var base = PM.getBaseUnitLabel();
-        var conv = PM.collectValidConversionsFromDraft();
-        var opts = [{ value: base, label: base + '（基本单位）' }];
-        conv.forEach(function (c) {
-            if (c.unitName === base) return;
-            opts.push({
-                value: c.unitName,
-                label: c.unitName + '(1' + c.unitName + '=' + c.ratio + base + ')'
-            });
-        });
+        var opts = PM.buildPurchaseUnitSelectOptions();
 
         function fillSelect(sel, selVal) {
             sel.innerHTML = opts.map(function (o) {
@@ -562,6 +553,7 @@
 
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
+        await PM.loadTenantUnitNames();
         await _openProductDetail.call(PM, productId);
         PM.repopulateProductDetailForm(PM.currentProduct);
         PM.collapseAdvancedDrawer();

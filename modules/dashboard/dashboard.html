@@ -1502,19 +1502,36 @@
                 if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
                     amountEl.value = '';
                     amountEl.disabled = true;
+                    amountEl.readOnly = false;
+                    amountEl.placeholder = '';
                 } else {
                     amountEl.disabled = false;
+                    amountEl.readOnly = (finVal === 'SETTLED');
                     if (finVal === 'SETTLED' && totals.remaining > 0) {
                         amountEl.value = totals.remaining.toFixed(2);
                     } else if (finVal === 'PARTIAL_PAID' && totals.remaining > 0) {
-                        var curAmt = amountEl.value ? tmRoundMoney(amountEl.value) : 0;
-                        if (curAmt <= 0) amountEl.value = totals.remaining.toFixed(2);
+                        amountEl.placeholder = '请输入本次收款（最多 ¥' + totals.remaining.toFixed(2) + '）';
+                        if (document.activeElement !== amountEl) {
+                            var curAmt = amountEl.value ? tmRoundMoney(amountEl.value) : 0;
+                            if (curAmt > totals.remaining + 0.001) amountEl.value = totals.remaining.toFixed(2);
+                        }
+                    } else {
+                        amountEl.placeholder = '';
                     }
                 }
             }
             if (payBtn) {
+                var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+                var accEl = document.getElementById('detail-receipt-account');
+                var accId = accEl && accEl.value ? parseInt(accEl.value, 10) : null;
                 payBtn.disabled = !canPay;
-                payBtn.title = finVal === 'SETTLED' && totals.remaining <= 0.001 ? '货款已结清，无需再收款' : '';
+                if (!canPay) {
+                    payBtn.title = finVal === 'SETTLED' && totals.remaining <= 0.001 ? '货款已结清，无需再收款' : '';
+                } else if (!virtualFin && (!accId || isNaN(accId))) {
+                    payBtn.title = '请选择收款账户';
+                } else {
+                    payBtn.title = '';
+                }
             }
             syncDetailShipUi(order);
             updateDetailBadges(order);
@@ -1609,23 +1626,23 @@
         function collectDetailShipItemIds() {
             var ids = [];
             var seen = {};
+            function pushId(n) {
+                if (Number.isNaN(n) || n <= 0 || seen[n]) return;
+                seen[n] = true;
+                ids.push(n);
+            }
             document.querySelectorAll('#order-detail-modal .detail-ship-check:checked:not(:disabled)').forEach(function (cb) {
                 var raw = cb.getAttribute('data-item-id') || cb.dataset.itemId || '';
-                var n = parseInt(raw, 10);
-                if (!Number.isNaN(n) && n > 0 && !seen[n]) {
-                    seen[n] = true;
-                    ids.push(n);
-                }
+                pushId(parseInt(raw, 10));
             });
             if (!ids.length && detailOrderItemsCache.length) {
                 detailOrderItemsCache.forEach(function (it, idx) {
                     if (it.isProcessed === true || it.is_processed === true) return;
                     var row = document.querySelectorAll('#order-detail-modal .order-item-row')[idx];
                     var cb = row ? row.querySelector('.detail-ship-check') : null;
-                    if (cb && cb.checked && !cb.disabled) {
-                        var mid = it.itemId != null ? it.itemId : it.item_id;
-                        if (mid != null && !seen[mid]) { seen[mid] = true; ids.push(parseInt(mid, 10)); }
-                    }
+                    if (!cb || !cb.checked || cb.disabled) return;
+                    var mid = it.itemId != null ? it.itemId : it.item_id;
+                    if (mid != null) pushId(parseInt(mid, 10));
                 });
             }
             return ids;
@@ -1803,6 +1820,12 @@
                 }
                 filterInProgressOrders();
                 showToast('发货成功');
+                if (typeof window.TM_emitOrderDataChanged === 'function' && currentDetailOrder) {
+                    window.TM_emitOrderDataChanged({
+                        custId: currentDetailOrder.custId != null ? currentDetailOrder.custId : currentDetailOrder.cust_id,
+                        orderId: currentDetailOrderId
+                    });
+                }
             } catch (e) {
                 showToast(e.message || '发货失败');
             }
@@ -3269,13 +3292,51 @@
             }
             var priceInp = row.querySelector('.price-input');
             if (priceInp && /^\d+$/.test(selectedValue)) {
-                var catalogPrice = selectedOption && selectedOption.getAttribute('data-price')
-                    ? parseFloat(selectedOption.getAttribute('data-price'))
-                    : getProductPriceById(selectedValue);
-                if (catalogPrice > 0 && (!priceInp.value || parseFloat(priceInp.value) <= 0)) {
-                    priceInp.value = catalogPrice.toFixed(2);
-                    item.price_at_time = catalogPrice;
+                var pid = parseInt(selectedValue, 10);
+                var custSelect = document.getElementById('order-customer');
+                var custId = custSelect && /^\d+$/.test(String(custSelect.value || ''))
+                    ? parseInt(custSelect.value, 10) : null;
+                function applyAuditLinePrice(val, title) {
+                    var n = parseFloat(val);
+                    if (!(n > 0)) return;
+                    if (!priceInp.value || parseFloat(priceInp.value) <= 0) {
+                        priceInp.value = n.toFixed(2);
+                        item.price_at_time = n;
+                    }
+                    priceInp.title = title || '';
                 }
+                function applyCatalogFallback() {
+                    var catalogPrice = selectedOption && selectedOption.getAttribute('data-price')
+                        ? parseFloat(selectedOption.getAttribute('data-price'))
+                        : getProductPriceById(selectedValue);
+                    applyAuditLinePrice(catalogPrice, '已按产品默认售价填充');
+                    if (typeof window.recalcAuditOrderTotals === 'function') window.recalcAuditOrderTotals();
+                }
+                if (custId) {
+                    window.wrappedFetch('/api/v1/rd/orders/last-unit-prices', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ custId: custId, productIds: [pid] })
+                    })
+                        .then(function (resp) {
+                            return window.handleApiResponse ? window.handleApiResponse(resp) : resp.json();
+                        })
+                        .then(function (data) {
+                            var map = (data && data.data) ? data.data : (data || {});
+                            var hist = map[String(pid)] != null ? parseFloat(map[String(pid)]) : null;
+                            if (hist > 0) {
+                                applyAuditLinePrice(hist, '已按该客户最近一次成交价填充');
+                            } else {
+                                applyCatalogFallback();
+                                return;
+                            }
+                            if (typeof window.recalcAuditOrderTotals === 'function') window.recalcAuditOrderTotals();
+                        })
+                        .catch(function () { applyCatalogFallback(); });
+                    return;
+                }
+                applyCatalogFallback();
+                return;
             }
             if (typeof window.recalcAuditOrderTotals === 'function') {
                 window.recalcAuditOrderTotals();
@@ -3327,6 +3388,9 @@
 
         // 切换审核标签页
         function switchAuditTab(tabName) {
+            if (tabName === 'order' && typeof syncAuditOrderDetailsFromDom === 'function') {
+                syncAuditOrderDetailsFromDom();
+            }
             // 隐藏所有标签页内容
             document.querySelectorAll('.sub-pane').forEach(pane => {
                 pane.classList.add('hidden');
@@ -3356,6 +3420,14 @@
             const tabBtn = document.getElementById(`tab-${tabName}`);
             if (tabBtn) tabBtn.classList.add('active');
             updateAuditFooterActions(tabName);
+
+            if (tabName === 'order' && typeof generateProductSelects === 'function') {
+                generateProductSelects();
+                if (typeof window.recalcAuditOrderTotals === 'function') window.recalcAuditOrderTotals();
+                if (typeof window.fillMissingAuditPrices === 'function') {
+                    window.fillMissingAuditPrices();
+                }
+            }
 
             if (tabName === 'product' && hasNewProducts(auditState.aiStructured)) {
                 ensureAuditProductRegistryMounted().then(function () {
@@ -3797,6 +3869,12 @@
                 filterInProgressOrders();
                 closeOrderDetail();
                 showToast('订单已保存');
+                if (typeof window.TM_emitOrderDataChanged === 'function') {
+                    window.TM_emitOrderDataChanged({
+                        custId: updated.custId != null ? updated.custId : updated.cust_id,
+                        orderId: currentDetailOrderId
+                    });
+                }
             })
             .catch(function (err) {
                 console.error('保存订单失败:', err);

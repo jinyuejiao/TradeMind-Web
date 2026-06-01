@@ -1047,6 +1047,14 @@ window.TM_scheduleShellOverlayRecovery = TM_scheduleShellOverlayRecovery;
 function TM_emitOrderDataChanged(detail) {
     detail = detail || {};
     try {
+        if (typeof window.loadDashboardOverviewStats === 'function') {
+            window.loadDashboardOverviewStats();
+        }
+        if (typeof window.TM_refreshDashboardPendingOrders === 'function') {
+            window.TM_refreshDashboardPendingOrders();
+        }
+    } catch (eStats) { /* ignore */ }
+    try {
         window.dispatchEvent(new CustomEvent('tm-order-data-changed', { detail: detail }));
     } catch (e) { /* ignore */ }
     try {

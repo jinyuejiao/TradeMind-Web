@@ -265,6 +265,8 @@
     window.TM_PendingOrdersStore = TM_PendingOrdersStore;
 
     /* ---------- 审核：小计重算、增删行、历史价、日期默认 ---------- */
+    window.fillMissingAuditPrices = fillMissingAuditPrices;
+
     window.recalcAuditOrderTotals = function () {
         var total = 0;
         document.querySelectorAll('#order-items-body tr').forEach(function (row) {
@@ -792,15 +794,18 @@
             if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
                 amountEl.value = '';
                 amountEl.disabled = true;
-                amountEl.readOnly = true;
+                amountEl.readOnly = false;
+                amountEl.placeholder = '';
             } else {
                 amountEl.disabled = false;
-                amountEl.readOnly = false;
+                amountEl.readOnly = (finVal === 'SETTLED');
                 amountEl.removeAttribute('disabled');
                 if (finVal === 'SETTLED' && remaining > 0) {
                     amountEl.value = remaining.toFixed(2);
-                } else if (finVal === 'PARTIAL_PAID' && (!amountEl.value || parseFloat(amountEl.value) <= 0) && remaining > 0) {
-                    amountEl.placeholder = '最多 ¥' + remaining.toFixed(2);
+                } else if (finVal === 'PARTIAL_PAID' && remaining > 0) {
+                    amountEl.placeholder = '请输入本次收款（最多 ¥' + remaining.toFixed(2) + '）';
+                } else {
+                    amountEl.placeholder = '';
                 }
             }
         }

@@ -14,7 +14,7 @@ window.ProductModule = {
     mapProductFromApi: function(apiProduct) {
         var stockVal = apiProduct.stockQuantity != null ? apiProduct.stockQuantity : apiProduct.stock;
         var stockNum = stockVal != null ? Number(stockVal) : 0;
-        var ucList = apiProduct.unitConversions;
+        var ucList = apiProduct.unitConversions || apiProduct.unit_conversions;
         return {
             id: apiProduct.productId || apiProduct.id,
             name: apiProduct.productName || apiProduct.name,
@@ -279,16 +279,82 @@ window.ProductModule = {
     purchaseGenGroups: [],
     purchaseGenPreviewRef: '',
 
+    /** 租户 unit_conversion 表去重后的单位名（默认入库/销售单位下拉） */
+    _tenantUnitNames: null,
+
     // ==================== 初始化函数 ====================
     init: async function() {
         console.log('[ProductModule] 初始化... 时间:', new Date().toISOString());
         await Promise.all([
             this.loadCategories(),
-            this.loadSuppliers()
+            this.loadSuppliers(),
+            this.loadTenantUnitNames()
         ]);
         this.initFilterOptions();
         await this.loadProducts();
         console.log('[ProductModule] 初始化完成');
+    },
+
+    loadTenantUnitNames: async function() {
+        try {
+            if (window.checkAuth && !window.checkAuth()) {
+                this._tenantUnitNames = [];
+                return this._tenantUnitNames;
+            }
+            const response = await window.wrappedFetch('/api/v1/rd/products/unit-conversions/all', { method: 'GET' });
+            const data = await window.handleApiResponse(response);
+            if (!data) {
+                this._tenantUnitNames = [];
+                return this._tenantUnitNames;
+            }
+            const list = data.data || data;
+            var names = [];
+            var seen = {};
+            if (Array.isArray(list)) {
+                list.forEach(function (uc) {
+                    var n = (uc.unitName || uc.unit_name || '').trim();
+                    if (n && !seen[n]) {
+                        seen[n] = true;
+                        names.push(n);
+                    }
+                });
+            }
+            this._tenantUnitNames = names;
+        } catch (e) {
+            console.warn('[ProductModule] 加载租户单位换算失败', e);
+            this._tenantUnitNames = [];
+        }
+        return this._tenantUnitNames;
+    },
+
+    buildPurchaseUnitSelectOptions: function() {
+        var base = this.getBaseUnitLabel();
+        var opts = [];
+        var seen = {};
+        function add(name, label) {
+            var n = (name || '').trim();
+            if (!n || seen[n]) return;
+            seen[n] = true;
+            opts.push({ value: n, label: label || n });
+        }
+        add(base, base + '（基本单位）');
+        this.collectValidConversionsFromDraft().forEach(function (c) {
+            add(c.unitName, c.unitName + '(1' + c.unitName + '=' + c.ratio + base + ')');
+        });
+        var cp = this.currentProduct || {};
+        (cp.unitConversions || []).forEach(function (c) {
+            var u = (c.unitName || c.unit_name || '').trim();
+            var ratio = Number(c.ratio != null ? c.ratio : c.perBase);
+            if (u && u !== base && ratio > 0 && !isNaN(ratio)) {
+                add(u, u + '(1' + u + '=' + ratio + base + ')');
+            }
+        });
+        (this._tenantUnitNames || []).forEach(function (n) {
+            if (n !== base) add(n, n);
+        });
+        if (cp.purchaseUnit) add(cp.purchaseUnit, cp.purchaseUnit);
+        if (cp.salesUnit) add(cp.salesUnit, cp.salesUnit);
+        return opts;
     },
 
     // ==================== 下拉菜单功能 ====================
@@ -1506,25 +1572,19 @@ window.ProductModule = {
     },
 
     rebuildPurchaseSalesUnitSelects: function(selectedPurchase, selectedSales) {
-        var pu = document.getElementById('product-purchase-unit-select');
-        var su = document.getElementById('product-sales-unit-select');
+        var pu = document.getElementById('detail-product-purchase-unit')
+            || document.getElementById('product-purchase-unit-select');
+        var su = document.getElementById('detail-product-sales-unit')
+            || document.getElementById('product-sales-unit-select');
         if (!pu || !su) return;
 
-        var base = this.getBaseUnitLabel();
-        var conv = this.collectValidConversionsFromDraft();
-        var opts = [];
-        opts.push({ value: base, label: base + '（基本单位）' });
-        conv.forEach(function (c) {
-            opts.push({
-                value: c.unitName,
-                label: c.unitName + '(1' + c.unitName + '=' + c.ratio + base + ')'
-            });
-        });
+        var opts = this.buildPurchaseUnitSelectOptions();
 
         function fillSelect(sel, selVal) {
+            var self = window.ProductModule;
             sel.innerHTML = opts.map(function (o) {
-                return '<option value="' + this.escHtmlAttr(o.value) + '">' + this.escHtmlText(o.label) + '</option>';
-            }, this).join('');
+                return '<option value="' + self.escHtmlAttr(o.value) + '">' + self.escHtmlText(o.label) + '</option>';
+            }).join('');
             if (selVal) {
                 var has = Array.prototype.some.call(sel.options, function (op) {
                     return op.value === selVal;
@@ -1533,8 +1593,8 @@ window.ProductModule = {
             }
         }
 
-        fillSelect.call(this, pu, selectedPurchase);
-        fillSelect.call(this, su, selectedSales);
+        fillSelect(pu, selectedPurchase);
+        fillSelect(su, selectedSales);
 
         if (!pu.value && opts.length) pu.selectedIndex = 0;
         if (!su.value && opts.length) su.selectedIndex = Math.min(1, opts.length - 1);
@@ -2126,15 +2186,26 @@ window.ProductModule = {
                     '</p><p class="text-[10px] text-slate-400 font-mono">SKU: ' +
                     self._escHtml(p.sku) +
                     '</p>' +
-                    '<div class="mt-3 space-y-2 text-xs"><div class="flex justify-between"><span class="text-slate-500">周期销量</span><span class="font-mono font-bold">' +
+                    '<p class="text-[10px] text-teal-700 font-bold mt-1">采购单位: ' +
+                    self._escHtml(p.purchaseUnit || p.baseUnit || '—') +
+                    (p.suggestBaseUnits != null
+                        ? (' · 约 ' + p.suggestBaseUnits + (p.baseUnit || '件') + '（已向上取整）')
+                        : '') +
+                    '</p>' +
+                    '<div class="mt-3 space-y-2 text-xs"><div class="flex justify-between"><span class="text-slate-500">周期销量(' +
+                    self._escHtml(p.baseUnit || '件') +
+                    ')</span><span class="font-mono font-bold">' +
                     (p.soldBaseInWindow != null ? p.soldBaseInWindow : 0) +
                     '</span></div>' +
-                    '<div class="flex justify-between items-center"><span class="text-slate-500">建议采购</span>' +
+                    '<div class="flex justify-between items-center gap-2"><span class="text-slate-500 shrink-0">建议采购</span>' +
+                    '<span class="text-[10px] text-slate-400 shrink-0">' +
+                    self._escHtml(p.purchaseUnit || p.baseUnit || '') +
+                    '</span>' +
                     '<input type="number" min="0" data-suggest-qty-product="' +
                     p.productId +
                     '" value="' +
                     (p.suggestQty != null ? p.suggestQty : 0) +
-                    '" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs text-right"></div></div></div>';
+                    '" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs text-right shrink-0"></div></div></div>';
             });
             html += '</div>';
 

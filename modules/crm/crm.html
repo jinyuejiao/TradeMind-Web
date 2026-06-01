@@ -108,12 +108,18 @@
             padding: 0;
             line-height: 1;
         }
+        .crm-alpha-btn.is-active {
+            background-color: #14B8A6 !important;
+            color: #fff !important;
+            box-shadow: 0 1px 3px rgba(20, 184, 166, 0.35);
+        }
+
         @media (max-width: 767px) {
             .crm-list-body-host {
-                min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 9.5rem);
+                min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 5rem);
             }
             html.tm-embedded .crm-list-body-host {
-                min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 8.5rem);
+                min-height: calc(100dvh - var(--tm-header-h, 3.5rem) - var(--tm-tabbar-h, 4.25rem) - 4rem);
             }
             .crm-alpha-rail {
                 position: absolute;
@@ -665,7 +671,8 @@
             var rail = document.getElementById('customer-alpha-rail');
             if (!host || !rail) return;
             if (window.innerWidth < 768) {
-                var hostH = host.clientHeight || 0;
+                var list = document.getElementById('customer-list-container');
+                var hostH = (list && list.clientHeight > 0) ? list.clientHeight : (host.clientHeight || 0);
                 var pad = 8;
                 var step = Math.max(10, Math.min(18, Math.floor((hostH - pad) / 26)));
                 rail.style.setProperty('--crm-alpha-step', step + 'px');
@@ -685,7 +692,7 @@
                 var cnt = counts[letter] || 0;
                 var empty = cnt === 0;
                 var cls = active
-                    ? 'bg-[#14B8A6] text-white shadow-sm'
+                    ? 'is-active'
                     : (empty ? 'text-slate-300' : 'text-slate-500 hover:text-brand-600 hover:bg-teal-50');
                 return '<button type="button" title="' + letter + ' · ' + cnt + ' 人" onclick="jumpToLetter(\'' + letter + '\')" '
                     + 'class="crm-alpha-btn rounded-md font-bold transition ' + cls + '">' + letter + '</button>';
@@ -788,9 +795,6 @@
                 const detail = normalizeCustomer(await response.json());
                 state.currentCustomer = detail;
                 state.activeLetter = getFirstLetter(detail.name);
-                if (state.activeLetter === '#') {
-                    state.activeLetter = '';
-                }
                 renderCustomerDetail(detail);
                 renderAlphaRail();
                 if (window.TmCrm && typeof window.TmCrm.loadCustomerTimeline === 'function') {
@@ -946,7 +950,9 @@
                     }
                 }
                 closeClientEditModal();
-                await loadCustomers();
+                var searchInput = document.getElementById('crmSearchInput');
+                if (searchInput) searchInput.value = '';
+                await loadCustomers({ ignoreKeyword: true });
             } catch (error) {
                 console.error(error);
                 alert(error.message || '保存失败');

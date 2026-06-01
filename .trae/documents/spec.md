@@ -6,13 +6,13 @@
 
 系统支持**多商户类型（业态）**SaaS 扩展：租户具有字典 **D013** 定义的 `merchant_type`，登录 JWT 与 API 网关向下游透传 **`X-Merchant-Type`**；前端通过 **`/fragments/<业态目录>/`** 与 **`tm-ui-loader.js`** 实现行业片段注入（详见 §3.1、§2.7）。
 
-系统已实现**商业化订阅与推荐奖励**底座：`subscription_plans` / `tenant_subscriptions` 管理业态×等级配额与订阅履历；注册默认试用（**D001/TRIAL**）；用户维度 **`referral_code`** 与提现字段；网关根据 JWT **`accessMode`** 做 **READ_ONLY / BILLING_ONLY** 路由限制（详见 §1.1.3–§1.1.6、§2.7、§2.8）。业务服务侧 **配额硬校验（AOP/Redis）** 仍为后续迭代项。
+系统已实现**商业化订阅与推荐奖励**底座：`subscription_plans` / `tenant_subscriptions` 管理业态×等级配额与订阅履历；注册默认试用（**D001/TRIAL**）；用户维度 **`referral_code`** 与提现字段；网关根据 JWT **`accessMode`** 做 **READ_ONLY / BILLING_ONLY** 路由限制（详见 §1.1.3–§1.1.6、§2.7、§2.8）。**独立推广员系统**（**`ROLE_PROMOTER`**）已落地：运维开号、`/api/v1/promoter/**` 门户 API、移动 H5 **`promoter-portal.html`**（含微信公众号 OAuth）、推广员单笔奖励 **150.00**（§2.8.6–§2.8.7、§3.1.8、§3.2.9）。业务服务侧 **配额硬校验（AOP/Redis）** 仍为后续迭代项。
 
 销售/进货单据已落地**物流状态 + 财务状态双线模型**（字典 **D010–D012** 物流、**D015–D017** 财务/流水类型）：物流驱动 **`warehouse_stock`** 精准出入库（明细 **`is_processed`** 幂等），财务经 **`record-payment`** 独立记账（详见 §1.3.7–§1.4.4、§2.9）。前端 **`tm-layout-engine.css`** 统一手机端三段式壳层与弹窗 Bottom Sheet（§3.1.0、§7.5）。
 
 ## 系统架构
 
-采用微服务架构，由多个独立服务组成，通过API网关统一对外提供服务；网关在校验 JWT 后 **保留** `Authorization` 并向业务服务注入 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**；并在解析令牌中的 **`accessMode`** 后执行订阅访问策略（见 §2.7）；**`/api/v1/ops/**`** 路径额外校验运维角色（§2.4.5）。
+采用微服务架构，由多个独立服务组成，通过API网关统一对外提供服务；网关在校验 JWT 后 **保留** `Authorization` 并向业务服务注入 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**；并在解析令牌中的 **`accessMode`** 后执行订阅访问策略（见 §2.7）；**`/api/v1/ops/**`** 路径额外校验运维角色（§2.4.5）；**`ROLE_PROMOTER`** 采用 deny-by-default 白名单，仅可访问推广员门户与登录（§2.4.7）。
 
 ---
 
@@ -64,10 +64,11 @@
 | payout_bank_name | VARCHAR | 100 | 是 | NULL | 开户行 |
 | payout_verified | BOOLEAN | - | 是 | FALSE | 提现资料是否已核验 |
 | last_login_ip | VARCHAR | 45 | 是 | NULL | 最近一次登录 IP（登录成功时写入） |
+| wechat_mp_openid | VARCHAR | 64 | 是 | NULL | 微信公众号 OAuth openid（推广员静默登录绑定），**UNIQUE**（非空时） |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
 
-奖励归属 **用户**，与租户经营账户 **`biz_accounts`** 分离；详见 §2.8。**运维账号**：种子租户 **`SYSTEM_OPS`** / 用户 **`ops_admin`**（`role_type=ROLE_OPS_ADMIN`）见 **`db/seed-data.sql`**。
+奖励归属 **用户**，与租户经营账户 **`biz_accounts`** 分离；详见 §2.8。**运维账号**：种子租户 **`SYSTEM_OPS`** / 用户 **`ops_admin`**（`role_type=ROLE_OPS_ADMIN`）见 **`db/seed-data.sql`**。**独立推广员**：同租户 **`SYSTEM_OPS`**，`role_type=ROLE_PROMOTER`，由运维 **`POST /api/v1/ops/promoters`** 开号（§2.8.6）。
 
 
 #### 1.1.2.1 新手导览状态表（user_onboarding_state）
@@ -957,8 +958,18 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 #### 2.4.5 运维 API 访问控制（2026-05-20）
 
 - 路径含 **`/api/v1/ops/`** 的请求在 JWT 校验通过后，额外要求 **`tenantId=SYSTEM_OPS`** 且 **`roleType=ROLE_OPS_ADMIN`**（**`AuthService.isOpsAdmin`**）；否则 **403**。
+- **`ROLE_PROMOTER`** 访问 **`/api/v1/ops/**`** 一律 **403**（§2.4.7），与运维角色校验独立。
 - 运维接口 **不在** 网关 auth-whitelist 中，必须携带有效 Bearer JWT（通常由 **`ops_admin`** 登录 TenantService 获得）。
 - 网关校验通过后 **保留** `Authorization: Bearer` 头转发下游（TenantService 等需二次解析 Claims）；同时注入 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**。
+
+#### 2.4.7 推广员 API 访问控制（2026-06-01）
+
+- **`ROLE_PROMOTER`** 采用 **deny-by-default 白名单**（**`AuthService.isPromoterAllowedPath`**）：
+  - **允许**：**`/api/v1/promoter/**`**（含 stats/records/payout/wechat）；**`POST /api/v1/tenant/login`**（账号密码登录）。
+  - **公开（auth-whitelist）**：**`/v1/promoter/wechat/config`**、**`/v1/promoter/wechat/login`**、**`/v1/promoter/wechat/bind`**、**`/v1/promoter/wechat/oauth-url`**。
+  - **拒绝**：**`/api/v1/ops/**`** 及全部商户业务 API（IM/CRM/RD 等）。
+- 网关路由：**`/api/v1/promoter/**`** → **`RewritePath`** → TenantService **`/api/v1/tenant/promoter/**`**（**`PromoterController`**）。
+- 下游 **`PromoterController`** 强制 **`referrer_user_id = JWT userId`**，不接受外部 referrer 参数。
 
 #### 2.4.6 模块间路径拉齐策略（兼容优先）
 
@@ -1039,6 +1050,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | AIService | `/api/v1/ai/**` | `2` | `/` | `/ai/*` | 可迁移 | 当前依赖网关剥离映射；后续可迁移为服务直接提供`/api/v1/ai/*`后改为`StripPrefix=0`。 |
 | IMService | `/api/v1/im/**` | `0` | `/`（默认） | `/api/v1/im/report`、`/api/v1/im/accounts` | 不建议动 | 控制器已统一完整前缀，网关透传简单稳定。 |
 | OpsService | `/api/v1/ops/**` | `0` | `/`（默认） | `/api/v1/ops/*` | 不建议动 | 运维专用；网关 **`isOpsAdmin`** 校验，StripPrefix=0 透传。 |
+| Promoter API | `/api/v1/promoter/**` | Rewrite→Tenant | `/api/v1/tenant` | `/promoter/*` | 不建议动 | 网关 **`RewritePath`** 至 TenantService；推广员 RBAC 见 §2.4.7。 |
 
 #### 2.6.1 分批平滑收敛建议
 
@@ -1183,14 +1195,38 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | 子账号管理 | **`TenantUserController`** + **`TenantUserManagementService`**（席位 **`quota_limits.max_users`**） |
 | 新手导览 | **`OnboardingController`**（`/onboarding/state` GET/PUT）、**`OnboardingStateService`**、**`OnboardingRoleCodes`**；登录 **`peekLoginSummary`** |
 | 订阅支付 | **`SubscriptionPaymentController`** + **`HccbPaymentNotifyController`**（杭州银行收银台） |
-| 运维中台 | **`OpsService`**（租户树、延期、推荐运维、AI 用量、公告）；网关 **`isOpsAdmin`** |
-| TenantService 配置项 | **`custom.subscription.grace-days-after-expiry`**（默认 `7`）；**`custom.referral.reward-per-qualified`**（默认 `100`，金额单位与业务约定一致） |
-| 网关 | **`AuthGlobalFilter`** + **`AuthService`**；白名单 / bypass / 运维 RBAC 见 §2.4.3–§2.4.5 |
+| 运维中台 | **`OpsService`**（租户树、延期、推荐运维、**推广员开号**、AI 用量、公告）；网关 **`isOpsAdmin`** |
+| 推广员门户 | **`PromoterController`**、**`PromoterService`**、**`PromoterWechatAuthService`**、**`UserPayoutProfileService`** |
+| TenantService 配置项 | **`custom.subscription.grace-days-after-expiry`**（默认 `7`）；**`custom.referral.reward-per-qualified`**（默认 `100`）；**`custom.wechat.mp.*`** |
+| 网关 | **`AuthGlobalFilter`** + **`AuthService`**；白名单 / bypass / 运维 RBAC（§2.4.5）/ 推广员 RBAC（§2.4.7） |
 | 待办 | 各业务服务 **COUNT/Redis 配额切面**、**`payout_account_no` 加密**、支付渠道正式回调与前端 **`referralCode` 表单项** |
 
 #### 2.8.5 用户侧扩展字段（§1.1.2）
 
-- **已实现列**：**`referral_code`**、**`payout_pay_type`**、**`payout_account_name`**、**`payout_account_no`**、**`payout_bank_name`**、**`payout_verified`**（与 **`biz_accounts`** 分离）。
+- **已实现列**：**`referral_code`**、**`payout_pay_type`**、**`payout_account_name`**、**`payout_account_no`**、**`payout_bank_name`**、**`payout_verified`**、**`wechat_mp_openid`**（与 **`biz_accounts`** 分离）。
+
+#### 2.8.6 独立推广员系统（2026-06-01）
+
+| 项 | 说明 |
+| --- | --- |
+| 角色 | **`ROLE_PROMOTER`**，租户固定 **`SYSTEM_OPS`**，与 **`ROLE_OPS_ADMIN`**、商户 **`ADMIN`** 等分离 |
+| 开号 | 运维 **`POST /api/v1/ops/promoters`** → OpsService 调 TenantService **`POST /internal/promoters`**（**`X-Internal-Token`**）→ **`PromoterProvisionService`** + **`ReferralCodeAllocator`** |
+| 门户 API | **`PromoterController`**（网关 **`/api/v1/promoter/**`**）：**`GET /stats`**、**`GET /records`**、**`GET/POST /payout-profile`**、微信 OAuth 子路径 |
+| 数据隔离 | 所有查询 **`WHERE referrer_user_id = JWT userId`**；禁止 Query/Body 传入 referrer |
+| 奖励金额 | 推荐人 **`role_type=ROLE_PROMOTER`** 时 **`ReferralQualificationService`** 硬编码 **`150.00`**；商户推荐仍读 **`custom.referral.reward-per-qualified`**（默认 100） |
+| 结算 | 仍由运维 **`/api/v1/ops/referrals/rewards/{id}/mark-paid`** 标记 **`PAID`** |
+| 前端 | **`promoter-portal.html`**（移动优先 H5，微信公众号菜单挂载） |
+| 配置 | **`custom.wechat.mp.app-id/app-secret/oauth-redirect-uri`**（TenantService）；OpsService **`custom.tenant-service.url`** + **`custom.security.internal-token`** |
+
+#### 2.8.7 推广员流水展示状态
+
+| 门户 status | 中文 | 判定 |
+| --- | --- | --- |
+| `REGISTERED` | 已注册 | **`referral_records.status=PENDING`** |
+| `SUBSCRIBED_PENDING` | 已订阅(待结算) | **`QUALIFIED`** 且奖励 **`ACCRUED`/`PAYABLE`** |
+| `SETTLED` | 已结算 | 奖励 **`PAID`** |
+
+被推荐人手机号：取 **`referee_tenant_id`** 对应最早 **`ADMIN`** 用户 **`phone`**，中间 4 位掩码（如 **`138****5678`**）。
 
 ### 2.9 单据状态机与精准库存同步（2026-05-25）
 
@@ -1690,11 +1726,29 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | `/api/v1/ops/referrals/rewards` | GET | 推荐奖励列表；Query `status` 可选 |
 | `/api/v1/ops/referrals/tree` | GET | 推荐关系树；Query **`rootUserId`** 必填 |
 | `/api/v1/ops/referrals/rewards/{id}/mark-paid` | POST | 标记奖励已发放 |
+| `/api/v1/ops/promoters` | POST | 手动创建推广员；Body `userName`、`password`（MD5）、`realName`、`phone`、可选 `email`；转发 TenantService **`/internal/promoters`** |
 | `/api/v1/ops/ai-usage/stats` | GET | AI Token 统计；Query `range`（默认 `week`）、`topN` |
 | `/api/v1/ops/announcements` | GET | 全站公告列表 |
 | `/api/v1/ops/announcements` | POST | 创建公告；Body `title`、`bodyMd`、`priority`、`activeFrom`/`activeUntil` |
 | `/api/v1/ops/announcements/{id}` | PUT | 更新公告 |
 | `/api/v1/ops/announcements/{id}` | DELETE | 删除公告 |
+
+#### 3.2.9 推广员门户 API（TenantService / PromoterController）
+
+> 网关入口 **`/api/v1/promoter/**`**；须 **`ROLE_PROMOTER`** + **`tenantId=SYSTEM_OPS`** JWT（微信 OAuth 登录/绑定路径见 §2.4.7 白名单）。
+
+| 接口路径 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/v1/promoter/stats` | GET | 累计收益、待结算、有效推荐数、姓名、推广码 |
+| `/api/v1/promoter/records` | GET | 推荐流水；Query `page`/`size`；手机号中间 4 位掩码 |
+| `/api/v1/promoter/payout-profile` | GET | 收款资料 |
+| `/api/v1/promoter/payout-profile` | POST | 保存收款资料（微信/支付宝/银行卡） |
+| `/api/v1/promoter/wechat/config` | GET | OAuth 是否启用、appId（公开） |
+| `/api/v1/promoter/wechat/oauth-url` | GET | 返回微信授权 URL；Query 可选 `state`（公开） |
+| `/api/v1/promoter/wechat/login` | POST | Body `{ "code" }`；已绑定 openid 则返回 JWT（公开） |
+| `/api/v1/promoter/wechat/bind` | POST | Body `bindToken`、`userName`、`password`（MD5）；首次绑定（公开） |
+| `/api/v1/promoter/wechat/bind-current` | POST | 已登录推广员绑定 pending openid |
+| `/api/v1/tenant/internal/promoters` | POST | 内部开号；Header **`X-Internal-Token`**；Body 同运维开号 |
 
 ---
 
@@ -2002,6 +2056,7 @@ TM_Project/
     │   │   └── product-overlays.html  # 产品弹窗 HTML 片段
     │   ├── supply-chain/
     │   └── smart-ops/
+    ├── promoter-portal.html   # 推广员移动 H5（微信 OAuth + 收益/流水/收款）
 ```
 
 ---
