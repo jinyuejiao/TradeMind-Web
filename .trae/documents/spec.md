@@ -211,7 +211,7 @@
 | id | UUID PK | 主键 |
 | referrer_user_id | INT FK | 获奖推荐人 |
 | referral_record_id | UUID FK | 关联 **`referral_records`** |
-| reward_amount | DECIMAL(12,2) | 金额；单笔默认取自 **`custom.referral.reward-per-qualified`** |
+| reward_amount | DECIMAL(12,2) | 金额；商户推荐默认 **`custom.referral.reward-per-qualified`**（100）；**`ROLE_PROMOTER`** 固定 **150.00** |
 | status | VARCHAR(32) | **`ACCRUED`** / **`PAYABLE`** / **`PAID`** / **`REJECTED`** |
 | paid_at | TIMESTAMP | 发放时间 |
 | create_time | TIMESTAMP | 创建时间 |
@@ -1421,6 +1421,27 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 - **推荐奖励详情**：**`/modules/membership/referral-rewards-modal.html`** + **`referral-rewards.js`**（名单脱敏、提现收款信息）；由 **`injectMemberAuxModals()`** 注入。
 - **支付回站**：`sessionStorage.tm_pending_subscription_pay_txnOrderId`；轮询 **`/subscription/payment/status`** 成功后 **`openMemberModal()`**。
 
+#### 3.1.8 推广员移动门户（promoter-portal.html）
+
+- **入口 URL**：生产 **`https://trademind.com.cn/promoter-portal.html`**；本地 **`http://localhost:9013/promoter-portal.html`**；微信公众号自定义菜单指向该 H5。
+- **布局**：顶部姓名 + **`JY` 推广码**；三卡片（累计收益 / 待结算 / 有效推荐）；Tab「推荐流水」「收款账户」。
+- **Token**：**`localStorage.tm_promoter_token`**（与商户 **`token`** 隔离）。
+- **登录**：
+  - 非微信：账号 + 密码 → **`POST /api/v1/tenant/login`**，校验 **`roleType=ROLE_PROMOTER`**；
+  - 微信内：OAuth **`snsapi_userinfo`** → **`POST /api/v1/promoter/wechat/login`**；未绑定则账号密码 **`POST /api/v1/promoter/wechat/bind`** 或登录后 **`/wechat/bind-current`**。
+- **收款**：**`GET/POST /api/v1/promoter/payout-profile`**，字段与商户 **`referral-rewards.js`** 一致（微信/支付宝/银行卡）。
+
+**微信公众号 OAuth 配置流程（运维/运营）**：
+
+1. 登录 [微信公众平台](https://mp.weixin.qq.com/) → **设置与开发** → **账号开发信息**，记录 **AppID**、**AppSecret**。
+2. **设置与开发** → **功能设置** → **网页授权域名**：填写 **`trademind.com.cn`**（不含协议与路径）；按提示上传校验文件至静态站点根目录。
+3. 部署环境变量（TenantService）：
+   - **`WECHAT_MP_APP_ID`**、**`WECHAT_MP_APP_SECRET`**
+   - **`WECHAT_MP_OAUTH_REDIRECT_URI=https://trademind.com.cn/promoter-portal.html`**
+4. 公众号 **自定义菜单** 添加链接：`https://trademind.com.cn/promoter-portal.html`（建议菜单名「推广中心」）。
+5. 运维 **`POST /api/v1/ops/promoters`** 为推广员开号；推广员首次在微信内打开 → OAuth → 账号密码绑定 → 之后静默登录。
+6. 联调：微信内访问门户，确认 **`/api/v1/promoter/wechat/config`** 返回 **`oauthEnabled:true`**，授权回调 URL 带 **`code`** 后可进入主页。
+
 ### 3.2 后端服务模块
 
 #### 3.2.1 租户服务（TenantService）
@@ -2069,7 +2090,8 @@ TM_Project/
 - Token 有效期以配置中心 `jwtTtl` 为准（文档示例常为 24 小时）
 - 经网关访问时：下游业务服务通过 **`Authorization: Bearer`**（TenantService 等二次解析）及 **`X-Tenant-Id`、`X-User-Id`、`X-User-Role`、`X-Merchant-Type`** 获取用户与租户上下文（身份头由网关注入，勿信任浏览器随意伪造 Header）
 - **`/api/v1/ops/**`** 仅限 **`tenantId=SYSTEM_OPS`** 且 **`roleType=ROLE_OPS_ADMIN`**
-- 服务间通过内部 Token 验证；**`/internal/subscription/activate-paid`** 依赖 **`X-Internal-Token`**（与 **`TenantService`** 配置一致），**不得**暴露给浏览器
+- **`ROLE_PROMOTER`** 仅可访问 **`/api/v1/promoter/**`** 与 **`POST /api/v1/tenant/login`**；**禁止**访问运维与商户业务 API（§2.4.7）
+- 服务间通过内部 Token 验证；**`/internal/subscription/activate-paid`**、**`/internal/promoters`** 依赖 **`X-Internal-Token`**（与 **`TenantService`** 配置一致），**不得**暴露给浏览器
 
 ### 9.2 数据隔离
 
@@ -2094,6 +2116,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.24 | 2026-06-01 | **独立推广员系统**：§1.1.2 **`wechat_mp_openid`**；§2.4.7 推广员网关白名单；§2.8.6–§2.8.7 开号/奖励 150/流水状态；§3.1.8 **`promoter-portal.html`** 与微信公众号 OAuth 流程；§3.2.8 **`POST /ops/promoters`**；§3.2.9 推广员 API；**`PromoterController`**、**`InternalPromoterController`**、网关 **`RewritePath`** |
 | v1.23 | 2026-05-31 | **CRM 客户双标签**：§1.2.1 增补 `cust_segment`、`tags_computed_at`；§1.2.2 价值+特色打标规则；**D009** 扩展 `NEW`/`HIGH_VALUE`；启用 **D014** `CUSTOMER_SEGMENT`；§3.1.2、§3.2.3 API 响应与写约束、`/customers/tags/recalc` |
 | v1.22 | 2026-05-28 | **数据库初始化引擎规整**：废弃 **`production-schema-v1.sql`** / **`production-seed-v1.sql`** / **`migrations/legacy/`**；统一为 **`InitCfgService/db/schema-production.sql`**（33 表，含 **`production`**、双维度状态列、**`uq_products_tenant_sku`**）+ **`seed-data.sql`** + **`validateCoreSchema()`**；字典/订阅种子迁入 SQL；**`DictionaryInitService`**、**`SubscriptionPlanSeedService`** 废弃；新增 **`docs/Database_Deployment_Guide.md`**、**`db/check_schema.sql`**；§1 文首、§2.8.3–§2.8.4、§2.9.4、§3.2.2、§8 同步 |
 | v1.21 | 2026-05-25 | **单据状态机与库存**：§1 增补 `orders`/`order_items`/`purchases`/`purchase_items` 财务与 **`is_processed`** 列、**`biz_account_ledger.biz_type_code`**；**`alter_document_status_inventory.sql`**；字典 **D010–D012** 物流重构、**D015–D017** 全表；§1.4.4 入账规则改为 **`record-payment`/`ship`/`inbound`** 双线解耦；§2.9 状态机与迁移。**前端**：§3.1.0 **`tm-layout-engine.css`** 三段式壳层 + **`TM_applyDialogShell`** Sheet；§3.1.1 工作台进行中单据双维筛选/详情编辑/终态移除；§3.1.3 产品类别可空、单位换算最多 2 行、高级配置展开修复；§3.1.4 供应链弹窗 Sheet 与进货底部仓库/付款区；§3.2.3 CRM 时间轴 Badge；§3.2.4–3.2.5 新 API；§6.3–§6.4 流程；§7.5、§8 目录树 |
