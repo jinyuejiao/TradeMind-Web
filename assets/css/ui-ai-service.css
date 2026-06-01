@@ -1,0 +1,86 @@
+/**
+ * TradeMind — AI 语音/拍照弹窗：设备等待态 + 折叠屏按钮稳定
+ */
+
+.tm-ai-device-waiting {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: inherit;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.tm-ai-device-waiting.hidden {
+    display: none !important;
+}
+
+#voice-modal > div:not(.absolute),
+#photo-modal .modal-content-box {
+    position: relative;
+}
+
+#voice-modal .tm-ai-modal-body,
+#photo-modal .tm-ai-modal-body {
+    position: relative;
+    min-height: 0;
+}
+
+#voice-modal .tm-ai-modal-actions,
+#photo-modal .tm-ai-modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+    #voice-modal > div:not(.absolute) {
+        max-height: min(
+            86dvh,
+            calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem)
+        );
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #photo-modal .modal-content-box {
+        max-height: min(
+            88dvh,
+            calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem)
+        );
+    }
+
+    #voice-modal button,
+    #photo-modal #photo-submit-btn,
+    #photo-modal .tm-ai-modal-actions button {
+        min-height: 3rem;
+        flex-shrink: 0;
+        width: 100%;
+    }
+
+    #voice-modal .flex.gap-3,
+    #photo-modal .grid.grid-cols-2 {
+        flex-shrink: 0;
+    }
+}
+
+@supports not (height: 100dvh) {
+    @media (max-width: 767px) {
+        #voice-modal > div:not(.absolute) {
+            max-height: min(86vh, calc(100vh - 1.5rem));
+        }
+
+        #photo-modal .modal-content-box {
+            max-height: min(88vh, calc(100vh - 1rem));
+        }
+    }
+}

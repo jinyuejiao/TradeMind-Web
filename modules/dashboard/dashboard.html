@@ -5,6 +5,8 @@
     <script src="../../assets/js/api-client.js"></script>
     <script src="../../assets/js/tm-metrics.js?v=20260528metrics"></script>
     <script src="../../assets/js/dashboard-voice-upload.js?v=20260524"></script>
+    <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
+    <script src="../../assets/js/ui-ai-service.js?v=20260601"></script>
     <script src="../../assets/js/tm-oss-path.js?v=20260527"></script>
     <script src="../../assets/js/tm-oss-upload.js?v=20260527"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
@@ -17,6 +19,7 @@
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260531unit">
     <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260531ordfix">
+    <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
 
     <style>
         body {
@@ -566,7 +569,11 @@
 
     <!-- ================= [弹窗 1] 语音输入交互 ================= -->
     <div id="voice-modal" class="tm-dialog-root hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur" data-tm-dialog-variant="center">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center fade-in">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-10 shadow-2xl text-center fade-in tm-ai-modal-body">
+            <div id="voice-device-waiting" class="tm-ai-device-waiting hidden" aria-live="polite" aria-hidden="true">
+                <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                <p data-tm-device-wait-text class="text-sm font-bold text-brand-600">正在等待设备响应...</p>
+            </div>
             <div id="voice-ready-ui">
                 <div id="voice-onboarding-tips" class="hidden">
                     <p class="voice-tip-title">推荐说法格式</p>
@@ -577,14 +584,18 @@
                 <div class="w-24 h-24 bg-slate-100 rounded-full mx-auto flex items-center justify-center text-slate-300 mb-8"><i class="ph ph-microphone-stage text-5xl"></i></div>
                 <h3 class="text-xl font-black text-slate-800 mb-2">语音提单助手</h3>
                 <p class="text-xs text-slate-400 leading-relaxed mb-10 px-4">请点击下方按钮开始描述您的订单内容</p>
-                <button onclick="startVoiceRecording()" class="btn-brand btn-click-effect w-full py-4 rounded-2xl font-bold shadow-xl">开始录音</button>
+                <div class="tm-ai-modal-actions">
+                    <button onclick="startVoiceRecording()" class="btn-brand btn-click-effect w-full py-4 rounded-2xl font-bold shadow-xl">开始录音</button>
+                </div>
             </div>
 
             <div id="voice-active-ui" class="hidden">
                 <div id="voice-pulse-icon" class="w-24 h-24 bg-brand-500 rounded-full mx-auto flex items-center justify-center text-white mb-8"><i class="ph ph-microphone text-5xl"></i></div>
                 <div class="flex items-center justify-center gap-2 mb-2"><span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span><span class="text-lg font-black text-slate-800">正在录音...</span></div>
                 <p class="text-2xl font-mono font-bold text-brand-600 mb-10" id="voice-timer">00:00</p>
-                <button type="button" id="voice-stop-btn" onclick="stopVoiceRecording()" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl touch-manipulation select-none" aria-label="停止并提交解析">停止并提交解析</button>
+                <div class="tm-ai-modal-actions">
+                    <button type="button" id="voice-stop-btn" onclick="stopVoiceRecording()" class="btn-click-effect w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl touch-manipulation select-none" aria-label="停止并提交解析">停止并提交解析</button>
+                </div>
             </div>
 
             <!-- 核心修复：AI 处理加载态容器 -->
@@ -610,10 +621,14 @@
 
     <!-- ================= [弹窗 2] 拍照识别弹窗 ================= -->
     <div id="photo-modal" class="tm-dialog-root hidden fixed inset-0 z-[100] flex items-center justify-center p-4 modal-blur" data-tm-dialog-variant="center">
-        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden fade-in modal-content-box text-left">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden fade-in modal-content-box text-left tm-ai-modal-body">
             <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h3 class="font-black text-slate-800 text-lg tracking-tight">选择识别来源</h3>
                 <button onclick="closePhotoModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+            <div id="photo-device-waiting" class="tm-ai-device-waiting hidden" aria-live="polite" aria-hidden="true">
+                <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                <p data-tm-device-wait-text class="text-sm font-bold text-brand-600">正在等待设备响应...</p>
             </div>
             <div class="p-8 space-y-6">
                 <div class="grid grid-cols-2 gap-4">
@@ -645,7 +660,9 @@
                     <button onclick="resetPhoto()" class="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><i class="ph ph-x-bold"></i></button>
                 </div>
                 <!-- 核心修复：初始 disabled 状态 -->
-                <button id="photo-submit-btn" disabled onclick="submitPhoto()" class="btn-brand btn-click-effect w-full py-4 rounded-2xl font-bold shadow-xl">提交并开始识别</button>
+                <div class="tm-ai-modal-actions">
+                    <button id="photo-submit-btn" disabled onclick="submitPhoto()" class="btn-brand btn-click-effect w-full py-4 rounded-2xl font-bold shadow-xl">提交并开始识别</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1054,19 +1071,29 @@
         }
 
         function stopAllVoiceTracks() {
+            var aiSvc = window.TM_AIService;
             if (localStream) {
-                localStream.getTracks().forEach(function (track) {
-                    try {
-                        track.stop();
-                        console.log('[Voice] track stopped:', track.kind, track.readyState);
-                    } catch (e) { /* ignore */ }
-                });
+                if (aiSvc && typeof aiSvc.stopMediaStream === 'function') {
+                    aiSvc.stopMediaStream(localStream);
+                } else {
+                    localStream.getTracks().forEach(function (track) {
+                        try {
+                            track.stop();
+                            console.log('[Voice] track stopped:', track.kind, track.readyState);
+                        } catch (e) { /* ignore */ }
+                    });
+                }
                 localStream = null;
+                window.localStream = null;
             }
             if (recorder && recorder.stream) {
-                recorder.stream.getTracks().forEach(function (track) {
-                    try { track.stop(); } catch (e2) { /* ignore */ }
-                });
+                if (aiSvc && typeof aiSvc.stopMediaStream === 'function') {
+                    aiSvc.stopMediaStream(recorder.stream);
+                } else {
+                    recorder.stream.getTracks().forEach(function (track) {
+                        try { track.stop(); } catch (e2) { /* ignore */ }
+                    });
+                }
             }
         }
 
@@ -4069,9 +4096,23 @@
                 tmVoiceNotify('工作台语音功能加载中，请稍候再试', 'info');
                 return;
             }
-            if (typeof MediaRecorder === 'undefined' ||
+            var aiSvc = window.TM_AIService;
+            var support = aiSvc && typeof aiSvc.checkMediaSupport === 'function'
+                ? aiSvc.checkMediaSupport('audio')
+                : null;
+            if (support && !support.supported) {
+                if (support.reason === 'HTTPS_REQUIRED') {
+                    tmVoiceNotify('浏览器安全策略限制：录音功能仅在 HTTPS 或 localhost 下可用', 'error');
+                } else if (tmVoiceIsWeChatInApp()) {
+                    tmVoiceNotify('当前微信内浏览器可能不支持录音，请使用系统浏览器打开本页', 'error');
+                } else {
+                    tmVoiceNotify('当前浏览器不支持录音，请使用 Chrome / Safari 最新版', 'error');
+                }
+                return;
+            }
+            if (!support && (typeof MediaRecorder === 'undefined' ||
                 !navigator.mediaDevices ||
-                typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                typeof navigator.mediaDevices.getUserMedia !== 'function')) {
                 if (tmVoiceIsWeChatInApp()) {
                     tmVoiceNotify('当前微信内浏览器可能不支持录音，请使用系统浏览器打开本页', 'error');
                 } else {
@@ -4210,14 +4251,28 @@
 
         // 开始录音
         async function startVoiceRecording() {
+            var aiSvc = window.TM_AIService;
             try {
                 if (!tmVoiceIsDashboardReady()) {
                     tmVoiceNotify('工作台语音功能加载中，请稍候再试', 'info');
                     return;
                 }
-                if (typeof MediaRecorder === 'undefined' ||
+                var support = aiSvc && typeof aiSvc.checkMediaSupport === 'function'
+                    ? aiSvc.checkMediaSupport('audio')
+                    : null;
+                if (support && !support.supported) {
+                    if (support.reason === 'HTTPS_REQUIRED') {
+                        tmVoiceNotify('浏览器安全策略限制：录音功能仅在 HTTPS 或 localhost 下可用', 'error');
+                    } else if (tmVoiceIsWeChatInApp()) {
+                        tmVoiceNotify('当前微信内浏览器可能不支持录音，请使用系统浏览器打开', 'error');
+                    } else {
+                        tmVoiceNotify('当前浏览器不支持录音', 'error');
+                    }
+                    return;
+                }
+                if (!support && (typeof MediaRecorder === 'undefined' ||
                     !navigator.mediaDevices ||
-                    typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                    typeof navigator.mediaDevices.getUserMedia !== 'function')) {
                     if (tmVoiceIsWeChatInApp()) {
                         tmVoiceNotify('当前微信内浏览器可能不支持录音，请使用系统浏览器打开', 'error');
                     } else {
@@ -4233,7 +4288,12 @@
                 setVoiceStopButtonLoading(false);
                 bindVoiceStopButton();
 
-                var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                var stream;
+                if (aiSvc && typeof aiSvc.requestUserMedia === 'function') {
+                    stream = await aiSvc.requestUserMedia({ audio: true }, { id: 'voice-device-waiting' });
+                } else {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                }
                 localStream = stream;
                 window.localStream = stream;
 
@@ -4281,7 +4341,9 @@
                 startVoiceTimer();
             } catch (error) {
                 console.error('[Voice] 开始录音失败:', error);
-                tmVoiceNotify('获取麦克风权限失败，请检查权限设置', 'error');
+                if (!(aiSvc && typeof aiSvc.isPermissionDeniedError === 'function' && aiSvc.isPermissionDeniedError(error))) {
+                    tmVoiceNotify('获取麦克风权限失败，请检查权限设置', 'error');
+                }
                 stopAllVoiceTracks();
                 closeVoiceModal();
             }
@@ -4573,44 +4635,53 @@
 
         // 关闭拍照模态框
         function closePhotoModal() {
-            // 释放摄像头资源
+            var aiSvc = window.TM_AIService;
             if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
+                if (aiSvc && typeof aiSvc.stopMediaStream === 'function') {
+                    aiSvc.stopMediaStream(cameraStream);
+                } else {
+                    cameraStream.getTracks().forEach(function (track) { track.stop(); });
+                }
                 cameraStream = null;
-                
-                const video = document.getElementById('camera-video');
+
+                var video = document.getElementById('camera-video');
                 if (video) {
                     video.srcObject = null;
                 }
-                
-                const cameraPreviewArea = document.getElementById('camera-preview-area');
+
+                var cameraPreviewArea = document.getElementById('camera-preview-area');
                 if (cameraPreviewArea) {
                     cameraPreviewArea.classList.add('hidden');
                 }
             }
-            
+
             document.getElementById('photo-modal').classList.add('hidden');
         }
 
         // 处理照片选择
-        function handlePhotoSelected(input) {
+        async function handlePhotoSelected(input) {
             try {
                 if (input.files && input.files[0]) {
-                    const file = input.files[0];
-                    const reader = new FileReader();
-                    
-                    reader.onload = function(e) {
-                        const preview = document.getElementById('image-preview');
-                        const previewArea = document.getElementById('photo-preview-area');
-                        const submitBtn = document.getElementById('photo-submit-btn');
-                        window.selectedImageFile = file;
+                    var file = input.files[0];
+                    var aiSvc = window.TM_AIService;
+                    var processed = file;
+                    if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                        processed = await aiSvc.compressImageIfNeeded(file);
+                    }
+                    var reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        var preview = document.getElementById('image-preview');
+                        var previewArea = document.getElementById('photo-preview-area');
+                        var submitBtn = document.getElementById('photo-submit-btn');
+                        window.selectedImageFile = processed;
                         window.capturedImageBlob = null;
                         preview.src = e.target.result;
                         previewArea.classList.remove('hidden');
                         submitBtn.disabled = false;
                     };
-                    
-                    reader.readAsDataURL(file);
+
+                    reader.readAsDataURL(processed);
                 }
             } catch (error) {
                 console.error('处理照片选择失败:', error);
@@ -4623,61 +4694,67 @@
         
         // 启动摄像头
         async function startCamera() {
+            var aiSvc = window.TM_AIService;
             try {
-                // 检查运行环境
-                if (window.location.hostname !== 'localhost' && window.location.protocol !== 'https:') {
-                    showToast('浏览器安全策略限制：摄像头功能仅在 HTTPS 或 localhost 下可用');
-                    return;
-                }
-                
-                // 获取摄像头权限，使用ideal约束确保兼容性
-                const constraints = {
+                var constraints = {
                     video: {
-                        facingMode: { ideal: "environment" },
+                        facingMode: { ideal: 'environment' },
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
                 };
-                
-                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                // 显示摄像头预览
-                const video = document.getElementById('camera-video');
-                const cameraPreviewArea = document.getElementById('camera-preview-area');
-                const photoPreviewArea = document.getElementById('photo-preview-area');
-                
+
+                if (aiSvc && typeof aiSvc.requestUserMedia === 'function') {
+                    cameraStream = await aiSvc.requestUserMedia(constraints, { id: 'photo-device-waiting' });
+                } else {
+                    if (window.location.hostname !== 'localhost' && window.location.protocol !== 'https:') {
+                        showToast('浏览器安全策略限制：摄像头功能仅在 HTTPS 或 localhost 下可用');
+                        return;
+                    }
+                    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                }
+
+                var video = document.getElementById('camera-video');
+                var cameraPreviewArea = document.getElementById('camera-preview-area');
+                var photoPreviewArea = document.getElementById('photo-preview-area');
+
                 video.srcObject = cameraStream;
                 cameraPreviewArea.classList.remove('hidden');
                 photoPreviewArea.classList.add('hidden');
-                
-                // 确保视频播放
-                video.play().catch(error => {
+
+                video.play().catch(function (error) {
                     console.error('视频播放失败:', error);
                 });
             } catch (error) {
                 console.error('启动摄像头失败:', error);
-                if (error.name === 'NotAllowedError') {
-                    showToast('用户拒绝了摄像头权限');
-                } else if (error.name === 'NotFoundError') {
+                if (aiSvc && typeof aiSvc.isPermissionDeniedError === 'function' && aiSvc.isPermissionDeniedError(error)) {
+                    return;
+                }
+                if (error.name === 'NotFoundError') {
                     showToast('未检测到摄像头设备');
-                } else {
+                } else if (error.message !== 'HTTPS_REQUIRED' && error.message !== 'UNSUPPORTED') {
                     showToast('获取摄像头权限失败，请检查权限设置');
                 }
             }
         }
-        
+
         // 停止摄像头
         function stopCamera() {
+            var aiSvc = window.TM_AIService;
             if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
+                if (aiSvc && typeof aiSvc.stopMediaStream === 'function') {
+                    aiSvc.stopMediaStream(cameraStream);
+                } else {
+                    cameraStream.getTracks().forEach(function (track) { track.stop(); });
+                }
                 cameraStream = null;
             }
-            
-            const video = document.getElementById('camera-video');
-            const cameraPreviewArea = document.getElementById('camera-preview-area');
-            
-            video.srcObject = null;
-            cameraPreviewArea.classList.add('hidden');
+
+            var video = document.getElementById('camera-video');
+            var cameraPreviewArea = document.getElementById('camera-preview-area');
+
+            if (video) video.srcObject = null;
+            if (cameraPreviewArea) cameraPreviewArea.classList.add('hidden');
         }
         
         // 拍照
@@ -4701,20 +4778,23 @@
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
                 // 转换为 blob 并处理
-                canvas.toBlob(async function(blob) {
+                canvas.toBlob(async function (blob) {
                     if (blob) {
-                        // 停止摄像头
+                        var aiSvc = window.TM_AIService;
+                        if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                            blob = await aiSvc.compressImageIfNeeded(blob);
+                        }
+
                         stopCamera();
-                        
-                        // 显示预览
-                        const preview = document.getElementById('image-preview');
-                        const previewArea = document.getElementById('photo-preview-area');
-                        const submitBtn = document.getElementById('photo-submit-btn');
-                        
+
+                        var preview = document.getElementById('image-preview');
+                        var previewArea = document.getElementById('photo-preview-area');
+                        var submitBtn = document.getElementById('photo-submit-btn');
+
                         preview.src = URL.createObjectURL(blob);
                         previewArea.classList.remove('hidden');
                         submitBtn.disabled = false;
-                        
+
                         window.capturedImageBlob = blob;
                         window.selectedImageFile = null;
                     }
@@ -4767,7 +4847,12 @@
                         blob = await response.blob();
                     }
                 }
-                
+
+                var aiSvc = window.TM_AIService;
+                if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                    blob = await aiSvc.compressImageIfNeeded(blob);
+                }
+
                 // 处理图片数据
                 await processImageWithAIService(blob);
             } catch (error) {
