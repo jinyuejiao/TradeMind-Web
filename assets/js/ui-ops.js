@@ -417,8 +417,12 @@
                 btn.classList.remove('tm-ops-nav-active');
             }
         });
-        var titleEl = el('tm-ops-page-title');
-        if (titleEl && ROUTES[route]) titleEl.textContent = ROUTES[route].title;
+        if (typeof window.TM_syncOpsNavActive === 'function') {
+            window.TM_syncOpsNavActive(route);
+        } else {
+            var titleEl = el('tm-ops-page-title');
+            if (titleEl && ROUTES[route]) titleEl.textContent = ROUTES[route].title;
+        }
     }
 
     function fetchHtml(url) {
@@ -433,6 +437,11 @@
         if (!cfg) return Promise.resolve();
         var root = el('tm-ops-view-root');
         if (!root) return Promise.resolve();
+        root.scrollTop = 0;
+        var contentArea = document.getElementById('content-area');
+        if (contentArea) {
+            contentArea.scrollTop = 0;
+        }
         setActiveNav(route);
         return fetchHtml(cfg.file + '?t=' + Date.now()).then(function (html) {
             root.innerHTML = html;
@@ -2230,16 +2239,25 @@
         document.querySelectorAll('[data-ops-route]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var route = btn.getAttribute('data-ops-route');
-                if (route) {
-                    location.hash = route;
-                    loadModule(route);
+                if (!route) {
+                    return;
                 }
+                if (typeof window.TM_switchOpsRoute === 'function') {
+                    window.TM_switchOpsRoute(route);
+                    return;
+                }
+                location.hash = route;
+                loadModule(route);
             });
         });
     }
 
     function boot() {
         bindNav();
+        if (typeof window.TM_isStandaloneOpsHub === 'function' && window.TM_isStandaloneOpsHub() &&
+            document.getElementById('tm-app-tabbar')) {
+            return;
+        }
         var raw = (location.hash || '').replace(/^#/, '');
         if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
             try {
@@ -2269,9 +2287,15 @@
             try {
                 history.replaceState(null, '', '#tenants');
             } catch (e2) { /* ignore */ }
-            loadModule('tenants');
+            hash = 'tenants';
+        }
+        if (!ROUTES[hash]) {
             return;
         }
-        if (ROUTES[hash]) loadModule(hash);
+        if (typeof window.TM_switchOpsRoute === 'function') {
+            window.TM_switchOpsRoute(hash);
+            return;
+        }
+        loadModule(hash);
     });
 })();

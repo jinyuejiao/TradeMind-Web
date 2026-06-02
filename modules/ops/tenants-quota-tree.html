@@ -43,11 +43,11 @@
         <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/tenants/tree?sort=…&amp;industry=… · POST /api/v1/ops/tenant/extend-subscription</p>
     </div>
 
-    <div id="ops-tree-root" class="space-y-4 list-scrollbar-ops max-h-[calc(100vh-14rem)] overflow-y-auto pr-1"></div>
+    <div id="ops-tree-root" class="space-y-4 list-scrollbar-ops overflow-y-auto pr-1"></div>
 </div>
 
-<div id="ops-modal-tenant" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 tm-ops-modal-backdrop">
-    <div class="bg-white rounded-tm-3xl shadow-2xl max-w-md w-full p-6 md:p-8 relative fade-in border border-indigo-100">
+<div id="ops-modal-tenant" class="tm-ops-sheet-modal hidden fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4 tm-ops-modal-backdrop">
+    <div class="tm-ops-sheet-panel bg-white rounded-t-[2.5rem] md:rounded-tm-3xl shadow-2xl max-w-md w-full p-6 md:p-8 relative fade-in border border-indigo-100 md:mx-4">
         <button type="button" id="ops-modal-tenant-close" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
         <h3 id="ops-modal-tenant-title" class="text-lg font-bold text-slate-800 pr-8">租户运维</h3>
         <p id="ops-modal-tenant-sub" class="text-xs text-slate-500 mt-1 mb-5"></p>
@@ -65,7 +65,7 @@
                 <label class="text-[10px] font-bold text-slate-500 uppercase">或直接调整到期日</label>
                 <input type="date" id="ops-input-expiry-date" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
             </div>
-            <button type="button" id="ops-btn-save-tenant-ops" class="w-full py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-sm font-bold shadow-lg shadow-ops-600/25 transition-colors">保存并记审计</button>
+            <button type="button" id="ops-btn-save-tenant-ops" class="tm-ops-btn-primary w-full py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-sm font-bold shadow-lg shadow-ops-600/25 transition-colors">保存并记审计</button>
         </div>
     </div>
 </div>

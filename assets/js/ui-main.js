@@ -703,12 +703,263 @@ function loadSupplier() {
 }
 
 const TM_NAV_CONFIG = [
-    { tab: 'dashboard', label: '工作台', icon: 'ph-squares-four' },
-    { tab: 'biz', label: '智能经营', icon: 'ph-chart-line-up' },
-    { tab: 'crm', label: '客户 CRM', icon: 'ph-users' },
-    { tab: 'supply', label: '产品中心', icon: 'ph-flask' },
-    { tab: 'supplier', label: '供应商管理', icon: 'ph-warehouse' }
+    { tab: 'dashboard', label: '工作台', mobileLabel: '工作台', icon: 'ph-squares-four' },
+    { tab: 'biz', label: '智能经营', mobileLabel: '经营', icon: 'ph-chart-line-up' },
+    { tab: 'crm', label: '客户 CRM', mobileLabel: '客户', icon: 'ph-users' },
+    { tab: 'supply', label: '产品中心', mobileLabel: '产研', icon: 'ph-flask' },
+    { tab: 'supplier', label: '供应商管理', mobileLabel: '供应', icon: 'ph-warehouse' }
 ];
+
+const TM_OPS_NAV_CONFIG = [
+    { route: 'tenants', label: '看板', title: '租户看板', icon: 'ph-squares-four' },
+    { route: 'plans', label: '订阅', title: '订阅策略', icon: 'ph-currency-circle-dollar' },
+    { route: 'referral', label: '推荐', title: '推荐与结算', icon: 'ph-gift' },
+    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' },
+    { route: 'announce', label: '公告', title: '公告与审计', icon: 'ph-scroll' }
+];
+
+const TM_OPS_ROUTE_IDS = TM_OPS_NAV_CONFIG.map(function (item) { return item.route; });
+
+function TM_getCurrentRoleType() {
+    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
+        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
+    }
+    try {
+        var raw = localStorage.getItem('user_info');
+        if (raw) {
+            var u = JSON.parse(raw);
+            if (u && u.roleType) {
+                return String(u.roleType).trim().toUpperCase();
+            }
+        }
+    } catch (e) { /* ignore */ }
+    try {
+        var token = localStorage.getItem('token');
+        if (token && token !== 'mock-token') {
+            var parts = String(token).split('.');
+            if (parts.length >= 2) {
+                var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                while (b64.length % 4) {
+                    b64 += '=';
+                }
+                var payload = JSON.parse(atob(b64));
+                if (payload.roleType) {
+                    return String(payload.roleType).trim().toUpperCase();
+                }
+            }
+        }
+    } catch (e2) { /* ignore */ }
+    return '';
+}
+
+function TM_isOpsAdminShell() {
+    if (document.body && document.body.classList.contains('tm-ops-portal')) {
+        return true;
+    }
+    return TM_getCurrentRoleType() === 'ROLE_OPS_ADMIN';
+}
+
+function TM_isStandaloneOpsHub() {
+    return !!document.getElementById('tm-ops-view-root') && !document.getElementById('view-dashboard');
+}
+
+function TM_applyShellOpsTheme(on) {
+    document.body.classList.toggle('tm-shell-ops', !!on);
+    document.documentElement.classList.toggle('tm-shell-ops', !!on);
+}
+
+function TM_renderIdentityTabbar() {
+    var bar = document.getElementById('tm-app-tabbar');
+    if (!bar) {
+        return;
+    }
+    var isOps = TM_isOpsAdminShell();
+    var config = isOps ? TM_OPS_NAV_CONFIG : TM_NAV_CONFIG;
+    TM_applyShellOpsTheme(isOps);
+
+    var initialRoute = (location.hash || '').replace(/^#/, '');
+    var initialTab = 'dashboard';
+    try {
+        var hashTab = new URLSearchParams((location.hash || '').replace(/^#/, '?')).get('tab');
+        if (hashTab) {
+            initialTab = hashTab;
+        }
+    } catch (eHash) { /* ignore */ }
+
+    bar.innerHTML = config.map(function (item) {
+        if (isOps) {
+            var opsActive = item.route === (TM_OPS_ROUTE_IDS.indexOf(initialRoute) >= 0 ? initialRoute : 'tenants');
+            return (
+                '<button type="button" data-ops-route="' + item.route + '" ' +
+                'class="mobile-nav-btn flex flex-col items-center flex-1 py-1 transition-all ' +
+                (opsActive ? 'text-ops-600 active-nav' : 'text-slate-400') + '">' +
+                '<i class="ph ' + item.icon + ' text-xl mb-0.5"></i>' +
+                '<span class="text-[9px] font-bold tracking-tighter">' + item.label + '</span>' +
+                '</button>'
+            );
+        }
+        var tabActive = item.tab === initialTab;
+        return (
+            '<button type="button" data-tab="' + item.tab + '" data-tm-nav="' + item.tab + '" ' +
+            'class="mobile-nav-btn flex flex-col items-center flex-1 py-1 transition-all ' +
+            (tabActive ? 'text-brand-600 active-nav' : 'text-slate-400') + '">' +
+            '<i class="ph ' + item.icon + ' text-xl mb-0.5"></i>' +
+            '<span class="text-[9px] font-bold tracking-tighter">' + (item.mobileLabel || item.label) + '</span>' +
+            '</button>'
+        );
+    }).join('');
+
+    bar.setAttribute('data-tm-nav-mode', isOps ? 'ops' : 'merchant');
+    bar.querySelectorAll('.mobile-nav-btn').forEach(function (btn) {
+        delete btn.dataset.tmShellNav;
+    });
+}
+
+function TM_syncOpsNavActive(route) {
+    document.querySelectorAll('#tm-app-tabbar .mobile-nav-btn[data-ops-route]').forEach(function (btn) {
+        btn.classList.remove('active-nav', 'text-brand-600', 'text-ops-600');
+        btn.classList.add('text-slate-400');
+        if (btn.getAttribute('data-ops-route') === route) {
+            btn.classList.remove('text-slate-400');
+            btn.classList.add('text-ops-600', 'active-nav');
+        }
+    });
+    document.querySelectorAll('.tm-ops-nav-btn[data-ops-route]').forEach(function (btn) {
+        if (btn.getAttribute('data-ops-route') === route) {
+            btn.classList.add('tm-ops-nav-active');
+        } else {
+            btn.classList.remove('tm-ops-nav-active');
+        }
+    });
+    var cfg = TM_OPS_NAV_CONFIG.filter(function (item) { return item.route === route; })[0];
+    var titleEl = document.getElementById('tm-ops-page-title') || document.getElementById('page-title');
+    if (titleEl && cfg) {
+        titleEl.textContent = cfg.title;
+    }
+}
+
+function TM_scrollOpsContentTop() {
+    var root = document.getElementById('tm-ops-view-root');
+    if (root) {
+        root.scrollTop = 0;
+    }
+    var content = document.getElementById('content-area');
+    if (content) {
+        content.scrollTop = 0;
+    }
+}
+
+function TM_switchOpsRoute(route) {
+    if (TM_OPS_ROUTE_IDS.indexOf(route) < 0) {
+        route = 'tenants';
+    }
+    TM_syncOpsNavActive(route);
+    TM_scrollOpsContentTop();
+    if (window.TM_OPS && typeof window.TM_OPS.loadModule === 'function') {
+        window.TM_OPS.loadModule(route);
+    }
+    try {
+        var current = (location.hash || '').replace(/^#/, '');
+        if (current !== route) {
+            if (typeof history.replaceState === 'function') {
+                history.replaceState(null, '', '#' + route);
+            } else {
+                location.hash = route;
+            }
+        }
+    } catch (eHash) { /* ignore */ }
+}
+
+function TM_bindOpsShellTabbar() {
+    var bar = document.getElementById('tm-app-tabbar');
+    if (!bar) {
+        return;
+    }
+    var lastInvokeAt = 0;
+    bar.querySelectorAll('.mobile-nav-btn[data-ops-route]').forEach(function (btn) {
+        if (btn.dataset.tmShellNav === '1') {
+            return;
+        }
+        btn.dataset.tmShellNav = '1';
+        function activate() {
+            var route = btn.getAttribute('data-ops-route');
+            if (!route) {
+                return;
+            }
+            var now = Date.now();
+            if (now - lastInvokeAt < 120) {
+                return;
+            }
+            lastInvokeAt = now;
+            TM_switchOpsRoute(route);
+        }
+        btn.addEventListener('pointerup', function (ev) {
+            if (ev.pointerType === 'mouse' && ev.button !== 0) {
+                return;
+            }
+            activate();
+        }, { passive: true });
+        btn.addEventListener('click', activate);
+    });
+}
+
+function TM_bootOpsHubShell() {
+    document.body.classList.add('tm-ops-portal', 'tm-layout-mobile');
+    TM_renderIdentityTabbar();
+    TM_bindOpsShellTabbar();
+    if (typeof TM_syncAppShellMetrics === 'function') {
+        TM_syncAppShellMetrics();
+    }
+    var raw = (location.hash || '').replace(/^#/, '');
+    if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
+        raw = 'tenants';
+    }
+    var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
+    TM_switchOpsRoute(route);
+}
+
+function TM_bootOpsIndexShell() {
+    TM_applyShellOpsTheme(true);
+    document.body.classList.add('tm-layout-mobile');
+    document.querySelectorAll('.view-section').forEach(function (el) {
+        el.classList.add('hidden');
+    });
+    var opsView = document.getElementById('view-ops');
+    if (opsView) {
+        opsView.classList.remove('hidden');
+    }
+    var contentArea = document.getElementById('content-area');
+    if (contentArea) {
+        contentArea.classList.add('tm-ops-active');
+    }
+    var aside = document.querySelector('body > aside');
+    if (aside) {
+        aside.classList.add('hidden');
+    }
+    TM_bindOpsShellTabbar();
+    if (typeof TM_syncAppShellMetrics === 'function') {
+        TM_syncAppShellMetrics();
+    }
+    var brandEl = document.querySelector('.tm-app-header-brand span');
+    if (brandEl) {
+        brandEl.textContent = '运维中心';
+    }
+    var raw = (location.hash || '').replace(/^#(?:tab=)?/, '').split('&')[0];
+    if (raw.indexOf('tab=') === 0) {
+        raw = raw.slice(4);
+    }
+    var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
+    if (window.TM_OPS && typeof window.TM_OPS.loadModule === 'function') {
+        TM_switchOpsRoute(route);
+    }
+}
+
+window.TM_renderIdentityTabbar = TM_renderIdentityTabbar;
+window.TM_switchOpsRoute = TM_switchOpsRoute;
+window.TM_syncOpsNavActive = TM_syncOpsNavActive;
+window.TM_isOpsAdminShell = TM_isOpsAdminShell;
+window.TM_getCurrentRoleType = TM_getCurrentRoleType;
+window.TM_isStandaloneOpsHub = TM_isStandaloneOpsHub;
 
 function initNavigationFromConfig() {
     const navButtons = document.querySelectorAll('aside .nav-btn');
@@ -742,7 +993,7 @@ function initNavigationFromConfig() {
             iconEl.className = `ph ${cfg.icon} text-xl mb-0.5`;
         }
         if (textEl) {
-            textEl.textContent = cfg.label;
+            textEl.textContent = cfg.mobileLabel || cfg.label;
         }
     });
 }
@@ -760,6 +1011,10 @@ function TM_navBtnMatchesTab(btn, tabId) {
 function TM_bindAppShellTabbar() {
     const bar = document.getElementById('tm-app-tabbar');
     if (!bar) {
+        return;
+    }
+    if (bar.getAttribute('data-tm-nav-mode') === 'ops') {
+        TM_bindOpsShellTabbar();
         return;
     }
 
@@ -1202,6 +1457,15 @@ function TM_bootIndexAppShell() {
     if (typeof TM_resetShellOverlay === 'function') {
         TM_resetShellOverlay();
     }
+    TM_renderIdentityTabbar();
+    if (TM_isStandaloneOpsHub()) {
+        TM_bootOpsHubShell();
+        return;
+    }
+    if (TM_isOpsAdminShell() && document.getElementById('view-ops')) {
+        TM_bootOpsIndexShell();
+        return;
+    }
     initNavigationFromConfig();
     TM_bindAppShellTabbar();
     TM_syncAppShellMetrics();
@@ -1226,6 +1490,11 @@ function TM_bootIndexAppShell() {
 // 尽早绑定底栏；若脚本执行时 DOM 已就绪，则立即绑定（避免错过 DOMContentLoaded）
 function TM_scheduleAppShellTabbarBind() {
     function go() {
+        var bar = document.getElementById('tm-app-tabbar');
+        if (bar && bar.getAttribute('data-tm-nav-mode') === 'ops') {
+            TM_bindOpsShellTabbar();
+            return;
+        }
         TM_bindAppShellTabbar();
     }
     if (document.readyState === 'loading') {

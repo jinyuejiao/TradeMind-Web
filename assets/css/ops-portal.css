@@ -5,6 +5,7 @@ body.tm-ops-portal {
     font-family: 'Inter', -apple-system, 'Microsoft YaHei', sans-serif;
     color: #1e293b;
     background: linear-gradient(145deg, #eef2ff 0%, #e0e7ff 35%, #f8fafc 100%);
+    --tm-nav-bottom-height: var(--tm-tabbar-h, 4.25rem);
 }
 
 .tm-ops-glass {
@@ -195,4 +196,86 @@ body.tm-ops-portal {
 
 .ops-fb-filter-refresh:hover {
     background: #4338ca;
+}
+
+/* ========== 运维手机端：三段式骨架 + 身份色底栏 ========== */
+@media (max-width: 767px) {
+    body.tm-ops-portal.tm-layout-mobile {
+        flex-direction: column;
+    }
+
+    body.tm-ops-portal .tm-ops-mobile-header {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        padding-top: env(safe-area-inset-top, 0px);
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    body.tm-ops-portal .tm-ops-view-root,
+    body.tm-ops-portal #tm-ops-view-root {
+        padding-bottom: calc(var(--tm-nav-bottom-height) + env(safe-area-inset-bottom, 0px) + 1rem) !important;
+    }
+
+    body.tm-shell-ops #tm-app-tabbar .mobile-nav-btn.active-nav,
+    body.tm-shell-ops #tm-app-tabbar .mobile-nav-btn.text-ops-600 {
+        color: #4f46e5 !important;
+    }
+
+    body.tm-shell-ops #tm-app-tabbar {
+        border-top-color: rgba(99, 102, 241, 0.22);
+    }
+
+    body.tm-shell-ops #view-ops .tm-ops-view-root,
+    body.tm-shell-ops #content-area.tm-ops-active {
+        padding-bottom: calc(var(--tm-nav-bottom-height, var(--tm-tabbar-h, 4.25rem)) + env(safe-area-inset-bottom, 0px) + 1rem) !important;
+    }
+
+    #ops-tree-root {
+        max-height: none !important;
+    }
+}
+
+/* ========== 权益/到期弹窗：手机端 Bottom Sheet ========== */
+@media (max-width: 767px) {
+    .tm-ops-sheet-modal {
+        align-items: flex-end !important;
+        justify-content: flex-end !important;
+        padding: 0 !important;
+    }
+
+    .tm-ops-sheet-modal .tm-ops-sheet-panel {
+        width: 100%;
+        max-width: 100%;
+        max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px)));
+        border-radius: 2.5rem 2.5rem 0 0;
+        margin: 0;
+        animation: tm-ops-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .tm-ops-sheet-modal .tm-ops-btn-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+        box-shadow: 0 8px 24px rgba(79, 70, 229, 0.28);
+    }
+}
+
+@keyframes tm-ops-sheet-in {
+    from {
+        transform: translateY(100%);
+        opacity: 0.6;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@supports not (height: 100dvh) {
+    @media (max-width: 767px) {
+        .tm-ops-sheet-modal .tm-ops-sheet-panel {
+            max-height: min(90vh, calc(100vh - env(safe-area-inset-top, 0px)));
+        }
+    }
 }
