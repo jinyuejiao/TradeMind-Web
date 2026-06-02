@@ -123,21 +123,23 @@
             }
             .crm-alpha-rail {
                 position: absolute;
-                right: 0.25rem;
-                top: 50%;
-                bottom: auto;
-                transform: translateY(-50%);
-                width: 1.375rem;
-                max-height: calc(100% - 0.5rem);
-                padding: 0.25rem 0.125rem;
-                gap: 0;
+                right: 0.35rem;
+                top: 0.35rem;
+                bottom: 0.35rem;
+                transform: none;
+                width: 1.5rem;
+                height: auto;
+                max-height: none;
+                padding: 0.35rem 0.15rem;
+                gap: var(--crm-alpha-gap, 3px);
+                justify-content: center;
             }
             .crm-alpha-rail button {
-                width: 1.25rem;
-                min-width: 1.25rem;
-                height: var(--crm-alpha-step, 0.75rem);
-                min-height: var(--crm-alpha-step, 0.75rem);
-                font-size: var(--crm-alpha-font, 0.625rem);
+                width: 1.35rem;
+                min-width: 1.35rem;
+                height: var(--crm-alpha-step, 0.85rem);
+                min-height: var(--crm-alpha-step, 0.85rem);
+                font-size: var(--crm-alpha-font, 0.65rem);
             }
         }
         @media (min-width: 768px) {
@@ -673,11 +675,15 @@
             if (window.innerWidth < 768) {
                 var list = document.getElementById('customer-list-container');
                 var hostH = (list && list.clientHeight > 0) ? list.clientHeight : (host.clientHeight || 0);
-                var pad = 8;
-                var step = Math.max(10, Math.min(18, Math.floor((hostH - pad) / 26)));
+                var letterCount = LETTERS.length;
+                var pad = 12;
+                var gap = Math.max(2, Math.min(5, Math.floor((hostH - pad - letterCount * 8) / Math.max(1, letterCount - 1))));
+                var step = Math.max(11, Math.min(16, Math.floor((hostH - pad - gap * (letterCount - 1)) / letterCount)));
+                rail.style.setProperty('--crm-alpha-gap', gap + 'px');
                 rail.style.setProperty('--crm-alpha-step', step + 'px');
-                rail.style.setProperty('--crm-alpha-font', Math.max(9, Math.min(11, Math.round(step * 0.82))) + 'px');
+                rail.style.setProperty('--crm-alpha-font', Math.max(9, Math.min(12, Math.round(step * 0.78))) + 'px');
             } else {
+                rail.style.removeProperty('--crm-alpha-gap');
                 rail.style.removeProperty('--crm-alpha-step');
                 rail.style.removeProperty('--crm-alpha-font');
             }
@@ -928,6 +934,7 @@
             if (!payload.phone) payload.phone = null;
 
             try {
+                var savedCustomerId = null;
                 if (state.modalMode === 'edit') {
                     const idEl = registryRoot && registryRoot.querySelector('#cust-id');
                     const id = idEl ? idEl.value : '';
@@ -939,6 +946,7 @@
                         const err = await response.json().catch(function() { return {}; });
                         throw new Error(err.error || '更新客户失败');
                     }
+                    savedCustomerId = Number(id);
                 } else {
                     const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/customers', {
                         method: 'POST',
@@ -948,11 +956,31 @@
                         const err = await response.json().catch(function() { return {}; });
                         throw new Error(err.error || '新增客户失败');
                     }
+                    var created = await response.json().catch(function() { return null; });
+                    var norm = normalizeCustomer(created || {});
+                    savedCustomerId = norm.id;
                 }
                 closeClientEditModal();
                 var searchInput = document.getElementById('crmSearchInput');
                 if (searchInput) searchInput.value = '';
                 await loadCustomers({ ignoreKeyword: true });
+                if (savedCustomerId) {
+                    state.activeLetter = getFirstLetter(payload.name || '');
+                    if (window.innerWidth < 768) {
+                        hideCrmDetail();
+                    }
+                    await selectCustomer(savedCustomerId);
+                }
+                try {
+                    window.dispatchEvent(new CustomEvent('tm-customers-changed', { detail: { customerId: savedCustomerId } }));
+                } catch (eEv) { /* ignore */ }
+                try {
+                    if (window.parent && window.parent !== window && typeof window.parent.TM_emitCustomersChanged === 'function') {
+                        window.parent.TM_emitCustomersChanged({ customerId: savedCustomerId });
+                    } else if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'TM_CUSTOMERS_CHANGED', customerId: savedCustomerId }, '*');
+                    }
+                } catch (ePost) { /* ignore */ }
             } catch (error) {
                 console.error(error);
                 alert(error.message || '保存失败');
@@ -1189,8 +1217,18 @@
                 });
                 window.addEventListener('message', function (ev) {
                     var data = ev.data;
-                    if (!data || data.type !== 'TM_ORDER_DATA_CHANGED') return;
-                    refreshTimelineIfCurrentCustomer(data.custId);
+                    if (!data) return;
+                    if (data.type === 'TM_ORDER_DATA_CHANGED') {
+                        refreshTimelineIfCurrentCustomer(data.custId);
+                        return;
+                    }
+                    if (data.type === 'TM_CUSTOMERS_CHANGED') {
+                        loadCustomers({ ignoreKeyword: true }).then(function () {
+                            if (data.customerId) {
+                                selectCustomer(data.customerId);
+                            }
+                        });
+                    }
                 });
 
                 (function waitPinyinResort() {

@@ -625,7 +625,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260527crm',
+        '/modules/crm/crm.html?embed=1&v=20260601crm',
         'CRM',
         { embedPathCheck: 'crm' }
     );
@@ -691,7 +691,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260524supp3',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260601supp',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -1044,12 +1044,16 @@ window.TM_ensureShellOverlayVisible = TM_ensureShellOverlayVisible;
 window.TM_scheduleShellOverlayRecovery = TM_scheduleShellOverlayRecovery;
 
 /** 订单/收款变更后通知 CRM 时间轴、智能经营报表等模块刷新 */
+var _tmDashboardStatsTimer = null;
 function TM_emitOrderDataChanged(detail) {
     detail = detail || {};
     try {
-        if (typeof window.loadDashboardOverviewStats === 'function') {
-            window.loadDashboardOverviewStats();
-        }
+        clearTimeout(_tmDashboardStatsTimer);
+        _tmDashboardStatsTimer = setTimeout(function () {
+            if (typeof window.loadDashboardOverviewStats === 'function') {
+                window.loadDashboardOverviewStats();
+            }
+        }, 350);
         if (typeof window.TM_refreshDashboardPendingOrders === 'function') {
             window.TM_refreshDashboardPendingOrders();
         }
@@ -1072,6 +1076,27 @@ function TM_emitOrderDataChanged(detail) {
     } catch (e3) { /* ignore */ }
 }
 window.TM_emitOrderDataChanged = TM_emitOrderDataChanged;
+
+/** 客户档案变更后通知 CRM iframe 等模块刷新列表 */
+function TM_emitCustomersChanged(detail) {
+    detail = detail || {};
+    try {
+        window.dispatchEvent(new CustomEvent('tm-customers-changed', { detail: detail }));
+    } catch (e) { /* ignore */ }
+    try {
+        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+            try {
+                if (frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'TM_CUSTOMERS_CHANGED',
+                        customerId: detail.customerId
+                    }, '*');
+                }
+            } catch (e2) { /* ignore */ }
+        });
+    } catch (e3) { /* ignore */ }
+}
+window.TM_emitCustomersChanged = TM_emitCustomersChanged;
 
 /** 弹窗打开时隐藏主壳底栏（兼容旧调用，内部走引用计数） */
 function TM_setShellChromeHidden(hidden) {

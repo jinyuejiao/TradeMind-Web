@@ -210,11 +210,22 @@
         if (!blob) {
             return input;
         }
+        var mime = (blob.type || '').toLowerCase();
+        if (mime.indexOf('heic') >= 0 || mime.indexOf('heif') >= 0) {
+            console.warn('[TM_AIService] HEIC/HEIF 跳过 Canvas 压缩，原样上传');
+            return blob;
+        }
         if (blob.size <= maxBytes) {
             return blob;
         }
 
-        var img = await loadImageFromBlob(blob);
+        var img;
+        try {
+            img = await loadImageFromBlob(blob);
+        } catch (loadErr) {
+            console.warn('[TM_AIService] 图片解码失败，原样上传', loadErr);
+            return blob;
+        }
         var w = img.naturalWidth || img.width;
         var h = img.naturalHeight || img.height;
         if (!w || !h) {
@@ -237,7 +248,8 @@
             ctx.drawImage(img, 0, 0, nw, nh);
             var next = await canvasToBlob(canvas, quality);
             if (!next) {
-                break;
+                console.warn('[TM_AIService] canvas.toBlob 不可用，原样上传');
+                return blob;
             }
             compressed = next;
             if (compressed.size <= maxBytes) {

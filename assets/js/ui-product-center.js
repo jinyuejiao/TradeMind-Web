@@ -15,6 +15,14 @@ window.ProductModule = {
         var stockVal = apiProduct.stockQuantity != null ? apiProduct.stockQuantity : apiProduct.stock;
         var stockNum = stockVal != null ? Number(stockVal) : 0;
         var ucList = apiProduct.unitConversions || apiProduct.unit_conversions;
+        var normalizedConversions = Array.isArray(ucList) ? ucList.map(function (c) {
+            return {
+                unitName: c.unitName || c.unit_name || c.unit || '',
+                ratio: c.ratio != null ? c.ratio : (c.perBase != null ? c.perBase : c.per_base)
+            };
+        }).filter(function (c) {
+            return (c.unitName && String(c.unitName).trim()) || (c.ratio != null && c.ratio !== '');
+        }) : [];
         return {
             id: apiProduct.productId || apiProduct.id,
             name: apiProduct.productName || apiProduct.name,
@@ -42,7 +50,7 @@ window.ProductModule = {
             salesUnit: apiProduct.salesUnit || '',
             warningStock: apiProduct.warningStock != null ? apiProduct.warningStock : apiProduct.warning_stock,
             description: apiProduct.description || '',
-            unitConversions: Array.isArray(ucList) ? ucList : [],
+            unitConversions: normalizedConversions,
             stockStatus: apiProduct.stockStatus || (
                 stockNum >= 100 ? '充足' :
                 stockNum >= 10 ? '预警' : '缺货'
@@ -1690,13 +1698,36 @@ window.ProductModule = {
         }
     },
 
-    openUnitModal: function() {
+    openUnitModal: async function() {
         console.log('[ProductModule] openUnitModal 被调用 ===');
+        var pid = this.currentProduct && (this.currentProduct.id || this.currentProduct.productId);
+        if (pid) {
+            await this.refreshUnitConversionDraftFromApi(pid);
+        }
         this.unitConversionDraft = this.normalizeUnitDraft(this.unitConversionDraft);
         this.renderUnitModalRows();
         document.querySelectorAll('#unit-modal').forEach(function (modal) {
             modal.classList.remove('hidden');
         });
+        var modern = document.getElementById('product-unit-modal');
+        if (modern) modern.classList.remove('hidden');
+    },
+
+    refreshUnitConversionDraftFromApi: async function(productId) {
+        if (!productId) return;
+        try {
+            var response = await window.wrappedFetch('/api/v1/rd/products/' + productId, { method: 'GET' });
+            var data = await window.handleApiResponse(response);
+            if (!data) return;
+            var apiProduct = data.data || data;
+            var mapped = this.mapProductFromApi(apiProduct);
+            if (this.currentProduct && String(this.currentProduct.id) === String(mapped.id)) {
+                this.currentProduct.unitConversions = mapped.unitConversions;
+            }
+            this.syncDraftFromApiConversions(mapped.unitConversions);
+        } catch (err) {
+            console.warn('[ProductModule] 加载单位换算失败', err);
+        }
     },
 
     closeUnitModal: function() {
@@ -2038,6 +2069,17 @@ window.ProductModule = {
             }
             self.removePurchaseGenSupplierGroup(supplierId);
             window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+            try {
+                var refreshResp = await window.wrappedFetch('/api/v1/supp/purchases/suggestions/generation', { method: 'GET' });
+                var refreshWrap = await window.handleApiResponse(refreshResp);
+                if (refreshWrap && refreshWrap.data) {
+                    self.purchaseGenGroups = Array.isArray(refreshWrap.data.groups) ? refreshWrap.data.groups : [];
+                    var content = document.getElementById('purchase-suggestion-content');
+                    if (content) self._renderPurchaseGenGroups(content);
+                }
+            } catch (refreshErr) {
+                console.warn('[ProductModule] 刷新进货建议失败', refreshErr);
+            }
         } catch (err) {
             console.error('[ProductModule] 生成进货单失败', err);
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -2197,15 +2239,16 @@ window.ProductModule = {
                     ')</span><span class="font-mono font-bold">' +
                     (p.soldBaseInWindow != null ? p.soldBaseInWindow : 0) +
                     '</span></div>' +
-                    '<div class="flex justify-between items-center gap-2"><span class="text-slate-500 shrink-0">建议采购</span>' +
-                    '<span class="text-[10px] text-slate-400 shrink-0">' +
-                    self._escHtml(p.purchaseUnit || p.baseUnit || '') +
-                    '</span>' +
+                    '<div class="flex justify-between items-center gap-2 min-w-0"><span class="text-slate-500 shrink-0">建议采购</span>' +
+                    '<div class="flex items-center gap-1 min-w-0 flex-1 justify-end">' +
                     '<input type="number" min="0" data-suggest-qty-product="' +
                     p.productId +
                     '" value="' +
                     (p.suggestQty != null ? p.suggestQty : 0) +
-                    '" class="w-20 px-2 py-1 border border-slate-200 rounded text-xs text-right shrink-0"></div></div></div>';
+                    '" class="w-16 max-w-[40%] px-2 py-1 border border-slate-200 rounded text-xs text-right font-mono shrink-0">' +
+                    '<span class="text-[10px] text-slate-500 truncate max-w-[5rem]">' +
+                    self._escHtml(p.purchaseUnit || p.baseUnit || '') +
+                    '</span></div></div></div></div>';
             });
             html += '</div>';
 

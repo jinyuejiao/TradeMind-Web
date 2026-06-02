@@ -345,6 +345,27 @@ window.SupplierModule = {
                 self.syncInboundUi();
             });
         }
+        var purchaseModal = document.getElementById('purchase-modal');
+        if (purchaseModal && !purchaseModal.__tmUnitChangeBound) {
+            purchaseModal.__tmUnitChangeBound = true;
+            purchaseModal.addEventListener('change', function (ev) {
+                var target = ev.target;
+                if (!target || !target.classList || !target.classList.contains('unit-select')) return;
+                var row = target.closest('.purchase-item-row');
+                if (!row) return;
+                var productSel = row.querySelector('.product-select');
+                var priceInput = row.querySelector('.price-input');
+                if (!productSel || !productSel.value || !priceInput) return;
+                var product = self.products.find(function (p) {
+                    var pid = p.productId != null ? p.productId : p.id;
+                    return String(pid) === String(productSel.value);
+                });
+                if (product) {
+                    self.resolvePurchaseUnitPrice(Number(productSel.value), product, target, priceInput);
+                    self.calculatePurchaseTotal();
+                }
+            });
+        }
     },
 
     shouldShowInboundChecks: function() {
@@ -1624,7 +1645,7 @@ window.SupplierModule = {
     populateSuppliersSelect: function() {
         const select = document.getElementById('purchase-supplier');
         if (!select) return;
-        select.innerHTML = '<option value="">--- 请选择供应商 ---</option>';
+        select.innerHTML = '<option value="">无供应商（可不选）</option>';
         const source = (this.allSuppliers && this.allSuppliers.length > 0) ? this.allSuppliers : this.suppliers;
         if (!source || source.length === 0) {
             const emptyOpt = document.createElement('option');
@@ -1671,7 +1692,7 @@ window.SupplierModule = {
         });
     },
 
-    onProductSelect: function(selectEl, preferredUnit, options) {
+    onProductSelect: async function(selectEl, preferredUnit, options) {
         options = options || {};
         const row = selectEl.closest('.purchase-item-row');
         if (!row) return;
@@ -1695,13 +1716,58 @@ window.SupplierModule = {
             unitSelect.className = 'form-input text-center unit-select';
             this.fillPurchaseUnitSelect(unitSelect, product, preferredUnit);
             if (!options.preservePrice) {
-                var price = product.price != null ? product.price : (product.purchasePrice || 0);
-                if (price) priceInput.value = price;
+                await this.resolvePurchaseUnitPrice(Number(productId), product, unitSelect, priceInput);
             } else if (options.unitPrice != null && !isNaN(Number(options.unitPrice))) {
                 priceInput.value = Number(options.unitPrice);
             }
         }
         this.calculatePurchaseTotal();
+    },
+
+    resolvePurchaseUnitPrice: async function(productId, product, unitSelect, priceInput) {
+        var self = this;
+        var applied = false;
+        try {
+            var response = await window.wrappedFetch('/api/v1/supp/purchases/last-unit-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productIds: [productId] })
+            });
+            var result = await window.handleApiResponse(response);
+            var data = result && result.data ? result.data : (result || {});
+            var lastPrice = data[String(productId)] != null ? data[String(productId)] : data[productId];
+            if (lastPrice != null && Number(lastPrice) > 0) {
+                priceInput.value = Number(lastPrice);
+                applied = true;
+            }
+        } catch (err) {
+            console.warn('[SupplierModule] 历史进货价查询失败', err);
+        }
+        if (applied) return;
+        var catalogPurchase = product.purchasePrice != null ? product.purchasePrice : (product.costPrice || 0);
+        var catalogSale = product.price != null ? product.price : (product.salePrice || 0);
+        var unitName = unitSelect && unitSelect.value ? String(unitSelect.value).trim() : '';
+        var baseUnit = (product.baseUnit || '').trim();
+        var salePrice = Number(catalogSale) || 0;
+        if (unitName && baseUnit && unitName !== baseUnit && salePrice > 0) {
+            var convs = product.unitConversions || [];
+            for (var i = 0; i < convs.length; i++) {
+                var c = convs[i];
+                var un = (c.unitName || c.unit_name || '').trim();
+                var ratio = Number(c.ratio != null ? c.ratio : c.perBase);
+                if (un && unitName === un && ratio > 0) {
+                    priceInput.value = Math.round(salePrice * ratio * 100) / 100;
+                    return;
+                }
+            }
+        }
+        if (catalogPurchase && Number(catalogPurchase) > 0) {
+            priceInput.value = Number(catalogPurchase);
+        } else if (salePrice > 0) {
+            priceInput.value = salePrice;
+        } else {
+            priceInput.value = 0;
+        }
     },
 
     addPurchaseItem: function() {
@@ -1816,13 +1882,12 @@ window.SupplierModule = {
 
     buildPurchaseSavePayload: function() {
         this.clearPurchaseFormError();
-        const supplierId = document.getElementById('purchase-supplier').value;
+        const supplierRaw = document.getElementById('purchase-supplier').value;
         const status = document.getElementById('purchase-status').value;
         const purchaseDate = document.getElementById('purchase-date').value;
         const whEl = document.getElementById('purchase-warehouse');
         const warehouseId = whEl && whEl.value ? parseInt(whEl.value, 10) : null;
 
-        if (!supplierId) { this.showPurchaseFormError('请选择供应商'); return null; }
         if (!status) { this.showPurchaseFormError('请选择进货状态'); return null; }
         if (!purchaseDate) { this.showPurchaseFormError('请选择进货日期'); return null; }
 
@@ -1844,11 +1909,15 @@ window.SupplierModule = {
             const productId = row.querySelector('.product-select').value;
             const qty = parseInt(row.querySelector('.qty-input').value, 10) || 0;
             const price = parseFloat(row.querySelector('.price-input').value) || 0;
-            const unitName = row.querySelector('.unit-select').value;
+            const unitName = (row.querySelector('.unit-select').value || '').trim();
             const batchNo = (row.querySelector('.batch-input') && row.querySelector('.batch-input').value) || '';
 
             if (!productId) {
                 this.showPurchaseFormError('请为第 ' + (ri + 1) + ' 行选择产品');
+                return null;
+            }
+            if (!unitName) {
+                this.showPurchaseFormError('请为第 ' + (ri + 1) + ' 行选择单位（入库将按换算比计入库存）');
                 return null;
             }
             if (qty < 1) {
@@ -1880,8 +1949,11 @@ window.SupplierModule = {
         const finSel = document.getElementById('purchase-fin-status');
         const finStatus = finSel ? finSel.value : 'UNPAID';
 
+        const parsedSupplierId = supplierRaw ? parseInt(supplierRaw, 10) : null;
+        const supplierId = (parsedSupplierId != null && !Number.isNaN(parsedSupplierId)) ? parsedSupplierId : null;
+
         const purchaseData = {
-            supplierId: parseInt(supplierId, 10),
+            supplierId: supplierId,
             accountId: accountId,
             warehouseId: warehouseId,
             purchaseStatus: status || 'DRAFT',

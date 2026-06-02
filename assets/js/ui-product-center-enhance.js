@@ -455,7 +455,11 @@
         }
     };
 
-    PM.openUnitModal = function () {
+    PM.openUnitModal = async function () {
+        var pid = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
+        if (pid && typeof PM.refreshUnitConversionDraftFromApi === 'function') {
+            await PM.refreshUnitConversionDraftFromApi(pid);
+        }
         PM.unitConversionDraft = PM.normalizeUnitDraft(PM.unitConversionDraft);
         PM.showFormErrors('unit-form-errors', []);
         var modal = document.getElementById('product-unit-modal');

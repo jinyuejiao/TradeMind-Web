@@ -647,14 +647,16 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
         height: min(90dvh, 100%);
         max-height: min(90dvh, 100%) !important;
         border-radius: 2.5rem 2.5rem 0 0;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
     #purchase-modal.tm-purchase-modal .tm-document-modal-scroll {
-        flex: 0 0 auto;
+        flex: 1 1 auto;
         min-height: 0;
-        overflow: visible;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
@@ -671,10 +673,12 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
         flex-shrink: 0;
-        position: sticky;
-        bottom: 0;
+        position: relative;
+        bottom: auto;
         z-index: 6;
+        background: #fff;
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+        box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer .tm-btn-primary,

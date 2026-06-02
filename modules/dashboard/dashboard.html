@@ -1551,11 +1551,12 @@
                 var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
                 var accEl = document.getElementById('detail-receipt-account');
                 var accId = accEl && accEl.value ? parseInt(accEl.value, 10) : null;
-                payBtn.disabled = !canPay;
+                var needsAccount = canPay && !virtualFin && (!accId || isNaN(accId));
+                payBtn.disabled = !canPay || needsAccount;
                 if (!canPay) {
                     payBtn.title = finVal === 'SETTLED' && totals.remaining <= 0.001 ? '货款已结清，无需再收款' : '';
-                } else if (!virtualFin && (!accId || isNaN(accId))) {
-                    payBtn.title = '请选择收款账户';
+                } else if (needsAccount) {
+                    payBtn.title = '请先设置或选择收款账户';
                 } else {
                     payBtn.title = '';
                 }
@@ -1564,11 +1565,20 @@
             updateDetailBadges(order);
         }
 
+        function resolveDetailOrderStatusForShip() {
+            var statusSel = document.getElementById('detail-order-status');
+            if (statusSel && statusSel.value) {
+                return toCanonicalOrderStatusCode(statusSel.value);
+            }
+            if (currentDetailOrder && currentDetailOrder.orderStatus) {
+                return toCanonicalOrderStatusCode(currentDetailOrder.orderStatus);
+            }
+            return '';
+        }
+
         function syncDetailShipUi(order) {
             order = order || currentDetailOrder;
-            var statusSel = document.getElementById('detail-order-status');
-            var st = order && order.orderStatus ? toCanonicalOrderStatusCode(order.orderStatus)
-                : (statusSel ? toCanonicalOrderStatusCode(statusSel.value) : '');
+            var st = resolveDetailOrderStatusForShip();
             var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
             var hasUnprocessed = (detailOrderItemsCache || []).some(function (it) {
                 return !(it.isProcessed === true || it.is_processed === true);
@@ -1589,10 +1599,7 @@
             detailOrderItemsCache = items || [];
             var tbody = document.getElementById('detail-order-items-body');
             var cards = document.getElementById('detail-order-items-cards');
-            var statusSel = document.getElementById('detail-order-status');
-            var st = currentDetailOrder && currentDetailOrder.orderStatus
-                ? toCanonicalOrderStatusCode(currentDetailOrder.orderStatus)
-                : (statusSel ? toCanonicalOrderStatusCode(statusSel.value) : '');
+            var st = resolveDetailOrderStatusForShip();
             var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
             if (!items || !items.length) {
                 if (tbody) tbody.innerHTML = '<tr><td class="px-3 py-4 text-center text-slate-400" colspan="6">暂无商品明细</td></tr>';
@@ -1978,7 +1985,10 @@
             });
         }
 
+        var dashboardOverviewStatsSeq = 0;
+
         async function loadDashboardOverviewStats() {
+            var seq = ++dashboardOverviewStatsSeq;
             setTextById('dashboard-greeting-name', getDashboardUserName());
             try {
                 const [recordsResp, ordersResp, productsResp, efficiencyResp] = await Promise.allSettled([
@@ -1988,7 +1998,9 @@
                     window.wrappedFetch('/api/v1/im/report/efficiency', { method: 'GET', headers: { 'Content-Type': 'application/json' } })
                 ]);
 
-                const records = recordsResp.status === 'fulfilled' ? await recordsResp.value.json() : [];
+                if (seq !== dashboardOverviewStatsSeq) return;
+
+                var recordsJson = recordsResp.status === 'fulfilled' ? await recordsResp.value.json() : null;
                 const ordersWrap = ordersResp.status === 'fulfilled' ? await ordersResp.value.json() : {};
                 const productsWrap = productsResp.status === 'fulfilled' ? await productsResp.value.json() : {};
                 let efficiency = {};
@@ -2003,7 +2015,11 @@
                     }
                 }
 
-                const aiRecords = Array.isArray(records) ? records : [];
+                if (seq !== dashboardOverviewStatsSeq) return;
+
+                const aiRecords = Array.isArray(recordsJson)
+                    ? recordsJson
+                    : (recordsJson && Array.isArray(recordsJson.data) ? recordsJson.data : []);
                 const orders = ordersWrap && Array.isArray(ordersWrap.data) ? ordersWrap.data : [];
                 const products = productsWrap && Array.isArray(productsWrap.data) ? productsWrap.data : [];
 
@@ -2014,7 +2030,7 @@
                 }).length;
 
                 const riskCount = products.filter(item => {
-                    const stock = Number(item.stock || 0);
+                    const stock = Number(item.stock || item.stockQuantity || 0);
                     const warningStock = Number(item.warningStock || item.warning_stock || 0);
                     return warningStock > 0 && stock <= warningStock;
                 }).length;
@@ -2034,12 +2050,6 @@
                 setTextById('dashboard-turnover-rate', turnoverRaw.toFixed(2));
             } catch (error) {
                 console.warn('加载工作台概览指标失败:', error);
-                setTextById('dashboard-risk-count', '0');
-                setTextById('dashboard-pending-recognition-count', '0');
-                setTextById('dashboard-today-revenue', formatCurrencyCny(0));
-                setTextById('dashboard-extracted-count', '0');
-                setTextById('dashboard-stock-warning-count', '0');
-                setTextById('dashboard-turnover-rate', '0.00');
             }
         }
 
@@ -2111,7 +2121,16 @@
                 data.new_customers_found = [];
             }
             const np = details.newProductsFound != null ? details.newProductsFound : details.new_products_found;
-            if (Array.isArray(np) && np.length > 0 && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
+            var productInfoRaw = envelope.productInfo != null ? envelope.productInfo : envelope.product_info;
+            var productInfoCleared = false;
+            if (productInfoRaw != null) {
+                var piParsed = typeof productInfoRaw === 'string' ? safeJsonParse(productInfoRaw, null) : productInfoRaw;
+                productInfoCleared = Array.isArray(piParsed) && piParsed.length === 0;
+            }
+            if (Array.isArray(data.new_products_found) && data.new_products_found.length === 0) {
+                data.new_products_found = [];
+            } else if (Array.isArray(np) && np.length > 0 && !productInfoCleared
+                && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
                 data.new_products_found = np;
             }
             if (data && data.customer_data && data.order_data) {
@@ -2688,10 +2707,16 @@
             const next = { ...envelope, result: JSON.stringify(data) };
             if (data.customer_data) next.customerInfo = JSON.stringify(data.customer_data);
             if (data.order_data) next.orderInfo = JSON.stringify(data.order_data);
-            if (Array.isArray(data.new_products_found)) next.productInfo = JSON.stringify(data.new_products_found);
+            if (Array.isArray(data.new_products_found)) {
+                next.productInfo = JSON.stringify(data.new_products_found);
+            } else {
+                next.productInfo = JSON.stringify([]);
+            }
             const details = next.details && typeof next.details === 'object' ? { ...next.details } : {};
             details.newCustomersFound = [];
             details.new_customers_found = [];
+            details.newProductsFound = Array.isArray(data.new_products_found) ? data.new_products_found.slice() : [];
+            details.new_products_found = details.newProductsFound.slice();
             if (isCustomerResolved(data)) {
                 details.customerResolved = true;
             }
@@ -4857,7 +4882,7 @@
                 await processImageWithAIService(blob);
             } catch (error) {
                 console.error('提交照片失败:', error);
-                showToast('提交照片失败，请重试');
+                showToast(error && error.message ? error.message : '提交照片失败，请重试');
             }
         }
 
@@ -4868,7 +4893,13 @@
                 if (!ossUpload || typeof ossUpload.uploadDashboardImage !== 'function') {
                     throw new Error('OSS 上传模块未加载，请刷新页面');
                 }
-                var imageUrl = await ossUpload.uploadDashboardImage(imageBlob);
+                var uploadBlob = imageBlob;
+                if (uploadBlob && (!uploadBlob.type || uploadBlob.type === 'application/octet-stream')) {
+                    try {
+                        uploadBlob = new Blob([uploadBlob], { type: 'image/jpeg' });
+                    } catch (eBlob) { /* keep original */ }
+                }
+                var imageUrl = await ossUpload.uploadDashboardImage(uploadBlob);
                 if (!imageUrl) {
                     throw new Error('上传成功但未获得图片访问地址，请检查 OSS 配置');
                 }

@@ -141,7 +141,7 @@
         if (!needs && !accId) return Promise.resolve();
         return confirmMigration(
             '归入账户',
-            '是否将以往订单、进货单及未归属账户的历史流水关联到该账户？'
+            '是否将以往未关联账户的订单、进货单及流水（仅 account_id 为空的历史记录）关联到该账户？已指定其他账户的流水不会变更。'
         ).then(function (ok) {
             if (!ok || !accId) return;
             return runAccountMigration(accId).then(function (res) {
