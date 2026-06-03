@@ -6,9 +6,10 @@
     <script src="../../assets/js/tm-metrics.js?v=20260528metrics"></script>
     <script src="../../assets/js/dashboard-voice-upload.js?v=20260524"></script>
     <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
-    <script src="../../assets/js/ui-ai-service.js?v=20260601"></script>
+    <script src="../../assets/js/ui-ai-service.js?v=20260603heic"></script>
     <script src="../../assets/js/tm-oss-path.js?v=20260527"></script>
-    <script src="../../assets/js/tm-oss-upload.js?v=20260603img"></script>
+    <script src="../../assets/js/tm-oss-upload.js?v=20260603img2"></script>
+    <script src="../../assets/js/tm-dashboard-photo.js?v=20260603photo"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="../../assets/js/tm-product-registry-form.js?v=20260531unit"></script>
     <script src="../../assets/js/ai-order-extract-parse.js?v=20260531unit"></script>
@@ -895,7 +896,10 @@
                                 <select id="manual-order-account" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="收款账户"></select>
                             </div>
                         </div>
-                        <p class="text-[10px] text-slate-400">创建后可于订单详情中确认收款与发货</p>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <button type="button" id="manual-confirm-receive-btn" onclick="TM_saveManualOrder()" class="px-3 py-1 rounded-lg bg-brand-600 text-white text-[11px] font-bold disabled:opacity-40">保存并收款</button>
+                            <span id="manual-fin-disabled-hint" class="text-[10px] text-slate-400">选择「部分收款」或「已结清」后保存时将一并记账；无账户可先挂账</span>
+                        </div>
                     </div>
                 </details>
             </div>
@@ -1231,6 +1235,19 @@
         }
         scheduleDashboardInitOnce();
 
+        window.addEventListener('tm-warehouses-changed', function () {
+            if (typeof loadOrderWarehouses === 'function') {
+                loadOrderWarehouses();
+            }
+        });
+        window.addEventListener('message', function (ev) {
+            var data = ev && ev.data;
+            if (!data || data.type !== 'TM_WAREHOUSES_CHANGED') return;
+            if (typeof loadOrderWarehouses === 'function') {
+                loadOrderWarehouses();
+            }
+        });
+
 
 
         const auditState = {
@@ -1550,13 +1567,18 @@
             if (payBtn) {
                 var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
                 var accEl = document.getElementById('detail-receipt-account');
+                var hasAccounts = window.TM_TenantOps && window.TM_TenantOps.hasSelectableAccounts
+                    ? window.TM_TenantOps.hasSelectableAccounts(accEl)
+                    : false;
                 var accId = accEl && accEl.value ? parseInt(accEl.value, 10) : null;
-                var needsAccount = canPay && !virtualFin && (!accId || isNaN(accId));
+                var needsAccount = canPay && !virtualFin && hasAccounts && (!accId || isNaN(accId));
                 payBtn.disabled = !canPay || needsAccount;
                 if (!canPay) {
                     payBtn.title = finVal === 'SETTLED' && totals.remaining <= 0.001 ? '货款已结清，无需再收款' : '';
                 } else if (needsAccount) {
                     payBtn.title = '请先设置或选择收款账户';
+                } else if (!virtualFin && !hasAccounts) {
+                    payBtn.title = '暂无账户，将先挂账记录收款';
                 } else {
                     payBtn.title = '';
                 }
@@ -1609,14 +1631,14 @@
                 return;
             }
             if (tbody) {
-                tbody.innerHTML = items.map(function (item) {
+                tbody.innerHTML = items.map(function (item, rowIdx) {
                     var p = getProductDisplayById(item.productId);
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
                     var chk = showShip
                         ? ('<td class="detail-ship-col px-2 py-2 text-center' + (showShip ? '' : ' hidden') + '">' +
-                            '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '"' +
+                            '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '" data-row-index="' + rowIdx + '"' +
                             (proc ? ' checked disabled' : '') + ' aria-label="本次发货"></td>')
                         : '<td class="detail-ship-col hidden px-2 py-2"></td>';
                     return '<tr class="order-item-row">' + chk +
@@ -1628,14 +1650,14 @@
                 }).join('');
             }
             if (cards) {
-                cards.innerHTML = items.map(function (item) {
+                cards.innerHTML = items.map(function (item, rowIdx) {
                     var p = getProductDisplayById(item.productId);
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
                     var chkRow = showShip
                         ? ('<label class="detail-ship-col flex items-center gap-1.5 text-[10px] text-teal-700 font-bold mb-2">' +
-                            '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '"' +
+                            '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '" data-row-index="' + rowIdx + '"' +
                             (proc ? ' checked disabled' : '') + '> 本次发货</label>')
                         : '';
                     return '<div class="order-item-row tm-purchase-item-card border border-slate-200 rounded-xl p-3 bg-slate-50">' +
@@ -1667,18 +1689,18 @@
             }
             document.querySelectorAll('#order-detail-modal .detail-ship-check:checked:not(:disabled)').forEach(function (cb) {
                 var raw = cb.getAttribute('data-item-id') || cb.dataset.itemId || '';
-                pushId(parseInt(raw, 10));
-            });
-            if (!ids.length && detailOrderItemsCache.length) {
-                detailOrderItemsCache.forEach(function (it, idx) {
-                    if (it.isProcessed === true || it.is_processed === true) return;
-                    var row = document.querySelectorAll('#order-detail-modal .order-item-row')[idx];
-                    var cb = row ? row.querySelector('.detail-ship-check') : null;
-                    if (!cb || !cb.checked || cb.disabled) return;
+                var parsed = parseInt(raw, 10);
+                if (!Number.isNaN(parsed) && parsed > 0) {
+                    pushId(parsed);
+                    return;
+                }
+                var rowIdx = parseInt(cb.getAttribute('data-row-index') || cb.dataset.rowIndex || '', 10);
+                if (!Number.isNaN(rowIdx) && detailOrderItemsCache[rowIdx]) {
+                    var it = detailOrderItemsCache[rowIdx];
                     var mid = it.itemId != null ? it.itemId : it.item_id;
                     if (mid != null) pushId(parseInt(mid, 10));
-                });
-            }
+                }
+            });
             return ids;
         }
 
@@ -1777,7 +1799,10 @@
             }
             amount = tmRoundMoney(amount);
             var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
-            if (!virtualFin && !accountId) { showToast('请选择收款账户'); return; }
+            var hasAccounts = window.TM_TenantOps && window.TM_TenantOps.hasSelectableAccounts
+                ? window.TM_TenantOps.hasSelectableAccounts(accEl)
+                : false;
+            if (!virtualFin && hasAccounts && !accountId) { showToast('请选择收款账户'); return; }
             try {
                 var payBody = { amount: amount, bizTypeCode: 'SALES_INCOME' };
                 if (accountId) payBody.accountId = accountId;
@@ -1987,9 +2012,22 @@
 
         var dashboardOverviewStatsSeq = 0;
 
+        function applyDashboardOverviewStats(stats) {
+            if (!stats) return;
+            if (stats.riskCount != null) setTextById('dashboard-risk-count', String(stats.riskCount));
+            if (stats.pendingRecognitionCount != null) setTextById('dashboard-pending-recognition-count', String(stats.pendingRecognitionCount));
+            if (stats.todayRevenueText != null) setTextById('dashboard-today-revenue', stats.todayRevenueText);
+            if (stats.extractedTodayCount != null) setTextById('dashboard-extracted-count', String(stats.extractedTodayCount));
+            if (stats.turnoverRateText != null) setTextById('dashboard-turnover-rate', stats.turnoverRateText);
+            if (stats.riskCount != null) setTextById('dashboard-stock-warning-count', String(stats.riskCount));
+        }
+
         async function loadDashboardOverviewStats() {
             var seq = ++dashboardOverviewStatsSeq;
             setTextById('dashboard-greeting-name', getDashboardUserName());
+            if (window.__TM_DASHBOARD_LAST_GOOD_STATS) {
+                applyDashboardOverviewStats(window.__TM_DASHBOARD_LAST_GOOD_STATS);
+            }
             try {
                 const [recordsResp, ordersResp, productsResp, efficiencyResp] = await Promise.allSettled([
                     window.wrappedFetch('/api/v1/ai/records', { method: 'GET', headers: { 'Content-Type': 'application/json' } }),
@@ -2079,6 +2117,28 @@
             return t.trim();
         }
 
+        function pruneResolvedNewProductsFromOrder(data) {
+            if (!data || !Array.isArray(data.new_products_found) || !data.order_data || !Array.isArray(data.order_data.items)) {
+                return;
+            }
+            var items = data.order_data.items;
+            var matchedNames = {};
+            var matchedIds = {};
+            items.forEach(function (it) {
+                var pid = it.matched_product_id != null ? Number(it.matched_product_id) : 0;
+                if (pid > 0) matchedIds[pid] = true;
+                var nm = String(it.matched_product_name || it.product_name_raw || '').trim();
+                if (nm) matchedNames[nm] = true;
+            });
+            data.new_products_found = data.new_products_found.filter(function (np) {
+                var npName = String(np.name || np.product_name || '').trim();
+                var npId = np.matched_product_id != null ? Number(np.matched_product_id) : (np.product_id != null ? Number(np.product_id) : 0);
+                if (npId > 0 && matchedIds[npId]) return false;
+                if (npName && matchedNames[npName]) return false;
+                return true;
+            });
+        }
+
         function parseAiEnvelope(rawAiResult) {
             if (typeof window.TM_parseOrderExtractStructured === 'function') {
                 return window.TM_parseOrderExtractStructured(rawAiResult);
@@ -2133,6 +2193,7 @@
                 && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
                 data.new_products_found = np;
             }
+            pruneResolvedNewProductsFromOrder(data);
             if (data && data.customer_data && data.order_data) {
                 return { envelope: envelope || {}, data: data };
             }
@@ -2698,9 +2759,32 @@
             if (el) el.value = value == null ? '' : value;
         }
 
+        function syncAuditPricesFromDom() {
+            if (!auditState || !auditState.aiStructured || !auditState.aiStructured.order_data) return;
+            var items = auditState.aiStructured.order_data.items;
+            if (!Array.isArray(items)) return;
+            document.querySelectorAll('#order-items-body tr[data-row-index]').forEach(function (row) {
+                var idx = Number(row.getAttribute('data-row-index'));
+                if (isNaN(idx) || !items[idx]) return;
+                var priceInp = row.querySelector('.price-input');
+                var qtyInp = row.querySelector('.audit-qty-input') || row.querySelector('input[type="number"]');
+                if (priceInp && priceInp.value !== '') {
+                    var p = parseFloat(priceInp.value);
+                    if (!isNaN(p) && p >= 0) items[idx].price_at_time = p;
+                }
+                if (qtyInp && qtyInp.value !== '') {
+                    var q = parseInt(qtyInp.value, 10);
+                    if (!isNaN(q) && q > 0) items[idx].quantity = q;
+                }
+            });
+        }
+
         function buildUpdatedAiEnvelope() {
             const envelope = auditState.aiEnvelope || {};
             const data = auditState.aiStructured || {};
+            if (typeof pruneResolvedNewProductsFromOrder === 'function') {
+                pruneResolvedNewProductsFromOrder(data);
+            }
             if (isCustomerResolved(data)) {
                 data.new_customers_found = [];
             }
@@ -2720,12 +2804,16 @@
             if (isCustomerResolved(data)) {
                 details.customerResolved = true;
             }
+            if (!hasNewProducts(data)) {
+                details.productResolved = true;
+            }
             next.details = details;
             return next;
         }
 
         async function persistAuditResult() {
             if (!auditState.currentRecordId || !auditState.aiStructured) return;
+            syncAuditPricesFromDom();
             const payload = { aiResult: JSON.stringify(buildUpdatedAiEnvelope()) };
             const response = await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId + '/result', {
                 method: 'PUT',
@@ -3299,7 +3387,7 @@
                             select.insertBefore(placeholder, select.firstChild);
                         }
                     }
-                    handleAuditProductSelectChange(select);
+                    handleAuditProductSelectChange(select, { preserveExistingPrice: true });
                 }
             });
 
@@ -3315,7 +3403,8 @@
             }
         }
 
-        function handleAuditProductSelectChange(selectEl) {
+        function handleAuditProductSelectChange(selectEl, opts) {
+            opts = opts || {};
             const row = selectEl.closest('tr');
             if (!row || !auditState.aiStructured || !auditState.aiStructured.order_data || !Array.isArray(auditState.aiStructured.order_data.items)) return;
             const index = Number(selectEl.dataset.index);
@@ -3343,6 +3432,14 @@
                 unitInp.classList.remove('tm-audit-unit-readonly');
             }
             var priceInp = row.querySelector('.price-input');
+            if (priceInp && opts.preserveExistingPrice) {
+                var keepPrice = parseFloat(priceInp.value);
+                if (keepPrice > 0) {
+                    item.price_at_time = keepPrice;
+                    if (typeof window.recalcAuditOrderTotals === 'function') window.recalcAuditOrderTotals();
+                    return;
+                }
+            }
             if (priceInp && /^\d+$/.test(selectedValue)) {
                 var pid = parseInt(selectedValue, 10);
                 var custSelect = document.getElementById('order-customer');
@@ -5121,6 +5218,19 @@
         window.loadInProgressOrders = loadInProgressOrders;
         window.loadCustomerList = loadCustomerList;
         window.loadProductList = loadProductList;
+
+        window.handlePhotoSelected = handlePhotoSelected;
+        window.submitPhoto = submitPhoto;
+        window.resetPhoto = resetPhoto;
+        window.openPhotoModal = openPhotoModal;
+        window.closePhotoModal = closePhotoModal;
+        window.processImageWithAIService = processImageWithAIService;
+        if (window.TM_DashboardPhoto) {
+            window.TM_DashboardPhoto.handlePhotoSelected = handlePhotoSelected;
+            window.TM_DashboardPhoto.submitPhoto = submitPhoto;
+            window.TM_DashboardPhoto.resetPhoto = resetPhoto;
+            window.TM_DashboardPhoto.processImageWithAIService = processImageWithAIService;
+        }
     </script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>

@@ -38,7 +38,18 @@
 
     function isVirtualFinance(p) {
         p = p || profileCache;
-        return !p || p.financeMode === 'VIRTUAL';
+        if (!p) return true;
+        if (p.accountCount != null && Number(p.accountCount) === 0) return true;
+        return p.financeMode === 'VIRTUAL';
+    }
+
+    function hasSelectableAccounts(selectEl) {
+        if (!selectEl || !selectEl.options) return false;
+        for (var i = 0; i < selectEl.options.length; i++) {
+            var v = String(selectEl.options[i].value || '').trim();
+            if (v && !isNaN(parseInt(v, 10))) return true;
+        }
+        return false;
     }
 
     function buildWarehouseOptionsHtml(warehouses, profile, selectedId) {
@@ -147,7 +158,21 @@
             return runAccountMigration(accId).then(function (res) {
                 if (res && res.success) {
                     profileCache = null;
-                    if (window.showToast) window.showToast('历史单据已关联账户');
+                    var stats = (res.data && typeof res.data === 'object') ? res.data : {};
+                    var ledgerN = stats.ledgerRowsUpdated != null ? stats.ledgerRowsUpdated : 0;
+                    var msg = '历史单据已关联账户' + (ledgerN ? '（' + ledgerN + ' 条未归属流水）' : '');
+                    if (window.showToast) window.showToast(msg);
+                    var refresh = typeof window.loadBizAccounts === 'function'
+                        ? window.loadBizAccounts()
+                        : Promise.resolve();
+                    refresh.then(function () {
+                        if (typeof window.openBizAccountLedgerModal === 'function') {
+                            window.openBizAccountLedgerModal(accId);
+                        } else if (typeof window.loadBizAccountLedger === 'function') {
+                            window.bizLedgerAccountId = accId;
+                            window.loadBizAccountLedger();
+                        }
+                    });
                 } else if (window.showToast) {
                     window.showToast((res && res.message) || '迁移失败');
                 }
@@ -160,6 +185,7 @@
         invalidateProfile: function () { profileCache = null; },
         isVirtualInventory: isVirtualInventory,
         isVirtualFinance: isVirtualFinance,
+        hasSelectableAccounts: hasSelectableAccounts,
         buildWarehouseOptionsHtml: buildWarehouseOptionsHtml,
         warehouseLabelFromSelect: warehouseLabelFromSelect,
         buildAccountOptionsHtml: buildAccountOptionsHtml,

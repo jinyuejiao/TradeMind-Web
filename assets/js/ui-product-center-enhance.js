@@ -246,13 +246,19 @@
         };
 
         var whStocks = PM.readWarehouseStockFromContainer();
+        var resultBody = {
+            product: productPayload,
+            warehouseStocks: whStocks
+        };
+        var productId = cp.id || cp.productId;
+        if (unitPayload.length > 0) {
+            resultBody.unitConversions = unitPayload;
+        } else if (!productId) {
+            resultBody.unitConversions = [];
+        }
         return {
             error: null,
-            body: {
-                product: productPayload,
-                unitConversions: unitPayload,
-                warehouseStocks: whStocks
-            }
+            body: resultBody
         };
     };
 
@@ -630,7 +636,12 @@
         if (!PM.currentProduct) {
             PM.currentProduct = {};
         }
+        var pid = PM.currentProduct.id || PM.currentProduct.productId;
         var validUnitConv = PM.resolveUnitConversionsForSave();
+        if (pid && !validUnitConv.length && typeof PM.refreshUnitConversionDraftFromApi === 'function') {
+            await PM.refreshUnitConversionDraftFromApi(pid);
+            validUnitConv = PM.resolveUnitConversionsForSave();
+        }
         var built = PM.buildProductSaveBodyWithUnits(validUnitConv);
         if (built.error) {
             if (built.error !== '__validation__' && window.TM_UI && window.TM_UI.showNotification) {
@@ -1059,6 +1070,24 @@
     window.openUnitModal = function () { PM.openUnitModal(); };
     window.closeUnitModal = function () { PM.closeUnitModal(); };
     window.removeProductRow = function (rowId) { PM.removeProductRow(rowId); };
+
+    async function refreshAuditProductWarehouses() {
+        if (typeof PM.isAuditProductFormActive === 'function' && !PM.isAuditProductFormActive()) return;
+        try {
+            await PM.loadWarehouses();
+            var pid = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
+            await PM.loadProductWarehouseStocks(pid || null);
+        } catch (e) { /* ignore */ }
+    }
+
+    window.addEventListener('tm-warehouses-changed', function () {
+        refreshAuditProductWarehouses();
+    });
+    window.addEventListener('message', function (ev) {
+        if (ev && ev.data && ev.data.type === 'TM_WAREHOUSES_CHANGED') {
+            refreshAuditProductWarehouses();
+        }
+    });
 
     console.log('[ProductEnhance] 产品中心增强已应用');
 })();

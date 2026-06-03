@@ -129,11 +129,11 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
             TM_refreshDashboardPendingOrders();
             TM_rebindVoiceStopAfterOverlaySync();
             try {
-                if (typeof window.loadPendingOrders === 'function') {
-                    window.loadPendingOrders();
-                }
                 if (typeof window.loadInProgressOrders === 'function') {
                     window.loadInProgressOrders();
+                }
+                if (typeof window.loadDashboardOverviewStats === 'function') {
+                    window.loadDashboardOverviewStats();
                 }
             } catch (e0) { /* ignore */ }
             if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
@@ -209,6 +209,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 TM_refreshDashboardPendingOrders();
                 if (typeof window.loadInProgressOrders === 'function') {
                     window.loadInProgressOrders();
+                }
+                if (typeof window.loadDashboardOverviewStats === 'function') {
+                    window.loadDashboardOverviewStats();
                 }
                 if (typeof TM_scheduleShellOverlayRecovery === 'function') {
                     TM_scheduleShellOverlayRecovery();
@@ -575,7 +578,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260527ordfix', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601fix', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -1353,6 +1356,27 @@ function TM_emitCustomersChanged(detail) {
 }
 window.TM_emitCustomersChanged = TM_emitCustomersChanged;
 
+/** 仓库档案变更后通知各模块刷新仓库下拉 */
+function TM_emitWarehousesChanged(detail) {
+    detail = detail || {};
+    try {
+        window.dispatchEvent(new CustomEvent('tm-warehouses-changed', { detail: detail }));
+    } catch (e) { /* ignore */ }
+    try {
+        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+            try {
+                if (frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'TM_WAREHOUSES_CHANGED',
+                        warehouseId: detail.warehouseId
+                    }, '*');
+                }
+            } catch (e2) { /* ignore */ }
+        });
+    } catch (e3) { /* ignore */ }
+}
+window.TM_emitWarehousesChanged = TM_emitWarehousesChanged;
+
 /** 弹窗打开时隐藏主壳底栏（兼容旧调用，内部走引用计数） */
 function TM_setShellChromeHidden(hidden) {
     if (hidden) {
@@ -1764,24 +1788,22 @@ async function downloadPoster() {
     };
 })();
 
-// --- 拍照逻辑 (修复版) ---
-function openPhotoModal() { document.getElementById('photo-modal').classList.remove('hidden'); resetPhoto(); }
-function handlePhotoSelected(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            document.getElementById('image-preview').src = e.target.result;
-            document.getElementById('photo-preview-area').classList.remove('hidden');
-            // 核心修复：选择图片后，手动移除按钮的禁用状态
-            const btn = document.getElementById('photo-submit-btn');
-            btn.disabled = false;
-        };
-        reader.readAsDataURL(input.files[0]);
+// --- 拍照识图：实现见 tm-dashboard-photo.js（挂载 window.submitPhoto / handlePhotoSelected）---
+function openPhotoModal() {
+    var modal = document.getElementById('photo-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+    if (typeof window.resetPhoto === 'function') {
+        window.resetPhoto();
     }
 }
-function resetPhoto() { document.getElementById('photo-preview-area').classList.add('hidden'); document.getElementById('photo-submit-btn').disabled = true; }
-function submitPhoto() { closePhotoModal(); showToast("识别任务已提交 AI 队列"); }
-function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); }
+function closePhotoModal() {
+    var modal = document.getElementById('photo-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
 
 // --- 4. 文本解析逻辑 (修复清空动作) ---
 function handleTextSubmit() {

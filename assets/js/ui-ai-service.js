@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    var REV = '20260601';
+    var REV = '20260603heic';
     var IMAGE_MAX_BYTES = 2 * 1024 * 1024;
     var IMAGE_QUALITY = 0.8;
     var DEVICE_WAIT_TEXT = '正在等待设备响应...';
@@ -211,19 +211,24 @@
             return input;
         }
         var mime = (blob.type || '').toLowerCase();
-        if (mime.indexOf('heic') >= 0 || mime.indexOf('heif') >= 0) {
-            console.warn('[TM_AIService] HEIC/HEIF 跳过 Canvas 压缩，原样上传');
-            return blob;
-        }
-        if (blob.size <= maxBytes) {
-            return blob;
-        }
+        var isHeic = mime.indexOf('heic') >= 0 || mime.indexOf('heif') >= 0;
+        var forceJpeg = isHeic || !mime || mime === 'application/octet-stream';
 
         var img;
         try {
             img = await loadImageFromBlob(blob);
         } catch (loadErr) {
-            console.warn('[TM_AIService] 图片解码失败，原样上传', loadErr);
+            if (forceJpeg) {
+                console.warn('[TM_AIService] HEIC/未知格式解码失败，原样上传', loadErr);
+            } else {
+                console.warn('[TM_AIService] 图片解码失败，原样上传', loadErr);
+            }
+            return blob;
+        }
+
+        if (forceJpeg || blob.size > maxBytes) {
+            /* fall through to canvas JPEG */
+        } else if (blob.size <= maxBytes) {
             return blob;
         }
         var w = img.naturalWidth || img.width;

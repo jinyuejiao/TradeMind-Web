@@ -376,11 +376,16 @@
     }
 
     /* ---------- 确认下单前自动建档 ---------- */
-    async function quickSaveProduct(productName, sku, baseUnit) {
+    async function quickSaveProduct(productName, sku, baseUnit, extra) {
+        extra = extra || {};
         var nm = (productName || '').trim();
         if (!nm) throw new Error('产品名称不能为空');
         var sk = (sku || '').trim() || ('SKU-' + Date.now().toString().slice(-8));
         var bu = (baseUnit || '').trim() || '件';
+        var price = extra.price != null ? parseFloat(extra.price) : 0;
+        if (isNaN(price)) price = 0;
+        var stock = extra.stock != null ? parseInt(extra.stock, 10) : 0;
+        if (isNaN(stock)) stock = 0;
         var body = {
             product: {
                 name: nm,
@@ -388,13 +393,26 @@
                 baseUnit: bu,
                 purchaseUnit: bu,
                 salesUnit: bu,
-                price: 0,
-                stock: 0,
+                price: price,
+                stock: stock,
                 tenantId: window.currentTenantId
             },
-            unitConversions: [],
             warehouseStocks: []
         };
+        var convRaw = extra.unitConversions || extra.unit_conversions;
+        if (Array.isArray(convRaw) && convRaw.length) {
+            body.unitConversions = convRaw.map(function (c) {
+                return {
+                    unitName: c.unitName || c.unit_name || c.unit,
+                    ratio: c.ratio != null ? c.ratio : c.perBase,
+                    isDefault: false
+                };
+            }).filter(function (c) {
+                return c.unitName && String(c.unitName).trim() !== bu && Number(c.ratio) > 0;
+            });
+        } else if (!extra.skipEmptyConversions) {
+            body.unitConversions = [];
+        }
         var resp = await window.wrappedFetch('/api/v1/rd/products/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -409,10 +427,71 @@
             window.productList.unshift({
                 productId: Number(productId),
                 name: nm,
-                sku: sk
+                sku: sk,
+                baseUnit: bu,
+                salesUnit: bu
             });
         }
         return Number(productId);
+    }
+
+    function mergeAuditDraftForIndex(index) {
+        var list = (window.auditState && window.auditState.aiStructured && window.auditState.aiStructured.new_products_found) || [];
+        var npItem = list[index] || {};
+        var draft = (window.auditState && window.auditState.newProductDrafts && window.auditState.newProductDrafts[index]) || {};
+        var merged = Object.assign({}, npItem);
+        Object.keys(draft).forEach(function (key) {
+            var val = draft[key];
+            if (val != null && String(val).trim() !== '') merged[key] = val;
+        });
+        return merged;
+    }
+
+    async function autoSaveNewProductsFromAudit() {
+        if (!window.auditState || !window.auditState.aiStructured) return;
+        var np = window.auditState.aiStructured.new_products_found;
+        if (!Array.isArray(np) || !np.length) return;
+
+        if (typeof window.readAuditProductFormToDraft === 'function') {
+            window.readAuditProductFormToDraft(window.auditState.activeNewProductIndex || 0);
+        }
+
+        while (np.length > 0) {
+            var merged = mergeAuditDraftForIndex(0);
+            var pname = String(merged.name || merged.product_name || '').trim();
+            if (!pname) throw new Error('新产品「' + (merged.product_name || '未命名') + '」缺少名称，无法自动建档');
+            var sku = merged.sku || merged.product_sku || '';
+            var bu = merged.base_unit || merged.baseUnit || merged.unit || '件';
+            var conv = merged.unit_conversions || merged.unitConversions;
+            var pid = await quickSaveProduct(pname, sku, bu, {
+                price: merged.price || merged.sale_price,
+                stock: merged.stock,
+                unitConversions: conv,
+                skipEmptyConversions: true
+            });
+            if (typeof window.linkOrderItemsToSavedProduct === 'function') {
+                window.linkOrderItemsToSavedProduct(pid, pname, sku, [pname, merged.name, merged.product_name], bu);
+            }
+            np.splice(0, 1);
+            if (window.auditState.newProductDrafts) {
+                var nextDrafts = {};
+                Object.keys(window.auditState.newProductDrafts).forEach(function (k) {
+                    var idx = Number(k);
+                    if (idx > 0) nextDrafts[idx - 1] = window.auditState.newProductDrafts[k];
+                });
+                window.auditState.newProductDrafts = nextDrafts;
+            }
+        }
+
+        if (typeof window.persistAuditResult === 'function') {
+            try { await window.persistAuditResult(); } catch (e) { /* ignore draft persist */ }
+        }
+        if (typeof window.generateProductSelects === 'function') {
+            window.generateProductSelects();
+        }
+        if (typeof window.syncAuditNewProductSubtabs === 'function') {
+            window.syncAuditNewProductSubtabs();
+        }
     }
 
     async function saveCustomerInline(name, phone) {
@@ -446,6 +525,9 @@
         var payload = result.data || result;
         var custId = payload && (payload.id || payload.custId || payload.cust_id);
         if (!custId) throw new Error('客户创建未返回 ID');
+        if (typeof window.TM_emitCustomersChanged === 'function') {
+            window.TM_emitCustomersChanged({ customerId: Number(custId) });
+        }
         return Number(custId);
     }
 
@@ -567,10 +649,7 @@
         }
 
         if (window.auditState && window.hasNewProducts && window.hasNewProducts(window.auditState.aiStructured)) {
-            var np = window.auditState.aiStructured.new_products_found;
-            if (Array.isArray(np) && np.length) {
-                throw new Error('尚有 ' + np.length + ' 个新产品未保存，请先在「产品信息」标签中逐项保存');
-            }
+            await autoSaveNewProductsFromAudit();
         }
     }
 
@@ -671,7 +750,7 @@
                         }
                     }
                     if (typeof window.handleAuditProductSelectChange === 'function') {
-                        window.handleAuditProductSelectChange(select);
+                        window.handleAuditProductSelectChange(select, { preserveExistingPrice: true });
                     }
                 }
             });
@@ -786,6 +865,8 @@
     function tmSyncManualFinStatusUI() {
         var finSel = document.getElementById('manual-fin-status');
         var amountEl = document.getElementById('manual-receive-amount');
+        var payBtn = document.getElementById('manual-confirm-receive-btn');
+        var hintEl = document.getElementById('manual-fin-disabled-hint');
         var finVal = finSel ? finSel.value : 'UNPAID';
         var remaining = tmGetManualOrderTotal();
         var remEl = document.getElementById('manual-remaining-sum');
@@ -807,6 +888,30 @@
                 } else {
                     amountEl.placeholder = '';
                 }
+            }
+        }
+        var canPay = (finVal === 'PARTIAL_PAID' || finVal === 'SETTLED') && remaining > 0.001;
+        var payAmount = amountEl && amountEl.value ? tmRoundMoney(amountEl.value) : 0;
+        if (finVal === 'PARTIAL_PAID') canPay = canPay && payAmount > 0;
+        if (finVal === 'SETTLED' && remaining > 0) canPay = true;
+        var accSel = document.getElementById('manual-order-account');
+        var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+        var hasAccounts = window.TM_TenantOps && window.TM_TenantOps.hasSelectableAccounts
+            ? window.TM_TenantOps.hasSelectableAccounts(accSel)
+            : false;
+        var accId = accSel && accSel.value ? parseInt(accSel.value, 10) : null;
+        var needsAccount = canPay && !virtualFin && hasAccounts && (!accId || isNaN(accId));
+        if (payBtn) {
+            payBtn.disabled = !canPay || needsAccount;
+            payBtn.title = needsAccount ? '请先设置或选择收款账户' : (!canPay ? '请选择收款状态并填写金额' : '');
+        }
+        if (hintEl) {
+            if (canPay && !needsAccount) {
+                hintEl.textContent = virtualFin || !hasAccounts ? '保存时将记录收款（无账户则先挂账）' : '保存时将一并记账';
+            } else if (needsAccount) {
+                hintEl.textContent = '请先设置或选择收款账户';
+            } else {
+                hintEl.textContent = '选择「部分收款」或「已结清」后保存时将一并记账；无账户可先挂账';
             }
         }
     }
@@ -1151,6 +1256,16 @@
             return;
         }
         var finStatus = finSel && finSel.value ? finSel.value : 'UNPAID';
+        var needPay = finStatus === 'PARTIAL_PAID' || finStatus === 'SETTLED';
+        var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+        var hasAccounts = window.TM_TenantOps && window.TM_TenantOps.hasSelectableAccounts
+            ? window.TM_TenantOps.hasSelectableAccounts(accountSel)
+            : false;
+        if (needPay && !virtualFin && hasAccounts && !accountId) {
+            errors.push('请选择收款账户');
+            tmManualOrderShowErrors(errors);
+            return;
+        }
         var warehouseRaw = whSel && whSel.value ? String(whSel.value).trim() : '';
         var warehouseId = warehouseRaw ? parseInt(warehouseRaw, 10) : null;
         if (warehouseRaw && Number.isNaN(warehouseId)) {

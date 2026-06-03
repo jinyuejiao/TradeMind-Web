@@ -1878,6 +1878,11 @@ window.ProductModule = {
                 await window.TM_TenantOps.maybePromptWarehouseMigration(data);
                 window.TM_TenantOps.invalidateProfile();
             }
+            if (typeof window.TM_emitWarehousesChanged === 'function') {
+                var savedWh = data && (data.data || data);
+                var whId = savedWh && (savedWh.warehouseId || savedWh.warehouse_id || savedWh.id);
+                window.TM_emitWarehousesChanged({ warehouseId: whId });
+            }
         } catch (error) {
             console.error('[ProductModule] 保存仓库异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {

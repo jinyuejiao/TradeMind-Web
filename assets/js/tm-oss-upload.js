@@ -122,6 +122,25 @@
         });
     }
 
+    function parseApiJsonResponse(res) {
+        return res.text().then(function (text) {
+            var data = null;
+            var trimmed = (text || '').trim();
+            if (trimmed) {
+                try {
+                    data = JSON.parse(trimmed);
+                } catch (eJson) {
+                    var preview = trimmed.length > 120 ? trimmed.slice(0, 120) + '…' : trimmed;
+                    throw new Error('图片上传响应异常 (HTTP ' + res.status + ')，非 JSON：' + preview);
+                }
+            }
+            if (!res.ok || !data || data.success === false) {
+                throw new Error((data && data.message) || ('图片上传失败 (' + res.status + ')'));
+            }
+            return data;
+        });
+    }
+
     function uploadDashboardImage(blob) {
         if (!blob || !blob.size) {
             return Promise.reject(new Error('图片数据为空'));
@@ -132,15 +151,12 @@
             method: 'POST',
             body: formData
         }).then(function (res) {
-            return res.json().then(function (data) {
-                if (!res.ok || !data || data.success === false) {
-                    throw new Error((data && data.message) || ('图片上传失败 (' + res.status + ')'));
-                }
+            return parseApiJsonResponse(res).then(function (data) {
                 var imageUrl = data.data && data.data.url;
                 if (!imageUrl) {
                     throw new Error('服务端未返回图片地址');
                 }
-                return imageUrl.split('?')[0];
+                return String(imageUrl).split('?')[0];
             });
         });
     }
