@@ -253,14 +253,23 @@ window.SupplierModule = {
         var details = document.getElementById('purchase-aux-details');
         if (details) details.open = !!open;
         if (open) {
-            var self = this;
-            requestAnimationFrame(function () {
-                var footer = document.querySelector('#purchase-modal .tm-purchase-modal-footer');
-                if (footer && typeof footer.scrollIntoView === 'function') {
-                    footer.scrollIntoView({ block: 'end', behavior: 'smooth' });
-                }
-            });
+            this.ensurePurchaseFooterVisible();
         }
+    },
+
+    ensurePurchaseFooterVisible: function() {
+        requestAnimationFrame(function () {
+            var panel = document.querySelector('#purchase-modal .tm-dialog-panel');
+            var dock = document.querySelector('#purchase-modal .tm-purchase-bottom-dock');
+            var footer = document.querySelector('#purchase-modal .tm-purchase-modal-footer');
+            if (panel) panel.scrollTop = 0;
+            if (dock && dock.scrollHeight > dock.clientHeight) {
+                dock.scrollTop = dock.scrollHeight;
+            }
+            if (footer) {
+                footer.classList.remove('tm-purchase-footer-clipped');
+            }
+        });
     },
 
     syncFinStatusUI: function(purchase, opts) {
@@ -332,7 +341,13 @@ window.SupplierModule = {
         }
         var finSel = document.getElementById('purchase-fin-status');
         if (finSel) {
-            finSel.addEventListener('change', function() { self.syncFinStatusUI(); });
+            finSel.addEventListener('change', function() {
+                self.syncFinStatusUI();
+                if (finSel.value === 'PARTIAL_PAID' || finSel.value === 'SETTLED') {
+                    self.setPurchaseAuxOpen(true);
+                }
+                self.ensurePurchaseFooterVisible();
+            });
         }
         var whSel = document.getElementById('purchase-warehouse');
         if (whSel) {
@@ -588,6 +603,8 @@ window.SupplierModule = {
                 this.currentPurchase = result.data;
                 if (amountEl) amountEl.value = '';
                 this.syncFinStatusUI(result.data, { applyPurchaseFin: true });
+                this.setPurchaseAuxOpen(false);
+                this.ensurePurchaseFooterVisible();
                 this.notify('付款记账成功', 'success', { useDialog: true, title: '记账成功' });
             } else {
                 this.showPurchaseFormError(result.message || '记账失败');

@@ -589,6 +589,35 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
     box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
 }
 
+#purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    min-height: 0;
+    max-height: min(52vh, 22rem);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    z-index: 6;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock #purchase-bottom-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock .tm-purchase-modal-footer {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    z-index: 8;
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.1);
+}
+
+#purchase-modal.tm-purchase-modal:has(#purchase-aux-details[open]) .tm-purchase-footer-hint {
+    display: none;
+}
+
 html.tm-embedded #purchase-modal .tm-purchase-modal-footer,
 html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
@@ -653,10 +682,28 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     }
 
     #purchase-modal.tm-purchase-modal .tm-document-modal-scroll {
-        flex: 1 1 auto;
+        flex: 1 1 0;
         min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+    }
+
+    html.tm-embedded.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel,
+    html.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel {
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
+
+    #purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock {
+        max-height: min(48vh, 20rem);
+    }
+
+    #purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock .tm-purchase-modal-footer {
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    #purchase-modal.tm-purchase-modal .tm-purchase-footer-actions {
+        min-height: 44px;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-body {
@@ -666,26 +713,24 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     }
 
     #purchase-modal.tm-purchase-modal #purchase-bottom-panel {
-        flex: 0 0 auto;
+        flex: 1 1 auto;
+        min-height: 0;
         max-height: none;
-        overflow: visible;
+        overflow-y: auto;
         z-index: 5;
     }
 
     #purchase-modal.tm-purchase-modal #purchase-aux-details[open] > div {
-        max-height: min(38vh, 260px);
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        max-height: none;
+        overflow-y: visible;
     }
 
-    #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer {
+    #purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock .tm-purchase-modal-footer {
         flex-shrink: 0;
-        position: relative;
-        bottom: auto;
-        z-index: 6;
+        z-index: 8;
         background: #fff;
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
-        box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.1);
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-modal-footer .tm-btn-primary,
