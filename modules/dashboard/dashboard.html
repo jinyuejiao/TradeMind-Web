@@ -6,10 +6,10 @@
     <script src="../../assets/js/tm-metrics.js?v=20260528metrics"></script>
     <script src="../../assets/js/dashboard-voice-upload.js?v=20260524"></script>
     <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
-    <script src="../../assets/js/ui-ai-service.js?v=20260603heic"></script>
+    <script src="../../assets/js/ui-ai-service.js?v=20260603jpeg"></script>
     <script src="../../assets/js/tm-oss-path.js?v=20260527"></script>
     <script src="../../assets/js/tm-oss-upload.js?v=20260603img2"></script>
-    <script src="../../assets/js/tm-dashboard-photo.js?v=20260603photo"></script>
+    <script src="../../assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="../../assets/js/tm-product-registry-form.js?v=20260531unit"></script>
     <script src="../../assets/js/ai-order-extract-parse.js?v=20260531unit"></script>
@@ -2080,12 +2080,14 @@
 
                 const turnoverRaw = Number((efficiency && (efficiency.inventory_turnover || efficiency.inventoryTurnover)) || 0);
 
-                setTextById('dashboard-risk-count', String(riskCount));
-                setTextById('dashboard-pending-recognition-count', String(pendingRecognitionCount));
-                setTextById('dashboard-today-revenue', formatCurrencyCny(todayRevenue));
-                setTextById('dashboard-extracted-count', String(extractedTodayCount));
-                setTextById('dashboard-stock-warning-count', String(riskCount));
-                setTextById('dashboard-turnover-rate', turnoverRaw.toFixed(2));
+                window.__TM_DASHBOARD_LAST_GOOD_STATS = {
+                    riskCount: riskCount,
+                    pendingRecognitionCount: pendingRecognitionCount,
+                    todayRevenueText: formatCurrencyCny(todayRevenue),
+                    extractedTodayCount: extractedTodayCount,
+                    turnoverRateText: turnoverRaw.toFixed(2)
+                };
+                applyDashboardOverviewStats(window.__TM_DASHBOARD_LAST_GOOD_STATS);
             } catch (error) {
                 console.warn('加载工作台概览指标失败:', error);
             }
@@ -4787,7 +4789,9 @@
                     var file = input.files[0];
                     var aiSvc = window.TM_AIService;
                     var processed = file;
-                    if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                    if (aiSvc && typeof aiSvc.compressForOrderUpload === 'function') {
+                        processed = await aiSvc.compressForOrderUpload(file);
+                    } else if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
                         processed = await aiSvc.compressImageIfNeeded(file);
                     }
                     var reader = new FileReader();
@@ -4903,7 +4907,9 @@
                 canvas.toBlob(async function (blob) {
                     if (blob) {
                         var aiSvc = window.TM_AIService;
-                        if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                        if (aiSvc && typeof aiSvc.compressForOrderUpload === 'function') {
+                            blob = await aiSvc.compressForOrderUpload(blob);
+                        } else if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
                             blob = await aiSvc.compressImageIfNeeded(blob);
                         }
 
@@ -4971,7 +4977,9 @@
                 }
 
                 var aiSvc = window.TM_AIService;
-                if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                if (aiSvc && typeof aiSvc.compressForOrderUpload === 'function') {
+                    blob = await aiSvc.compressForOrderUpload(blob);
+                } else if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
                     blob = await aiSvc.compressImageIfNeeded(blob);
                 }
 

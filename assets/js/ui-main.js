@@ -717,6 +717,7 @@ const TM_OPS_NAV_CONFIG = [
     { route: 'tenants', label: '看板', title: '租户看板', icon: 'ph-squares-four' },
     { route: 'plans', label: '订阅', title: '订阅策略', icon: 'ph-currency-circle-dollar' },
     { route: 'referral', label: '推荐', title: '推荐与结算', icon: 'ph-gift' },
+    { route: 'promoters', label: '推广', title: '推广员开号', icon: 'ph-user-plus' },
     { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' },
     { route: 'announce', label: '公告', title: '公告与审计', icon: 'ph-scroll' }
 ];

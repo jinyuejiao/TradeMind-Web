@@ -1215,7 +1215,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | 数据隔离 | 所有查询 **`WHERE referrer_user_id = JWT userId`**；禁止 Query/Body 传入 referrer |
 | 奖励金额 | 推荐人 **`role_type=ROLE_PROMOTER`** 时 **`ReferralQualificationService`** 硬编码 **`150.00`**；商户推荐仍读 **`custom.referral.reward-per-qualified`**（默认 100） |
 | 结算 | 仍由运维 **`/api/v1/ops/referrals/rewards/{id}/mark-paid`** 标记 **`PAID`** |
-| 前端 | **`promoter-portal.html`**（移动优先 H5，微信公众号菜单挂载） |
+| 前端 | **`promoter-portal.html`**（移动优先 H5）；运维录入 **`ops-hub.html` → 推广员开号**（`#promoters`，`modules/ops/promoters-manage.html`） |
 | 配置 | **`custom.wechat.mp.app-id/app-secret/oauth-redirect-uri`**（TenantService）；OpsService **`custom.tenant-service.url`** + **`custom.security.internal-token`** |
 
 #### 2.8.7 推广员流水展示状态
@@ -1420,6 +1420,12 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
   - **已废弃**：旧版金色 **`gold-referral-card`**（琥珀渐变 + 火箭图标）不再作为主路径。
 - **推荐奖励详情**：**`/modules/membership/referral-rewards-modal.html`** + **`referral-rewards.js`**（名单脱敏、提现收款信息）；由 **`injectMemberAuxModals()`** 注入。
 - **支付回站**：`sessionStorage.tm_pending_subscription_pay_txnOrderId`；轮询 **`/subscription/payment/status`** 成功后 **`openMemberModal()`**。
+
+#### 3.1.8.1 运维中心：推广员开号入口
+
+- **路径**：登录运维账号（`ops_admin`）→ **`ops-hub.html`** → 侧栏或底栏 **「推广员开号」**（路由 **`#promoters`**）。
+- **模块**：**`modules/ops/promoters-manage.html`**，由 **`ui-ops.js`** 的 **`initPromotersPage`** 提交 **`POST /api/v1/ops/promoters`**。
+- **快捷入口**：**「推荐与结算」** 页顶部按钮 **「开通独立推广员账号」** 可跳转至同一开号页。
 
 #### 3.1.8 推广员移动门户（promoter-portal.html）
 

@@ -5,9 +5,11 @@
 (function () {
     'use strict';
 
-    var REV = '20260603heic';
+    var REV = '20260603jpeg';
     var IMAGE_MAX_BYTES = 2 * 1024 * 1024;
     var IMAGE_QUALITY = 0.8;
+    var ORDER_IMAGE_MAX_SIDE = 1920;
+    var ORDER_IMAGE_FAST_SKIP_BYTES = 600 * 1024;
     var DEVICE_WAIT_TEXT = '正在等待设备响应...';
 
     function checkMediaSupport(kind) {
@@ -268,6 +270,63 @@
         return compressed;
     }
 
+    /**
+     * 订单识图上传：与问题反馈 compressToJpegBlob 对齐，长边 1920 + JPEG，避免 iOS 原图 > Nginx 1m。
+     */
+    function compressForOrderUpload(input) {
+        return new Promise(function (resolve, reject) {
+            var blob = input instanceof Blob ? input : null;
+            if (!blob) {
+                reject(new Error('无效的图片数据'));
+                return;
+            }
+            var mime = (blob.type || '').toLowerCase();
+            if (mime === 'image/jpeg' && blob.size > 0 && blob.size <= ORDER_IMAGE_FAST_SKIP_BYTES) {
+                resolve(blob);
+                return;
+            }
+            var url = URL.createObjectURL(blob);
+            var img = new Image();
+            img.onload = function () {
+                URL.revokeObjectURL(url);
+                var w = img.naturalWidth || img.width;
+                var h = img.naturalHeight || img.height;
+                if (!w || !h) {
+                    reject(new Error('图片尺寸无效'));
+                    return;
+                }
+                var maxSide = ORDER_IMAGE_MAX_SIDE;
+                if (w > maxSide || h > maxSide) {
+                    if (w >= h) {
+                        h = Math.round(h * maxSide / w);
+                        w = maxSide;
+                    } else {
+                        w = Math.round(w * maxSide / h);
+                        h = maxSide;
+                    }
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                canvas.toBlob(function (out) {
+                    if (!out) {
+                        reject(new Error('图片压缩失败'));
+                        return;
+                    }
+                    console.log('[TM_AIService] 订单识图 JPEG', blob.size, '->', out.size, 'rev=', REV);
+                    resolve(out);
+                }, 'image/jpeg', IMAGE_QUALITY);
+            };
+            img.onerror = function () {
+                URL.revokeObjectURL(url);
+                reject(new Error('图片读取失败，请换一张或重新拍摄'));
+            };
+            img.src = url;
+        });
+    }
+
     window.TM_AIService = {
         REV: REV,
         DEVICE_WAIT_TEXT: DEVICE_WAIT_TEXT,
@@ -280,6 +339,7 @@
         hideDeviceWaiting: hideDeviceWaiting,
         requestUserMedia: requestUserMedia,
         stopMediaStream: stopMediaStream,
-        compressImageIfNeeded: compressImageIfNeeded
+        compressImageIfNeeded: compressImageIfNeeded,
+        compressForOrderUpload: compressForOrderUpload
     };
 })();

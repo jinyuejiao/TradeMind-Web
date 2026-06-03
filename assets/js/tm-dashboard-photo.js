@@ -5,7 +5,7 @@
 (function () {
     'use strict';
 
-    var REV = '20260603photo';
+    var REV = '20260603jpeg';
 
     function resolveTmOssUpload() {
         if (window.TMOssUpload) {
@@ -38,6 +38,9 @@
 
     async function compressPhotoBlob(input) {
         var aiSvc = window.TM_AIService;
+        if (aiSvc && typeof aiSvc.compressForOrderUpload === 'function') {
+            return aiSvc.compressForOrderUpload(input);
+        }
         if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
             return aiSvc.compressImageIfNeeded(input);
         }

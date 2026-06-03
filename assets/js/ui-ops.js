@@ -138,6 +138,7 @@
         tenants: { file: './modules/ops/tenants-quota-tree.html', title: '租户看板' },
         plans: { file: './modules/ops/plan-catalog-by-merchant.html', title: '订阅策略' },
         referral: { file: './modules/ops/referral-settlement.html', title: '推荐与结算' },
+        promoters: { file: './modules/ops/promoters-manage.html', title: '推广员开号' },
         feedback: { file: './modules/ops/merchant-feedback.html', title: '用户问题' },
         announce: { file: './modules/ops/announce-audit.html', title: '公告与审计' }
     };
@@ -448,6 +449,7 @@
             if (route === 'tenants') initTenantsQuotaTreePage();
             else if (route === 'plans') initPlanCatalogPage();
             else if (route === 'referral') initReferralPage();
+            else if (route === 'promoters') initPromotersPage();
             else if (route === 'feedback') initFeedbackPage();
             else if (route === 'announce') initAnnouncePage();
         }).catch(function () {
@@ -2235,6 +2237,118 @@
         loadAnnouncements();
     }
 
+    function initPromotersPage() {
+        var form = el('ops-promoter-form');
+        if (!form || form.dataset.bound === '1') {
+            return;
+        }
+        form.dataset.bound = '1';
+        var resultBox = el('ops-promoter-result');
+        var placeholder = el('ops-promoter-result-placeholder');
+        var lastCode = '';
+
+        form.addEventListener('submit', async function (ev) {
+            ev.preventDefault();
+            var userName = (el('ops-promoter-username').value || '').trim();
+            var password = el('ops-promoter-password').value || '';
+            var realName = (el('ops-promoter-realname').value || '').trim();
+            var phone = (el('ops-promoter-phone').value || '').trim();
+            var email = (el('ops-promoter-email').value || '').trim();
+            if (!userName || !password || !realName || !phone) {
+                alert('请填写必填项');
+                return;
+            }
+            if (!/^1\d{10}$/.test(phone)) {
+                alert('手机号须为 11 位且以 1 开头');
+                return;
+            }
+            var submitBtn = el('ops-promoter-submit');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = '提交中…';
+            }
+            try {
+                var hash = password;
+                if (typeof md5Hash === 'function') {
+                    hash = await md5Hash(password);
+                }
+                var res = await opsFetch('/api/v1/ops/promoters', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userName: userName,
+                        password: hash,
+                        realName: realName,
+                        phone: phone,
+                        email: email || null
+                    })
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    throw new Error((data && data.message) || '开号失败');
+                }
+                lastCode = data.referralCode || '';
+                if (el('ops-promoter-res-uid')) el('ops-promoter-res-uid').textContent = data.userId != null ? String(data.userId) : '—';
+                if (el('ops-promoter-res-user')) el('ops-promoter-res-user').textContent = data.userName || userName;
+                if (el('ops-promoter-res-name')) el('ops-promoter-res-name').textContent = data.realName || realName;
+                if (el('ops-promoter-res-phone')) el('ops-promoter-res-phone').textContent = data.phone || phone;
+                if (el('ops-promoter-res-code')) el('ops-promoter-res-code').textContent = lastCode || '—';
+                if (resultBox) resultBox.classList.remove('hidden');
+                if (placeholder) placeholder.classList.add('hidden');
+                appendAudit('PROMOTER_CREATE', (data.userName || userName) + ' ' + (lastCode || ''));
+                form.reset();
+            } catch (err) {
+                alert(err.message || String(err));
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '创建推广员';
+                }
+            }
+        });
+
+        var copyBtn = el('ops-promoter-copy-code');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                if (!lastCode) {
+                    alert('暂无推广码');
+                    return;
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(lastCode).then(function () {
+                        alert('已复制推广码');
+                    }).catch(function () {
+                        alert(lastCode);
+                    });
+                } else {
+                    alert(lastCode);
+                }
+            });
+        }
+    }
+
+    /** 商户主壳 index-app（含 view-dashboard）：不得自动拉运维 API，由 ui-main 的 switchTab / TM_bootOpsIndexShell 触发 */
+    function isMerchantIndexAppShell() {
+        return !!document.getElementById('view-dashboard');
+    }
+
+    function shouldDeferOpsAutoBoot() {
+        if (typeof window.TM_isStandaloneOpsHub === 'function' && window.TM_isStandaloneOpsHub()) {
+            return true;
+        }
+        if (isMerchantIndexAppShell()) {
+            return true;
+        }
+        return false;
+    }
+
+    function mayHandleOpsHashChange() {
+        if (!isMerchantIndexAppShell()) {
+            return true;
+        }
+        return typeof window.TM_isOpsAdminShell === 'function' && window.TM_isOpsAdminShell();
+    }
+
     function bindNav() {
         document.querySelectorAll('[data-ops-route]').forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -2254,8 +2368,7 @@
 
     function boot() {
         bindNav();
-        if (typeof window.TM_isStandaloneOpsHub === 'function' && window.TM_isStandaloneOpsHub() &&
-            document.getElementById('tm-app-tabbar')) {
+        if (shouldDeferOpsAutoBoot()) {
             return;
         }
         var raw = (location.hash || '').replace(/^#/, '');
@@ -2282,6 +2395,9 @@
         boot();
     }
     window.addEventListener('hashchange', function () {
+        if (!mayHandleOpsHashChange()) {
+            return;
+        }
         var hash = (location.hash || '').replace(/^#/, '');
         if (hash === 'quota-ai' || hash === 'lifecycle' || hash === 'tenants-lifecycle' || hash === 'metering') {
             try {

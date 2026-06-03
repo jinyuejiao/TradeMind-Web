@@ -3,6 +3,9 @@
         <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-1"><i class="ph ph-seal-check text-ops-600"></i> 推荐奖励审批</h2>
         <p class="text-[10px] text-slate-500 leading-relaxed">仅统计「被推荐人已完成首次订阅」的有效记录。同一推荐人 / 同一推荐码可对应<strong class="text-ops-700">多条</strong>有效订阅，按组分列展示，结算按<strong class="text-ops-700">单条有效订阅</strong>标记。</p>
         <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/referrals/rewards · POST …/mark-paid · POST …/mark-payable</p>
+        <button type="button" data-ops-route="promoters" class="mt-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ops-600 hover:bg-ops-700 text-white text-[10px] font-bold shadow-sm transition-colors">
+            <i class="ph ph-user-plus"></i> 开通独立推广员账号
+        </button>
     </div>
 
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3" id="ops-ref-summary-cards"></div>
