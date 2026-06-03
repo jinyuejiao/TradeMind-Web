@@ -2389,7 +2389,7 @@ function ensureMerchantFeedbackAssets() {
         document.head.appendChild(s);
     }
     appendScript('tm-oss-path-js', 'assets/js/tm-oss-path.js?v=20260527', function () {
-        appendScript('tm-oss-upload-js', 'assets/js/tm-oss-upload.js?v=20260527', function () {
+        appendScript('tm-oss-upload-js', 'assets/js/tm-oss-upload.js?v=20260603img', function () {
             appendScript('tm-merchant-feedback-js', 'assets/js/tm-merchant-feedback.js?v=20260526fb3');
         });
     });

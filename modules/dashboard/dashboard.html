@@ -8,7 +8,7 @@
     <script src="../../assets/js/tm-confirm.js?v=20260524crm"></script>
     <script src="../../assets/js/ui-ai-service.js?v=20260601"></script>
     <script src="../../assets/js/tm-oss-path.js?v=20260527"></script>
-    <script src="../../assets/js/tm-oss-upload.js?v=20260527"></script>
+    <script src="../../assets/js/tm-oss-upload.js?v=20260603img"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="../../assets/js/tm-product-registry-form.js?v=20260531unit"></script>
     <script src="../../assets/js/ai-order-extract-parse.js?v=20260531unit"></script>
@@ -4950,7 +4950,8 @@
                 }
             } catch (error) {
                 console.error('[AI-ORDER][IMAGE] 处理图片失败:', error);
-                showToast('处理图片失败，请重试');
+                var imgMsg = (error && error.message) ? String(error.message) : '';
+                showToast(imgMsg ? ('处理图片失败：' + imgMsg) : '处理图片失败，请重试');
             }
         }
 
