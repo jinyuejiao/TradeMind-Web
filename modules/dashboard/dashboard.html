@@ -12,7 +12,7 @@
     <script src="../../assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="../../assets/js/tm-product-registry-form.js?v=20260531unit"></script>
-    <script src="../../assets/js/ai-order-extract-parse.js?v=20260531unit"></script>
+    <script src="../../assets/js/ai-order-extract-parse.js?v=20260601audit"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
@@ -2120,25 +2120,18 @@
         }
 
         function pruneResolvedNewProductsFromOrder(data) {
-            if (!data || !Array.isArray(data.new_products_found) || !data.order_data || !Array.isArray(data.order_data.items)) {
-                return;
+            if (typeof window.TM_pruneResolvedNewProductsFromOrder === 'function') {
+                window.TM_pruneResolvedNewProductsFromOrder(data);
             }
-            var items = data.order_data.items;
-            var matchedNames = {};
-            var matchedIds = {};
-            items.forEach(function (it) {
-                var pid = it.matched_product_id != null ? Number(it.matched_product_id) : 0;
-                if (pid > 0) matchedIds[pid] = true;
-                var nm = String(it.matched_product_name || it.product_name_raw || '').trim();
-                if (nm) matchedNames[nm] = true;
-            });
-            data.new_products_found = data.new_products_found.filter(function (np) {
-                var npName = String(np.name || np.product_name || '').trim();
-                var npId = np.matched_product_id != null ? Number(np.matched_product_id) : (np.product_id != null ? Number(np.product_id) : 0);
-                if (npId > 0 && matchedIds[npId]) return false;
-                if (npName && matchedNames[npName]) return false;
-                return true;
-            });
+        }
+
+        function getNewProductDefaultPrice(np) {
+            if (!np || typeof np !== 'object') return 0;
+            var p = np.price != null ? np.price
+                : (np.sale_price != null ? np.sale_price
+                    : (np.unit_price != null ? np.unit_price : (np.salePrice != null ? np.salePrice : 0)));
+            var n = Number(p);
+            return Number.isFinite(n) && n > 0 ? n : 0;
         }
 
         function parseAiEnvelope(rawAiResult) {
@@ -2183,17 +2176,23 @@
                 data.new_customers_found = [];
             }
             const np = details.newProductsFound != null ? details.newProductsFound : details.new_products_found;
+            var productResolvedFlag = details.productResolved === true;
             var productInfoRaw = envelope.productInfo != null ? envelope.productInfo : envelope.product_info;
-            var productInfoCleared = false;
             if (productInfoRaw != null) {
                 var piParsed = typeof productInfoRaw === 'string' ? safeJsonParse(productInfoRaw, null) : productInfoRaw;
-                productInfoCleared = Array.isArray(piParsed) && piParsed.length === 0;
+                if (Array.isArray(piParsed) && piParsed.length > 0) {
+                    data.new_products_found = piParsed;
+                } else if (productResolvedFlag) {
+                    data.new_products_found = [];
+                }
             }
-            if (Array.isArray(data.new_products_found) && data.new_products_found.length === 0) {
-                data.new_products_found = [];
-            } else if (Array.isArray(np) && np.length > 0 && !productInfoCleared
-                && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
+            if (Array.isArray(np) && np.length > 0
+                && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)
+                && !productResolvedFlag) {
                 data.new_products_found = np;
+            }
+            if (!Array.isArray(data.new_products_found)) {
+                data.new_products_found = [];
             }
             pruneResolvedNewProductsFromOrder(data);
             if (data && data.customer_data && data.order_data) {
@@ -2512,10 +2511,12 @@
         }
         window.switchAuditNewProductIndex = switchAuditNewProductIndex;
 
-        function linkOrderItemsToSavedProduct(productId, productName, productSku, matchNames, productUnit) {
+        function linkOrderItemsToSavedProduct(productId, productName, productSku, matchNames, productUnit, defaultPrice) {
             if (!auditState.aiStructured || !auditState.aiStructured.order_data || !Array.isArray(auditState.aiStructured.order_data.items)) return;
             var names = matchNames || [productName];
             var unit = (productUnit && String(productUnit).trim()) ? String(productUnit).trim() : '';
+            var salePrice = Number(defaultPrice);
+            if (!Number.isFinite(salePrice) || salePrice <= 0) salePrice = 0;
             auditState.aiStructured.order_data.items.forEach(function (item) {
                 var raw = (item.product_name_raw || item.matched_product_name || '').trim();
                 var hit = names.some(function (n) { return n && raw === String(n).trim(); });
@@ -2525,6 +2526,10 @@
                     item.product_name_raw = productName;
                     if (productSku) item.sku = productSku;
                     if (unit) item.unit = unit;
+                    var curPrice = Number(item.price_at_time);
+                    if ((!Number.isFinite(curPrice) || curPrice <= 0) && salePrice > 0) {
+                        item.price_at_time = salePrice;
+                    }
                 }
             });
         }
@@ -2803,11 +2808,19 @@
             details.new_customers_found = [];
             details.newProductsFound = Array.isArray(data.new_products_found) ? data.new_products_found.slice() : [];
             details.new_products_found = details.newProductsFound.slice();
+            if (auditState.newProductDrafts && typeof auditState.newProductDrafts === 'object') {
+                details.newProductDrafts = JSON.parse(JSON.stringify(auditState.newProductDrafts));
+            }
             if (isCustomerResolved(data)) {
                 details.customerResolved = true;
+            } else {
+                details.customerResolved = false;
             }
             if (!hasNewProducts(data)) {
                 details.productResolved = true;
+                next.productInfo = JSON.stringify([]);
+            } else {
+                details.productResolved = false;
             }
             next.details = details;
             return next;
@@ -2815,6 +2828,16 @@
 
         async function persistAuditResult() {
             if (!auditState.currentRecordId || !auditState.aiStructured) return;
+            if (typeof syncAuditOrderDetailsFromDom === 'function') {
+                syncAuditOrderDetailsFromDom();
+            }
+            var customerSelect = document.getElementById('order-customer');
+            if (customerSelect && typeof handleAuditCustomerSelectChange === 'function') {
+                handleAuditCustomerSelectChange(customerSelect);
+            }
+            if (hasNewProducts(auditState.aiStructured) && typeof readAuditProductFormToDraft === 'function') {
+                readAuditProductFormToDraft(auditState.activeNewProductIndex || 0);
+            }
             syncAuditPricesFromDom();
             const payload = { aiResult: JSON.stringify(buildUpdatedAiEnvelope()) };
             const response = await window.wrappedFetch('/api/v1/ai/records/' + auditState.currentRecordId + '/result', {
@@ -3263,7 +3286,16 @@
             auditState.aiEnvelope = parsed.envelope;
             auditState.aiStructured = parsed.data;
             auditState.activeNewProductIndex = 0;
-            auditState.newProductDrafts = {};
+            var draftFromDetails = parsed.envelope && parsed.envelope.details && parsed.envelope.details.newProductDrafts;
+            if (draftFromDetails && typeof draftFromDetails === 'object') {
+                try {
+                    auditState.newProductDrafts = JSON.parse(JSON.stringify(draftFromDetails));
+                } catch (eDraft) {
+                    auditState.newProductDrafts = {};
+                }
+            } else {
+                auditState.newProductDrafts = {};
+            }
             auditState.savedNewProductIds = {};
             if (auditState.aiStructured && auditState.aiStructured.order_data && Array.isArray(auditState.aiStructured.order_data.items)) {
                 auditState.aiStructured.order_data.items = auditState.aiStructured.order_data.items.map(normalizeAuditOrderItem);
@@ -3647,7 +3679,18 @@
                 const productSku = (productPayload && productPayload.sku) || (saved && saved.sku) || '';
                 if (productId) {
                     var savedUnit = (productPayload && productPayload.baseUnit) || (saved && saved.baseUnit) || currentNp.base_unit || currentNp.unit || '件';
-                    linkOrderItemsToSavedProduct(productId, productName, productSku, [name, currentNp.name, currentNp.product_name], savedUnit);
+                    var defaultPrice = getNewProductDefaultPrice(currentNp);
+                    if (productPayload && productPayload.price != null && Number(productPayload.price) > 0) {
+                        defaultPrice = Number(productPayload.price);
+                    } else if (saved && (saved.price != null || saved.salePrice != null)) {
+                        defaultPrice = Number(saved.price != null ? saved.price : saved.salePrice) || defaultPrice;
+                    }
+                    linkOrderItemsToSavedProduct(
+                        productId, productName, productSku,
+                        [name, currentNp.name, currentNp.product_name], savedUnit, defaultPrice
+                    );
+                    if (!auditState.savedNewProductIds) auditState.savedNewProductIds = {};
+                    auditState.savedNewProductIds[String(productId)] = true;
                 }
                 if (window.productList && productId) {
                     var pu = (productPayload && productPayload.baseUnit) || (saved && saved.baseUnit) || currentNp.base_unit || '件';
@@ -5223,6 +5266,10 @@
         window.getProductUnit = getProductUnit;
         window.getTodayDateInput = getTodayDateInput;
         window.persistAuditResult = persistAuditResult;
+        window.closeAuditModal = closeAuditModal;
+        window.linkOrderItemsToSavedProduct = linkOrderItemsToSavedProduct;
+        window.getNewProductDefaultPrice = getNewProductDefaultPrice;
+        window.pruneResolvedNewProductsFromOrder = pruneResolvedNewProductsFromOrder;
         window.loadInProgressOrders = loadInProgressOrders;
         window.loadCustomerList = loadCustomerList;
         window.loadProductList = loadProductList;
@@ -5242,7 +5289,7 @@
     </script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260531unit"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260601audit"></script>
 </body>
 </html>
 

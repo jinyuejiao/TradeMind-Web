@@ -470,7 +470,16 @@
                 skipEmptyConversions: true
             });
             if (typeof window.linkOrderItemsToSavedProduct === 'function') {
-                window.linkOrderItemsToSavedProduct(pid, pname, sku, [pname, merged.name, merged.product_name], bu);
+                var defaultPrice = 0;
+                if (typeof window.getNewProductDefaultPrice === 'function') {
+                    defaultPrice = window.getNewProductDefaultPrice(merged);
+                } else {
+                    var rawP = merged.price != null ? merged.price : (merged.sale_price != null ? merged.sale_price : 0);
+                    defaultPrice = Number(rawP) || 0;
+                }
+                window.linkOrderItemsToSavedProduct(
+                    pid, pname, sku, [pname, merged.name, merged.product_name], bu, defaultPrice
+                );
             }
             np.splice(0, 1);
             if (window.auditState.newProductDrafts) {

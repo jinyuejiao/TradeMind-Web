@@ -578,7 +578,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601fix', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601audit', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -1901,10 +1901,32 @@ function openAuditModal(name) {
     if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
     else if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 }
-function closeAuditModal() {
+async function closeAuditModal(options) {
+    if (typeof window.syncAuditDraftBeforePersist === 'function' && !(options && options.skipPersist)) {
+        try {
+            await window.syncAuditDraftBeforePersist();
+            if (typeof showToast === 'function') {
+                showToast('草稿已保存', 'success');
+            }
+        } catch (e) {
+            console.warn('[Audit] 草稿保存失败:', e);
+            if (typeof showToast === 'function') {
+                showToast((e && e.message) ? e.message : '草稿保存失败，请重试', 'error');
+            }
+            return;
+        }
+    }
     var modal = document.getElementById('audit-modal');
     if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
     else if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
+    if (window.auditState) {
+        window.auditState.currentRecordId = null;
+        window.auditState.aiEnvelope = null;
+        window.auditState.aiStructured = null;
+        window.auditState.activeNewProductIndex = 0;
+        window.auditState.newProductDrafts = {};
+        window.auditState.savedNewProductIds = {};
+    }
 }
 
 // 高级信息抽屉切换

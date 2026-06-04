@@ -73,6 +73,38 @@
         return item;
     }
 
+    /**
+     * 仅从 new_products_found 移除「订单行已关联有效 productId」的新产品。
+     * 禁止仅凭名称与订单行一致就剔除（存草稿时订单行往往仅有 product_name_raw）。
+     */
+    function pruneResolvedNewProductsFromOrder(data) {
+        if (!data || !Array.isArray(data.new_products_found) || !data.order_data || !Array.isArray(data.order_data.items)) {
+            return;
+        }
+        var items = data.order_data.items;
+        data.new_products_found = data.new_products_found.filter(function (np) {
+            if (!np || typeof np !== 'object') return false;
+            var npName = String(np.name || np.product_name || '').trim();
+            var filedId = Number(
+                np.saved_product_id != null ? np.saved_product_id
+                    : (np.product_id != null ? np.product_id
+                        : (np.matched_product_id != null ? np.matched_product_id : 0))
+            );
+            var linked = items.some(function (it) {
+                if (!it || typeof it !== 'object') return false;
+                var pid = it.matched_product_id != null ? Number(it.matched_product_id) : 0;
+                if (!Number.isFinite(pid) || pid <= 0) return false;
+                if (filedId > 0 && pid === filedId) return true;
+                if (npName) {
+                    var lineName = String(it.matched_product_name || it.product_name_raw || '').trim();
+                    if (lineName && lineName === npName) return true;
+                }
+                return false;
+            });
+            return !linked;
+        });
+    }
+
     /** 新产品单位归一 → base_unit / sales_unit */
     function normalizeNewProductUnits(np) {
         if (!np || typeof np !== 'object') return np;
@@ -152,6 +184,7 @@
                 data.new_products_found = data.new_products_found.map(normalizeNewProductUnits);
                 syncNewProductUnitsFromOrderItems(data);
             }
+            pruneResolvedNewProductsFromOrder(data);
             return { envelope: envelope, data: data };
         }
 
@@ -176,14 +209,16 @@
                 data.order_data.items = oi.items;
             }
         }
+        const details = envelope.details && typeof envelope.details === 'object' ? envelope.details : {};
+        const productResolved = details.productResolved === true;
         const pi = parseJsonField(envelope.productInfo != null ? envelope.productInfo : envelope.product_info);
         if (Array.isArray(pi) && pi.length > 0) {
             data.new_products_found = pi;
+        } else if (productResolved) {
+            data.new_products_found = [];
         } else if (!Array.isArray(data.new_products_found)) {
             data.new_products_found = [];
         }
-
-        const details = envelope.details && typeof envelope.details === 'object' ? envelope.details : {};
         const matchedId = data.customer_data && data.customer_data.matched_customer_id != null
             ? Number(data.customer_data.matched_customer_id)
             : 0;
@@ -195,7 +230,8 @@
             data.new_customers_found = [];
         }
         const npFromDetails = details.newProductsFound != null ? details.newProductsFound : details.new_products_found;
-        if (Array.isArray(npFromDetails) && npFromDetails.length > 0 && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
+        if (Array.isArray(npFromDetails) && npFromDetails.length > 0 && !productResolved
+            && (!Array.isArray(data.new_products_found) || data.new_products_found.length === 0)) {
             data.new_products_found = npFromDetails;
         }
         if (!Array.isArray(data.new_customers_found)) {
@@ -222,12 +258,14 @@
             data.new_products_found = data.new_products_found.map(normalizeNewProductUnits);
             syncNewProductUnitsFromOrderItems(data);
         }
+        pruneResolvedNewProductsFromOrder(data);
 
         const ok = data.customer_data && data.order_data;
         return { envelope: envelope || {}, data: ok ? data : {} };
     }
 
     global.TM_safeJsonParseForOrderExtract = safeJsonParse;
+    global.TM_pruneResolvedNewProductsFromOrder = pruneResolvedNewProductsFromOrder;
     global.TM_parseOrderExtractStructured = TM_parseOrderExtractStructured;
     global.TM_normalizeOrderItemUnit = normalizeOrderItemUnit;
     global.TM_normalizeNewProductUnits = normalizeNewProductUnits;
