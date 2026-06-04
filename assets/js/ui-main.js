@@ -694,7 +694,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260601pofix',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260601poembed',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -1181,9 +1181,32 @@ function TM_setEmbedFrameModalExpanded(frame, expanded) {
 }
 
 function TM_restoreAllEmbedFramesFromModal() {
+    if ((window.__TM_embedModalNotifyDepth || 0) > 0) return;
     document.querySelectorAll('iframe.tm-module-frame.tm-embed-frame-modal-open').forEach(function (frame) {
         TM_setEmbedFrameModalExpanded(frame, false);
     });
+}
+
+/** 嵌入 iframe 通过 postMessage 上报的弹窗层数（与主壳 __TM_shellOverlayDepth 协同） */
+function TM_pushEmbedModalNotify() {
+    window.__TM_embedModalNotifyDepth = (window.__TM_embedModalNotifyDepth || 0) + 1;
+    TM_pushShellOverlay();
+}
+
+function TM_popEmbedModalNotify(frame) {
+    window.__TM_embedModalNotifyDepth = Math.max(0, (window.__TM_embedModalNotifyDepth || 0) - 1);
+    TM_popShellOverlay();
+    if (window.__TM_embedModalNotifyDepth === 0 && frame) {
+        TM_setEmbedFrameModalExpanded(frame, false);
+    }
+}
+
+function TM_anyEmbedFrameModalOpen() {
+    try {
+        return !!document.querySelector('iframe.tm-module-frame.tm-embed-frame-modal-open');
+    } catch (e) {
+        return false;
+    }
 }
 
 window.TM_setEmbedFrameModalExpanded = TM_setEmbedFrameModalExpanded;
@@ -1250,18 +1273,21 @@ function TM_popShellOverlay() {
 function TM_reconcileShellOverlay() {
     var domOpen = TM_anyShellOverlayOpenInDom();
     var depth = window.__TM_shellOverlayDepth || 0;
+    var embedDepth = window.__TM_embedModalNotifyDepth || 0;
+    if (embedDepth > 0 || TM_anyEmbedFrameModalOpen()) {
+        return;
+    }
     if (!domOpen && depth > 0) {
         window.__TM_shellOverlayDepth = 0;
         TM_applyShellOverlayHidden(false);
-        if (typeof TM_notifyEmbedModal === 'function') {
-            TM_notifyEmbedModal(false);
-        }
+        TM_restoreAllEmbedFramesFromModal();
     }
 }
 
 /** 登录/刷新/模块弹窗同步后：强制恢复底栏与引用计数 */
 function TM_resetShellOverlay() {
     window.__TM_shellOverlayDepth = 0;
+    window.__TM_embedModalNotifyDepth = 0;
     TM_applyShellOverlayHidden(false);
     TM_restoreAllEmbedFramesFromModal();
     if (typeof TM_notifyEmbedModal === 'function') {
@@ -1452,10 +1478,16 @@ if (!window.__tmEmbedModalListenerBound) {
         if (!fromModuleFrame) return;
         var frame = TM_findEmbedFrameByWindow(ev.source);
         if (data.open) {
-            if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
+            if (typeof TM_pushEmbedModalNotify === 'function') {
+                TM_pushEmbedModalNotify();
+            } else if (typeof TM_pushShellOverlay === 'function') {
+                TM_pushShellOverlay();
+            }
             if (frame) TM_setEmbedFrameModalExpanded(frame, true);
         } else {
-            if (typeof TM_popShellOverlay === 'function') {
+            if (typeof TM_popEmbedModalNotify === 'function') {
+                TM_popEmbedModalNotify(frame);
+            } else if (typeof TM_popShellOverlay === 'function') {
                 TM_popShellOverlay();
             } else if (frame) {
                 TM_setEmbedFrameModalExpanded(frame, false);

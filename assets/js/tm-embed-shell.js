@@ -44,6 +44,32 @@
         }
     }
 
+    /** 非 TM_openUnifiedModal 的浮层（如 TmConfirm）与 overlayDepth 共用计数，避免重复 notify */
+    function pushEmbedOverlayRef() {
+        overlayDepth += 1;
+        if (overlayDepth === 1) {
+            applyLocalOverlay(true);
+        }
+        window.TM_notifyEmbedModal(true);
+    }
+
+    function popEmbedOverlayRef() {
+        overlayDepth = Math.max(0, overlayDepth - 1);
+        window.TM_notifyEmbedModal(false);
+        if (overlayDepth === 0) {
+            applyLocalOverlay(false);
+            var anyOpen = document.querySelector(
+                '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden)'
+            );
+            if (!anyOpen) {
+                document.body.style.overflow = '';
+            }
+        }
+    }
+
+    window.TM_pushEmbedOverlayRef = pushEmbedOverlayRef;
+    window.TM_popEmbedOverlayRef = popEmbedOverlayRef;
+
     window.TM_notifyEmbedModal = function (open) {
         if (!isEmbedded()) return;
         try {

@@ -605,7 +605,7 @@ window.SupplierModule = {
                 this.syncFinStatusUI(result.data, { applyPurchaseFin: true });
                 this.setPurchaseAuxOpen(false);
                 this.ensurePurchaseFooterVisible();
-                this.notify('付款记账成功', 'success', { useDialog: true, title: '记账成功' });
+                this.notify('付款记账成功', 'success');
             } else {
                 this.showPurchaseFormError(result.message || '记账失败');
             }

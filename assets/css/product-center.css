@@ -670,6 +670,14 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
         padding: 0 !important;
     }
 
+    html.tm-embed-modal-open #purchase-modal.tm-purchase-modal,
+    body.tm-embed-modal-open #purchase-modal.tm-purchase-modal {
+        align-items: stretch !important;
+        justify-content: stretch !important;
+        height: 100% !important;
+        max-height: 100% !important;
+    }
+
     #purchase-modal.tm-purchase-modal .modal-content-box,
     #purchase-modal.tm-purchase-modal .tm-dialog-panel {
         width: 100%;
@@ -689,9 +697,18 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     }
 
     html.tm-embedded.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel,
-    html.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel {
-        height: 100dvh !important;
-        max-height: 100dvh !important;
+    html.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel,
+    body.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel {
+        height: 100% !important;
+        max-height: 100% !important;
+        min-height: 0 !important;
+        border-radius: 1.25rem 1.25rem 0 0 !important;
+    }
+
+    html.tm-embedded.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-product-edit-header,
+    html.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-product-edit-header,
+    body.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-product-edit-header {
+        padding-top: max(0.625rem, env(safe-area-inset-top, 0px)) !important;
     }
 
     #purchase-modal.tm-purchase-modal .tm-purchase-bottom-dock {

@@ -36,7 +36,20 @@
         return modal;
     }
 
+    var embedOverlayPushed = false;
+
     function notifyEmbedModal(open) {
+        if (open) {
+            if (typeof window.TM_pushEmbedOverlayRef === 'function') {
+                window.TM_pushEmbedOverlayRef();
+                embedOverlayPushed = true;
+                return;
+            }
+        } else if (embedOverlayPushed && typeof window.TM_popEmbedOverlayRef === 'function') {
+            window.TM_popEmbedOverlayRef();
+            embedOverlayPushed = false;
+            return;
+        }
         if (typeof window.TM_notifyEmbedModal === 'function') {
             window.TM_notifyEmbedModal(!!open);
         }
@@ -45,9 +58,14 @@
     function close() {
         var modal = document.getElementById('tm-confirm-modal');
         if (modal) modal.classList.add('hidden');
-        document.body.style.overflow = '';
         pendingOnConfirm = null;
         notifyEmbedModal(false);
+        var anySheet = document.querySelector(
+            '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden)'
+        );
+        if (!anySheet) {
+            document.body.style.overflow = '';
+        }
     }
 
     function open(opts) {
