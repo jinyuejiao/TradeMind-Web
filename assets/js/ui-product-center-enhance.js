@@ -13,6 +13,95 @@
     PM.sourceWarehouseProductStocks = [];
     PM.auditSaveCallback = null;
     PM._bodyScrollLock = 0;
+    PM._stockSyncLock = false;
+
+    PM.getWarehouseStockInputs = function () {
+        var container = PM.el('detail-product-warehouse-stock');
+        if (!container) return [];
+        return Array.prototype.slice.call(container.querySelectorAll('.detail-warehouse-stock-input'));
+    };
+
+    PM.sumWarehouseStocks = function () {
+        var sum = 0;
+        PM.getWarehouseStockInputs().forEach(function (inp) {
+            var q = parseInt(inp.value, 10);
+            if (!isNaN(q)) sum += Math.max(0, q);
+        });
+        return sum;
+    };
+
+    PM.syncTotalFromWarehouses = function () {
+        if (PM._stockSyncLock) return;
+        var stockInput = PM.el('detail-product-stock', 'product-stock-input');
+        if (!stockInput) return;
+        PM._stockSyncLock = true;
+        stockInput.value = String(PM.sumWarehouseStocks());
+        PM._stockSyncLock = false;
+    };
+
+    PM.syncWarehousesFromTotal = function () {
+        if (PM._stockSyncLock) return;
+        var stockInput = PM.el('detail-product-stock', 'product-stock-input');
+        var inputs = PM.getWarehouseStockInputs();
+        if (!stockInput || !inputs.length) return;
+        var newTotal = parseInt(stockInput.value, 10);
+        if (isNaN(newTotal)) newTotal = 0;
+        newTotal = Math.max(0, newTotal);
+        PM._stockSyncLock = true;
+        var oldSum = PM.sumWarehouseStocks();
+        if (inputs.length === 1) {
+            inputs[0].value = String(newTotal);
+        } else {
+            var delta = newTotal - oldSum;
+            var def = inputs[0];
+            var cur = parseInt(def.value, 10);
+            if (isNaN(cur)) cur = 0;
+            def.value = String(Math.max(0, cur + delta));
+        }
+        PM._stockSyncLock = false;
+    };
+
+    PM.syncStockBeforeSave = function () {
+        var inputs = PM.getWarehouseStockInputs();
+        var stockInput = PM.el('detail-product-stock', 'product-stock-input');
+        if (!stockInput) return;
+        if (!inputs.length) return;
+        var whSum = PM.sumWarehouseStocks();
+        var totalRaw = stockInput.value;
+        if (totalRaw === '' || totalRaw == null) {
+            stockInput.value = String(whSum);
+            return;
+        }
+        var total = parseInt(totalRaw, 10);
+        if (isNaN(total)) total = whSum;
+        if (whSum === 0 && total > 0 && inputs.length === 1) {
+            inputs[0].value = String(total);
+        } else if (whSum !== total) {
+            PM._stockSyncLock = true;
+            stockInput.value = String(whSum);
+            PM._stockSyncLock = false;
+        }
+    };
+
+    PM.bindStockSyncHandlers = function () {
+        var stockInput = PM.el('detail-product-stock', 'product-stock-input');
+        if (stockInput && !stockInput.dataset.tmStockBound) {
+            stockInput.dataset.tmStockBound = '1';
+            stockInput.addEventListener('input', function () { PM.syncWarehousesFromTotal(); });
+            stockInput.addEventListener('change', function () { PM.syncWarehousesFromTotal(); });
+        }
+    };
+
+    PM.writeAuditDraftUnitConversions = function (valid) {
+        if (!window.auditState || !window.auditState.newProductDrafts) return;
+        var idx = window.auditState.activeNewProductIndex || 0;
+        if (!window.auditState.newProductDrafts[idx]) {
+            window.auditState.newProductDrafts[idx] = {};
+        }
+        window.auditState.newProductDrafts[idx].unit_conversions = (valid || []).map(function (c) {
+            return { unitName: c.unitName, ratio: c.ratio };
+        });
+    };
 
     PM.isAuditContextActive = function () {
         if (window.auditState && window.auditState.currentRecordId) return true;
@@ -224,6 +313,8 @@
         if (!purchaseUnit) purchaseUnit = baseUnitStr;
         if (!salesUnit) salesUnit = baseUnitStr;
 
+        PM.syncStockBeforeSave();
+
         var stockVal = stockInput && stockInput.value !== '' ? parseInt(stockInput.value, 10) : 0;
         if (isNaN(stockVal)) stockVal = 0;
 
@@ -304,9 +395,14 @@
             if (inp && preview) {
                 inp.addEventListener('input', function () {
                     preview.textContent = PM.getBaseUnitLabel();
+                    PM.syncTotalFromWarehouses();
+                });
+                inp.addEventListener('change', function () {
+                    PM.syncTotalFromWarehouses();
                 });
             }
         });
+        PM.bindStockSyncHandlers();
     };
 
     PM.loadProductWarehouseStocks = async function (productId) {
@@ -316,6 +412,7 @@
                 return { warehouseId: w.id, warehouseName: w.name, quantity: 0 };
             });
             PM.renderWarehouseStockSummary(empty);
+            PM.bindStockSyncHandlers();
             return;
         }
         try {
@@ -324,6 +421,7 @@
             var list = data && data.data ? data.data : [];
             PM.warehouseStockDraft = list;
             PM.renderWarehouseStockSummary(list);
+            PM.syncTotalFromWarehouses();
         } catch (e) {
             console.warn('[ProductEnhance] loadProductWarehouseStocks', e);
             PM.renderWarehouseStockSummary([]);
@@ -425,10 +523,11 @@
             PM.el('detail-product-sales-unit', 'product-sales-unit-select') && PM.el('detail-product-sales-unit', 'product-sales-unit-select').value
         );
 
-        var productId = PM.currentProduct && PM.currentProduct.id;
+        var productId = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
         if (!productId) {
+            PM.writeAuditDraftUnitConversions(valid);
             PM.closeUnitModal();
-            notify('单位换算已保存到当前编辑（提交产品时将一并保存）', 'success');
+            notify('单位换算已暂存。请点击「保存当前产品」后才会写入数据库；直接确认下单将不会保存包装换算。', 'success');
             return;
         }
 
@@ -453,6 +552,11 @@
             var data = await window.handleApiResponse(response);
             if (!data) return;
             PM.unitConversionDraft = PM.normalizeUnitDraft(valid);
+            if (PM.currentProduct) {
+                PM.currentProduct.unitConversions = valid.map(function (c) {
+                    return { unitName: c.unitName, ratio: c.ratio };
+                });
+            }
             PM.closeUnitModal();
             notify('单位换算已保存', 'success');
             await PM.loadProducts();
@@ -465,6 +569,13 @@
         var pid = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
         if (pid && typeof PM.refreshUnitConversionDraftFromApi === 'function') {
             await PM.refreshUnitConversionDraftFromApi(pid);
+        } else if (PM.isAuditProductFormActive && window.auditState && window.auditState.newProductDrafts) {
+            var idx = window.auditState.activeNewProductIndex || 0;
+            var d = window.auditState.newProductDrafts[idx];
+            var uc = d && (d.unit_conversions || d.unitConversions);
+            if (Array.isArray(uc) && uc.length) {
+                PM.syncDraftFromApiConversions(uc);
+            }
         }
         PM.unitConversionDraft = PM.normalizeUnitDraft(PM.unitConversionDraft);
         PM.showFormErrors('unit-form-errors', []);
@@ -552,6 +663,7 @@
 
         PM.rebuildPurchaseSalesUnitSelects(product.purchaseUnit, product.salesUnit);
         PM.showFormErrors('product-form-errors', []);
+        PM.bindStockSyncHandlers();
     };
 
     PM.repopulateProductDetailForm = function (product) {
@@ -571,6 +683,7 @@
         var sku = PM.currentProduct && PM.currentProduct.sku;
         if (hint) hint.textContent = sku ? ('SKU: ' + sku) : '填写必填项即可保存';
         await PM.loadProductWarehouseStocks(productId);
+        PM.bindStockSyncHandlers();
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }
@@ -615,6 +728,7 @@
         var hint = PM.el('detail-sku-hint');
         if (hint) hint.textContent = '请填写名称、售价、基本单位与库存';
         await PM.loadProductWarehouseStocks(null);
+        PM.bindStockSyncHandlers();
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }
@@ -675,6 +789,9 @@
             var saved = data.data || {};
             if (saved.productId != null && !PM.currentProduct.id) {
                 PM.currentProduct.id = saved.productId;
+            }
+            if (built.body && built.body.unitConversions && built.body.unitConversions.length) {
+                PM.currentProduct.unitConversions = built.body.unitConversions;
             }
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('产品保存成功！', 'success');
@@ -896,7 +1013,9 @@
         if (!draft || typeof draft !== 'object') return base;
         Object.keys(draft).forEach(function (key) {
             var val = draft[key];
-            if (val != null && String(val).trim() !== '') {
+            if (Array.isArray(val)) {
+                if (val.length) base[key] = val;
+            } else if (val != null && String(val).trim() !== '') {
                 base[key] = val;
             }
         });
@@ -954,6 +1073,7 @@
             np.sales_unit || np.salesUnit || null
         );
         await PM.loadProductWarehouseStocks(null);
+        PM.bindStockSyncHandlers();
         var hasAdvanced = !!(np.sku || np.product_sku || np.description || np.summary || stock);
         var drawer = PM.getProductDetailAdvancedDrawer();
         var icon = PM.getProductDetailAdvancedIcon();
@@ -1009,6 +1129,13 @@
             var data = await window.handleApiResponse(response);
             if (!data) return;
             var saved = data.data || {};
+            if (saved.productId != null) {
+                PM.currentProduct = PM.currentProduct || {};
+                PM.currentProduct.id = saved.productId;
+                if (built.body && built.body.unitConversions) {
+                    PM.currentProduct.unitConversions = built.body.unitConversions;
+                }
+            }
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('产品保存成功！', 'success');
             }

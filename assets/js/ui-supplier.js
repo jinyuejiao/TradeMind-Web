@@ -845,11 +845,28 @@ window.SupplierModule = {
                 : un;
             addUnit(un, label);
         }
-        var pu = (product.purchaseUnit || '').trim();
-        if (pu) {
-            addUnit(pu, pu);
-        }
         return opts;
+    },
+
+    isPackagingUnitAllowed: function (product, unitName) {
+        if (!product || !unitName) return false;
+        var unit = String(unitName).trim();
+        var base = (product.baseUnit || '').trim();
+        if (!unit) return false;
+        if (base && unit === base) return true;
+        var convs = product.unitConversions || [];
+        for (var i = 0; i < convs.length; i++) {
+            var un = (convs[i].unitName || convs[i].unit_name || '').trim();
+            if (un && un === unit) return true;
+        }
+        return false;
+    },
+
+    findPurchaseProduct: function (productId) {
+        return this.products.find(function (p) {
+            var pid = p.productId != null ? p.productId : p.id;
+            return String(pid) === String(productId);
+        });
     },
 
     fillPurchaseUnitSelect: function(unitSelect, product, preferredUnit) {
@@ -1936,6 +1953,15 @@ window.SupplierModule = {
             if (!unitName) {
                 this.showPurchaseFormError('请为第 ' + (ri + 1) + ' 行选择单位（入库将按换算比计入库存）');
                 return null;
+            }
+            var product = this.findPurchaseProduct(productId);
+            if (product) {
+                var baseU = (product.baseUnit || '').trim();
+                if (baseU && unitName !== baseU && !this.isPackagingUnitAllowed(product, unitName)) {
+                    var pname = product.name || product.productName || ('产品#' + productId);
+                    this.showPurchaseFormError('产品「' + pname + '」未配置单位「' + unitName + '」的换算，请先在产品中心保存单位换算后再进货');
+                    return null;
+                }
             }
             if (qty < 1) {
                 this.showPurchaseFormError('第 ' + (ri + 1) + ' 行数量须大于 0');

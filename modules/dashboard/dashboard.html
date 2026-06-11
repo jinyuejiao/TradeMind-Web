@@ -2435,6 +2435,24 @@
                 catEl = window.ProductModule.el('detail-product-category', 'product-category-select');
             }
             if (catEl && catEl.value) draft.category_id = catEl.value;
+            var puEl = root ? root.querySelector('#detail-product-purchase-unit') : null;
+            if (!puEl && window.ProductModule && window.ProductModule.el) {
+                puEl = window.ProductModule.el('detail-product-purchase-unit', 'product-purchase-unit-select');
+            }
+            if (puEl && puEl.value) draft.purchase_unit = puEl.value;
+            var suEl = root ? root.querySelector('#detail-product-sales-unit') : null;
+            if (!suEl && window.ProductModule && window.ProductModule.el) {
+                suEl = window.ProductModule.el('detail-product-sales-unit', 'product-sales-unit-select');
+            }
+            if (suEl && suEl.value) draft.sales_unit = suEl.value;
+            if (window.ProductModule && typeof window.ProductModule.resolveUnitConversionsForSave === 'function') {
+                var convs = window.ProductModule.resolveUnitConversionsForSave();
+                if (convs && convs.length) {
+                    draft.unit_conversions = convs.map(function (c) {
+                        return { unitName: c.unitName, ratio: c.ratio };
+                    });
+                }
+            }
             auditState.newProductDrafts[index] = draft;
         }
 
@@ -2443,7 +2461,9 @@
             if (!draft || typeof draft !== 'object') return base;
             Object.keys(draft).forEach(function (key) {
                 var val = draft[key];
-                if (val != null && String(val).trim() !== '') {
+                if (Array.isArray(val)) {
+                    if (val.length) base[key] = val;
+                } else if (val != null && String(val).trim() !== '') {
                     base[key] = val;
                 }
             });

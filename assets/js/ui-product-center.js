@@ -357,9 +357,6 @@ window.ProductModule = {
                 add(u, u + '(1' + u + '=' + ratio + base + ')');
             }
         });
-        (this._tenantUnitNames || []).forEach(function (n) {
-            if (n !== base) add(n, n);
-        });
         if (cp.purchaseUnit) add(cp.purchaseUnit, cp.purchaseUnit);
         if (cp.salesUnit) add(cp.salesUnit, cp.salesUnit);
         return opts;

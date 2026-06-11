@@ -375,7 +375,7 @@
         }
     }
 
-    /* ---------- 确认下单前自动建档 ---------- */
+    /* ---------- 确认下单前自动建档（路径 B：仅基本单位，不含包装换算） ---------- */
     async function quickSaveProduct(productName, sku, baseUnit, extra) {
         extra = extra || {};
         var nm = (productName || '').trim();
@@ -399,20 +399,6 @@
             },
             warehouseStocks: []
         };
-        var convRaw = extra.unitConversions || extra.unit_conversions;
-        if (Array.isArray(convRaw) && convRaw.length) {
-            body.unitConversions = convRaw.map(function (c) {
-                return {
-                    unitName: c.unitName || c.unit_name || c.unit,
-                    ratio: c.ratio != null ? c.ratio : c.perBase,
-                    isDefault: false
-                };
-            }).filter(function (c) {
-                return c.unitName && String(c.unitName).trim() !== bu && Number(c.ratio) > 0;
-            });
-        } else if (!extra.skipEmptyConversions) {
-            body.unitConversions = [];
-        }
         var resp = await window.wrappedFetch('/api/v1/rd/products/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -462,12 +448,9 @@
             if (!pname) throw new Error('新产品「' + (merged.product_name || '未命名') + '」缺少名称，无法自动建档');
             var sku = merged.sku || merged.product_sku || '';
             var bu = merged.base_unit || merged.baseUnit || merged.unit || '件';
-            var conv = merged.unit_conversions || merged.unitConversions;
             var pid = await quickSaveProduct(pname, sku, bu, {
                 price: merged.price || merged.sale_price,
-                stock: merged.stock,
-                unitConversions: conv,
-                skipEmptyConversions: true
+                stock: merged.stock
             });
             if (typeof window.linkOrderItemsToSavedProduct === 'function') {
                 var defaultPrice = 0;
@@ -791,9 +774,51 @@
             }
         };
 
+        function hasUnsavedAuditUnitConversions() {
+            if (!window.auditState || typeof window.hasNewProducts !== 'function'
+                || !window.hasNewProducts(window.auditState.aiStructured)) {
+                return false;
+            }
+            var PM = window.ProductModule;
+            if (PM && typeof PM.resolveUnitConversionsForSave === 'function') {
+                var live = PM.resolveUnitConversionsForSave();
+                if (live && live.length) return true;
+            }
+            var drafts = window.auditState.newProductDrafts || {};
+            var keys = Object.keys(drafts);
+            for (var i = 0; i < keys.length; i++) {
+                var d = drafts[keys[i]];
+                var uc = d && (d.unit_conversions || d.unitConversions);
+                if (Array.isArray(uc) && uc.length) return true;
+            }
+            return false;
+        }
+
+        function confirmAuditPathBWarning() {
+            if (!hasUnsavedAuditUnitConversions()) {
+                return Promise.resolve(true);
+            }
+            var msg = '尚有新产品未保存档案。确认下单将按基本单位自动建档，包装单位换算不会生效。如需按包装单位进货，请先点击「保存当前产品」。';
+            if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
+                return new Promise(function (resolve) {
+                    window.TmConfirm.open({
+                        title: '未保存包装换算',
+                        message: msg,
+                        confirmLabel: '继续下单',
+                        cancelLabel: '返回保存',
+                        onConfirm: function () { resolve(true); },
+                        onCancel: function () { resolve(false); }
+                    });
+                });
+            }
+            return Promise.resolve(window.confirm(msg + '\n\n点击「确定」继续下单'));
+        }
+
         var origConfirm = window.confirmAuditOrder;
         window.confirmAuditOrder = async function () {
             try {
+                var proceed = await confirmAuditPathBWarning();
+                if (!proceed) return;
                 await ensureProductIdsBeforeConfirm();
                 await ensureCustomerIdBeforeConfirm();
             } catch (e) {
