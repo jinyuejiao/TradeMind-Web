@@ -308,10 +308,16 @@
         var catRaw = categorySelect && categorySelect.value ? parseInt(categorySelect.value, 10) : null;
         var supRaw = supplierSelect && supplierSelect.value ? parseInt(supplierSelect.value, 10) : null;
         var cp = PM.currentProduct || {};
+        var productId = cp.id || cp.productId || null;
         var purchaseUnit = purchaseUnitSelect && purchaseUnitSelect.value ? purchaseUnitSelect.value : baseUnitStr;
         var salesUnit = salesUnitSelect && salesUnitSelect.value ? salesUnitSelect.value : baseUnitStr;
-        if (!purchaseUnit) purchaseUnit = baseUnitStr;
-        if (!salesUnit) salesUnit = baseUnitStr;
+        if (!unitPayload.length) {
+            purchaseUnit = baseUnitStr;
+            salesUnit = baseUnitStr;
+        } else {
+            if (!purchaseUnit) purchaseUnit = baseUnitStr;
+            if (!salesUnit) salesUnit = baseUnitStr;
+        }
 
         PM.syncStockBeforeSave();
 
@@ -319,7 +325,7 @@
         if (isNaN(stockVal)) stockVal = 0;
 
         var productPayload = {
-            productId: cp.id || null,
+            productId: productId,
             name: nm,
             sku: sk,
             categoryId: catRaw != null && !isNaN(catRaw) && catRaw > 0 ? catRaw : null,
@@ -341,11 +347,8 @@
             product: productPayload,
             warehouseStocks: whStocks
         };
-        var productId = cp.id || cp.productId;
         if (unitPayload.length > 0) {
             resultBody.unitConversions = unitPayload;
-        } else if (!productId) {
-            resultBody.unitConversions = [];
         }
         return {
             error: null,
@@ -451,7 +454,9 @@
 
     PM.readUnitModalInputsIntoDraft = function () {
         var container = PM.getActiveUnitRowsContainer() || PM.getUnitRowsContainer();
-        if (!container) return;
+        if (!container) {
+            return false;
+        }
         var rowEls = container.querySelectorAll('.unit-conversion-row');
         var next = [];
         rowEls.forEach(function (row) {
@@ -465,6 +470,7 @@
         if (next.length) {
             PM.unitConversionDraft = PM.normalizeUnitDraft(next);
         }
+        return true;
     };
 
     PM.rebuildPurchaseSalesUnitSelects = function (selectedPurchase, selectedSales) {
@@ -499,7 +505,10 @@
             }
         };
 
-        PM.readUnitModalInputsIntoDraft();
+        if (!PM.readUnitModalInputsIntoDraft()) {
+            notify('未找到单位换算表单，请关闭后重试', 'error');
+            return;
+        }
         var draft = PM.normalizeUnitDraft(PM.unitConversionDraft);
         var valid = [];
         var msgs = [];
@@ -516,53 +525,29 @@
         }
         PM.showFormErrors('unit-form-errors', msgs);
         if (msgs.length) return;
+        if (!valid.length) {
+            notify('请至少配置一条包装单位换算，或点击取消', 'error');
+            return;
+        }
 
-        PM.unitConversionDraft = PM.normalizeUnitDraft(valid.length ? valid : []);
+        PM.unitConversionDraft = PM.normalizeUnitDraft(valid);
+        if (PM.isAuditProductFormActive()) {
+            PM.writeAuditDraftUnitConversions(valid);
+        }
+        if (PM.currentProduct) {
+            PM.currentProduct.unitConversions = valid.map(function (c) {
+                return { unitName: c.unitName, ratio: c.ratio };
+            });
+        }
         PM.rebuildPurchaseSalesUnitSelects(
             PM.el('detail-product-purchase-unit', 'product-purchase-unit-select') && PM.el('detail-product-purchase-unit', 'product-purchase-unit-select').value,
             PM.el('detail-product-sales-unit', 'product-sales-unit-select') && PM.el('detail-product-sales-unit', 'product-sales-unit-select').value
         );
-
-        var productId = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
-        if (!productId) {
-            PM.writeAuditDraftUnitConversions(valid);
-            PM.closeUnitModal();
-            notify('单位换算已暂存。请点击「保存当前产品」后才会写入数据库；直接确认下单将不会保存包装换算。', 'success');
-            return;
-        }
-
-        if (!PM.validateProductForm()) {
-            notify('请先完善产品名称与基本单位', 'error');
-            return;
-        }
-
-        var built = PM.buildProductSaveBodyWithUnits(valid.length ? valid : PM.resolveUnitConversionsForSave());
-        if (built.error) {
-            if (built.error !== '__validation__') notify(built.error, 'error');
-            return;
-        }
-
-        try {
-            if (window.checkAuth && !window.checkAuth()) return;
-            var response = await window.wrappedFetch('/api/v1/rd/products/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(built.body)
-            });
-            var data = await window.handleApiResponse(response);
-            if (!data) return;
-            PM.unitConversionDraft = PM.normalizeUnitDraft(valid);
-            if (PM.currentProduct) {
-                PM.currentProduct.unitConversions = valid.map(function (c) {
-                    return { unitName: c.unitName, ratio: c.ratio };
-                });
-            }
-            PM.closeUnitModal();
-            notify('单位换算已保存', 'success');
-            await PM.loadProducts();
-        } catch (error) {
-            notify('保存单位换算失败: ' + (error.message || String(error)), 'error');
-        }
+        PM.closeUnitModal();
+        var saveHint = PM.isAuditProductFormActive()
+            ? '请点击「保存当前产品」将单位换算写入数据库'
+            : '请点击产品「保存」将单位换算写入数据库';
+        notify('单位换算已暂存。' + saveHint, 'success');
     };
 
     PM.openUnitModal = async function () {
@@ -787,10 +772,14 @@
                 return;
             }
             var saved = data.data || {};
-            if (saved.productId != null && !PM.currentProduct.id) {
+            if (saved.productId != null) {
                 PM.currentProduct.id = saved.productId;
             }
-            if (built.body && built.body.unitConversions && built.body.unitConversions.length) {
+            var mapped = PM.mapProductFromApi(saved);
+            if (mapped.unitConversions && mapped.unitConversions.length) {
+                PM.currentProduct.unitConversions = mapped.unitConversions;
+                PM.syncDraftFromApiConversions(mapped.unitConversions);
+            } else if (built.body && built.body.unitConversions && built.body.unitConversions.length) {
                 PM.currentProduct.unitConversions = built.body.unitConversions;
             }
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -1132,7 +1121,10 @@
             if (saved.productId != null) {
                 PM.currentProduct = PM.currentProduct || {};
                 PM.currentProduct.id = saved.productId;
-                if (built.body && built.body.unitConversions) {
+                var mapped = PM.mapProductFromApi(saved);
+                if (mapped.unitConversions && mapped.unitConversions.length) {
+                    PM.currentProduct.unitConversions = mapped.unitConversions;
+                } else if (built.body && built.body.unitConversions && built.body.unitConversions.length) {
                     PM.currentProduct.unitConversions = built.body.unitConversions;
                 }
             }
