@@ -79,6 +79,16 @@ function TM_syncDashboardOverlays(htmlString) {
             const nextNode = doc.getElementById(id);
             if (!nextNode) return;
             const current = document.getElementById(id);
+            var preserveVoiceOpen = false;
+            if (id === 'voice-modal') {
+                var wasDomOpen = current && !current.classList.contains('hidden');
+                var inVoiceTour = window.TmOnboarding && typeof window.TmOnboarding.isVoiceModalPhase === 'function'
+                    && window.TmOnboarding.isVoiceModalPhase();
+                preserveVoiceOpen = !!(wasDomOpen || inVoiceTour);
+                if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
+                    window.TmOnboarding.setVoiceOverlaySyncLock(true);
+                }
+            }
             const cloned = nextNode.cloneNode(true);
             if (current && current.parentNode) {
                 current.parentNode.replaceChild(cloned, current);
@@ -94,6 +104,17 @@ function TM_syncDashboardOverlays(htmlString) {
                 }
             } else if (typeof TM_applyDialogShell === 'function') {
                 TM_applyDialogShell(cloned);
+            }
+            if (id === 'voice-modal' && preserveVoiceOpen) {
+                cloned.classList.remove('hidden');
+                cloned.style.zIndex = '210';
+            }
+            if (id === 'voice-modal') {
+                if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalReplaced === 'function') {
+                    window.TmOnboarding.notifyVoiceModalReplaced(preserveVoiceOpen);
+                } else if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
+                    window.TmOnboarding.setVoiceOverlaySyncLock(false);
+                }
             }
         });
         TM_rebindVoiceStopAfterOverlaySync();
@@ -1793,10 +1814,14 @@ async function downloadPoster() {
         }
         tmVoiceToast('工作台正在加载，请稍后再试语音提单');
     };
-    window.closeVoiceModal = function () {
+    window.closeVoiceModal = function (opts) {
         var impl = tmVoiceImpl();
         if (impl && typeof impl.closeVoiceModal === 'function') {
-            return impl.closeVoiceModal();
+            return impl.closeVoiceModal(opts);
+        }
+        if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalClosing === 'function') {
+            var reason = (opts && opts.reason) ? opts.reason : 'user_cancel';
+            window.TmOnboarding.notifyVoiceModalClosing(reason);
         }
         var m = document.getElementById('voice-modal');
         if (m) m.classList.add('hidden');

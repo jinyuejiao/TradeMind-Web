@@ -35,6 +35,10 @@
     var voiceModalObserver = null;
     var completingVoice = false;
     var voiceStepRestartLock = false;
+    var voicePhase = 'idle';
+    var voiceOverlaySyncLock = false;
+    var voiceLastCloseReason = null;
+    var voiceActiveStep = null;
     var isFirstLogin = false;
     var serverHydrated = false;
 
@@ -324,6 +328,50 @@
         return new Promise(function (resolve) { setTimeout(resolve, ms); });
     }
 
+    function isDashboardVoiceReady() {
+        var impl = window.__TM_dashboardVoice;
+        if (impl && typeof impl.isReady === 'function') {
+            return impl.isReady();
+        }
+        if (!impl || typeof impl.openVoiceModal !== 'function') {
+            return false;
+        }
+        var inIndexAppShell = !!document.getElementById('tm-app-tabbar');
+        if (inIndexAppShell && !window.__TM_DASHBOARD_INLINE_LOADED) {
+            return false;
+        }
+        return true;
+    }
+
+    function waitForDashboardVoiceReady(maxMs) {
+        maxMs = maxMs || 12000;
+        var start = Date.now();
+        return new Promise(function (resolve) {
+            function tick() {
+                if (isDashboardVoiceReady()) return resolve(true);
+                if (Date.now() - start > maxMs) return resolve(false);
+                requestAnimationFrame(tick);
+            }
+            tick();
+        });
+    }
+
+    function setVoicePhase(phase) {
+        voicePhase = phase || 'idle';
+    }
+
+    function isVoiceModalPhase() {
+        return voicePhase === 'modal_open' || voicePhase === 'recording';
+    }
+
+    function isVoiceTourActive() {
+        return currentTourStep === 'voice' && state && !state.mandatoryDone;
+    }
+
+    function setVoiceOverlaySyncLock(on) {
+        voiceOverlaySyncLock = !!on;
+    }
+
     function waitForTarget(stepDef, maxMs) {
         maxMs = maxMs || 8000;
         var start = Date.now();
@@ -607,50 +655,129 @@
     }
 
     function startVoiceMandatoryStep(step) {
+        if (voicePhase === 'modal_open' || voicePhase === 'recording') {
+            var openModal = $('voice-modal');
+            if (openModal && !openModal.classList.contains('hidden')) {
+                setActive(false);
+                ensureRoot();
+                if (root) root.style.pointerEvents = 'none';
+                watchVoiceModal();
+                return;
+            }
+        }
         currentTourStep = 'voice';
+        voiceActiveStep = step;
         blocking = true;
         syncBlockingFromTour();
+        setVoicePhase('intro');
         ensureTab(step.menuId || 'dashboard').then(function () {
-            return waitForTarget(step, 6000);
-        }).then(function (voiceBtn) {
-            showPopover({
-                stepLabel: mandatoryStepLabel(mandatoryStepIndex),
-                title: step.title,
-                body: step.body,
-                target: voiceBtn,
-                padding: 10,
-                buttons: [
-                    {
-                        label: '打开语音录单',
+            return waitForDashboardVoiceReady(12000);
+        }).then(function (ready) {
+            if (!ready) {
+                showPopover({
+                    stepLabel: mandatoryStepLabel(mandatoryStepIndex),
+                    title: step.title,
+                    body: '工作台语音功能仍在加载，请稍候再试。',
+                    target: null,
+                    buttons: [{
+                        label: '重试',
                         primary: true,
                         onClick: function () {
-                            hideSpotlight();
-                            popover.classList.add('hidden');
-                            if (backdrop) backdrop.style.opacity = '0';
-                            root.style.pointerEvents = 'none';
-                            bindVoiceTipsUi();
-                            showVoiceTips(true);
-                            var vm = $('voice-modal');
-                            if (vm) vm.style.zIndex = '210';
-                            if (typeof window.openVoiceModal === 'function') window.openVoiceModal();
-                            var openedModal = $('voice-modal');
-                            if (openedModal && !openedModal.classList.contains('hidden')) {
-                                watchVoiceModal();
-                            }
+                            startVoiceMandatoryStep(step);
                         }
-                    }
-                ]
-            });
+                    }]
+                });
+                return null;
+            }
+            return waitForTarget(step, 6000);
+        }).then(function (voiceBtn) {
+            if (!voiceBtn) return;
+            showVoiceIntroPopover(step, voiceBtn);
         });
     }
 
+    function showVoiceIntroPopover(step, voiceBtn) {
+        setVoicePhase('intro');
+        showPopover({
+            stepLabel: mandatoryStepLabel(mandatoryStepIndex),
+            title: step.title,
+            body: step.body,
+            target: voiceBtn,
+            padding: 10,
+            buttons: [{
+                label: '打开语音录单',
+                primary: true,
+                onClick: function () {
+                    openVoiceModalFromTour(step);
+                }
+            }]
+        });
+    }
+
+    function restoreVoiceIntroPopover() {
+        setVoicePhase('intro');
+        if (root) {
+            root.style.pointerEvents = '';
+            if (backdrop) backdrop.style.opacity = '';
+        }
+        resetVoiceModalLayer();
+        showVoiceTips(false);
+        var step = voiceActiveStep;
+        if (!step && mandatoryProfile && mandatoryProfile.steps) {
+            step = mandatoryProfile.steps[mandatoryStepIndex];
+        }
+        if (!step) return;
+        ensureTab(step.menuId || 'dashboard').then(function () {
+            return waitForTarget(step, 6000);
+        }).then(function (voiceBtn) {
+            if (voiceBtn) {
+                showVoiceIntroPopover(step, voiceBtn);
+            } else {
+                showVoiceIntroPopover(step, null);
+            }
+        });
+    }
+
+    function openVoiceModalFromTour(step) {
+        voiceActiveStep = step || voiceActiveStep;
+        hideSpotlight();
+        if (popover) popover.classList.add('hidden');
+        setActive(false);
+        ensureRoot();
+        if (root) root.style.pointerEvents = 'none';
+        if (backdrop) backdrop.style.opacity = '0';
+        bindVoiceTipsUi();
+        showVoiceTips(true);
+        var vm = $('voice-modal');
+        if (vm) vm.style.zIndex = '210';
+        if (typeof window.openVoiceModal === 'function') {
+            window.openVoiceModal();
+        }
+        var openedModal = $('voice-modal');
+        if (openedModal && !openedModal.classList.contains('hidden')) {
+            setVoicePhase('modal_open');
+            watchVoiceModal();
+            return;
+        }
+        restoreVoiceIntroPopover();
+        if (typeof window.showToast === 'function') {
+            window.showToast('语音弹窗未能打开，请稍后重试');
+        }
+    }
+
     function restartVoiceMandatoryFromModalClose(step) {
-        if (voiceStepRestartLock || completingVoice || state.mandatoryDone) return;
+        if (voiceOverlaySyncLock || voiceStepRestartLock || completingVoice || state.mandatoryDone) {
+            return;
+        }
+        if (voiceLastCloseReason && voiceLastCloseReason !== 'user_cancel') {
+            return;
+        }
         voiceStepRestartLock = true;
         setTimeout(function () { voiceStepRestartLock = false; }, 900);
-        resetVoiceModalLayer();
-        setActive(true);
-        startVoiceMandatoryStep(step);
+        disconnectVoiceModalObserver();
+        setVoicePhase('intro');
+        voiceLastCloseReason = null;
+        restoreVoiceIntroPopover();
     }
 
     function disconnectVoiceModalObserver() {
@@ -665,22 +792,86 @@
         if (!modal) return;
         disconnectVoiceModalObserver();
         voiceModalObserver = new MutationObserver(function () {
+            if (voiceOverlaySyncLock) return;
+            if (!modal.isConnected) return;
             if (!modal.classList.contains('hidden')) return;
             if (completingVoice || state.mandatoryDone) {
                 disconnectVoiceModalObserver();
+                setVoicePhase('idle');
                 if (state.mandatoryDone) onMandatoryComplete();
                 return;
             }
-            if (currentTourStep === 'voice') {
-                var step = mandatoryProfile.steps[mandatoryStepIndex];
-                restartVoiceMandatoryFromModalClose(step);
+            if (currentTourStep !== 'voice') return;
+            if (voicePhase !== 'modal_open' && voicePhase !== 'recording') return;
+            var reason = voiceLastCloseReason;
+            voiceLastCloseReason = null;
+            if (reason === 'success') {
+                setVoicePhase('completing');
+                return;
             }
+            if (reason === 'error') {
+                setVoicePhase('modal_open');
+                return;
+            }
+            if (reason !== 'user_cancel') {
+                return;
+            }
+            var step = voiceActiveStep;
+            if (!step && mandatoryProfile && mandatoryProfile.steps) {
+                step = mandatoryProfile.steps[mandatoryStepIndex];
+            }
+            restartVoiceMandatoryFromModalClose(step);
         });
         voiceModalObserver.observe(modal, { attributes: true, attributeFilter: ['class'] });
     }
 
+    function rebindVoiceModalObserver() {
+        if (isVoiceModalPhase()) {
+            watchVoiceModal();
+        }
+    }
+
+    function notifyVoiceModalReplaced(wasOpen) {
+        voiceOverlaySyncLock = true;
+        if (wasOpen) {
+            setVoicePhase('modal_open');
+            bindVoiceTipsUi();
+            showVoiceTips(true);
+            var vm = $('voice-modal');
+            if (vm) {
+                vm.style.zIndex = '210';
+                vm.classList.remove('hidden');
+            }
+            setActive(false);
+            ensureRoot();
+            if (root) root.style.pointerEvents = 'none';
+            if (backdrop) backdrop.style.opacity = '0';
+            rebindVoiceModalObserver();
+        }
+        setTimeout(function () {
+            voiceOverlaySyncLock = false;
+        }, wasOpen ? 150 : 0);
+    }
+
+    function notifyVoiceModalClosing(reason) {
+        voiceLastCloseReason = reason || 'unknown';
+    }
+
+    function onVoiceRecordingStarted() {
+        if (currentTourStep === 'voice') {
+            setVoicePhase('recording');
+        }
+    }
+
+    function onVoiceRecordingEnded() {
+        if (currentTourStep === 'voice' && voicePhase === 'recording') {
+            setVoicePhase('modal_open');
+        }
+    }
+
     function prepareVoiceComplete() {
         completingVoice = true;
+        setVoicePhase('completing');
         disconnectVoiceModalObserver();
     }
 
@@ -697,10 +888,14 @@
         if (state.mandatoryDone) return;
         state.mandatoryDone = true;
         blocking = false;
+        setVoicePhase('idle');
+        voiceActiveStep = null;
+        voiceLastCloseReason = null;
         saveState();
         updateBlockBanner();
         showVoiceTips(false);
         resetVoiceModalLayer();
+        disconnectVoiceModalObserver();
         if (!state.celebrated) {
             state.celebrated = true;
             saveState();
@@ -712,6 +907,9 @@
 
     function onVoiceComplete() {
         completingVoice = false;
+        setVoicePhase('idle');
+        voiceActiveStep = null;
+        voiceLastCloseReason = null;
         if (state.mandatoryDone) return;
         if (currentTourStep === 'voice') {
             var hasMore = mandatoryProfile && mandatoryProfile.steps &&
@@ -906,6 +1104,14 @@
             onboardingBootstrapped = true;
             return;
         }
+        if (isVoiceTourActive() || isVoiceModalPhase() || voicePhase === 'intro') {
+            onboardingBootstrapped = true;
+            return;
+        }
+        if (currentTourStep && !state.mandatoryDone) {
+            onboardingBootstrapped = true;
+            return;
+        }
         onboardingBootstrapped = true;
         bindVoiceTipsUi();
         if (!state.mandatoryDone) {
@@ -962,6 +1168,14 @@
         getRoleCode: function () { return roleCode; },
         onVoiceComplete: onVoiceComplete,
         onMandatoryStepComplete: completeMandatoryPath,
+        isVoiceModalPhase: isVoiceModalPhase,
+        isVoiceTourActive: isVoiceTourActive,
+        rebindVoiceModalObserver: rebindVoiceModalObserver,
+        notifyVoiceModalReplaced: notifyVoiceModalReplaced,
+        notifyVoiceModalClosing: notifyVoiceModalClosing,
+        setVoiceOverlaySyncLock: setVoiceOverlaySyncLock,
+        onVoiceRecordingStarted: onVoiceRecordingStarted,
+        onVoiceRecordingEnded: onVoiceRecordingEnded,
         refreshForRole: function () {
             refreshRoleContext();
             onboardingBootstrapped = false;
@@ -982,6 +1196,10 @@
             mandatoryStepIndex = 0;
             completingVoice = false;
             voiceStepRestartLock = false;
+            setVoicePhase('idle');
+            voiceActiveStep = null;
+            voiceLastCloseReason = null;
+            voiceOverlaySyncLock = false;
             onboardingBootstrapped = false;
             welcomeScheduled = false;
             disconnectVoiceModalObserver();
@@ -1033,9 +1251,6 @@
         }).then(function () {
             if (!roleUiReady) {
                 markRoleUiReady();
-            } else {
-                onboardingBootstrapped = false;
-                tryStartOnboarding();
             }
         });
     }
