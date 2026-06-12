@@ -2318,11 +2318,11 @@
             if (customerSelect && typeof handleAuditCustomerSelectChange === 'function') {
                 handleAuditCustomerSelectChange(customerSelect);
             }
+            syncAuditOrderDetailsFromDom();
+            reconcileAuditCustomerOnOpen();
             if (hasNewProducts(auditState.aiStructured)) {
                 readAuditProductFormToDraft(auditState.activeNewProductIndex || 0);
             }
-            syncAuditOrderDetailsFromDom();
-            reconcileAuditCustomerOnOpen();
             await persistAuditResult();
         }
 
@@ -2408,7 +2408,27 @@
             return item;
         }
 
+        function getAuditNewProductDisplayName(np) {
+            if (!np || typeof np !== 'object') return '';
+            return String(np.name || np.product_name || np.productName || '').trim();
+        }
+
+        function discardMismatchedAuditProductDraft(index) {
+            var list = getAuditNewProductsList();
+            if (index < 0 || index >= list.length) return;
+            var expected = getAuditNewProductDisplayName(list[index]);
+            if (!expected) return;
+            var draft = auditState.newProductDrafts && auditState.newProductDrafts[index];
+            if (!draft || typeof draft !== 'object') return;
+            var draftName = getAuditNewProductDisplayName(draft);
+            if (draftName && draftName !== expected) {
+                delete auditState.newProductDrafts[index];
+            }
+        }
+
         function readAuditProductFormToDraft(index) {
+            var list = getAuditNewProductsList();
+            var expectedName = list[index] ? getAuditNewProductDisplayName(list[index]) : '';
             var draft = Object.assign({}, auditState.newProductDrafts[index] || {});
             var root = document.getElementById('audit-product-registry-root');
             function fieldVal(id) {
@@ -2419,6 +2439,9 @@
                 return el ? el.value : '';
             }
             var nameVal = fieldVal('detail-product-name').trim();
+            if (expectedName && nameVal && nameVal !== expectedName) {
+                return;
+            }
             if (nameVal) draft.name = nameVal;
             var skuVal = fieldVal('detail-product-sku-input').trim();
             if (skuVal) draft.sku = skuVal;
@@ -2520,6 +2543,7 @@
             }
             auditState.activeNewProductIndex = index;
             syncAuditNewProductSubtabs();
+            discardMismatchedAuditProductDraft(index);
             var np = mergeAuditProductWithDraft(list[index], auditState.newProductDrafts[index]);
             if (typeof window.TM_initAuditProductForm === 'function') {
                 await window.TM_initAuditProductForm(np, index);
@@ -2846,7 +2870,8 @@
             return next;
         }
 
-        async function persistAuditResult() {
+        async function persistAuditResult(options) {
+            options = options || {};
             if (!auditState.currentRecordId || !auditState.aiStructured) return;
             if (typeof syncAuditOrderDetailsFromDom === 'function') {
                 syncAuditOrderDetailsFromDom();
@@ -2855,7 +2880,7 @@
             if (customerSelect && typeof handleAuditCustomerSelectChange === 'function') {
                 handleAuditCustomerSelectChange(customerSelect);
             }
-            if (hasNewProducts(auditState.aiStructured) && typeof readAuditProductFormToDraft === 'function') {
+            if (hasNewProducts(auditState.aiStructured) && typeof readAuditProductFormToDraft === 'function' && !options.skipProductDraftCapture) {
                 readAuditProductFormToDraft(auditState.activeNewProductIndex || 0);
             }
             syncAuditPricesFromDom();
@@ -3591,6 +3616,12 @@
 
         // 切换审核标签页
         function switchAuditTab(tabName) {
+            var orderPane = document.getElementById('pane-order');
+            if (orderPane && !orderPane.classList.contains('hidden') && tabName !== 'order') {
+                if (typeof syncAuditOrderDetailsFromDom === 'function') {
+                    syncAuditOrderDetailsFromDom();
+                }
+            }
             if (tabName === 'order' && typeof syncAuditOrderDetailsFromDom === 'function') {
                 syncAuditOrderDetailsFromDom();
             }
@@ -3687,6 +3718,9 @@
             if (typeof TM_syncProductCenterOverlays === 'function') {
                 await TM_syncProductCenterOverlays();
             }
+            if (typeof syncAuditOrderDetailsFromDom === 'function') {
+                syncAuditOrderDetailsFromDom();
+            }
             var list = getAuditNewProductsList();
             var idx = auditState.activeNewProductIndex || 0;
             readAuditProductFormToDraft(idx);
@@ -3725,24 +3759,30 @@
                         productLookupById[String(productId)] = { id: Number(productId), name: productName, sku: productSku, unit: pu };
                     }
                 }
-                if (typeof generateProductSelects === 'function') {
-                    generateProductSelects();
-                }
                 if (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found)) {
                     auditState.aiStructured.new_products_found.splice(idx, 1);
                     reindexNewProductDraftsAfterRemove(idx);
                     auditState.activeNewProductIndex = Math.min(idx, Math.max(0, auditState.aiStructured.new_products_found.length - 1));
                 }
-                await persistAuditResult();
+                if (typeof syncAuditOrderDetailsFromDom === 'function') {
+                    syncAuditOrderDetailsFromDom();
+                }
                 syncAuditNewProductSubtabs();
                 if (!hasNewProducts(auditState.aiStructured)) {
+                    if (typeof generateProductSelects === 'function') {
+                        generateProductSelects();
+                    }
+                    await persistAuditResult();
                     var tabBtn = document.getElementById('tab-product');
                     if (tabBtn) tabBtn.classList.add('hidden');
                     switchAuditTab('order');
-                    generateProductSelects();
                     showToast('全部新产品已保存，请确认订单明细');
                 } else {
                     await switchAuditNewProductIndex(auditState.activeNewProductIndex, { skipDraftSave: true });
+                    if (typeof generateProductSelects === 'function') {
+                        generateProductSelects();
+                    }
+                    await persistAuditResult();
                     showToast('产品「' + productName + '」已保存，请继续补全其余新产品');
                 }
                 window.ProductModule.auditSaveCallback = null;
@@ -3752,21 +3792,30 @@
         }
 
         async function skipNewProduct() {
-            var list = getAuditNewProductsList();
             var idx = auditState.activeNewProductIndex || 0;
             if (auditState.aiStructured && Array.isArray(auditState.aiStructured.new_products_found)) {
                 auditState.aiStructured.new_products_found.splice(idx, 1);
                 reindexNewProductDraftsAfterRemove(idx);
                 auditState.activeNewProductIndex = Math.min(idx, Math.max(0, auditState.aiStructured.new_products_found.length - 1));
-                await persistAuditResult();
+            }
+            if (typeof syncAuditOrderDetailsFromDom === 'function') {
+                syncAuditOrderDetailsFromDom();
             }
             syncAuditNewProductSubtabs();
             if (!hasNewProducts(auditState.aiStructured)) {
+                if (typeof generateProductSelects === 'function') {
+                    generateProductSelects();
+                }
+                await persistAuditResult();
                 var tabBtn = document.getElementById('tab-product');
                 if (tabBtn) tabBtn.classList.add('hidden');
                 switchAuditTab('order');
             } else {
                 await switchAuditNewProductIndex(auditState.activeNewProductIndex, { skipDraftSave: true });
+                if (typeof generateProductSelects === 'function') {
+                    generateProductSelects();
+                }
+                await persistAuditResult();
             }
         }
 

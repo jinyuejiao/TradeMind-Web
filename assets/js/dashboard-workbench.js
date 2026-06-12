@@ -475,11 +475,14 @@
             }
         }
 
-        if (typeof window.persistAuditResult === 'function') {
-            try { await window.persistAuditResult(); } catch (e) { /* ignore draft persist */ }
+        if (typeof window.syncAuditOrderDetailsFromDom === 'function') {
+            window.syncAuditOrderDetailsFromDom();
         }
         if (typeof window.generateProductSelects === 'function') {
             window.generateProductSelects();
+        }
+        if (typeof window.persistAuditResult === 'function') {
+            try { await window.persistAuditResult(); } catch (e) { /* ignore draft persist */ }
         }
         if (typeof window.syncAuditNewProductSubtabs === 'function') {
             window.syncAuditNewProductSubtabs();
