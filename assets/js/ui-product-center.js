@@ -221,7 +221,8 @@ window.ProductModule = {
         try {
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
-                return;
+                this.warehouses = [];
+                return [];
             }
 
             const response = await window.wrappedFetch('/api/v1/rd/products/warehouses', {
@@ -229,7 +230,10 @@ window.ProductModule = {
             });
 
             const data = await window.handleApiResponse(response);
-            if (!data) return;
+            if (!data) {
+                this.warehouses = [];
+                return [];
+            }
 
             console.log('[ProductModule] 仓库数据:', data);
             const warehouseList = data.data || data;
@@ -238,12 +242,15 @@ window.ProductModule = {
                 : [];
             
             console.log('[ProductModule] 仓库数据映射完成，数量:', mappedWarehouses.length);
+            this.warehouses = mappedWarehouses;
             return mappedWarehouses;
         } catch (error) {
             console.error('[ProductModule] 加载仓库数据异常:', error);
+            this.warehouses = [];
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('加载仓库数据失败: ' + error.message, 'error');
             }
+            return [];
         }
     },
 

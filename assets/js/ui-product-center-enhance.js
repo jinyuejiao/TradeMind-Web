@@ -74,13 +74,24 @@
         }
         var total = parseInt(totalRaw, 10);
         if (isNaN(total)) total = whSum;
-        if (whSum === 0 && total > 0 && inputs.length === 1) {
+        if (whSum === 0 && total > 0 && inputs.length >= 1) {
             inputs[0].value = String(total);
-        } else if (whSum !== total) {
+        } else if (whSum > 0 && whSum !== total) {
             PM._stockSyncLock = true;
             stockInput.value = String(whSum);
             PM._stockSyncLock = false;
         }
+    };
+
+    PM.buildDefaultWarehouseStocksFromTotal = function (total) {
+        var warehouses = PM.warehouses || [];
+        if (!warehouses.length) return [];
+        var qty = parseInt(total, 10);
+        if (isNaN(qty) || qty <= 0) return [];
+        return [{
+            warehouseId: warehouses[0].id,
+            quantity: qty
+        }];
     };
 
     PM.bindStockSyncHandlers = function () {
@@ -343,6 +354,9 @@
         };
 
         var whStocks = PM.readWarehouseStockFromContainer();
+        if (!whStocks.length && stockVal > 0) {
+            whStocks = PM.buildDefaultWarehouseStocksFromTotal(stockVal);
+        }
         var resultBody = {
             product: productPayload,
             warehouseStocks: whStocks
@@ -410,8 +424,9 @@
 
     PM.loadProductWarehouseStocks = async function (productId) {
         if (!productId) {
-            await PM.loadWarehouses();
-            var empty = (PM.warehouses || []).map(function (w) {
+            var warehouses = await PM.loadWarehouses();
+            PM.warehouses = Array.isArray(warehouses) ? warehouses : (PM.warehouses || []);
+            var empty = PM.warehouses.map(function (w) {
                 return { warehouseId: w.id, warehouseName: w.name, quantity: 0 };
             });
             PM.renderWarehouseStockSummary(empty);
@@ -419,12 +434,40 @@
             return;
         }
         try {
+            if (!PM.warehouses || !PM.warehouses.length) {
+                var loaded = await PM.loadWarehouses();
+                PM.warehouses = Array.isArray(loaded) ? loaded : (PM.warehouses || []);
+            }
             var resp = await window.wrappedFetch('/api/v1/rd/products/' + productId + '/warehouse-stocks', { method: 'GET' });
             var data = await window.handleApiResponse(resp);
             var list = data && data.data ? data.data : [];
             PM.warehouseStockDraft = list;
+            var whSum = list.reduce(function (sum, w) {
+                return sum + (w && w.quantity != null ? Math.max(0, parseInt(w.quantity, 10) || 0) : 0);
+            }, 0);
+            var productStock = PM.currentProduct && PM.currentProduct.stock != null
+                ? Math.max(0, parseInt(PM.currentProduct.stock, 10) || 0) : 0;
+            if (whSum === 0 && productStock > 0 && list.length > 0) {
+                list = list.map(function (w, idx) {
+                    var row = Object.assign({}, w);
+                    if (idx === 0) row.quantity = productStock;
+                    return row;
+                });
+            }
             PM.renderWarehouseStockSummary(list);
-            PM.syncTotalFromWarehouses();
+            PM.bindStockSyncHandlers();
+            var inputs = PM.getWarehouseStockInputs();
+            var whSumAfter = PM.sumWarehouseStocks();
+            if (whSumAfter > 0) {
+                PM.syncTotalFromWarehouses();
+            } else {
+                var stockInput = PM.el('detail-product-stock', 'product-stock-input');
+                var formTotal = stockInput ? parseInt(stockInput.value, 10) : NaN;
+                if (isNaN(formTotal) || formTotal <= 0) formTotal = productStock;
+                if (formTotal > 0 && stockInput) {
+                    stockInput.value = String(formTotal);
+                }
+            }
         } catch (e) {
             console.warn('[ProductEnhance] loadProductWarehouseStocks', e);
             PM.renderWarehouseStockSummary([]);
@@ -554,7 +597,7 @@
         var pid = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
         if (pid && typeof PM.refreshUnitConversionDraftFromApi === 'function') {
             await PM.refreshUnitConversionDraftFromApi(pid);
-        } else if (PM.isAuditProductFormActive && window.auditState && window.auditState.newProductDrafts) {
+        } else if (PM.isAuditProductFormActive && PM.isAuditProductFormActive() && window.auditState && window.auditState.newProductDrafts) {
             var idx = window.auditState.activeNewProductIndex || 0;
             var d = window.auditState.newProductDrafts[idx];
             var uc = d && (d.unit_conversions || d.unitConversions);
@@ -565,17 +608,27 @@
         PM.unitConversionDraft = PM.normalizeUnitDraft(PM.unitConversionDraft);
         PM.showFormErrors('unit-form-errors', []);
         var modal = document.getElementById('product-unit-modal');
-        if (modal) {
+        if (!modal) return;
+        PM.renderUnitModalRows();
+        if (typeof window.TM_openUnifiedModal === 'function') {
+            window.TM_openUnifiedModal(modal, { variant: 'center' });
+        } else {
             modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
             PM.lockBodyScroll(true);
         }
-        PM.renderUnitModalRows();
     };
 
     PM.closeUnitModal = function () {
         var modal = document.getElementById('product-unit-modal');
-        if (modal) modal.classList.add('hidden');
-        PM.lockBodyScroll(false);
+        if (!modal) return;
+        if (typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            PM.lockBodyScroll(false);
+        }
     };
 
     PM.toggleAdvanced = function () {
@@ -1063,6 +1116,9 @@
         );
         await PM.loadProductWarehouseStocks(null);
         PM.bindStockSyncHandlers();
+        if (stock != null && stock !== '' && parseInt(stock, 10) > 0) {
+            PM.syncWarehousesFromTotal();
+        }
         var hasAdvanced = !!(np.sku || np.product_sku || np.description || np.summary || stock);
         var drawer = PM.getProductDetailAdvancedDrawer();
         var icon = PM.getProductDetailAdvancedIcon();
@@ -1191,11 +1247,16 @@
     window.removeProductRow = function (rowId) { PM.removeProductRow(rowId); };
 
     async function refreshAuditProductWarehouses() {
-        if (typeof PM.isAuditProductFormActive === 'function' && !PM.isAuditProductFormActive()) return;
+        if (typeof PM.isAuditContextActive === 'function' && !PM.isAuditContextActive()) return;
         try {
-            await PM.loadWarehouses();
+            var warehouses = await PM.loadWarehouses();
+            PM.warehouses = Array.isArray(warehouses) ? warehouses : (PM.warehouses || []);
             var pid = PM.currentProduct && (PM.currentProduct.id || PM.currentProduct.productId);
             await PM.loadProductWarehouseStocks(pid || null);
+            var stockInput = PM.el('detail-product-stock', 'product-stock-input');
+            if (stockInput && stockInput.value !== '' && parseInt(stockInput.value, 10) > 0) {
+                PM.syncWarehousesFromTotal();
+            }
         } catch (e) { /* ignore */ }
     }
 
