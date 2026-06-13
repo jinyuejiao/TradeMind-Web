@@ -160,9 +160,21 @@
             // 跳转到登录页面
             window.location.href = '/login.html';
             return null;
-        } else if (response.status === 500) {
+        } else if (response.status === 500 || response.status === 409) {
+            var serverMsg = '';
+            try {
+                var errClone = response.clone();
+                var errBody = await errClone.json();
+                serverMsg = (errBody && (errBody.message || errBody.msg || errBody.error)) || '';
+            } catch (eParse) { /* ignore */ }
             if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('服务器配置错误', 'error');
+                window.TM_UI.showNotification(
+                    serverMsg || (response.status === 409 ? '无法删除该产品' : '服务器错误'),
+                    'error'
+                );
+            }
+            if (serverMsg) {
+                throw new Error(serverMsg);
             }
             return null;
         }
