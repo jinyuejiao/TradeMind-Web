@@ -492,13 +492,12 @@
     async function saveCustomerInline(name, phone) {
         var registryRoot = document.getElementById('audit-customer-registry-root');
         var fromRegistry = (window.TmCustomerRegistry && registryRoot)
-            ? window.TmCustomerRegistry.readPayloadWithMeta(registryRoot, { source: 'OTHER', custStatus: 'ACTIVE' })
+            ? window.TmCustomerRegistry.readPayloadWithMeta(registryRoot, { source: 'OTHER' })
             : null;
         var customerData = fromRegistry || {
             name: name,
             email: '',
             source: 'OTHER',
-            custStatus: 'ACTIVE',
             region: '',
             address: '',
             summary: ''

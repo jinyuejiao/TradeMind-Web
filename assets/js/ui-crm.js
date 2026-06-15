@@ -23,6 +23,69 @@
         BAD_DEBT: '坏账'
     };
 
+    /** 客户价值评估标签（cust_status / D009）— Code → 展示 / 颜色 / 商户举措 */
+    var V_TAG_MAP = {
+        COLLECTION_FOCUS: {
+            label: '重点催收',
+            bgClass: 'bg-rose-50 text-rose-700 border-rose-200',
+            action: '立即核账，暂停发货'
+        },
+        CORE_PARTNER: {
+            label: '核心伙伴',
+            bgClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            action: '大户优待，优先配货'
+        },
+        CHURN_WARNING: {
+            label: '流失预警',
+            bgClass: 'bg-amber-50 text-amber-700 border-amber-200',
+            action: '电话回访，询问原因'
+        },
+        NEED_WAKEUP: {
+            label: '需唤醒',
+            bgClass: 'bg-slate-100 text-slate-600 border-slate-200',
+            action: '发送优惠券/促销激活'
+        },
+        NEW_ONBOARD: {
+            label: '新入驻',
+            bgClass: 'bg-blue-50 text-blue-700 border-blue-200',
+            action: '重点跟进，促进首单'
+        },
+        NORMAL: {
+            label: '正常往来',
+            bgClass: 'bg-teal-50 text-teal-700 border-teal-200',
+            action: '日常维护'
+        }
+    };
+
+    function normalizeVTagCode(code) {
+        var raw = String(code || '').trim().toUpperCase();
+        return raw || 'NORMAL';
+    }
+
+    function getVTagMeta(vTagCode) {
+        var code = normalizeVTagCode(vTagCode);
+        return V_TAG_MAP[code] || V_TAG_MAP.NORMAL;
+    }
+
+    /**
+     * 渲染唯一价值评估 Badge，悬停显示商户举措。
+     * @param {string} statusCode cust_status 枚举（D009）
+     * @param {'sm'|'md'} [size='sm'] 列表 sm / 详情 md
+     */
+    function renderVTagBadgeHtml(vTagCode, size) {
+        var meta = getVTagMeta(vTagCode);
+        var isMd = size === 'md';
+        var sizeClass = isMd
+            ? 'px-2 py-0.5 text-[10px]'
+            : 'px-1.5 py-0.5 text-[9px] uppercase tracking-tighter';
+        var tip = '商户举措：' + meta.action;
+        return ''
+            + '<span class="v-tag inline-flex items-center ' + sizeClass + ' font-bold border rounded cursor-help '
+            + meta.bgClass + '" title="' + escapeHtml(tip) + '" data-cust-status="' + escapeHtml(normalizeVTagCode(vTagCode)) + '">'
+            + escapeHtml(meta.label)
+            + '</span>';
+    }
+
     var gatewayUrl = '';
     var orderStatusDictMap = {};
     var finStatusDictMap = {};
@@ -507,6 +570,9 @@
         getLogisticsStatusLabel: getLogisticsStatusLabel,
         getFinStatusLabel: getFinStatusLabel,
         resolveProductDisplayName: resolveProductDisplayName,
+        getVTagMeta: getVTagMeta,
+        renderVTagBadgeHtml: renderVTagBadgeHtml,
+        V_TAG_MAP: V_TAG_MAP,
         TIMELINE_SUMMARY_MAX_CHARS: TIMELINE_SUMMARY_MAX_CHARS,
         TIMELINE_SUMMARY_MAX_ITEMS: TIMELINE_SUMMARY_MAX_ITEMS
     };

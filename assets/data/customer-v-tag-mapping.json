@@ -1,0 +1,32 @@
+{
+  "COLLECTION_FOCUS": {
+    "label": "重点催收",
+    "bgClass": "bg-rose-50 text-rose-700 border-rose-200",
+    "action": "立即核账，暂停发货"
+  },
+  "CORE_PARTNER": {
+    "label": "核心伙伴",
+    "bgClass": "bg-indigo-50 text-indigo-700 border-indigo-200",
+    "action": "大户优待，优先配货"
+  },
+  "CHURN_WARNING": {
+    "label": "流失预警",
+    "bgClass": "bg-amber-50 text-amber-700 border-amber-200",
+    "action": "电话回访，询问原因"
+  },
+  "NEED_WAKEUP": {
+    "label": "需唤醒",
+    "bgClass": "bg-slate-100 text-slate-600 border-slate-200",
+    "action": "发送优惠券/促销激活"
+  },
+  "NEW_ONBOARD": {
+    "label": "新入驻",
+    "bgClass": "bg-blue-50 text-blue-700 border-blue-200",
+    "action": "重点跟进，促进首单"
+  },
+  "NORMAL": {
+    "label": "正常往来",
+    "bgClass": "bg-teal-50 text-teal-700 border-teal-200",
+    "action": "日常维护"
+  }
+}

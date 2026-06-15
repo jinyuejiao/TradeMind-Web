@@ -3846,8 +3846,7 @@
                 return;
             }
             const customerData = window.TmCustomerRegistry.readPayloadWithMeta(registryRoot, {
-                source: 'OTHER',
-                custStatus: 'ACTIVE'
+                source: 'OTHER'
             });
             if (!customerData.name) {
                 alert('客户姓名不能为空');

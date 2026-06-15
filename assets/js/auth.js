@@ -2303,16 +2303,17 @@ function closePoster() {
 }
 
 // 统一注入公共 UI 组件
+/** 站点根路径静态资源（勿用 resolveStaticPageUrl，避免 embed 模块页解析成 /modules/.../assets/） */
+function siteRootAsset(path) {
+    var p = String(path || '').replace(/^\//, '');
+    return '/' + p;
+}
+
 /** 独立模块页加载移动壳层 CSS / TM_Responsive（主壳 index-app 在 HTML 中已引入） */
 function ensureMobileShellAssets() {
     var cssId = 'tm-mobile-adapt-css';
     if (!document.getElementById(cssId)) {
-        var cssHref = '/assets/css/tm-layout-engine.css?v=20260525layout';
-        if (typeof resolveStaticPageUrl === 'function') {
-            try {
-                cssHref = resolveStaticPageUrl('assets/css/tm-layout-engine.css?v=20260525layout');
-            } catch (eCss) { /* ignore */ }
-        }
+        var cssHref = siteRootAsset('assets/css/tm-layout-engine.css?v=20260525layout');
         var link = document.createElement('link');
         link.id = cssId;
         link.rel = 'stylesheet';
@@ -2333,23 +2334,12 @@ function ensureMobileShellAssets() {
     }
     var jsId = 'tm-responsive-js';
     if (document.getElementById(jsId)) return;
-    var jsSrc = '/MobileAdapt/TM_Responsive.js';
-    if (typeof resolveStaticPageUrl === 'function') {
-        try {
-            jsSrc = resolveStaticPageUrl('MobileAdapt/TM_Responsive.js');
-        } catch (eJs) { /* ignore */ }
-    }
+    var jsSrc = siteRootAsset('MobileAdapt/TM_Responsive.js');
     var script = document.createElement('script');
     script.id = jsId;
     script.src = jsSrc;
     script.onload = bootResponsive;
     document.head.appendChild(script);
-}
-
-/** 站点根路径静态资源（勿用 resolveStaticPageUrl，避免 embed 模块页解析成 /modules/.../assets/） */
-function siteRootAsset(path) {
-    var p = String(path || '').replace(/^\//, '');
-    return '/' + p;
 }
 
 /** 独立模块页按需加载「问题与建议」弹窗（主壳 index-app 已在 HTML 中静态引入） */
@@ -2459,7 +2449,7 @@ window.injectCommonUI = function() {
         if (isMobile && !isPublicAuthPage) {
             console.log('TradeMindUI.injectCommonUI: 检测到移动设备，开始移动端适配');
 
-            if (!document.getElementById('tm-app-tabbar')) {
+            if (!document.getElementById('tm-app-tabbar') && !isEmbeddedModule) {
                 ensureMobileShellAssets();
             }
             

@@ -242,8 +242,8 @@
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260530modal"></script>
     <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
-    <script src="../../assets/js/auth.js?v=20260508r2"></script>
-    <script src="../../assets/js/ui-crm.js?v=20260530crm"></script>
+    <script src="../../assets/js/auth.js?v=20260615embedfix"></script>
+    <script src="../../assets/js/ui-crm.js?v=20260615custstatus"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script>
         // 打开会员订阅弹窗
@@ -535,7 +535,6 @@
         const state = {
             customers: [],
             filteredCustomers: [],
-            statusOptions: [],
             currentCustomer: null,
             modalMode: 'new',
             activeLetter: ''
@@ -570,7 +569,7 @@
                 phone: item.phone || '',
                 email: item.email || '',
                 source: item.source || 'OTHER',
-                status: item.status || item.cust_status || 'ACTIVE',
+                status: item.status || item.cust_status || 'NORMAL',
                 summary: item.summary || '',
                 region: item.region || '',
                 address: item.address || '',
@@ -578,16 +577,11 @@
             };
         }
 
-        function getStatusName(statusCode) {
-            const option = state.statusOptions.find(function(opt) { return opt.code === statusCode; });
-            return option ? option.name : (statusCode || '未知状态');
-        }
-
-        function getStatusChip(statusCode) {
-            if (statusCode === 'ACTIVE') return 'bg-brand-50 text-brand-700 border-brand-100';
-            if (statusCode === 'SLEEPING' || statusCode === 'DORMANT' || statusCode === 'INACTIVE') return 'bg-slate-100 text-slate-600 border-slate-200';
-            if (statusCode === 'LOST') return 'bg-rose-50 text-rose-600 border-rose-100';
-            return 'bg-blue-50 text-blue-700 border-blue-100';
+        function renderCustomerStatusBadge(statusCode, size) {
+            if (window.TmCrm && typeof window.TmCrm.renderVTagBadgeHtml === 'function') {
+                return window.TmCrm.renderVTagBadgeHtml(statusCode, size);
+            }
+            return '<span class="cust-status-badge px-1.5 py-0.5 text-[9px] border rounded bg-slate-100 text-slate-500">—</span>';
         }
 
         function getSourceLabel(source) {
@@ -633,38 +627,6 @@
             var vb = ib === -1 ? 999 : ib;
             if (va !== vb) return va - vb;
             return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans-CN');
-        }
-
-        async function fetchCustomerStatusOptions() {
-            try {
-                const response = await wrappedFetch(GATEWAY_URL + '/api/v1/crm/dictionary/D009', { method: 'GET' });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (Array.isArray(result)) {
-                        state.statusOptions = result;
-                    } else if (result && Array.isArray(result.data)) {
-                        state.statusOptions = result.data;
-                    } else if (result && result.success && Array.isArray(result.data)) {
-                        state.statusOptions = result.data;
-                    } else if (result && Array.isArray(result.items)) {
-                        state.statusOptions = result.items;
-                    }
-                }
-            } catch (error) {
-                console.error('加载客户状态字典失败:', error);
-            }
-            if (!state.statusOptions.length) {
-                state.statusOptions = [
-                    { code: 'ACTIVE', name: '活跃客户' },
-                    { code: 'INACTIVE', name: '沉睡客户' }
-                ];
-            }
-            const select = document.getElementById('cust-status');
-            if (select) {
-                select.innerHTML = state.statusOptions.map(function(option) {
-                    return '<option value="' + escapeHtml(option.code) + '">' + escapeHtml(option.name) + '</option>';
-                }).join('');
-            }
         }
 
         function sortCustomersAlphabetically(list) {
@@ -755,8 +717,7 @@
                         + '  <div onclick="selectCustomer(' + cust.id + ')" class="pr-16 md:pr-14">'
                         + '    <div class="font-bold text-sm text-slate-800 card-name">' + escapeHtml(cust.name) + '</div>'
                         + '    <div class="flex gap-1.5 mt-2">'
-                        + '      <span class="px-1.5 py-0.5 text-[9px] border rounded font-bold uppercase tracking-tighter ' + getStatusChip(cust.status) + '">' + escapeHtml(getStatusName(cust.status)) + '</span>'
-                        + '      <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[9px] border border-slate-200 rounded font-bold uppercase tracking-tighter">' + escapeHtml(getSourceLabel(cust.source)) + '</span>'
+                        +        renderCustomerStatusBadge(cust.status, 'sm')
                         + '    </div>'
                         + '  </div>'
                         + '  <div class="absolute right-9 md:right-2 top-1/2 -translate-y-1/2 flex flex-row gap-1.5 crm-action-btn z-30">'
@@ -838,9 +799,7 @@
             document.getElementById('crm-detail-name').textContent = customer.name;
             document.getElementById('customer-avatar').textContent = getInitial(customer.name);
             document.getElementById('customer-info').textContent = (customer.region || '未知地区') + ' | ' + (customer.phone || '-');
-            document.getElementById('customer-tags').innerHTML =
-                '<span class="px-2 py-0.5 text-[10px] font-bold border rounded ' + getStatusChip(customer.status) + '">' + escapeHtml(getStatusName(customer.status)) + '</span>' +
-                '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] border border-slate-200 rounded">' + escapeHtml(getSourceLabel(customer.source)) + '</span>';
+            document.getElementById('customer-tags').innerHTML = renderCustomerStatusBadge(customer.status, 'md');
         }
 
         function clearCustomerDetail() {
@@ -1202,7 +1161,6 @@
                 if (window.TmCrm && typeof window.TmCrm.init === 'function') {
                     await window.TmCrm.init({ gatewayUrl: GATEWAY_URL });
                 }
-                await fetchCustomerStatusOptions();
                 renderAlphaRail();
                 const debouncedLoadCustomers = debounce(loadCustomers, 300);
                 setupCrmSearchInput(debouncedLoadCustomers);

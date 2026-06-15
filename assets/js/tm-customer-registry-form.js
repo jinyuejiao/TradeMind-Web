@@ -151,7 +151,6 @@
         var payload = readPayload(root);
         meta = meta || {};
         payload.source = meta.source || 'OTHER';
-        payload.custStatus = meta.custStatus || meta.status || 'ACTIVE';
         return payload;
     }
 
