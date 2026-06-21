@@ -10,6 +10,8 @@
 
 销售/进货单据已落地**物流状态 + 财务状态双线模型**（字典 **D010–D012** 物流、**D015–D017** 财务/流水类型）：物流驱动 **`warehouse_stock`** 精准出入库（明细 **`is_processed`** 幂等），财务经 **`record-payment`** 独立记账（详见 §1.3.7–§1.4.4、§2.9）。前端 **`tm-layout-engine.css`** 统一手机端三段式壳层与弹窗 Bottom Sheet（§3.1.0、§7.5）。
 
+**商户端 RBAC 壳层**（§3.1.0、§7.7）：**`ui-permissions.js`** + **`ui-role-engine.js`** 按 JWT **`roleType`** 物理移除无权限导航/按钮，并脱敏 **`data-field`** 价格字段；**`switchTab`** 内置路由守卫。**工作台增强**（§3.1.1）：**`dashboard-workbench.js`** 待确认单据 Store 轮询、**`ui-ai-service.js`** 多端录音/拍照、**`ai-order-extract-parse.js`** 统一解析 AI 结果、**`order-workbench-modal.js`** 订单弹窗布局。**商户问题反馈**（§1.6.5、§3.1.9）：**`merchant_feedback`** 表 + 顶栏 **`TM_MerchantFeedback`** 提交，运维在 **`ops-hub.html`** 处理（§3.1.10）。
+
 ## 系统架构
 
 采用微服务架构，由多个独立服务组成，通过API网关统一对外提供服务；网关在校验 JWT 后 **保留** `Authorization` 并向业务服务注入 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**；并在解析令牌中的 **`accessMode`** 后执行订阅访问策略（见 §2.7）；**`/api/v1/ops/**`** 路径额外校验运维角色（§2.4.5）；**`ROLE_PROMOTER`** 采用 deny-by-default 白名单，仅可访问推广员门户与登录（§2.4.7）。
@@ -860,6 +862,32 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 索引：`idx_announce_active(active_from, active_until)`。
 
+#### 1.6.5 商户问题反馈（merchant_feedback / merchant_feedback_followups）
+
+商户端「问题与建议」与运维跟进流水；DDL 在 **`db/schema-production.sql`**（L5 段）。
+
+**主表 `merchant_feedback`**：
+
+| 字段名 | 类型 | 可空 | 说明 |
+| ----- | --- | --- | --- |
+| id | UUID PK | 否 | 主键 |
+| feedback_no | VARCHAR(32) | 否 | 业务编号，**UNIQUE**（如 `FB202606210001`） |
+| tenant_id | VARCHAR(32) FK | 否 | 租户 |
+| user_id | INT FK | 否 | 提交用户 → `users` |
+| user_name | VARCHAR(64) | 是 | 提交时快照姓名 |
+| content | VARCHAR(300) | 否 | 描述正文（默认空串，提交时校验） |
+| image_urls | JSONB | 否 | 截图 URL 数组，默认 `[]` |
+| status | VARCHAR(20) | 否 | **`DRAFT`** / **`OPEN`** / **`IN_PROGRESS`** / **`RESOLVED`** / **`CLOSED`** |
+| priority | SMALLINT | 否 | 优先级，默认 `0` |
+| source | VARCHAR(16) | 否 | **`WEB`** / **`MOBILE`** |
+| client_meta | JSONB | 是 | 客户端上下文（Tab、UA 摘要等） |
+| created_at / updated_at | TIMESTAMP | 否 | 创建/更新 |
+| resolved_at | TIMESTAMP | 是 | 解决时间（运维标 **`RESOLVED`/`CLOSED`** 时写入） |
+
+**跟进表 `merchant_feedback_followups`**：追加型运维/用户动作流水（`action`、`from_status`、`to_status`、`note`、`operator_user_id` 等）；**`feedback_id` ON DELETE CASCADE**。
+
+索引：`idx_mf_tenant_time`、`idx_mf_status_time`、`idx_mf_user_time`、`idx_mff_feedback_time`。
+
 ---
 
 ## 2. 微服务架构设计
@@ -871,14 +899,14 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 | 服务名称    | 服务标识           | 技术栈                       | 主要职责                            |
 | ------- | -------------- | ------------------------- | ------------------------------- |
-| 租户服务    | TenantService  | Spring Boot 3.x           | 租户/用户/认证；**订阅试用与履历**（`SubscriptionLifecycleService`、`tenant_subscriptions`）；**推荐绑定与达标奖励**（`ReferralBindingService`、`ReferralQualificationService`）；**新手导览状态**（`OnboardingStateService`、`OnboardingController`）；JWT 含 **`merchantType`、`accessMode`、`subscriptionTier`、`subEndMs`**；注册 body 支持 **`referralCode`** |
+| 租户服务    | TenantService  | Spring Boot 3.x           | 租户/用户/认证；**订阅试用与履历**（`SubscriptionLifecycleService`、`tenant_subscriptions`）；**推荐绑定与达标奖励**（`ReferralBindingService`、`ReferralQualificationService`）；**新手导览状态**（`OnboardingStateService`、`OnboardingController`）；**商户问题反馈**（`MerchantFeedbackService`、`FeedbackController`）；JWT 含 **`merchantType`、`accessMode`、`subscriptionTier`、`subEndMs`**；注册 body 支持 **`referralCode`** |
 | 初始化配置服务 | InitCfgService | Spring Boot 3.x           | 配置管理、RDS/OSS/AI 配置；**唯一数据库初始化引擎**（`db/schema-production.sql` + `db/seed-data.sql` + `validateCoreSchema()`） |
 | 客户关系服务  | CRMService     | Spring Boot 3.x           | 客户信息管理                          |
 | 进销存服务   | RDService      | Spring Boot 3.x           | 产品管理、订单管理、生产管理、单位换算、仓库管理、产品分类管理 |
 | 供应商服务   | SuppService    | Spring Boot 3.x + MyBatis | 供应商管理、进货单管理                     |
 | AI智能服务  | AIService      | Spring Boot 3.x           | AI大模型调用、订单提取、语音处理               |
 | 智能报表服务  | IMService      | Spring Boot 3.x           | 营收报表、库存健康、盈利分析、往来账务             |
-| 运维中台服务  | OpsService     | Spring Boot 3.x + JPA     | 租户大盘/树、订阅延期、推荐奖励运维、AI Token 统计、全站公告；**仅限 `SYSTEM_OPS` + `ROLE_OPS_ADMIN`** |
+| 运维中台服务  | OpsService     | Spring Boot 3.x + JPA     | 租户大盘/树、订阅延期、推荐奖励运维、**商户反馈运维**（`FeedbackOpsService`）、推广员开号、AI Token 统计、全站公告；**仅限 `SYSTEM_OPS` + `ROLE_OPS_ADMIN`** |
 | API网关   | trademind-gateway | Spring Cloud Gateway    | 服务路由、JWT 校验、注入身份头；**`/api/v1/ops/**` 运维 RBAC**；**按 JWT `accessMode` 限制访问**（`READ_ONLY` 禁写、`BILLING_ONLY` 仅白名单片段）；**`AuthService.isTenantSubscriptionAccessAllowed`**；环境变量 **`AUTH_WHITELIST`**、**`SUBSCRIPTION_BYPASS_FRAGMENTS`**（见 §2.4.3–§2.4.5） |
 
 
@@ -1157,8 +1185,9 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 - **注册意图**：`auth.js` 中 `tmResolveMerchantIntent()`，支持 URL 参数 `merchantType`、`industryType`、`industry`、`version`（合法值归一为 D013 `dict_code`），并写入 `sessionStorage`。
 - **运行时上下文**：`/assets/js/tm-ui-loader.js` — `TM_UI_CONTEXT.industry`、`TM_UI.applyContextFromToken(token)`、`TM_UI.injectSlots(root)`、`TM_RoleGate.apply(root)`（`data-role`）；壳层就绪后派发 **`tm-role-ui-ready`**（供新手导览启动）。
 - **行业片段**：`/fragments/{wholesale|foreign|ecom|factory}/{scope}/{slot}.html`；模块 HTML 内预留 `data-tm-fragment-scope` + `data-tm-slot`。
-- **主壳**：单页 **`index-app.html`** + **`ui-main.js`** 按 Tab 注入模块；**PC** 左侧 `aside` 导航，**移动** 底栏 **`#tm-app-tabbar`**（`TM_Responsive` / `body.tm-layout-mobile`，断点 **&lt;768px**）。
-- **顶栏**：`#tm-app-header` — 移动端 **`tm-app-header-brand`** 固定展示「商贸智脑」；PC 顶栏不重复退出/新手引导（退出在侧栏、导览见 FAB，§3.1.0、§3.1.6）。
+- **主壳**：单页 **`index-app.html`** + **`ui-main.js`** 按 Tab 注入模块；**PC** 左侧 `aside` 导航，**移动** 底栏 **`#tm-app-tabbar`**（由 **`TM_renderIdentityTabbar()`** 按身份渲染，§3.1.0）。
+- **角色壳层**：**`ui-permissions.js`**（`TM_ROLE_SCHEMA`）+ **`ui-role-engine.js`**（`applyRoleUI()`）；控件标注 **`data-tm-nav` / `data-action` / `data-field`**，无权限节点 **物理移除**（§7.7、`Framework_Guide.md`）。
+- **顶栏**：`#tm-app-header` — 移动端 **`tm-app-header-brand`** 固定展示「商贸智脑」；**问题与建议**按钮调用 **`TM_MerchantFeedback.open()`**（§3.1.9）；PC 顶栏不重复退出/新手引导（退出在侧栏、导览见 FAB，§3.1.0、§3.1.6）。
 - **样式**：根节点 `data-merchant-type` 与 `theme.css` 中 `--tm-brand-accent-rgb`；手机壳层见 **`tm-layout-engine.css`**（§3.1.0）；详见 `TradeMind-Web/docs/Framework_Guide.md`。
 
 ### 2.8 商业化：推荐奖励账户与配额配置（设计修订 2026-05-07）
@@ -1195,7 +1224,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | 子账号管理 | **`TenantUserController`** + **`TenantUserManagementService`**（席位 **`quota_limits.max_users`**） |
 | 新手导览 | **`OnboardingController`**（`/onboarding/state` GET/PUT）、**`OnboardingStateService`**、**`OnboardingRoleCodes`**；登录 **`peekLoginSummary`** |
 | 订阅支付 | **`SubscriptionPaymentController`** + **`HccbPaymentNotifyController`**（杭州银行收银台） |
-| 运维中台 | **`OpsService`**（租户树、延期、推荐运维、**推广员开号**、AI 用量、公告）；网关 **`isOpsAdmin`** |
+| 运维中台 | **`OpsService`**（租户树、延期、推荐运维、**商户反馈**、推广员开号、AI 用量、公告）；网关 **`isOpsAdmin`** |
+| 商户反馈 | **`MerchantFeedbackService`**（TenantService **`/feedback/*`**）；**`FeedbackOpsService`**（OpsService **`/ops/feedback/*`**）；截图经 **`OssMediaUploadService`** / **`TMOssUpload.uploadFeedbackImage`** |
 | 推广员门户 | **`PromoterController`**、**`PromoterService`**、**`PromoterWechatAuthService`**、**`UserPayoutProfileService`** |
 | TenantService 配置项 | **`custom.subscription.grace-days-after-expiry`**（默认 `7`）；**`custom.referral.reward-per-qualified`**（默认 `100`）；**`custom.wechat.mp.*`** |
 | 网关 | **`AuthGlobalFilter`** + **`AuthService`**；白名单 / bypass / 运维 RBAC（§2.4.5）/ 推广员 RBAC（§2.4.7） |
@@ -1281,8 +1311,24 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 #### 3.1.0 商户类型与壳层扩展（跨模块）
 
 - **意图入口**：`register.html?merchantType=ECOM` 等；登录页 / 注册页加载 `main-app.js` → `tm-ui-loader.js` → `auth.js`。
-- **主壳**：`index-app.html` 在 `ui-components.js` 之后加载 `tm-ui-loader.js`，模块内容由 `ui-main.js` 注入后在 **`view-dashboard` / `view-supply`** 根节点上调用 `injectSlots`。
-- **约定**：不在 `modules/` 下按行业拆分物理目录；行业差异 HTML 放在 **`/fragments/`**。
+- **主壳**：`index-app.html` 在 `ui-components.js` 之后加载 `tm-ui-loader.js`；模块内容由 `ui-main.js` **`loadDashboard` / `loadSmartOps` 等** 注入后在视图根节点调用 **`injectSlots`**。
+- **约定**：不在 `modules/` 下按行业拆分物理目录；行业差异 HTML 放在仓库根 **`/fragments/`**；跨模块可复用表单片段放在 **`/modules/fragments/`**（如 **`customer-registry-form.html`**、**`product-registry-form.html`**、**`poster-modal.html`**）。
+
+**主壳脚本加载顺序（`index-app.html`，节选）**：
+
+| 阶段 | 脚本/样式 | 说明 |
+| --- | --- | --- |
+| 网络/API | `env-config.js`、`api-client.js` | 网关基址与 **`wrappedFetch`** |
+| AI 工作台 | `dashboard-voice-upload.js`、`ui-ai-service.js`、`ai-order-extract-parse.js`、`ui-ai-service.css` | 语音/拍照设备层与结果解析（§3.1.1） |
+| 壳层/合规 | `tm-shell-insets.js`、`tm-compliance.js`、`tm-merchant-feedback.js` | 布局度量、备案、问题反馈 |
+| 认证/会员 | `auth.js`、`referral-rewards.js` | JWT、会员中心、登录后跳转 |
+| 应用核 | `main-app.js` → `ui-permissions.js` → `ui-role-engine.js` → `TM_Responsive.js` → `ui-components.js` → `tm-ui-loader.js` | 角色引擎须在 **`tm-ui-loader`** 之前 |
+| 模块 | `ui-main.js`、`ui-product-center*.js`、`tm-onboarding*.js` | Tab 切换、各业务模块 |
+
+**身份与导航双模式**：
+
+- **商户**：侧栏/底栏 **`TM_NAV_CONFIG`**（工作台/智能经营/CRM/产品/供应商）；登录 **`ROLE_OPS_ADMIN` 以外** 进入 **`index-app.html`**。
+- **运维**：**`ops_admin`** 登录后 **`auth.js`** → **`ops-hub.html`**（独立运维门户，§3.1.10）；`index-app.html` 内亦预留 **`#view-ops`** + **`ui-ops.js`** 供嵌入场景，底栏可切换 **`TM_OPS_NAV_CONFIG`**（看板/订阅/推荐/推广/问题/公告）。
 
 **主壳布局（`index-app.html`，对齐 UI 工程）**：
 
@@ -1305,21 +1351,26 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 #### 3.1.1 工作台（Dashboard）
 
-- **路径**：`/modules/dashboard/dashboard.html`
+- **路径**：主壳 **`#view-dashboard`**（内联骨架）+ **`/modules/dashboard/dashboard.html`**（业务脚本与弹窗 HTML 源）；`ui-main.js` **`loadDashboard()`** 抽取片段注入，**`TM_syncDashboardOverlays`** 同步 **`audit-modal` / `order-detail-modal` / `manual-order-modal`** 等弹窗至 `document.body`。
+- **增强脚本**（由 `dashboard.html` 尾部或主壳预加载）：
+  - **`dashboard-workbench.js`** — **`TM_PendingOrdersStore`**：`GET /api/v1/ai/records` 轮询（含 **`EXTRACTING`** 态）、待确认卡片增量渲染、语音/文本/拍照提交后刷新、自动建档下单；
+  - **`order-workbench-modal.js`** — **`TM_OrderModal`**：订单详情/新建弹窗行数滚动、辅助区折叠；
+  - **`ui-ai-service.js`** — **`TM_AIService`**：HarmonyOS/iOS 等 **MediaDevices + MediaRecorder** 兼容、权限提示、图片 Canvas 压缩（≤2MB）；
+  - **`ai-order-extract-parse.js`** — **`parseAiOrderExtractResult`**：统一解析 `ai_result`（去 Markdown 围栏、归一 **`new_products_found`** / 订单行单位）；
+  - **`dashboard-voice-upload.js`**、**`tm-dashboard-photo.js`**、**`tm-oss-upload.js`** — 语音/识图上传（工作台走 AIService 服务端；反馈截图走 TenantService **`/feedback/{id}/image`**）。
 - **功能**：
-  - 系统概览展示
-  - **左栏·待确认单据**：`GET /api/v1/ai/records`，展示 AI 识别完成（`SUCCESS`）且用户未确认入库的草稿；点击打开核对弹窗
+  - 系统概览展示（今日营收、待识别数、库存预警等 **`loadDashboardOverviewStats`**）
+  - **左栏·待确认单据**：`TM_PendingOrdersStore` → `GET /api/v1/ai/records`，展示 **`SUCCESS`**（待核对）与 **`EXTRACTING`**（识别中）；点击打开 **`audit-modal`** 核对弹窗
   - **右栏·进行中业务单据**：
-    - 数据：**`GET /api/v1/rd/orders/in-progress`**（物流态 **D010001 待配货 + D010002 拣货中 + D010003 已发货**；接口不可用时回退全量订单客户端筛选）
-    - **双维筛选**：单个「筛选」按钮弹出面板，可按 **D010 物流状态** + **D015 财务状态** 组合过滤（客户端 **`filterInProgressOrders`**）
-    - **列表摘要**：展示 **`dict_name`** 物流态、**D015** 财务态、**「剩 ¥xxx」** 剩余应收（`total_amount - received_amount`）
-    - **详情/编辑**：客户名称、**D010 物流状态**（下拉展示 **`dictname`**，非 `D010001` 码）、交货日期、**收款账户**（下拉 **`biz_accounts.account_name`**）、**收款状态与本次收款金额**；底部与「返回工作台」平级的 **「保存」** 按钮；保存调用 **`PUT /api/v1/rd/orders/{id}/save`** 或 **`POST .../record-payment`**（有收款金额时）
-    - **终态移除**：保存为 **D010004 已签收** 或 **D010005 退货** 后从进行中列表移除
-    - **添加订单**弹窗：字段与详情对齐；状态下拉加载 **D010 全部子项**；底栏按钮样式与详情一致
+    - 数据：**`GET /api/v1/rd/orders/in-progress`**（物流态 **D010001 待配货 + D010002 拣货中 + D010003 已发货 + D010006 部分发货** 等；接口不可用时回退全量订单客户端 **`isWorkbenchOpenOrder`** 筛选）
+    - **双维筛选**：「筛选」按钮弹出面板（**`inprogress-filter-panel`**），可按 **D010 物流** + **D015/D016 财务 `finStatus`** 组合过滤（**`filterInProgressOrders`** / **`inProgressFilterState`**）
+    - **列表摘要**：展示物流态、财务态、**「剩 ¥xxx」** 剩余应收（`total_amount - received_amount`）
+    - **详情/编辑**：**`order-detail-modal`** — 客户、**D010 物流**、交货日、收款账户、**收款状态与本次收款**；保存 **`PUT /api/v1/rd/orders/{id}/save`** 或 **`POST .../record-payment`**
+    - **终态移除**：物流 **D010004 已签收** / **D010005 退货** 或财务结清后从进行中列表移除
+    - **添加订单**：**`manual-order-modal`**
   - 核对确认后：`POST /api/v1/rd/orders` 默认 **D010001（待配货）**，删除对应 AI 记录，右栏刷新
   - 核对弹窗支持多个 `new_products_found` 时分项 Tab 保存新产品
-  - 待办事项提醒、快捷操作入口、数据统计卡片
-  - **商户片段插槽**：`data-tm-fragment-scope="dashboard"`、`data-tm-slot="workspace-banner"`（按租户业态加载横幅片段）
+  - **商户片段插槽**：`data-tm-fragment-scope="dashboard"`、`data-tm-slot="workspace-banner"`
 
 #### 3.1.2 客户关系（CRM）
 
@@ -1386,7 +1437,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 #### 3.1.5 智能经营（Smart Ops）
 
-- **路径**：`/modules/smart-ops/smart-ops.html`
+- **路径**：`/modules/SmartOps/SmartOps.html`（注意大小写）；主壳 Tab **`biz`** 经 **`loadSmartOps()`** 以 **iframe embed**（`?embed=1`）加载，**`TM_mountEmbeddedFrame`** 隐藏子页重复 header。
 - **功能**：
   - 订单管理
   - 生产管理
@@ -1396,7 +1447,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 #### 3.1.6 新手导览（Onboarding）
 
 - **范围**：当前自动导览仅 **`WHOLESALE`** 业态（`tm-onboarding.js` **`shouldRun()`**）；运维账号不进商户导览。
-- **脚本**：`/assets/js/tm-onboarding-registry.js`（步骤/角色必学路径、`targets.desktop` / `targets.mobile`）、`/assets/js/tm-onboarding.js`（引擎）、`/assets/js/tm-onboarding-sync.js`（服务端同步）、`/assets/js/ui-permissions.js`（`TM_ROLE_SCHEMA` / 菜单可见性）。
+- **脚本**：`/assets/js/tm-onboarding-registry.js`（步骤/角色必学路径、`targets.desktop` / `targets.mobile`）、`/assets/js/tm-onboarding.js`（引擎）、`/assets/js/tm-onboarding-sync.js`（服务端同步）、`/assets/js/ui-permissions.js` + **`/assets/js/ui-role-engine.js`**（菜单/动作/字段 RBAC，§7.7）。
 - **样式**：`/assets/css/tm-onboarding.css`。
 - **角色必学（批发商示例）**：`ADMIN`/`SALES` 含工作台介绍 + 语音首单（阻塞导航）；`FINANCE`/`WAREHOUSE`/`READONLY` 见 registry **`MANDATORY_PROFILES`**。
 - **流程**：
@@ -1421,12 +1472,6 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 - **推荐奖励详情**：**`/modules/membership/referral-rewards-modal.html`** + **`referral-rewards.js`**（名单脱敏、提现收款信息）；由 **`injectMemberAuxModals()`** 注入。
 - **支付回站**：`sessionStorage.tm_pending_subscription_pay_txnOrderId`；轮询 **`/subscription/payment/status`** 成功后 **`openMemberModal()`**。
 
-#### 3.1.8.1 运维中心：推广员开号入口
-
-- **路径**：登录运维账号（`ops_admin`）→ **`ops-hub.html`** → 侧栏或底栏 **「推广员开号」**（路由 **`#promoters`**）。
-- **模块**：**`modules/ops/promoters-manage.html`**，由 **`ui-ops.js`** 的 **`initPromotersPage`** 提交 **`POST /api/v1/ops/promoters`**。
-- **快捷入口**：**「推荐与结算」** 页顶部按钮 **「开通独立推广员账号」** 可跳转至同一开号页。
-
 #### 3.1.8 推广员移动门户（promoter-portal.html）
 
 - **入口 URL**：生产 **`https://trademind.com.cn/promoter-portal.html`**；本地 **`http://localhost:9013/promoter-portal.html`**；微信公众号自定义菜单指向该 H5。
@@ -1447,6 +1492,41 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 4. 公众号 **自定义菜单** 添加链接：`https://trademind.com.cn/promoter-portal.html`（建议菜单名「推广中心」）。
 5. 运维 **`POST /api/v1/ops/promoters`** 为推广员开号；推广员首次在微信内打开 → OAuth → 账号密码绑定 → 之后静默登录。
 6. 联调：微信内访问门户，确认 **`/api/v1/promoter/wechat/config`** 返回 **`oauthEnabled:true`**，授权回调 URL 带 **`code`** 后可进入主页。
+
+#### 3.1.8.1 运维中心：推广员开号入口
+
+- **路径**：登录运维账号（`ops_admin`）→ **`ops-hub.html`** → 侧栏或底栏 **「推广员开号」**（路由 **`#promoters`**）。
+- **模块**：**`modules/ops/promoters-manage.html`**，由 **`ui-ops.js`** 的 **`initPromotersPage`** 提交 **`POST /api/v1/ops/promoters`**。
+- **快捷入口**：**「推荐与结算」** 页顶部按钮 **「开通独立推广员账号」** 可跳转至同一开号页。
+
+#### 3.1.9 商户问题与建议（Merchant Feedback）
+
+- **入口**：主壳顶栏 **`#tm-app-header`** 消息图标 → **`TM_MerchantFeedback.open()`**（**`tm-merchant-feedback.js`** + **`tm-merchant-feedback.css`**）；独立页经 **`auth.js`** **`injectCommonUI`** 动态注入同款资源。
+- **交互**：描述最多 **300 字**；可选截图最多 **10** 张（单张 ≤5MB，JPEG/PNG/WebP）；移动/PC 区分 **`source`**。
+- **提交流程**：
+  1. **`POST /api/v1/tenant/feedback/draft`** — 创建 **`DRAFT`**，返回 **`feedbackId`**；
+  2. 若有截图：**`TMOssUpload.uploadFeedbackImage`** → **`POST /api/v1/tenant/feedback/{id}/image`**（multipart，TenantService 写 OSS）；
+  3. **`POST /api/v1/tenant/feedback/{id}/submit`** — Body **`content`**、**`imageUrls`**；状态 **`DRAFT` → `OPEN`**，写用户侧 followup 流水。
+- **查询**：**`GET /api/v1/tenant/feedback/mine`**（分页，不含 **`DRAFT`**）。
+- **运维处理**：见 §3.1.10、§3.2.8 **`/api/v1/ops/feedback/**`**。
+
+#### 3.1.10 运维中心门户（ops-hub.html）
+
+- **入口**：**`ops_admin`**（`ROLE_OPS_ADMIN`）登录 → **`auth.js`** **`getPostLoginEntryPath`** → **`ops-hub.html`**（`body.tm-ops-portal`）；亦可从运维侧栏链回 **`index-app.html`** 查看商户壳层。
+- **布局**：PC 左侧 **`#tm-ops-nav`** 靛蓝侧栏；移动 **`#tm-app-tabbar`** 六 Tab（与 **`TM_OPS_NAV_CONFIG`** 一致）；内容区 **`#tm-ops-view-root`**。
+- **控制器**：**`/assets/js/ui-ops.js`**（**`window.TM_OPS.loadModule`**）；模块 HTML 在 **`modules/ops/`**：
+
+| 路由 `#` | 模块文件 | 说明 |
+| --- | --- | --- |
+| `tenants` | `tenants-quota-tree.html` | 租户看板/配额树 |
+| `plans` | `plan-catalog-by-merchant.html` | 订阅策略 |
+| `referral` | `referral-settlement.html` | 推荐与结算 |
+| `promoters` | `promoters-manage.html` | 推广员开号（§3.1.8.1） |
+| `feedback` | `merchant-feedback.html` | 用户问题列表/详情/跟进 |
+| `announce` | `announce-audit.html` | 全站公告与审计 |
+
+- **样式**：**`ops-portal.css`**、**`tm-layout-engine.css`**（运维主题 **`tm-shell-ops`**）。
+- **关联页面**：**`ops-portal.html`** 为早期/备用运维入口；现行主路径以 **`ops-hub.html`** 为准。
 
 ### 3.2 后端服务模块
 
@@ -1483,6 +1563,10 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | `/users/{userId}` | PUT | 更新子账号角色/密码/姓名 |
 | `/subscription/payment/create` | POST | 会员订阅杭州银行统一收银台下支付单；Body：`action`（`NEW`/`RENEW`/`UPGRADE`）、`targetTierCode`；需 Bearer；`custom.payment.hccb.enabled=false` 时返回 **503** + `code=PAYMENT_DISABLED` |
 | `/subscription/payment/status` | GET | Query `txnOrderId`；支付单状态（需 Bearer，且须本租户订单） |
+| `/feedback/draft` | POST | 创建商户反馈草稿 **`DRAFT`**；Body 可选 **`source`**、**`clientMeta`**（需 Bearer） |
+| `/feedback/{id}/image` | POST | 上传反馈截图（multipart **`file`**，Query **`index`**）；仅 **`DRAFT`** 且属当前用户（需 Bearer） |
+| `/feedback/{id}/submit` | POST | 提交反馈；Body **`content`**、**`imageUrls`**、**`source`**；**`DRAFT` → `OPEN`**（需 Bearer） |
+| `/feedback/mine` | GET | 当前用户已提交反馈分页；Query **`page`/`size`**（需 Bearer） |
 | `/payout/callback` | POST | **杭州银行异步通知**（JSON 或表单）；**无 JWT**；验签与幂等履约后响应纯文本 **`Success`**；网关 **auth-whitelist** 须包含该路径 |
 | `/internal/subscription/activate-paid` | POST | 内部/支付回调开通付费档；Header **`X-Internal-Token`**（与 `custom.security.internal-token` 一致）；Body：`tenantId`、`tierCode`、`months`、`pricePaid`、`externalOrderId`；**网关路径免 JWT**，仅靠内部令牌 |
 
@@ -1754,6 +1838,10 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | `/api/v1/ops/referrals/tree` | GET | 推荐关系树；Query **`rootUserId`** 必填 |
 | `/api/v1/ops/referrals/rewards/{id}/mark-paid` | POST | 标记奖励已发放 |
 | `/api/v1/ops/promoters` | POST | 手动创建推广员；Body `userName`、`password`（MD5）、`realName`、`phone`、可选 `email`；转发 TenantService **`/internal/promoters`** |
+| `/api/v1/ops/feedback` | GET | 商户反馈列表（排除 **`DRAFT`**）；Query **`status`**、**`tenantId`**、**`dateFrom`/`dateTo`**、**`page`/`size`** |
+| `/api/v1/ops/feedback/{id}` | GET | 反馈详情 + **`merchant_feedback_followups`** 流水 |
+| `/api/v1/ops/feedback/{id}/status` | PATCH | 更新状态；Body **`status`**（`OPEN`/`IN_PROGRESS`/`RESOLVED`/`CLOSED`）、可选 **`note`** |
+| `/api/v1/ops/feedback/{id}/followups` | POST | 追加运维备注；Body **`note`** |
 | `/api/v1/ops/ai-usage/stats` | GET | AI Token 统计；Query `range`（默认 `week`）、`topN` |
 | `/api/v1/ops/announcements` | GET | 全站公告列表 |
 | `/api/v1/ops/announcements` | POST | 创建公告；Body `title`、`bodyMd`、`priority`、`activeFrom`/`activeUntil` |
@@ -1871,10 +1959,12 @@ dictionary (字典表)
 
 ### 5.1 前端技术栈
 
-- **框架**：原生HTML + JavaScript
-- **UI框架**：Tailwind CSS 3.x
+- **框架**：原生 HTML + JavaScript（无 SPA 框架）
+- **UI框架**：Tailwind CSS 3.x（CDN）
 - **图标库**：Phosphor Icons
-- **HTTP客户端**：原生Fetch API
+- **HTTP客户端**：原生 Fetch API（封装为 **`wrappedFetch`**）
+- **辅助库**：**html2canvas**（推荐海报导出）、**ali-oss**（STS 直传，反馈/媒体场景按需加载）
+- **设备能力**：HTML5 **MediaDevices / MediaRecorder / Canvas**（**`ui-ai-service.js`**）
 
 ### 5.2 后端技术栈
 
@@ -1915,13 +2005,13 @@ dictionary (字典表)
 
 ### 6.2 AI订单提取流程
 
-1. 用户上传订单图片/语音/输入文本
-2. 前端调用AIService`/ai/execute`接口
-3. AIService生成requestId，保存记录到数据库（状态：EXTRACTING）
-4. AIService异步调用大模型API
-5. 大模型返回提取结果，更新数据库状态（SUCCESS/FAILED）
-6. 前端轮询`/ai/status/{requestId}`接口获取处理状态
-7. 处理成功后，用户确认保存数据
+1. 用户在工作台选择 **语音 / 拍照 / 文本** 录入（**`index-app.html`** **`#dashboard-ai-extract`** 或注入后的 dashboard 模块）
+2. **语音/拍照**：**`ui-ai-service.js`** 采集媒体 → **`dashboard-voice-upload.js` / `tm-dashboard-photo.js`** 上传 → 前端调用 AIService **`POST /api/v1/ai/execute`**（或同步 **`/ai/process`**，以现网配置为准）
+3. AIService 生成 **`requestId`**，写入 **`ai_operation_records`**（状态 **`EXTRACTING`**），异步调用大模型
+4. **`dashboard-workbench.js`** **`TM_PendingOrdersStore`** 轮询 **`GET /api/v1/ai/records`**，展示 **`EXTRACTING`** / **`SUCCESS`** 卡片
+5. 大模型返回后更新 **`ai_result`**，状态 **`SUCCESS`** / **`FAILED`**
+6. 用户打开核对弹窗：**`ai-order-extract-parse.js`** 解析 JSON（兼容 Markdown 围栏）→ 确认客户/产品/订单行 → **`POST /api/v1/rd/orders`** 或分 Tab 保存新产品
+7. 确认成功后删除 AI 记录（**`DELETE /api/v1/ai/records/{recordId}`**），刷新进行中订单列表
 
 ### 6.3 订单创建与履约流程
 
@@ -1967,6 +2057,15 @@ dictionary (字典表)
 6. 扣减源仓库库存，增加目标仓库库存
 7. 更新warehouse_stock表记录
 8. 提交事务
+
+### 6.6 商户问题反馈流程
+
+1. 商户点击顶栏 **问题与建议** → **`TM_MerchantFeedback`** 弹窗
+2. **`POST /api/v1/tenant/feedback/draft`** 创建 **`DRAFT`**
+3. 可选：循环 **`POST /feedback/{id}/image`** 上传截图至 OSS（**`TMOssUpload`**）
+4. **`POST /feedback/{id}/submit`** → 状态 **`OPEN`**，写入用户提交 followup
+5. 运维在 **`ops-hub.html#feedback`** 拉取 **`GET /api/v1/ops/feedback`**
+6. 运维 **`PATCH .../status`**（`IN_PROGRESS` → `RESOLVED`/`CLOSED`）或 **`POST .../followups`** 追加备注；**`RESOLVED`/`CLOSED`** 时写 **`resolved_at`**
 
 ---
 
@@ -2014,6 +2113,13 @@ dictionary (字典表)
 - 运行时身份：**JWT `merchantType`** → 网关 **`X-Merchant-Type`** → 各服务 **`UserContext`**（或等价上下文）。
 - 前端按业态加载 **`/fragments/...`**，根节点 **`data-merchant-type`** 驱动主题令牌（见 `theme.css`）。
 
+### 7.7 前端 RBAC 与敏感字段
+
+- **Schema**：**`ui-permissions.js`** 定义 **`TM_ROLE_SCHEMA`** / **`TM_ROLE_PERMISSIONS`**（角色 **`ADMIN`/`FINANCE`/`SALES`/`WAREHOUSE`** 等，与字典 **D003** 归一对齐）
+- **渲染引擎**：**`ui-role-engine.js`** — **`applyRoleUI()`** 在 **`tm-role-ui-ready`** 后执行：侧栏/底栏 **`data-tm-nav`** 物理移除；**`data-action`** 无权限加 **`tm-action-denied`** 并拦截点击；**`data-field`** 价格字段脱敏为 **`***`**
+- **路由守卫**：**`switchTab`** 检测目标 Tab 是否 **`isMenuVisible`**，否则回退 **`getFirstVisibleTabForRole`**
+- **后端对齐**：敏感写接口须 Service 层 **`RoleGuard`**；网关 **`RoutePermissionMap`** 与 **`Framework_Guide.md`** 检查清单同步维护
+
 ---
 
 ## 8. 文件目录结构
@@ -2045,10 +2151,12 @@ TM_Project/
 ├── scripts/
 │   └── postgresql/            # 运维/验收手工脚本（非自动启动；DDL 权威在 InitCfgService/db/）
 └── TradeMind-Web/              # 前端Web应用
-    ├── index-app.html         # 商户主壳（侧栏/顶栏/底栏、member-modal）
+    ├── index-app.html         # 商户主壳（侧栏/顶栏/底栏、member-modal、#view-ops 预留）
+    ├── ops-hub.html           # 运维主门户（ops_admin 登录默认入口）
+    ├── ops-portal.html        # 运维备用入口
     ├── docs/
-    │   └── Framework_Guide.md # 目录职能、fragments、tm-ui-loader、D013 对齐说明
-    ├── fragments/             # 按业态目录存放 HTML 片段（wholesale/foreign/ecom/factory）
+    │   └── Framework_Guide.md # 目录职能、fragments、RBAC、tm-ui-loader
+    ├── fragments/             # 按业态 HTML 片段（wholesale/foreign/ecom/factory）
     │   └── …                  # 例：dashboard/workspace-banner.html
     ├── MobileAdapt/
     │   ├── TM_Responsive.js   # 响应式：isMobile / isMobileView、tm-layout-mobile
@@ -2057,16 +2165,25 @@ TM_Project/
     │   ├── css/
     │   │   ├── tm-layout-engine.css  # 手机端三段式壳层 + Bottom Sheet（权威）
     │   │   ├── tm-onboarding.css
+    │   │   ├── tm-merchant-feedback.css
+    │   │   ├── ui-ai-service.css
+    │   │   ├── dashboard-audit.css
+    │   │   ├── ops-portal.css
     │   │   ├── ui-mobile.css         # @deprecated 兼容
     │   │   └── product-center.css
     │   └── js/
-    │       ├── auth.js              # 认证、会员中心、布局 CSS 注入
+    │       ├── auth.js              # 认证、会员中心、登录后路由
     │       ├── tm-ui-loader.js      # TM_UI_CONTEXT、injectSlots、tm-role-ui-ready
+    │       ├── ui-permissions.js / ui-role-engine.js  # RBAC Schema + 渲染引擎
     │       ├── tm-onboarding.js / tm-onboarding-registry.js / tm-onboarding-sync.js
-    │       ├── ui-permissions.js    # TM_ROLE_SCHEMA
-    │       ├── tm-shell-insets.js   # 壳层 safe-area / header-tabbar 高度、弹窗 sheet
+    │       ├── dashboard-workbench.js / order-workbench-modal.js  # 工作台增强
+    │       ├── ui-ai-service.js / ai-order-extract-parse.js / dashboard-voice-upload.js
+    │       ├── tm-dashboard-photo.js / tm-oss-upload.js
+    │       ├── tm-merchant-feedback.js
+    │       ├── tm-shell-insets.js   # 壳层 safe-area / header-tabbar、弹窗 sheet
     │       ├── main-app.js
-    │       ├── ui-main.js           # switchTab、iframe 嵌入、TM_applyDialogShell
+    │       ├── ui-main.js           # switchTab、loadDashboard、iframe 嵌入、运维 Tabbar
+    │       ├── ui-ops.js            # 运维门户 TM_OPS.loadModule
     │       ├── ui-product-center.js / ui-product-center-enhance.js
     │       ├── ui-crm.js / ui-supplier.js
     │       └── env-config.js
@@ -2075,14 +2192,27 @@ TM_Project/
     │   │   ├── member-referral-banner-snippet.html
     │   │   ├── referral-rewards-modal.html
     │   │   └── referral-rewards.js
+    │   ├── fragments/         # 跨模块可复用 HTML（非行业 fragments）
+    │   │   ├── customer-registry-form.html
+    │   │   ├── product-registry-form.html
+    │   │   └── poster-modal.html
+    │   ├── ops/                 # 运维子模块（由 ui-ops.js 加载）
+    │   │   ├── tenants-quota-tree.html
+    │   │   ├── plan-catalog-by-merchant.html
+    │   │   ├── referral-settlement.html
+    │   │   ├── promoters-manage.html
+    │   │   ├── merchant-feedback.html
+    │   │   └── announce-audit.html
     │   ├── CSS/
     │   │   └── common.css     # @import tm-layout-engine；顶栏、会员推荐 hero
     │   ├── dashboard/
+    │   │   └── dashboard.html # 工作台脚本源 + 弹窗 HTML（注入 index-app）
+    │   ├── SmartOps/
+    │   │   └── SmartOps.html  # 智能经营（iframe embed）
     │   ├── crm/
     │   ├── product-center/
-    │   │   └── product-overlays.html  # 产品弹窗 HTML 片段
-    │   ├── supply-chain/
-    │   └── smart-ops/
+    │   │   └── product-overlays.html
+    │   └── supply-chain/
     ├── promoter-portal.html   # 推广员移动 H5（微信 OAuth + 收益/流水/收款）
 ```
 
@@ -2122,6 +2252,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.25 | 2026-06-21 | **代码实现对齐（TradeMind-Web + 反馈/RBAC/工作台）**：§1.6.5 **`merchant_feedback`** / **`merchant_feedback_followups`**；§3.1.0 主壳脚本链、运维/商户双 Tabbar、**`modules/fragments/`**；§3.1.1 **`dashboard-workbench.js`**、**`ui-ai-service.js`**、**`ai-order-extract-parse.js`**、**`order-workbench-modal.js`**、**`TM_syncDashboardOverlays`**；§3.1.5 **`SmartOps/SmartOps.html`** iframe；§3.1.9–§3.1.10 商户反馈 + **`ops-hub.html`** 六路由；§3.2.1/§3.2.8 反馈 API；§5.1/§6.2/§6.6/§7.7；§8 目录树；文档版本脚注修正 |
 | v1.24 | 2026-06-01 | **独立推广员系统**：§1.1.2 **`wechat_mp_openid`**；§2.4.7 推广员网关白名单；§2.8.6–§2.8.7 开号/奖励 150/流水状态；§3.1.8 **`promoter-portal.html`** 与微信公众号 OAuth 流程；§3.2.8 **`POST /ops/promoters`**；§3.2.9 推广员 API；**`PromoterController`**、**`InternalPromoterController`**、网关 **`RewritePath`** |
 | v1.23 | 2026-05-31 | **CRM 客户双标签**：§1.2.1 增补 `cust_segment`、`tags_computed_at`；§1.2.2 价值+特色打标规则；**D009** 扩展 `NEW`/`HIGH_VALUE`；启用 **D014** `CUSTOMER_SEGMENT`；§3.1.2、§3.2.3 API 响应与写约束、`/customers/tags/recalc` |
 | v1.22 | 2026-05-28 | **数据库初始化引擎规整**：废弃 **`production-schema-v1.sql`** / **`production-seed-v1.sql`** / **`migrations/legacy/`**；统一为 **`InitCfgService/db/schema-production.sql`**（33 表，含 **`production`**、双维度状态列、**`uq_products_tenant_sku`**）+ **`seed-data.sql`** + **`validateCoreSchema()`**；字典/订阅种子迁入 SQL；**`DictionaryInitService`**、**`SubscriptionPlanSeedService`** 废弃；新增 **`docs/Database_Deployment_Guide.md`**、**`db/check_schema.sql`**；§1 文首、§2.8.3–§2.8.4、§2.9.4、§3.2.2、§8 同步 |
@@ -2150,6 +2281,6 @@ TM_Project/
 
 ---
 
-**文档版本**：v1.23
-**最后更新**：2026-05-31
+**文档版本**：v1.25
+**最后更新**：2026-06-21
 **维护者**：TradeMind开发团队
