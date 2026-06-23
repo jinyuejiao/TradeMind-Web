@@ -180,6 +180,24 @@
                                 </div>
                             </div>
 
+                            <div class="relative shrink-0" id="warehouse-filter">
+                                <button type="button" onclick="window.ProductModule.toggleDropdown('warehouse-dropdown', event)" class="product-filter-chip flex items-center gap-0.5 md:gap-2 px-1.5 py-1 md:px-5 md:py-2.5 bg-slate-50 rounded-lg md:rounded-2xl text-[9px] md:text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all whitespace-nowrap max-w-[3.75rem] md:max-w-none">
+                                    <i class="ph ph-warehouse text-teal-500 text-xs md:text-base shrink-0"></i>
+                                    <span id="warehouse-label" class="truncate min-w-0">仓库</span>
+                                    <i class="ph ph-caret-down text-[8px] md:text-xs filter-caret-icon shrink-0"></i>
+                                </button>
+                                <div id="warehouse-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                    <div class="p-2">
+                                        <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">选择仓库</div>
+                                        <div id="warehouse-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" id="product-view-spu-btn" onclick="window.ProductModule.toggleSpuListView()" class="hidden md:inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 shrink-0" title="切换 SPU 树形列表">
+                                <i class="ph ph-tree-structure"></i> SPU 视图
+                            </button>
+
                             <button type="button" onclick="window.ProductModule.resetFilters()" id="reset-filter-btn" class="hidden px-1.5 py-1 md:px-4 md:py-2.5 text-teal-600 text-[9px] md:text-sm font-bold hover:bg-teal-50 rounded-lg md:rounded-2xl transition-all items-center gap-0.5 md:gap-1 shrink-0 whitespace-nowrap">
                                 <i class="ph ph-x-circle text-xs md:text-sm"></i><span class="md:hidden">清</span><span class="hidden md:inline">重置</span>
                             </button>

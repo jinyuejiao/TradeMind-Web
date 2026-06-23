@@ -658,6 +658,57 @@
     };
 
     /* ---------- 审核弹窗 / 列表 / 确认下单补丁 ---------- */
+    function TM_getAuditCaps() {
+        return window.TM_productCapabilities || {};
+    }
+
+    function TM_syncAuditTableHeaders() {
+        var caps = TM_getAuditCaps();
+        document.querySelectorAll('.tm-audit-col-variant').forEach(function (el) {
+            el.classList.toggle('hidden', !caps.allowVariants);
+        });
+        document.querySelectorAll('.tm-audit-col-batch').forEach(function (el) {
+            el.classList.toggle('hidden', !caps.allowExpiry);
+        });
+        document.querySelectorAll('.tm-audit-col-serial').forEach(function (el) {
+            el.classList.toggle('hidden', !caps.allowSerial);
+        });
+    }
+
+    function TM_buildSkuSelectOptionsHtml() {
+        var list = window.skuList || window.productList || [];
+        return list.map(function (sku) {
+            var sid = sku.sku_id || sku.skuId || (window.getProductId && window.getProductId(sku));
+            var spuName = sku.spu_name || sku.spuName || (window.getProductName && window.getProductName(sku)) || '';
+            var code = sku.sku_code || sku.skuCode || (window.getProductSku && window.getProductSku(sku)) || '';
+            var attrs = sku.attributes_display || '';
+            if (!attrs && sku.attributes && typeof sku.attributes === 'object') {
+                attrs = Object.keys(sku.attributes).map(function (k) { return sku.attributes[k]; }).join(' / ');
+            }
+            if (!sid || !spuName) return '';
+            var label = spuName + (attrs ? ' — ' + attrs : '') + (code ? ' (' + code + ')' : '');
+            var price = sku.price != null ? sku.price : '';
+            var unit = sku.sales_unit || sku.salesUnit || sku.base_unit || sku.baseUnit || '件';
+            return '<option value="' + sid + '" data-name="' + escapeHtml(spuName) + '" data-sku="' + escapeHtml(code) + '" data-unit="' + escapeHtml(unit) + '"' +
+                (price !== '' ? (' data-price="' + escapeHtml(String(price)) + '"') : '') +
+                (attrs ? (' data-attrs="' + escapeHtml(attrs) + '"') : '') + '>' + escapeHtml(label) + '</option>';
+        }).join('');
+    }
+
+    window.TM_loadSkuListAndCapabilities = async function () {
+        try {
+            var capsRes = await window.wrappedFetch('/api/v1/rd/products/capabilities');
+            var capsData = capsRes.ok ? await capsRes.json() : null;
+            if (capsData && capsData.success && capsData.data) {
+                window.TM_productCapabilities = capsData.data;
+            }
+        } catch (e) { /* ignore */ }
+        if (typeof window.loadProductList === 'function') {
+            await window.loadProductList();
+        }
+        TM_syncAuditTableHeaders();
+    };
+
     function patchAuditAndPending() {
         window.loadPendingOrders = function () {
             return TM_PendingOrdersStore.refresh(true);
@@ -679,35 +730,40 @@
                 ? window.auditState.aiStructured.order_data : {};
             var items = Array.isArray(orderData.items) ? orderData.items : [];
 
+            var caps = TM_getAuditCaps();
+            TM_syncAuditTableHeaders();
+
             items.forEach(function (item, index) {
                 if (typeof window.normalizeAuditOrderItem === 'function') {
                     window.normalizeAuditOrderItem(item);
                 }
-                var displayMatchedName = (item.matched_product_name || '').trim();
+                var displayMatchedName = (item.matched_product_name || item.matched_spu_name || '').trim();
                 var productNameValue = (displayMatchedName || item.product_name_raw || '').trim();
-                var matchedProductId = item.matched_product_id ? Number(item.matched_product_id) : 0;
+                var matchedSkuId = item.matched_sku_id ? Number(item.matched_sku_id) : (item.matched_product_id ? Number(item.matched_product_id) : 0);
+                var attrsDisplay = item.attributes_display || '';
                 var lineUnit = typeof window.resolveAuditItemUnit === 'function'
-                    ? window.resolveAuditItemUnit(item, matchedProductId > 0 ? matchedProductId : null)
+                    ? window.resolveAuditItemUnit(item, matchedSkuId > 0 ? matchedSkuId : null)
                     : (item.unit || '件');
-                var unitReadonly = matchedProductId > 0;
-                var selectOptions = (window.productList || []).map(function (product) {
-                    var pid = window.getProductId(product);
-                    var pname = window.getProductName(product);
-                    var psku = window.getProductSku(product);
-                    var punit = typeof window.getProductUnit === 'function' ? window.getProductUnit(product) : '件';
-                    var pprice = product.price != null ? product.price : (product.salePrice != null ? product.salePrice : '');
-                    if (!pid || !pname) return '';
-                    return '<option value="' + pid + '" data-name="' + escapeHtml(pname) + '" data-sku="' + escapeHtml(psku) + '" data-unit="' + escapeHtml(punit) + '"' +
-                        (pprice !== '' ? (' data-price="' + escapeHtml(String(pprice)) + '"') : '') + '>' +
-                        escapeHtml(pname) + (psku ? ' (' + escapeHtml(psku) + ')' : '') + '</option>';
-                }).join('');
+                var unitReadonly = matchedSkuId > 0;
+                var selectOptions = TM_buildSkuSelectOptionsHtml();
+
+                var variantCell = caps.allowVariants
+                    ? ('<td class="tm-audit-td tm-audit-col-variant"><input type="text" class="form-input tm-audit-cell-input audit-variant-input text-xs" value="' + escapeHtml(attrsDisplay) + '" placeholder="规格摘要" readonly /></td>')
+                    : '';
+                var batchCell = caps.allowExpiry
+                    ? ('<td class="tm-audit-td tm-audit-col-batch"><input type="text" class="form-input tm-audit-cell-input audit-batch-input text-xs" value="' + escapeHtml(item.batch_no || '') + '" placeholder="批次号" /><input type="date" class="form-input tm-audit-cell-input audit-prod-date-input text-xs mt-1" value="' + escapeHtml((item.production_date || '').slice(0, 10)) + '" /></td>')
+                    : '';
+                var serialCell = caps.allowSerial
+                    ? ('<td class="tm-audit-td tm-audit-col-serial"><button type="button" class="text-xs text-brand-600 audit-serial-btn" data-index="' + index + '">已录 ' + ((item.serial_nos || []).length) + ' 个</button></td>')
+                    : '';
 
                 var row = document.createElement('tr');
                 row.setAttribute('data-row-index', String(index));
                 row.innerHTML =
                     '<td class="tm-audit-td tm-audit-td--product">' +
                     '<select class="form-input tm-audit-cell-input product-select" data-index="' + index + '" onchange="handleAuditProductSelectChange(this)">' +
-                    '<option value="">-- 选择产品 --</option>' + selectOptions + '</select></td>' +
+                    '<option value="">-- 选择产品/SKU --</option>' + selectOptions + '</select></td>' +
+                    variantCell +
                     '<td class="tm-audit-td tm-audit-td--qty">' +
                     '<input type="number" value="' + (item.quantity || 1) + '" min="1" class="form-input tm-audit-cell-input audit-qty-input text-center" oninput="recalcAuditOrderTotals()"></td>' +
                     '<td class="tm-audit-td tm-audit-td--unit">' +
@@ -715,6 +771,8 @@
                     (unitReadonly ? ' tm-audit-unit-readonly' : '') + '"' +
                     (unitReadonly ? ' readonly' : '') +
                     ' oninput="syncAuditOrderItemUnitFromDom(this)"></td>' +
+                    batchCell +
+                    serialCell +
                     '<td class="tm-audit-td tm-audit-td--price">' +
                     '<input type="number" value="' + (item.price_at_time || 0) + '" step="0.01" min="0" class="form-input tm-audit-cell-input price-input text-center" oninput="recalcAuditOrderTotals()"></td>' +
                     '<td class="tm-audit-td tm-audit-td--sub text-right font-mono font-bold text-slate-900">' +
@@ -725,8 +783,8 @@
                 orderItemsBody.appendChild(row);
                 var select = row.querySelector('.product-select');
                 if (select) {
-                    if (matchedProductId && select.querySelector('option[value="' + matchedProductId + '"]')) {
-                        select.value = String(matchedProductId);
+                    if (matchedSkuId && select.querySelector('option[value="' + matchedSkuId + '"]')) {
+                        select.value = String(matchedSkuId);
                     } else if (productNameValue) {
                         var options = Array.from(select.options);
                         var byName = options.find(function (opt) {
@@ -747,6 +805,25 @@
                         window.handleAuditProductSelectChange(select, { preserveExistingPrice: true });
                     }
                 }
+                var serialBtn = row.querySelector('.audit-serial-btn');
+                if (serialBtn && window.TmSerialCapture) {
+                    serialBtn.addEventListener('click', function () {
+                        var idx = Number(serialBtn.getAttribute('data-index'));
+                        var it = items[idx];
+                        if (!it) return;
+                        var skuId = it.matched_sku_id || it.matched_product_id;
+                        window.TmSerialCapture.open({
+                            mode: 'inbound',
+                            skuId: skuId,
+                            expectedQty: it.quantity || 1,
+                            initialSerials: it.serial_nos || [],
+                            onComplete: function (serials) {
+                                it.serial_nos = serials;
+                                serialBtn.textContent = '已录 ' + serials.length + ' 个';
+                            }
+                        });
+                    });
+                }
             });
 
             var customerSelect = document.getElementById('order-customer');
@@ -762,6 +839,9 @@
 
         var origOpen = window.openAuditModal;
         window.openAuditModal = async function (recordId) {
+            if (typeof window.TM_loadSkuListAndCapabilities === 'function') {
+                await window.TM_loadSkuListAndCapabilities();
+            }
             await origOpen(recordId);
             var dateEl = document.getElementById('order-delivery-date');
             if (dateEl && !dateEl.value && typeof window.getTodayDateInput === 'function') {

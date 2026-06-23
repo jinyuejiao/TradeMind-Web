@@ -359,7 +359,9 @@
         }
         var resultBody = {
             product: productPayload,
-            warehouseStocks: whStocks
+            warehouseStocks: whStocks,
+            spu: PM.buildSpuPayloadFromForm(productPayload),
+            skus: [PM.buildDefaultSkuPayloadFromForm(productPayload, sk)]
         };
         if (unitPayload.length > 0) {
             resultBody.unitConversions = unitPayload;
@@ -368,6 +370,86 @@
             error: null,
             body: resultBody
         };
+    };
+
+    PM.buildSpuPayloadFromForm = function (productPayload) {
+        var cp = PM.currentProduct || {};
+        var trackVariants = PM.el('detail-track-variants');
+        var trackExpiry = PM.el('detail-track-expiry');
+        var trackSerial = PM.el('detail-track-serial');
+        var shelfLife = PM.el('detail-shelf-life-days');
+        var expiryPolicy = PM.el('detail-expiry-policy');
+        var serialMode = PM.el('detail-serial-mode');
+        return {
+            spuId: cp.spuId || null,
+            name: productPayload.name,
+            categoryId: productPayload.categoryId,
+            description: productPayload.description,
+            defaultSupplierId: productPayload.supplierId,
+            trackVariants: trackVariants ? trackVariants.checked : false,
+            trackExpiry: trackExpiry ? trackExpiry.checked : false,
+            trackSerial: trackSerial ? trackSerial.checked : false,
+            defaultShelfLifeDays: shelfLife && shelfLife.value ? parseInt(shelfLife.value, 10) : null,
+            expiryPolicy: expiryPolicy ? expiryPolicy.value : null,
+            serialOutboundMode: serialMode ? serialMode.value : null
+        };
+    };
+
+    PM.buildDefaultSkuPayloadFromForm = function (productPayload, skuCode) {
+        var cp = PM.currentProduct || {};
+        return {
+            skuId: cp.skuId || null,
+            skuCode: skuCode,
+            price: productPayload.price,
+            warningStock: productPayload.warningStock,
+            baseUnit: productPayload.baseUnit,
+            purchaseUnit: productPayload.purchaseUnit,
+            salesUnit: productPayload.salesUnit,
+            stock: productPayload.stock,
+            isDefault: true
+        };
+    };
+
+    PM.loadProductCapabilities = function () {
+        return fetch('/api/v1/rd/products/capabilities', {
+            headers: { 'X-Tenant-Id': window.currentTenantId || '' }
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            if (!res.success) return null;
+            window.TM_productCapabilities = res.data || {};
+            PM.applyProductCapabilityVisibility();
+            return res.data;
+        }).catch(function () { return null; });
+    };
+
+    PM.applyProductCapabilityVisibility = function () {
+        var caps = window.TM_productCapabilities || {};
+        var section = document.getElementById('product-capability-cards');
+        if (!section) return;
+        var any = caps.allowVariants || caps.allowExpiry || caps.allowSerial;
+        section.classList.toggle('hidden', !any);
+        var vCard = document.getElementById('cap-card-variants');
+        var eCard = document.getElementById('cap-card-expiry');
+        var sCard = document.getElementById('cap-card-serial');
+        if (vCard) vCard.classList.toggle('hidden', !caps.allowVariants);
+        if (eCard) eCard.classList.toggle('hidden', !caps.allowExpiry);
+        if (sCard) sCard.classList.toggle('hidden', !caps.allowSerial);
+    };
+
+    PM.syncCapabilitySummaries = function () {
+        var tv = PM.el('detail-track-variants');
+        var te = PM.el('detail-track-expiry');
+        var ts = PM.el('detail-track-serial');
+        var sv = document.getElementById('cap-summary-variants');
+        var se = document.getElementById('cap-summary-expiry');
+        var ss = document.getElementById('cap-summary-serial');
+        if (sv) sv.textContent = tv && tv.checked ? '已启用多规格' : '未启用规格';
+        if (se && te) {
+            var days = PM.el('detail-shelf-life-days');
+            se.textContent = te.checked
+                ? '默认保质期 ' + ((days && days.value) || '—') + ' 天 · 按批次管理'
+                : '未启用';
+        }
+        if (ss) ss.textContent = ts && ts.checked ? '已启用 · 入库/出库需扫码' : '未启用';
     };
 
     PM.readWarehouseStockFromContainer = function () {
@@ -711,6 +793,43 @@
         PM.populateProductForm(product);
     };
 
+    PM.loadProductPriceTrend = async function (productId) {
+        var body = document.getElementById('product-price-trend-body');
+        if (!body || !productId) return;
+        body.innerHTML = '<p class="text-slate-400">加载中…</p>';
+        try {
+            var skuId = PM.currentProduct && (PM.currentProduct.skuId || PM.currentProduct.sku_id);
+            if (!skuId) {
+                var optResp = await window.wrappedFetch('/api/v1/rd/products/skus/options', { method: 'GET' });
+                var optData = await window.handleApiResponse(optResp);
+                var rows = optData && optData.data ? optData.data : [];
+                var hit = rows.find(function (r) {
+                    var legacy = r.legacy_product_id || r.legacyProductId;
+                    return legacy != null && Number(legacy) === Number(productId);
+                });
+                if (hit) skuId = hit.sku_id || hit.skuId;
+            }
+            if (!skuId) {
+                body.innerHTML = '<p class="text-slate-400">暂无 SKU 关联，无法展示趋势</p>';
+                return;
+            }
+            var resp = await window.wrappedFetch('/api/v1/rd/products/sku/' + skuId + '/purchase-price-trend', { method: 'GET' });
+            var data = await window.handleApiResponse(resp);
+            var points = data && data.data ? data.data : [];
+            if (!Array.isArray(points) || !points.length) {
+                body.innerHTML = '<p class="text-slate-400">暂无进货价记录</p>';
+                return;
+            }
+            body.innerHTML = '<ul class="space-y-1">' + points.slice(0, 12).map(function (pt) {
+                var dt = pt.date || pt.purchase_date || pt.purchaseDate || '—';
+                var price = pt.price != null ? pt.price : (pt.unit_price || pt.unitPrice);
+                return '<li class="flex justify-between font-mono"><span class="text-slate-500">' + PM.escHtmlText(String(dt).slice(0, 10)) + '</span><span class="text-brand-600">¥' + Number(price || 0).toFixed(2) + '</span></li>';
+            }).join('') + '</ul>';
+        } catch (e) {
+            body.innerHTML = '<p class="text-red-400">加载失败</p>';
+        }
+    };
+
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
         await PM.loadTenantUnitNames();
@@ -722,6 +841,9 @@
         if (hint) hint.textContent = sku ? ('SKU: ' + sku) : '填写必填项即可保存';
         await PM.loadProductWarehouseStocks(productId);
         PM.bindStockSyncHandlers();
+        if (typeof PM.loadProductPriceTrend === 'function') {
+            await PM.loadProductPriceTrend(productId);
+        }
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }
@@ -1270,4 +1392,10 @@
     });
 
     console.log('[ProductEnhance] 产品中心增强已应用');
+
+    var _origInit = PM.init;
+    PM.init = async function () {
+        if (typeof _origInit === 'function') await _origInit.apply(this, arguments);
+        if (typeof PM.loadProductCapabilities === 'function') await PM.loadProductCapabilities();
+    };
 })();

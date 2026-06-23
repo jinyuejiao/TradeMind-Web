@@ -59,6 +59,7 @@
     <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526po"></script>
+    <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
     <script src="../../assets/js/ui-supplier.js?v=20260527pay"></script>
     <style>
         .view-toggle-btn { transition: all 0.2s ease; }
@@ -237,7 +238,9 @@
                                     <th class="tm-po-th tm-po-th--qty">数量</th>
                                     <th class="tm-po-th tm-po-th--price">单价</th>
                                     <th class="tm-po-th tm-po-th--unit">单位</th>
-                                    <th class="tm-po-th tm-po-th--batch">批次</th>
+                                    <th class="tm-po-th tm-po-th--batch purchase-ext-col purchase-ext-batch hidden">批次</th>
+                                    <th class="tm-po-th tm-po-th--prod-date purchase-ext-col purchase-ext-expiry hidden">生产日期</th>
+                                    <th class="tm-po-th tm-po-th--serial purchase-ext-col purchase-ext-serial hidden">序列号</th>
                                     <th class="tm-po-th tm-po-th--sub">小计</th>
                                     <th class="tm-po-th tm-po-th--action" aria-label="操作"></th>
                                 </tr>

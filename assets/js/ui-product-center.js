@@ -268,8 +268,11 @@ window.ProductModule = {
         categoryId: null,
         supplierId: null,
         stockStatus: null,
+        warehouseId: null,
         searchText: ''
     },
+    listViewMode: 'product',
+    _warehouseStockFilter: null,
 
     // 供应商列表
     suppliers: [],
@@ -303,7 +306,8 @@ window.ProductModule = {
         await Promise.all([
             this.loadCategories(),
             this.loadSuppliers(),
-            this.loadTenantUnitNames()
+            this.loadTenantUnitNames(),
+            this.loadWarehouses()
         ]);
         this.initFilterOptions();
         await this.loadProducts();
@@ -429,6 +433,8 @@ window.ProductModule = {
                 this.loadCategories().then(() => this.initCategoryOptions());
             } else if (dropdownId === 'supplier-dropdown') {
                 this.loadSuppliers().then(() => this.initSupplierOptions());
+            } else if (dropdownId === 'warehouse-dropdown') {
+                this.loadWarehouses().then(() => this.initWarehouseOptions());
             }
         }
     },
@@ -438,13 +444,15 @@ window.ProductModule = {
         var catDd = document.getElementById('category-dropdown');
         var supDd = document.getElementById('supplier-dropdown');
         var stkDd = document.getElementById('stock-dropdown');
+        var whDd = document.getElementById('warehouse-dropdown');
         if (!catDd || !supDd || !stkDd) return;
-        if (catDd.dataset.tmFilterDelegated === '1' && supDd.dataset.tmFilterDelegated === '1' && stkDd.dataset.tmFilterDelegated === '1') {
+        if (catDd.dataset.tmFilterDelegated === '1' && supDd.dataset.tmFilterDelegated === '1' && stkDd.dataset.tmFilterDelegated === '1' && (!whDd || whDd.dataset.tmFilterDelegated === '1')) {
             return;
         }
         catDd.dataset.tmFilterDelegated = '1';
         supDd.dataset.tmFilterDelegated = '1';
         stkDd.dataset.tmFilterDelegated = '1';
+        if (whDd) whDd.dataset.tmFilterDelegated = '1';
         var self = this;
         catDd.addEventListener('click', function (e) {
             var btn = e.target.closest('button[data-category-key]');
@@ -479,6 +487,161 @@ window.ProductModule = {
             var status = btn.getAttribute('data-stock-key') || '全部';
             self.selectStockStatus(status);
         });
+        if (whDd) {
+            whDd.addEventListener('click', function (e) {
+                var btn = e.target.closest('button[data-warehouse-key]');
+                if (!btn || !whDd.contains(btn)) return;
+                e.stopPropagation();
+                var key = btn.getAttribute('data-warehouse-key');
+                if (key === 'all') {
+                    self.selectWarehouseFilter(null, '全部');
+                } else {
+                    var wid = Number(key);
+                    var label = (btn.textContent || '').trim();
+                    self.selectWarehouseFilter(wid, label);
+                }
+            });
+        }
+    },
+
+    selectWarehouseFilter: async function(warehouseId, displayName) {
+        const wid = warehouseId == null || warehouseId === '' ? null : Number(warehouseId);
+        this.filterState.warehouseId = wid != null && !Number.isNaN(wid) ? wid : null;
+        const label = document.getElementById('warehouse-label');
+        const btn = document.querySelector('#warehouse-filter > button');
+        if (this.filterState.warehouseId != null) {
+            if (label) label.textContent = displayName || '已选仓库';
+            if (btn) btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
+            await this.loadWarehouseStockFilter(this.filterState.warehouseId);
+        } else {
+            if (label) label.textContent = '仓库';
+            if (btn) btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
+            this._warehouseStockFilter = null;
+        }
+        const dropdown = document.getElementById('warehouse-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+        this.updateResetButton();
+        if (this.listViewMode === 'spu') {
+            await this.loadSpuList();
+        } else {
+            this.filterProducts();
+        }
+    },
+
+    loadWarehouseStockFilter: async function(warehouseId) {
+        try {
+            const response = await window.wrappedFetch('/api/v1/rd/products/stocks/by-warehouse/' + warehouseId, { method: 'GET' });
+            const data = await window.handleApiResponse(response);
+            const list = data && data.data ? data.data : [];
+            const map = {};
+            if (Array.isArray(list)) {
+                list.forEach(function (row) {
+                    var pid = row.productId != null ? row.productId : row.product_id;
+                    var qty = row.quantity != null ? row.quantity : 0;
+                    if (pid != null) map[Number(pid)] = Math.max(0, parseInt(qty, 10) || 0);
+                });
+            }
+            this._warehouseStockFilter = map;
+        } catch (e) {
+            console.warn('[ProductModule] loadWarehouseStockFilter failed', e);
+            this._warehouseStockFilter = null;
+        }
+    },
+
+    toggleSpuListView: async function() {
+        this.listViewMode = this.listViewMode === 'spu' ? 'product' : 'spu';
+        var btn = document.getElementById('product-view-spu-btn');
+        if (btn) {
+            btn.classList.toggle('bg-brand-50', this.listViewMode === 'spu');
+            btn.classList.toggle('text-brand-700', this.listViewMode === 'spu');
+            btn.classList.toggle('border-brand-200', this.listViewMode === 'spu');
+        }
+        if (this.listViewMode === 'spu') {
+            await this.loadSpuList();
+        } else {
+            this.filterProducts();
+        }
+    },
+
+    loadSpuList: async function() {
+        try {
+            if (window.checkAuth && !window.checkAuth()) return;
+            var qs = '?pageNo=' + (this.productCurrentPage || 1) + '&pageSize=' + this.PAGE_SIZE;
+            if (this.filterState.categoryId != null) qs += '&categoryId=' + this.filterState.categoryId;
+            if (this.filterState.supplierId != null) qs += '&supplierId=' + this.filterState.supplierId;
+            if (this.filterState.warehouseId != null) qs += '&warehouseId=' + this.filterState.warehouseId;
+            const response = await window.wrappedFetch('/api/v1/rd/products/spu' + qs, { method: 'GET' });
+            const data = await window.handleApiResponse(response);
+            if (!data) return;
+            const payload = data.data || data;
+            const records = payload.records || payload || [];
+            this.renderSpuDesktopTable(Array.isArray(records) ? records : []);
+            this.productTotal = Number(payload.total || records.length || 0);
+            this.productTotalPages = Math.max(1, Math.ceil(this.productTotal / this.PAGE_SIZE));
+            this.renderPaginationBar({
+                containerId: 'product-pagination',
+                page: this.productCurrentPage,
+                totalPages: this.productTotalPages,
+                total: this.productTotal,
+                pageSize: this.PAGE_SIZE,
+                onPrev: 'window.ProductModule.setSpuPage(' + (this.productCurrentPage - 1) + ')',
+                onNext: 'window.ProductModule.setSpuPage(' + (this.productCurrentPage + 1) + ')'
+            });
+        } catch (e) {
+            console.error('[ProductModule] loadSpuList failed', e);
+        }
+    },
+
+    setSpuPage: function(page) {
+        page = Math.max(1, parseInt(page, 10) || 1);
+        this.productCurrentPage = page;
+        this.loadSpuList();
+    },
+
+    renderSpuDesktopTable: function(spuList) {
+        const tbody = document.querySelector('#existingProdTable tbody');
+        if (!tbody) return;
+        if (!spuList.length) {
+            tbody.innerHTML = '<tr class="hidden md:table-row"><td colspan="5" class="px-6 py-12 text-center text-slate-400">暂无 SPU</td></tr>';
+            return;
+        }
+        tbody.innerHTML = spuList.map(function (spu) {
+            var spuId = spu.spu_id || spu.spuId;
+            var name = spu.name || '—';
+            var skuCount = spu.sku_count != null ? spu.sku_count : (spu.skuCount || 0);
+            var stock = spu.total_stock != null ? spu.total_stock : (spu.totalStock || 0);
+            var flags = [];
+            if (spu.track_variants || spu.trackVariants) flags.push('多规格');
+            if (spu.track_expiry || spu.trackExpiry) flags.push('批次');
+            if (spu.track_serial || spu.trackSerial) flags.push('序列号');
+            return '<tr class="product-row hover:bg-slate-50 transition-all cursor-pointer group" onclick="window.ProductModule.openSpuDetail(' + spuId + ')">' +
+                '<td class="px-6 py-4"><div class="flex items-center gap-3">' +
+                '<div class="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-teal-500"><i class="ph ph-tree-structure text-xl"></i></div>' +
+                '<div><p class="font-bold text-slate-800">' + name + '</p>' +
+                '<p class="text-[10px] text-slate-400 mt-1">' + skuCount + ' 个 SKU' + (flags.length ? ' · ' + flags.join(' · ') : '') + '</p></div></div></td>' +
+                '<td class="px-6 py-4 text-right col-hide-mobile text-slate-400">—</td>' +
+                '<td class="px-6 py-4 text-right col-hide-mobile text-slate-400">—</td>' +
+                '<td class="px-6 py-4 text-right font-mono font-bold text-slate-700">' + stock + '</td>' +
+                '<td class="px-6 py-4 text-right"><button type="button" class="action-icon-btn" onclick="event.stopPropagation(); window.ProductModule.openSpuDetail(' + spuId + ')" title="查看 SKU"><i class="ph ph-eye text-lg"></i></button></td></tr>';
+        }).join('');
+    },
+
+    openSpuDetail: async function(spuId) {
+        if (!spuId) return;
+        try {
+            const response = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId, { method: 'GET' });
+            const data = await window.handleApiResponse(response);
+            if (!data) return;
+            const detail = data.data || data;
+            const skus = detail.skus || [];
+            if (skus.length && (skus[0].legacyProductId || skus[0].legacy_product_id)) {
+                await this.openProductDetail(skus[0].legacyProductId || skus[0].legacy_product_id);
+            } else if (skus.length && window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('SPU「' + (detail.name || '') + '」含 ' + skus.length + ' 个 SKU', 'info');
+            }
+        } catch (e) {
+            console.warn('[ProductModule] openSpuDetail', e);
+        }
     },
 
     // ==================== 筛选功能 ====================
@@ -573,6 +736,7 @@ window.ProductModule = {
         if (!resetBtn) return;
         
         const hasActiveFilter = this.filterState.categoryId != null || this.filterState.supplierId != null
+            || this.filterState.warehouseId != null
             || (this.filterState.stockStatus && this.filterState.stockStatus !== '全部')
             || (this.filterState.searchText && String(this.filterState.searchText).trim() !== '');
         
@@ -591,8 +755,11 @@ window.ProductModule = {
             categoryId: null,
             supplierId: null,
             stockStatus: null,
+            warehouseId: null,
             searchText: ''
         };
+        this._warehouseStockFilter = null;
+        this.listViewMode = 'product';
         
         const searchInput = document.getElementById('inventorySearch');
         if (searchInput) {
@@ -602,8 +769,10 @@ window.ProductModule = {
         document.getElementById('category-label').textContent = '产品类别';
         document.getElementById('supplier-label').textContent = '供应商';
         document.getElementById('stock-label').textContent = '库存';
+        var whLabel = document.getElementById('warehouse-label');
+        if (whLabel) whLabel.textContent = '仓库';
         
-        document.querySelectorAll('#category-filter > button, #supplier-filter > button, #stock-filter > button').forEach(function (btn) {
+        document.querySelectorAll('#category-filter > button, #supplier-filter > button, #stock-filter > button, #warehouse-filter > button').forEach(function (btn) {
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         });
         
@@ -646,9 +815,28 @@ window.ProductModule = {
         if (this.filterState.stockStatus && this.filterState.stockStatus !== '全部') {
             filtered = filtered.filter(p => p.stockStatus === this.filterState.stockStatus);
         }
+
+        if (this.filterState.warehouseId != null && this._warehouseStockFilter) {
+            filtered = filtered.filter(function (p) {
+                return window.ProductModule._warehouseStockFilter[p.id] != null;
+            }).map(function (p) {
+                var copy = Object.assign({}, p);
+                copy.stock = window.ProductModule._warehouseStockFilter[p.id];
+                copy.stockStatus = copy.stock >= 100 ? '充足' : (copy.stock >= 10 ? '预警' : '缺货');
+                return copy;
+            });
+        }
         
         console.log('[ProductModule] 筛选后产品数量:', filtered.length, '时间:', new Date().toISOString());
         this.renderProducts(filtered, { resetPage: true });
+    },
+
+    filterProductsOrSpu: function() {
+        if (this.listViewMode === 'spu') {
+            this.loadSpuList();
+        } else {
+            this.filterProducts();
+        }
     },
 
     // ==================== 渲染功能 ====================
@@ -1027,12 +1215,35 @@ window.ProductModule = {
         }).join('');
     },
 
+    initWarehouseOptions: function() {
+        const container = document.getElementById('warehouse-options');
+        if (!container) return;
+        const escHtml = function (s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+        const parts = [
+            '<button type="button" data-warehouse-key="all" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50">全部仓库</button>'
+        ];
+        (this.warehouses || []).forEach(function (wh) {
+            var wid = wh.id != null ? wh.id : wh.warehouseId;
+            var name = wh.name || wh.warehouseName;
+            if (wid == null || !name) return;
+            parts.push(
+                '<button type="button" data-warehouse-key="' + String(Number(wid)) + '" class="w-full text-left px-4 py-3 text-sm font-bold text-slate-600 hover:bg-teal-50 hover:text-teal-700 transition-all border-b border-slate-50 last:border-b-0">' + escHtml(String(name)) + '</button>'
+            );
+        });
+        container.innerHTML = parts.join('');
+    },
+
     initFilterOptions: function() {
         console.log('[ProductModule] initFilterOptions 被调用 ===');
         this.bindFilterDropdownDelegates();
         this.initCategoryOptions();
         this.initSupplierOptions();
         this.initStockOptions();
+        this.initWarehouseOptions();
+        var spuBtn = document.getElementById('product-view-spu-btn');
+        if (spuBtn) spuBtn.classList.remove('hidden');
     },
 
     initProductList: function() {

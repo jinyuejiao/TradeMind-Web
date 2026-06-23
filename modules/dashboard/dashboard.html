@@ -308,6 +308,12 @@
                     </div>
                 </section>
 
+                <!-- 工作台视图切换 -->
+                <div id="workbench-view-toggle" class="flex gap-2 mb-4">
+                    <button type="button" data-view="overview" class="active px-4 py-2 rounded-xl text-xs font-bold border border-brand-200 bg-brand-50 text-brand-600">工作台概览</button>
+                    <button type="button" data-view="sales-orders" class="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50">销售订单</button>
+                </div>
+                <div id="workbench-overview-panel">
                 <!-- 待确认单据和进行中业务单据 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- 待核对单据 (Pending) -->
@@ -359,6 +365,18 @@
                         </div>
                         <div class="tm-dashboard-doc-list flex-1 min-h-0 overflow-y-auto p-4 space-y-3 no-scrollbar" id="inprogress-list"></div>
                     </div>
+                </div>
+                </div>
+                <div id="workbench-sales-orders-panel" class="hidden space-y-4">
+                    <div class="flex flex-wrap gap-2 items-center justify-between">
+                        <div class="flex gap-2 flex-1 min-w-[200px]">
+                            <input type="search" id="sales-orders-keyword" class="form-input text-sm flex-1" placeholder="单号 / 客户名" />
+                            <button type="button" id="sales-orders-search-btn" class="btn-secondary text-sm px-4">搜索</button>
+                        </div>
+                        <button type="button" onclick="openManualOrderModal()" class="btn-brand text-sm px-4 py-2 rounded-xl font-bold">添加订单</button>
+                    </div>
+                    <div id="sales-orders-list"></div>
+                    <div id="sales-orders-pagination" class="flex items-center justify-center gap-4 py-2"></div>
                 </div>
             </div>
 
@@ -466,8 +484,11 @@
                                 <thead>
                                     <tr>
                                         <th class="tm-audit-th tm-audit-th--product">产品名称</th>
+                                        <th class="tm-audit-th tm-audit-col-variant hidden">规格</th>
                                         <th class="tm-audit-th tm-audit-th--qty">数量</th>
                                         <th class="tm-audit-th tm-audit-th--unit">单位</th>
+                                        <th class="tm-audit-th tm-audit-col-batch hidden">批次</th>
+                                        <th class="tm-audit-th tm-audit-col-serial hidden">序列号</th>
                                         <th class="tm-audit-th tm-audit-th--price">单价</th>
                                         <th class="tm-audit-th tm-audit-th--sub">小计</th>
                                         <th class="tm-audit-th tm-audit-th--action" aria-label="操作"></th>
@@ -2387,7 +2408,9 @@
 
         function normalizeAuditOrderItem(item) {
             if (!item || typeof item !== 'object') return item;
-            if (typeof window.TM_normalizeOrderItemUnit === 'function') {
+            if (typeof window.TM_normalizeOrderItemV2 === 'function') {
+                item = window.TM_normalizeOrderItemV2(item);
+            } else if (typeof window.TM_normalizeOrderItemUnit === 'function') {
                 window.TM_normalizeOrderItemUnit(item);
             } else {
                 var u = item.unit || item.unit_name || item.unitName || item.sales_unit || item.salesUnit || item.base_unit || item.baseUnit;
@@ -2900,41 +2923,81 @@
 
         // 加载产品列表
         function loadProductList() {
-            window.wrappedFetch('/api/v1/rd/products', {
+            var mapSkuToProductList = function (skuRows) {
+                if (!Array.isArray(skuRows)) return;
+                window.skuList = skuRows;
+                window.productList = skuRows.map(function (s) {
+                    return {
+                        productId: s.legacy_product_id || s.product_id || s.sku_id,
+                        skuId: s.sku_id,
+                        spuId: s.spu_id,
+                        name: s.spu_name || s.name,
+                        sku: s.sku_code,
+                        price: s.price,
+                        baseUnit: s.base_unit,
+                        salesUnit: s.sales_unit,
+                        attributes: s.attributes,
+                        attributes_display: s.attributes_display,
+                        track_expiry: s.track_expiry,
+                        track_serial: s.track_serial
+                    };
+                });
+                productLookupByName = {};
+                productLookupById = {};
+                window.productList.forEach(function (product) {
+                    const pid = getProductId(product);
+                    const pname = (getProductName(product) || '').trim();
+                    const psku = (getProductSku(product) || '').trim();
+                    if (!pid || !pname) return;
+                    productLookupByName[pname] = { id: Number(pid), skuId: product.skuId, name: pname, sku: psku, unit: getProductUnit(product) };
+                    productLookupById[String(pid)] = { id: Number(pid), skuId: product.skuId, name: pname, sku: psku, unit: getProductUnit(product) };
+                });
+            };
+            window.wrappedFetch('/api/v1/rd/products/skus/options', {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             })
-            .then(async response => {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") === -1) {
-                    const text = await response.text();
-                    throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
-                }
-                return response.json();
-            })
-            .then(data => {
+            .then(async function (response) {
+                const data = await response.json().catch(function () { return {}; });
                 if (data && data.success && Array.isArray(data.data)) {
-                    window.productList = data.data;
-                    productLookupByName = {};
-                    productLookupById = {};
-                    window.productList.forEach(product => {
-                        const pid = getProductId(product);
-                        const pname = (getProductName(product) || '').trim();
-                        const psku = (getProductSku(product) || '').trim();
-                        if (!pid || !pname) return;
-                        productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
-                        productLookupById[String(pid)] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
-                    });
+                    mapSkuToProductList(data.data);
+                    return;
                 }
+                throw new Error('sku options empty');
+            })
+            .catch(function () {
+                return window.wrappedFetch('/api/v1/rd/products', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(async function (response) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data && data.success && Array.isArray(data.data)) {
+                        window.productList = data.data;
+                        productLookupByName = {};
+                        productLookupById = {};
+                        window.productList.forEach(product => {
+                            const pid = getProductId(product);
+                            const pname = (getProductName(product) || '').trim();
+                            const psku = (getProductSku(product) || '').trim();
+                            if (!pid || !pname) return;
+                            productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
+                            productLookupById[String(pid)] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
+                        });
+                    }
+                });
             })
             .catch(error => {
                 console.error('加载产品列表失败:', error);
-                // 检查是否为 401 错误
                 if (error.status === 401 && !loginExpiredShown) {
                     loginExpiredShown = true;
-                    // 引导至登录页
                     window.location.href = '../../login.html';
                 }
             });
@@ -3491,6 +3554,7 @@
             if (!item) return;
             const selectedValue = selectEl.value || '';
             item.matched_product_id = /^\d+$/.test(selectedValue) ? Number(selectedValue) : 0;
+            item.matched_sku_id = item.matched_product_id;
             const selectedOption = selectEl.options[selectEl.selectedIndex];
             const selectedName = selectedOption ? ((selectedOption.getAttribute('data-name') || selectedOption.textContent || '').trim()) : '';
             const selectedSku = selectedOption ? ((selectedOption.getAttribute('data-sku') || '').trim()) : '';
@@ -5373,6 +5437,8 @@
             window.TM_DashboardPhoto.processImageWithAIService = processImageWithAIService;
         }
     </script>
+    <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
+    <script src="../../assets/js/ui-sales-orders.js?v=20260623"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
     <script src="../../assets/js/dashboard-workbench.js?v=20260601audit"></script>

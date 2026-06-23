@@ -156,6 +156,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (typeof window.loadDashboardOverviewStats === 'function') {
                     window.loadDashboardOverviewStats();
                 }
+                if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
+                    window.TM_SalesOrders.init();
+                }
             } catch (e0) { /* ignore */ }
             if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
                 window.__TM_VOICE_RELOAD_HINT_SHOWN = true;
@@ -194,7 +197,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|ui-sales-orders\.js/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -233,6 +236,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 }
                 if (typeof window.loadDashboardOverviewStats === 'function') {
                     window.loadDashboardOverviewStats();
+                }
+                if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
+                    window.TM_SalesOrders.init();
                 }
                 if (typeof TM_scheduleShellOverlayRecovery === 'function') {
                     TM_scheduleShellOverlayRecovery();

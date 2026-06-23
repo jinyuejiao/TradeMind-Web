@@ -410,6 +410,78 @@ window.SupplierModule = {
         }
     },
 
+    loadPurchaseCapabilities: async function() {
+        try {
+            var res = await window.wrappedFetch('/api/v1/rd/products/capabilities');
+            var data = res.ok ? await res.json() : null;
+            if (data && data.success && data.data) {
+                window.TM_productCapabilities = data.data;
+            }
+        } catch (e) { /* ignore */ }
+        this.syncPurchaseExtensionColumns();
+    },
+
+    syncPurchaseExtensionColumns: function() {
+        var caps = window.TM_productCapabilities || {};
+        document.querySelectorAll('#purchase-modal .purchase-ext-batch').forEach(function (el) {
+            el.classList.toggle('hidden', !caps.allowExpiry);
+        });
+        document.querySelectorAll('#purchase-modal .purchase-ext-expiry').forEach(function (el) {
+            el.classList.toggle('hidden', !caps.allowExpiry);
+        });
+        document.querySelectorAll('#purchase-modal .purchase-ext-serial').forEach(function (el) {
+            el.classList.toggle('hidden', !caps.allowSerial);
+        });
+    },
+
+    collectInboundLineExtras: function(itemIds) {
+        var extras = [];
+        if (!itemIds || !itemIds.length) return extras;
+        var idSet = {};
+        itemIds.forEach(function (id) { idSet[id] = true; });
+        var items = (this.currentPurchase && this.currentPurchase.items) || [];
+        var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+        var self = this;
+        rows.forEach(function (row, idx) {
+            var cb = row.querySelector('.purchase-inbound-check');
+            if (!cb || !cb.checked || cb.disabled) return;
+            var raw = cb.getAttribute('data-item-id') || cb.dataset.itemId || '';
+            var itemId = parseInt(raw, 10);
+            if (Number.isNaN(itemId) || itemId <= 0) {
+                var productSel = row.querySelector('.product-select');
+                var productId = productSel && productSel.value ? String(productSel.value) : '';
+                var match = null;
+                if (productId) {
+                    match = items.find(function (it) {
+                        var pid = it.productId != null ? it.productId : it.product_id;
+                        var proc = it.isProcessed === true || it.is_processed === true;
+                        return pid != null && String(pid) === productId && !proc;
+                    });
+                }
+                if (!match && items[idx]) {
+                    var candidate = items[idx];
+                    var proc0 = candidate.isProcessed === true || candidate.is_processed === true;
+                    if (!proc0) match = candidate;
+                }
+                var mid = self.resolvePurchaseItemId(match);
+                itemId = mid != null ? parseInt(mid, 10) : NaN;
+            }
+            if (Number.isNaN(itemId) || itemId <= 0 || !idSet[itemId]) return;
+            var batchNo = (row.querySelector('.batch-input') || {}).value || '';
+            var prodDate = (row.querySelector('.prod-date-input') || {}).value || '';
+            var serials = row._serialNos || [];
+            if (batchNo || prodDate || serials.length) {
+                extras.push({
+                    itemId: itemId,
+                    batchNo: batchNo.trim(),
+                    productionDate: prodDate,
+                    serialNos: serials.slice()
+                });
+            }
+        });
+        return extras;
+    },
+
     collectInboundItemIds: function() {
         var ids = [];
         var seen = {};
@@ -629,11 +701,14 @@ window.SupplierModule = {
         var warehouseId = wh && wh.value ? parseInt(wh.value, 10) : null;
         var itemIds = this.collectInboundItemIds();
         if (!itemIds.length) { this.showPurchaseFormError('请勾选本次入库的明细行'); return; }
+        var lineExtras = this.collectInboundLineExtras(itemIds);
         try {
+            var inboundBody = { targetStatus: 'PARTIAL_INBOUND', warehouseId: warehouseId, itemIds: itemIds };
+            if (lineExtras.length) inboundBody.lineExtras = lineExtras;
             var response = await window.wrappedFetch('/api/v1/supp/purchases/' + this.currentPurchase.purchaseId + '/inbound', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetStatus: 'PARTIAL_INBOUND', warehouseId: warehouseId, itemIds: itemIds })
+                body: JSON.stringify(inboundBody)
             });
             var result = await response.json();
             if (result.success) {
@@ -1523,7 +1598,10 @@ window.SupplierModule = {
         var qty = opts.qty != null ? opts.qty : 1;
         var price = opts.price != null ? opts.price : 0;
         var batch = opts.batch != null ? String(opts.batch) : '';
+        var prodDate = opts.productionDate != null ? String(opts.productionDate) : '';
         var batchAttr = batch.replace(/"/g, '&quot;');
+        var prodAttr = prodDate.replace(/"/g, '&quot;');
+        var serialCount = (opts.serialNos && opts.serialNos.length) || 0;
         return (
             '<tr class="purchase-item-row">' +
             '<td class="tm-po-td tm-po-td--check purchase-inbound-col hidden text-center">' +
@@ -1537,13 +1615,43 @@ window.SupplierModule = {
             '<input type="number" class="form-input tm-po-cell-input text-center price-input" value="' + price + '" step="0.01" min="0" oninput="SupplierModule.calculatePurchaseTotal()"></td>' +
             '<td class="tm-po-td tm-po-td--unit">' +
             '<select class="form-input tm-po-cell-input unit-select"><option value="">--- 单位 ---</option></select></td>' +
-            '<td class="tm-po-td tm-po-td--batch">' +
+            '<td class="tm-po-td tm-po-td--batch purchase-ext-col purchase-ext-batch hidden">' +
             '<input type="text" class="form-input tm-po-cell-input batch-input" placeholder="批次号" value="' + batchAttr + '"></td>' +
+            '<td class="tm-po-td tm-po-td--prod-date purchase-ext-col purchase-ext-expiry hidden">' +
+            '<input type="date" class="form-input tm-po-cell-input prod-date-input" value="' + prodAttr + '"></td>' +
+            '<td class="tm-po-td tm-po-td--serial purchase-ext-col purchase-ext-serial hidden text-center">' +
+            '<button type="button" class="text-[10px] text-teal-600 purchase-serial-btn">已录 ' + serialCount + ' 个</button></td>' +
             '<td class="tm-po-td tm-po-td--sub text-right font-mono font-bold text-slate-400 row-total">¥0.00</td>' +
             '<td class="tm-po-td tm-po-td--action text-center">' +
             '<button type="button" onclick="SupplierModule.removePurchaseItem(this)" class="tm-po-row-delete" aria-label="删除行">' +
             '<i class="ph ph-trash"></i></button></td></tr>'
         );
+    },
+
+    bindPurchaseSerialButton: function(row) {
+        if (!row) return;
+        var btn = row.querySelector('.purchase-serial-btn');
+        if (!btn || btn.dataset.tmBound === '1') return;
+        btn.dataset.tmBound = '1';
+        if (!row._serialNos) row._serialNos = [];
+        var self = this;
+        btn.addEventListener('click', function () {
+            if (!window.TmSerialCapture) {
+                self.notify('序列号录入组件未加载', 'error');
+                return;
+            }
+            var qtyInp = row.querySelector('.qty-input');
+            var expectedQty = qtyInp ? parseInt(qtyInp.value, 10) || 1 : 1;
+            window.TmSerialCapture.open({
+                mode: 'inbound',
+                expectedQty: expectedQty,
+                initialSerials: row._serialNos || [],
+                onComplete: function (serials) {
+                    row._serialNos = serials;
+                    btn.textContent = '已录 ' + serials.length + ' 个';
+                }
+            });
+        });
     },
 
     clearPurchaseItems: function() {
@@ -1555,6 +1663,9 @@ window.SupplierModule = {
         opts = opts || {};
         var tbody = document.getElementById('purchase-items-tbody');
         if (tbody) tbody.insertAdjacentHTML('beforeend', this.buildPurchaseTableRowHtml(opts));
+        var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
+        if (rows.length) this.bindPurchaseSerialButton(rows[rows.length - 1]);
+        this.syncPurchaseExtensionColumns();
         this.refreshPurchaseItemsLayout();
         this.syncInboundUi();
     },
@@ -1588,6 +1699,8 @@ window.SupplierModule = {
                 cb.checked = proc;
             }
         });
+        rows.forEach(function (row) { self.bindPurchaseSerialButton(row); });
+        this.syncPurchaseExtensionColumns();
         this.syncInboundUi();
     },
 
@@ -1617,7 +1730,8 @@ window.SupplierModule = {
         await Promise.all([
             this.loadProducts(),
             this.loadWarehouses(),
-            this.loadAccounts()
+            this.loadAccounts(),
+            this.loadPurchaseCapabilities()
         ]);
 
         this.populateSuppliersSelect();
@@ -1854,7 +1968,8 @@ window.SupplierModule = {
         await Promise.all([
             this.loadProducts(),
             this.loadWarehouses(),
-            this.loadAccounts()
+            this.loadAccounts(),
+            this.loadPurchaseCapabilities()
         ]);
 
         this.populateSuppliersSelect();

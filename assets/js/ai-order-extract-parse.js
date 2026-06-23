@@ -64,6 +64,58 @@
         return s;
     }
 
+    /** 订单行 v2：规格/批次/序列号归一 */
+    function normalizeOrderItemVariant(item) {
+        if (!item || typeof item !== 'object') return item;
+        if (item.matched_sku_id != null) item.matched_sku_id = Number(item.matched_sku_id);
+        if (item.matched_spu_id != null) item.matched_spu_id = Number(item.matched_spu_id);
+        if (!item.matched_sku_id && item.matched_product_id) {
+            item.matched_sku_id = Number(item.matched_product_id);
+        }
+        if (item.attributes_raw && typeof item.attributes_raw === 'object') {
+            var parts = Object.keys(item.attributes_raw).map(function (k) {
+                return item.attributes_raw[k];
+            });
+            item.attributes_display = parts.join(' / ');
+        }
+        if (!item.attributes_display && item.attributes_display !== '') {
+            item.attributes_display = trimUnit(item.attributes_display || item.variant_summary || '');
+        }
+        return item;
+    }
+
+    function normalizeOrderItemBatch(item) {
+        if (!item || typeof item !== 'object') return item;
+        if (item.batch_no != null) item.batch_no = String(item.batch_no).trim();
+        if (item.production_date != null) item.production_date = String(item.production_date).slice(0, 10);
+        if (item.expiry_date != null) item.expiry_date = String(item.expiry_date).slice(0, 10);
+        return item;
+    }
+
+    function normalizeOrderItemSerials(item) {
+        if (!item || typeof item !== 'object') return item;
+        if (item.serial_nos == null && item.serialNos != null) item.serial_nos = item.serialNos;
+        if (typeof item.serial_nos === 'string') {
+            item.serial_nos = item.serial_nos.split(/[\r\n,;]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+        }
+        if (!Array.isArray(item.serial_nos)) item.serial_nos = [];
+        return item;
+    }
+
+    function normalizeOrderItemV2(item) {
+        return normalizeOrderItemSerials(normalizeOrderItemBatch(normalizeOrderItemVariant(normalizeOrderItemUnit(item))));
+    }
+
+    function normalizeNewProductVariant(np) {
+        if (!np || typeof np !== 'object') return np;
+        normalizeNewProductUnits(np);
+        if (np.track_variants != null) np.trackVariants = np.track_variants;
+        if (np.track_expiry != null) np.trackExpiry = np.track_expiry;
+        if (np.track_serial != null) np.trackSerial = np.track_serial;
+        if (np.spu_name && !np.name) np.name = np.spu_name;
+        return np;
+    }
+
     /** 订单行单位归一 → item.unit */
     function normalizeOrderItemUnit(item) {
         if (!item || typeof item !== 'object') return item;
@@ -178,10 +230,10 @@
                 new_products_found: Array.isArray(envelope.new_products_found) ? envelope.new_products_found : []
             };
             if (data.order_data && Array.isArray(data.order_data.items)) {
-                data.order_data.items = data.order_data.items.map(normalizeOrderItemUnit);
+                data.order_data.items = data.order_data.items.map(normalizeOrderItemV2);
             }
             if (Array.isArray(data.new_products_found)) {
-                data.new_products_found = data.new_products_found.map(normalizeNewProductUnits);
+                data.new_products_found = data.new_products_found.map(normalizeNewProductVariant);
                 syncNewProductUnitsFromOrderItems(data);
             }
             pruneResolvedNewProductsFromOrder(data);
@@ -251,11 +303,11 @@
                 if (item.quantity == null || item.quantity === '') {
                     item.quantity = item.qty != null ? item.qty : 1;
                 }
-                return normalizeOrderItemUnit(item);
+                return normalizeOrderItemV2(item);
             });
         }
         if (Array.isArray(data.new_products_found)) {
-            data.new_products_found = data.new_products_found.map(normalizeNewProductUnits);
+            data.new_products_found = data.new_products_found.map(normalizeNewProductVariant);
             syncNewProductUnitsFromOrderItems(data);
         }
         pruneResolvedNewProductsFromOrder(data);
@@ -268,5 +320,7 @@
     global.TM_pruneResolvedNewProductsFromOrder = pruneResolvedNewProductsFromOrder;
     global.TM_parseOrderExtractStructured = TM_parseOrderExtractStructured;
     global.TM_normalizeOrderItemUnit = normalizeOrderItemUnit;
+    global.TM_normalizeOrderItemV2 = normalizeOrderItemV2;
     global.TM_normalizeNewProductUnits = normalizeNewProductUnits;
+    global.TM_normalizeNewProductVariant = normalizeNewProductVariant;
 })(typeof window !== 'undefined' ? window : this);
