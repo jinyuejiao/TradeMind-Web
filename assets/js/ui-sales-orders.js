@@ -7,10 +7,23 @@
     var PAGE_SIZE = 20;
     var currentPage = 1;
     var totalPages = 1;
+    var _bound = false;
+    var ACTIVE_TAB = 'border-brand-200 bg-brand-50 text-brand-600';
+    var INACTIVE_TAB = 'border-slate-200 text-slate-600 hover:bg-slate-50';
 
-    function api(path) {
-        return fetch('/api/v1/rd' + path, {
-            headers: { 'X-Tenant-Id': window.currentTenantId || '' }
+    function notify(msg, type) {
+        if (window.TM_UI && window.TM_UI.showNotification) {
+            window.TM_UI.showNotification(msg, type || 'info');
+        } else if (typeof window.showToast === 'function') {
+            window.showToast(msg);
+        }
+    }
+
+    function apiFetch(path) {
+        var fetchFn = window.wrappedFetch || fetch;
+        return fetchFn('/api/v1/rd' + path, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
         }).then(function (r) { return r.json(); });
     }
 
@@ -29,6 +42,35 @@
         return map[code] || code || '—';
     }
 
+    function orderIdOf(o) {
+        return o.order_id != null ? o.order_id : (o.orderId != null ? o.orderId : o.id);
+    }
+
+    function setTabStyles(viewToggle, activeView) {
+        viewToggle.querySelectorAll('[data-view]').forEach(function (btn) {
+            var on = btn.getAttribute('data-view') === activeView;
+            btn.classList.toggle('active', on);
+            btn.classList.remove('border-brand-200', 'bg-brand-50', 'text-brand-600', 'border-slate-200', 'text-slate-600', 'hover:bg-slate-50');
+            (on ? ACTIVE_TAB : INACTIVE_TAB).split(' ').forEach(function (c) { btn.classList.add(c); });
+        });
+    }
+
+    function switchView(view) {
+        var overview = document.getElementById('workbench-overview-panel');
+        var salesPanel = document.getElementById('workbench-sales-orders-panel');
+        var returnsPanel = document.getElementById('workbench-returns-panel');
+        var toggle = document.getElementById('workbench-view-toggle');
+        if (!toggle) return;
+        if (overview) overview.classList.toggle('hidden', view !== 'overview');
+        if (salesPanel) salesPanel.classList.toggle('hidden', view !== 'sales-orders');
+        if (returnsPanel) returnsPanel.classList.toggle('hidden', view !== 'returns');
+        setTabStyles(toggle, view);
+        if (view === 'sales-orders') loadSalesOrders(1);
+        if (view === 'returns' && window.TM_Returns && window.TM_Returns.loadList) {
+            window.TM_Returns.loadList(1);
+        }
+    }
+
     function renderList(records) {
         var container = document.getElementById('sales-orders-list');
         if (!container) return;
@@ -37,13 +79,14 @@
             return;
         }
         container.innerHTML = records.map(function (o) {
+            var oid = orderIdOf(o);
             return [
-                '<div class="tm-po-card cursor-pointer border border-slate-100 rounded-xl p-4 mb-3 hover:border-brand-200" data-order-id="' + o.order_id + '">',
+                '<div class="tm-po-card cursor-pointer border border-slate-100 rounded-xl p-4 mb-3 hover:border-brand-200" data-order-id="' + oid + '">',
                 '  <div class="flex justify-between items-start gap-2">',
-                '    <div><p class="font-bold text-slate-800">' + (o.order_code || ('#' + o.order_id)) + '</p>',
-                '    <p class="text-xs text-slate-500">' + (o.cust_name || '—') + ' · ' + fmtDate(o.create_time) + '</p></div>',
-                '    <div class="text-right"><p class="font-mono font-bold text-brand-600">' + fmtMoney(o.total_amount) + '</p>',
-                '    <p class="text-[10px] text-slate-400">' + statusLabel(o.order_status) + '</p></div>',
+                '    <div><p class="font-bold text-slate-800">' + (o.order_code || o.orderCode || ('#' + oid)) + '</p>',
+                '    <p class="text-xs text-slate-500">' + (o.cust_name || o.custName || '—') + ' · ' + fmtDate(o.create_time || o.createTime) + '</p></div>',
+                '    <div class="text-right"><p class="font-mono font-bold text-brand-600">' + fmtMoney(o.total_amount != null ? o.total_amount : o.totalAmount) + '</p>',
+                '    <p class="text-[10px] text-slate-400">' + statusLabel(o.order_status || o.orderStatus) + '</p></div>',
                 '  </div>',
                 '</div>'
             ].join('');
@@ -53,6 +96,8 @@
                 var id = el.getAttribute('data-order-id');
                 if (typeof window.openOrderDetailModal === 'function') {
                     window.openOrderDetailModal(parseInt(id, 10));
+                } else if (typeof window.openOrderDetail === 'function') {
+                    window.openOrderDetail(parseInt(id, 10));
                 }
             });
         });
@@ -76,41 +121,43 @@
 
     function loadSalesOrders(pageNo) {
         pageNo = pageNo || 1;
-        var keyword = (document.getElementById('sales-orders-keyword') || {}).value || '';
+        var container = document.getElementById('sales-orders-list');
+        if (container) container.innerHTML = '<p class="text-center text-slate-400 py-8">加载中…</p>';
+        var keywordEl = document.getElementById('sales-orders-keyword');
+        var keyword = keywordEl ? keywordEl.value : '';
         var qs = '?pageNo=' + pageNo + '&pageSize=' + PAGE_SIZE;
         if (keyword) qs += '&keyword=' + encodeURIComponent(keyword);
-        api('/orders' + qs).then(function (res) {
-            if (!res.success) return;
+        apiFetch('/orders' + qs).then(function (res) {
+            if (!res || !res.success) {
+                notify((res && res.message) || '加载销售订单失败', 'error');
+                if (container) container.innerHTML = '<p class="text-center text-red-400 py-8">加载失败</p>';
+                return;
+            }
             var data = res.data || {};
             renderList(data.records || []);
             renderPagination(data);
+        }).catch(function (e) {
+            notify('加载销售订单失败: ' + (e.message || '网络错误'), 'error');
+            if (container) container.innerHTML = '<p class="text-center text-red-400 py-8">加载失败</p>';
         });
     }
 
     function initSalesOrdersView() {
         var viewToggle = document.getElementById('workbench-view-toggle');
-        if (viewToggle) {
-            viewToggle.querySelectorAll('[data-view]').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var view = btn.getAttribute('data-view');
-                    document.getElementById('workbench-overview-panel').classList.toggle('hidden', view !== 'overview');
-                    document.getElementById('workbench-sales-orders-panel').classList.toggle('hidden', view !== 'sales-orders');
-                    viewToggle.querySelectorAll('[data-view]').forEach(function (b) {
-                        b.classList.toggle('active', b === btn);
-                    });
-                    if (view === 'sales-orders') loadSalesOrders(1);
-                });
+        if (!viewToggle || viewToggle.dataset.tmSalesBound === '1') return;
+        viewToggle.dataset.tmSalesBound = '1';
+        viewToggle.querySelectorAll('[data-view]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                switchView(btn.getAttribute('data-view'));
             });
-        }
+        });
         var searchBtn = document.getElementById('sales-orders-search-btn');
-        if (searchBtn) searchBtn.addEventListener('click', function () { loadSalesOrders(1); });
+        if (searchBtn && searchBtn.dataset.tmBound !== '1') {
+            searchBtn.dataset.tmBound = '1';
+            searchBtn.addEventListener('click', function () { loadSalesOrders(1); });
+        }
+        _bound = true;
     }
 
-    window.TM_SalesOrders = { load: loadSalesOrders, init: initSalesOrdersView };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSalesOrdersView);
-    } else {
-        initSalesOrdersView();
-    }
+    window.TM_SalesOrders = { load: loadSalesOrders, init: initSalesOrdersView, switchView: switchView };
 })();

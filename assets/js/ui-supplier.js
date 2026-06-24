@@ -27,6 +27,9 @@ function switchSupplierMainView(viewType) {
     if (viewType === 'list' && window.SupplierModule && typeof SupplierModule.loadPurchaseSummary === 'function') {
         SupplierModule.loadPurchaseSummary();
     }
+    if (viewType === 'returns' && window.SupplierModule && typeof SupplierModule.loadSupplierReturns === 'function') {
+        SupplierModule.loadSupplierReturns(1);
+    }
 }
 window.switchSupplierView = switchSupplierMainView;
 
@@ -2342,6 +2345,100 @@ window.SupplierModule = {
             console.error(e);
             this.editPurchase(purchaseId);
         }
+    },
+
+    supplierReturnPage: 1,
+
+    async loadSupplierReturns(pageNo) {
+        var page = pageNo || 1;
+        this.supplierReturnPage = page;
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/supplier-returns?pageNo=' + page + '&pageSize=20', { method: 'GET' });
+            var result = await resp.json();
+            if (!result.success) throw new Error(result.message || '加载失败');
+            this.renderSupplierReturns(result.data || {});
+        } catch (e) {
+            console.error('loadSupplierReturns:', e);
+            var el = document.getElementById('supplier-returns-list');
+            if (el) el.innerHTML = '<p class="text-center text-red-400 py-6">加载退厂单失败</p>';
+        }
+    },
+
+    renderSupplierReturns(data) {
+        var container = document.getElementById('supplier-returns-list');
+        if (!container) return;
+        var records = data.records || [];
+        if (!records.length) {
+            container.innerHTML = '<p class="text-center text-slate-400 py-8">暂无退厂单</p>';
+            return;
+        }
+        var fmt = typeof window.TM_formatCNY === 'function' ? window.TM_formatCNY : function (v) { return '¥' + Number(v || 0).toFixed(2); };
+        container.innerHTML = records.map(function (r) {
+            var code = r.return_code || r.returnCode || ('SR-' + (r.supplier_return_id || r.supplierReturnId));
+            var st = r.status || '—';
+            return '<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">'
+                + '<div class="flex justify-between gap-2"><div><p class="text-sm font-bold text-slate-800">' + code + '</p>'
+                + '<p class="text-[10px] text-slate-400">' + (r.supplier_name || r.supplierName || '') + '</p></div>'
+                + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">' + st + '</span></div>'
+                + '<p class="mt-2 text-xs font-mono font-bold text-brand-600">' + fmt(r.total_amount || r.totalAmount) + '</p></div>';
+        }).join('');
+    },
+
+    openSupplierReturnModal: async function () {
+        await Promise.all([this.loadSuppliers(), this.loadProducts()]);
+        var modal = document.getElementById('supplier-return-modal');
+        if (!modal) return;
+        var sel = document.getElementById('sr-supplier-select');
+        if (sel) {
+            sel.innerHTML = '<option value="">选择供应商</option>' + (this.suppliers || []).map(function (s) {
+                return '<option value="' + s.supplierId + '">' + (s.name || s.supplierName) + '</option>';
+            }).join('');
+        }
+        var prodSel = document.getElementById('sr-product-select');
+        if (prodSel) {
+            prodSel.innerHTML = '<option value="">选择产品</option>' + (this.products || []).map(function (p) {
+                return '<option value="' + p.id + '">' + (p.name || p.productName) + '</option>';
+            }).join('');
+        }
+        if (typeof window.TM_openUnifiedModal === 'function') window.TM_openUnifiedModal(modal);
+        else modal.classList.remove('hidden');
+    },
+
+    closeSupplierReturnModal: function () {
+        var modal = document.getElementById('supplier-return-modal');
+        if (!modal) return;
+        if (typeof window.TM_closeUnifiedModal === 'function') window.TM_closeUnifiedModal(modal);
+        else modal.classList.add('hidden');
+    },
+
+    submitSupplierReturn: async function () {
+        var supplierId = parseInt((document.getElementById('sr-supplier-select') || {}).value, 10);
+        var productId = parseInt((document.getElementById('sr-product-select') || {}).value, 10);
+        var qty = parseInt((document.getElementById('sr-qty-input') || {}).value, 10);
+        var price = parseFloat((document.getElementById('sr-price-input') || {}).value) || 0;
+        var remark = (document.getElementById('sr-remark-input') || {}).value || '';
+        if (!supplierId || !productId || !qty) {
+            alert('请填写供应商、产品与数量');
+            return;
+        }
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/supplier-returns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    supplierId: supplierId,
+                    remark: remark,
+                    items: [{ productId: productId, quantity: qty, unitPrice: price }]
+                })
+            });
+            var result = await resp.json();
+            if (!result.success) throw new Error(result.message || '创建失败');
+            this.closeSupplierReturnModal();
+            switchSupplierMainView('returns');
+            this.loadSupplierReturns(1);
+        } catch (e) {
+            alert(e.message || '创建退厂单失败');
+        }
     }
 };
 
@@ -2359,3 +2456,6 @@ window.editSupplier = function(supplierId) { window.SupplierModule.editSupplier(
 window.deleteSupplier = function(supplierId) { window.SupplierModule.deleteSupplier(supplierId); };
 window.editPurchase = function(purchaseId) { window.SupplierModule.editPurchase(purchaseId); };
 window.deletePurchase = function(purchaseId) { window.SupplierModule.deletePurchase(purchaseId); };
+window.openSupplierReturnModal = function() { window.SupplierModule.openSupplierReturnModal(); };
+window.closeSupplierReturnModal = function() { window.SupplierModule.closeSupplierReturnModal(); };
+window.submitSupplierReturn = function() { window.SupplierModule.submitSupplierReturn(); };

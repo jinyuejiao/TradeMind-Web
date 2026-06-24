@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260524adv';
+    var url = '/modules/product-center/product-overlays.html?v=20260623feat';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -159,6 +159,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
                     window.TM_SalesOrders.init();
                 }
+                if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                    window.TM_Returns.init();
+                }
             } catch (e0) { /* ignore */ }
             if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
                 window.__TM_VOICE_RELOAD_HINT_SHOWN = true;
@@ -197,7 +200,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|ui-sales-orders\.js/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|ui-sales-orders\.js|ui-returns\.js/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -239,6 +242,9 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 }
                 if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
                     window.TM_SalesOrders.init();
+                }
+                if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                    window.TM_Returns.init();
                 }
                 if (typeof TM_scheduleShellOverlayRecovery === 'function') {
                     TM_scheduleShellOverlayRecovery();
@@ -605,7 +611,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601audit', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260623feat', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');

@@ -411,8 +411,10 @@
     };
 
     PM.loadProductCapabilities = function () {
-        return fetch('/api/v1/rd/products/capabilities', {
-            headers: { 'X-Tenant-Id': window.currentTenantId || '' }
+        var fetchFn = window.wrappedFetch || fetch;
+        return fetchFn('/api/v1/rd/products/capabilities', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
         }).then(function (r) { return r.json(); }).then(function (res) {
             if (!res.success) return null;
             window.TM_productCapabilities = res.data || {};
@@ -433,6 +435,18 @@
         if (vCard) vCard.classList.toggle('hidden', !caps.allowVariants);
         if (eCard) eCard.classList.toggle('hidden', !caps.allowExpiry);
         if (sCard) sCard.classList.toggle('hidden', !caps.allowSerial);
+    };
+
+    PM.ensureProductFormMounted = async function () {
+        var root = document.getElementById('product-detail-form-root');
+        if (!root) return;
+        if (window.TmProductRegistry && window.TmProductRegistry.mount) {
+            await window.TmProductRegistry.mount(root);
+        }
+        if (typeof PM.loadProductCapabilities === 'function') {
+            await PM.loadProductCapabilities();
+        }
+        PM.applyProductCapabilityVisibility();
     };
 
     PM.syncCapabilitySummaries = function () {
@@ -832,6 +846,7 @@
 
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
+        await PM.ensureProductFormMounted();
         await PM.loadTenantUnitNames();
         await _openProductDetail.call(PM, productId);
         PM.repopulateProductDetailForm(PM.currentProduct);
@@ -851,6 +866,7 @@
 
     var _openCreate = PM.openCreateProductModal;
     PM.openCreateProductModal = async function (prefill) {
+        await PM.ensureProductFormMounted();
         await _openCreate.call(PM);
         PM.populateProductForm({
             name: '',

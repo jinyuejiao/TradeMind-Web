@@ -484,8 +484,9 @@
                 amount = Math.round(amount * 100) / 100;
             }
 
+            var orderId = order.orderId != null ? order.orderId : order.order_id;
             return ''
-                + '<div class="relative' + (index > 4 ? ' opacity-80' : '') + '">'
+                + '<div class="relative cursor-pointer hover:bg-slate-50/80 rounded-lg -mx-2 px-2 py-1 transition' + (index > 4 ? ' opacity-80' : '') + '" data-crm-order-id="' + orderId + '" onclick="window.TM_openCrmOrderDetail && TM_openCrmOrderDetail(' + orderId + ')">'
                 + '  <span class="absolute -left-[22px] w-4 h-4 rounded-full bg-brand-500 border-4 border-white shadow-sm shrink-0"></span>'
                 + '  <div class="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 mb-1 min-w-0">'
                 + '    <p class="text-[10px] text-slate-400 font-mono font-bold tracking-tighter uppercase shrink-0">' + escapeHtml(timeText) + '</p>'
@@ -575,5 +576,23 @@
         V_TAG_MAP: V_TAG_MAP,
         TIMELINE_SUMMARY_MAX_CHARS: TIMELINE_SUMMARY_MAX_CHARS,
         TIMELINE_SUMMARY_MAX_ITEMS: TIMELINE_SUMMARY_MAX_ITEMS
+    };
+
+    window.TM_openCrmOrderDetail = function (orderId) {
+        if (typeof window.switchTab === 'function') {
+            window.switchTab('dashboard');
+        }
+        var attempts = 0;
+        function tryOpen() {
+            attempts += 1;
+            if (typeof window.openOrderDetailModal === 'function') {
+                window.openOrderDetailModal(orderId, {});
+                return;
+            }
+            if (attempts < 20) {
+                setTimeout(tryOpen, 300);
+            }
+        }
+        setTimeout(tryOpen, 400);
     };
 })();
