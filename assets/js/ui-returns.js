@@ -56,9 +56,9 @@
         if (document.getElementById('return-create-modal')) return;
         var wrap = document.createElement('div');
         wrap.innerHTML = ''
-            + '<div id="return-create-modal" class="tm-unified-mobile-modal hidden fixed inset-0 z-[110] flex items-end md:items-center justify-center p-0 md:p-6">'
+            + '<div id="return-create-modal" class="tm-unified-mobile-modal tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6">'
             + '  <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="TM_Returns.closeCreateModal()"></div>'
-            + '  <div class="relative bg-white w-full max-w-lg md:max-w-2xl rounded-t-[2rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">'
+            + '  <div class="relative bg-white w-full max-w-lg md:max-w-2xl rounded-t-[2rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[min(88dvh,100%)] md:h-auto md:max-h-[90dvh]">'
             + '    <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">'
             + '      <h3 class="text-sm font-bold text-slate-800">申请退货</h3>'
             + '      <button type="button" onclick="TM_Returns.closeCreateModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-lg text-slate-400"></i></button>'
@@ -133,13 +133,6 @@
         return window.currentDetailOrderId || null;
     }
 
-    function productName(item) {
-        if (typeof window.getProductDisplayById === 'function') {
-            return window.getProductDisplayById(item.productId || item.product_id).name;
-        }
-        return item.productName || item.product_name || ('产品#' + (item.productId || item.product_id || ''));
-    }
-
     function lineQty(item) {
         if (typeof window.resolveOrderItemLine === 'function') {
             return window.resolveOrderItemLine(item).qty;
@@ -156,6 +149,10 @@
 
     function patchDetailItemsRender() {
         if (_patched) return;
+        if (typeof window.renderDetailOrderItems === 'function') {
+            _patched = true;
+            return;
+        }
         var orig = window.__TM_renderDetailOrderItems;
         if (typeof orig !== 'function') return;
         window.__TM_renderDetailOrderItems = function (items) {
@@ -175,10 +172,11 @@
         var tbody = document.getElementById('detail-order-items-body');
         if (!tbody) return;
         tbody.querySelectorAll('tr.order-item-row').forEach(function (tr, idx) {
+            if (tr.querySelector('.detail-return-col')) return;
             var item = items[idx];
             if (!item) return;
             var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : idx);
-            var maxQ = lineQty(item);
+            var maxQ = returnableQty(item);
             var price = linePrice(item);
             var td = document.createElement('td');
             td.className = 'detail-return-col tm-col-return px-2 py-2 text-center';
@@ -199,36 +197,104 @@
         });
     }
 
+    function returnableQty(item) {
+        var rq = item.returnableQty != null ? item.returnableQty : item.returnable_qty;
+        if (rq != null) return Math.max(0, parseInt(rq, 10) || 0);
+        if (typeof window.resolveOrderItemLine === 'function') {
+            return window.resolveOrderItemLine(item).returnableQty || 0;
+        }
+        var qty = lineQty(item);
+        var ret = item.returnedQty != null ? item.returnedQty : (item.returned_qty || 0);
+        return Math.max(0, qty - ret);
+    }
+
+    function productName(item) {
+        if (item.productName || item.product_name) {
+            return item.productName || item.product_name;
+        }
+        if (typeof window.getProductDisplayById === 'function') {
+            return window.getProductDisplayById(item.productId || item.product_id).name;
+        }
+        return '产品#' + (item.productId || item.product_id || '');
+    }
+
+    function renderReturnCreateItems(items) {
+        var container = document.getElementById('return-create-items');
+        if (!container) return;
+        var eligible = (items || []).filter(function (item) { return returnableQty(item) > 0; });
+        if (!eligible.length) {
+            container.innerHTML = '<p class="text-center text-slate-400 py-6 text-sm">暂无可退商品（可能已全部退货）</p>';
+            return;
+        }
+        container.innerHTML = eligible.map(function (item, idx) {
+            var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : idx);
+            var maxQ = returnableQty(item);
+            var price = linePrice(item);
+            var name = esc(productName(item));
+            return ''
+                + '<div class="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">'
+                + '  <label class="flex items-start gap-3">'
+                + '    <input type="checkbox" class="return-create-check mt-1 w-5 h-5 accent-amber-600 shrink-0" data-item-id="' + itemId + '" data-product-id="' + (item.productId || item.product_id || '') + '" data-sku-id="' + (item.skuId || item.sku_id || '') + '" data-max-qty="' + maxQ + '" data-price="' + price + '" checked />'
+                + '    <span class="flex-1 min-w-0"><span class="text-sm font-bold text-slate-800 block break-words">' + name + '</span>'
+                + '      <span class="text-[11px] text-slate-500 block mt-0.5">可退 ' + maxQ + ' · 单价 ' + fmtMoney(price) + '</span></span>'
+                + '  </label>'
+                + '  <div class="flex items-center justify-between gap-3 pl-8">'
+                + '    <span class="text-[10px] font-bold text-slate-400 uppercase">退货数量</span>'
+                + '    <input type="number" class="return-create-qty form-input w-24 text-sm font-mono text-center py-2" min="1" max="' + maxQ + '" value="' + maxQ + '" data-for-item="' + itemId + '" />'
+                + '  </div>'
+                + '</div>';
+        }).join('');
+    }
+
+    function refreshOrderDetailAfterReturn(orderId) {
+        if (!orderId) return Promise.resolve();
+        var fetchFn = window.wrappedFetch || fetch;
+        return fetchFn('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
+            method: 'GET', headers: { 'Content-Type': 'application/json' }
+        }).then(function (r) { return r.json(); }).then(function (orderRes) {
+            if (orderRes && orderRes.success && orderRes.data && window.currentDetailOrder) {
+                Object.assign(window.currentDetailOrder, orderRes.data);
+            }
+            if (typeof window.loadOrderDetailContent === 'function') {
+                return window.loadOrderDetailContent(orderId, window.currentDetailOrder || {});
+            }
+        }).catch(function () { /* ignore */ });
+    }
+
     function openCreateFromDetail() {
         ensureModals();
         var orderId = getDetailOrderId();
         var order = getDetailOrder();
-        var items = getDetailItems();
-        if (!orderId || !items.length) {
-            notify('请先加载订单明细', 'warning');
+        if (!orderId) {
+            notify('请先打开订单详情', 'warning');
             return;
         }
+        var detailModal = document.getElementById('order-detail-modal');
+        if (detailModal && typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(detailModal);
+        } else if (detailModal) {
+            detailModal.classList.add('hidden');
+        }
         var container = document.getElementById('return-create-items');
-        if (!container) return;
-        container.innerHTML = items.map(function (item, idx) {
-            var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : idx);
-            var maxQ = lineQty(item);
-            var price = linePrice(item);
-            var name = esc(productName(item));
-            return ''
-                + '<label class="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50">'
-                + '  <input type="checkbox" class="return-create-check mt-1 w-4 h-4 accent-amber-600" data-item-id="' + itemId + '" data-product-id="' + (item.productId || item.product_id || '') + '" data-sku-id="' + (item.skuId || item.sku_id || '') + '" data-max-qty="' + maxQ + '" data-price="' + price + '" checked />'
-                + '  <span class="flex-1 min-w-0"><span class="text-xs font-bold text-slate-800 block truncate">' + name + '</span>'
-                + '    <span class="text-[10px] text-slate-400">可退 ' + maxQ + ' · 单价 ' + fmtMoney(price) + '</span></span>'
-                + '  <input type="number" class="return-create-qty form-input w-16 text-xs font-mono text-center" min="1" max="' + maxQ + '" value="' + maxQ + '" data-for-item="' + itemId + '" />'
-                + '</label>';
-        }).join('');
-        window.__TM_returnCreateCtx = {
-            orderId: orderId,
-            custId: order.custId || order.cust_id,
-            warehouseId: order.warehouseId || order.warehouse_id
-        };
+        if (container) {
+            container.innerHTML = '<p class="text-center text-slate-400 py-6 text-sm">加载可退商品...</p>';
+        }
         openModal(document.getElementById('return-create-modal'));
+        apiFetch('GET', '/orders/' + orderId + '/items').then(function (res) {
+            if (!res.success) throw new Error(res.message || '加载明细失败');
+            var items = Array.isArray(res.data) ? res.data : [];
+            window.detailOrderItemsCache = items;
+            renderReturnCreateItems(items);
+            window.__TM_returnCreateCtx = {
+                orderId: orderId,
+                custId: order && (order.custId || order.cust_id),
+                warehouseId: order && (order.warehouseId || order.warehouse_id)
+            };
+        }).catch(function (err) {
+            if (container) {
+                container.innerHTML = '<p class="text-center text-red-400 py-6 text-sm">' + esc(err.message || '加载失败') + '</p>';
+            }
+        });
     }
 
     function closeCreateModal() {
@@ -270,6 +336,11 @@
             if (!res.success) throw new Error(res.message || '创建失败');
             notify('退货单已创建', 'success');
             closeCreateModal();
+            refreshOrderDetailAfterReturn(ctx.orderId).then(function () {
+                if (typeof window.TM_emitOrderDataChanged === 'function') {
+                    window.TM_emitOrderDataChanged({ orderId: ctx.orderId, custId: ctx.custId });
+                }
+            });
             if (window.TM_SalesOrders && window.TM_SalesOrders.switchView) {
                 window.TM_SalesOrders.switchView('returns');
             }
@@ -408,6 +479,7 @@
         closeInspectModal: closeInspectModal,
         submitInspect: submitInspect,
         syncDetailReturnUi: syncDetailReturnUi,
-        patchDetailItemsRender: patchDetailItemsRender
+        patchDetailItemsRender: patchDetailItemsRender,
+        injectReturnColumns: injectReturnColumns
     };
 })();

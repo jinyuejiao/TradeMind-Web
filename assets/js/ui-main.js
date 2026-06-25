@@ -611,7 +611,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260623feat', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260625feat', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -661,7 +661,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260601crm',
+        '/modules/crm/crm.html?embed=1&v=20260625crm',
         'CRM',
         { embedPathCheck: 'crm' }
     );
@@ -727,7 +727,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260601poembed',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260625poembed',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -1499,7 +1499,39 @@ if (!window.__tmEmbedModalListenerBound) {
     window.__tmEmbedModalListenerBound = true;
     window.addEventListener('message', function (ev) {
         var data = ev.data;
-        if (!data || data.type !== 'TM_EMBED_MODAL') return;
+        if (!data || !data.type) return;
+
+        if (data.type === 'TM_OPEN_ORDER_DETAIL') {
+            var fromModuleFrame = false;
+            try {
+                document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+                    try {
+                        if (frame.contentWindow === ev.source) fromModuleFrame = true;
+                    } catch (e0) { /* ignore */ }
+                });
+            } catch (e1) { /* ignore */ }
+            if (fromModuleFrame && data.orderId != null && typeof TM_openOrderDetailFromShell === 'function') {
+                TM_openOrderDetailFromShell(data.orderId);
+            }
+            return;
+        }
+
+        if (data.type === 'TM_SHELL_SWITCH_TAB') {
+            var fromFrame = false;
+            try {
+                document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+                    try {
+                        if (frame.contentWindow === ev.source) fromFrame = true;
+                    } catch (e2) { /* ignore */ }
+                });
+            } catch (e3) { /* ignore */ }
+            if (fromFrame && data.tab && typeof window.TM_shellSwitchTab === 'function') {
+                window.TM_shellSwitchTab(data.tab);
+            }
+            return;
+        }
+
+        if (data.type !== 'TM_EMBED_MODAL') return;
         var fromModuleFrame = false;
         try {
             document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
@@ -1711,6 +1743,29 @@ function switchTab(tabId) {
 }
 
 window.TM_shellSwitchTab = switchTab;
+
+function TM_openOrderDetailFromShell(orderId) {
+    if (orderId == null) return;
+    switchTab('dashboard');
+    var attempts = 0;
+    function tryOpen() {
+        attempts += 1;
+        if (typeof window.openOrderDetailModal === 'function') {
+            window.openOrderDetailModal(orderId, {});
+            return;
+        }
+        if (attempts < 40) {
+            setTimeout(tryOpen, 200);
+        }
+    }
+    var dashPromise = typeof window.loadDashboard === 'function' ? window.loadDashboard() : Promise.resolve();
+    dashPromise.then(function () {
+        setTimeout(tryOpen, 300);
+    }).catch(function () {
+        setTimeout(tryOpen, 500);
+    });
+}
+window.TM_openOrderDetailFromShell = TM_openOrderDetailFromShell;
 
 const TM_SHELL_NAV_FN_NAMES = ['switchTab', 'loadDashboard', 'loadSmartOps', 'loadCRM', 'loadProductCenter', 'loadSupplier'];
 const TM_SHELL_NAV_FN_SNAPSHOT = {};

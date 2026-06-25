@@ -308,7 +308,11 @@
         var baseUnitStr = baseUnitInput ? baseUnitInput.value.trim() : '';
         var sk = skuInput ? skuInput.value.trim() : '';
         if (!sk) {
-            sk = 'SKU-' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                sk = 'SKU-' + crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
+            } else {
+                sk = 'SKU-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            }
             if (skuInput) skuInput.value = sk;
         }
 
@@ -429,6 +433,13 @@
         if (!section) return;
         var any = caps.allowVariants || caps.allowExpiry || caps.allowSerial;
         section.classList.toggle('hidden', !any);
+        var hint = document.getElementById('product-capability-hint');
+        if (hint) {
+            hint.classList.toggle('hidden', any);
+            if (!any) {
+                hint.textContent = '当前租户未开启规格/保质期/序列号能力，可在智能经营-租户档案中配置，或联系管理员。';
+            }
+        }
         var vCard = document.getElementById('cap-card-variants');
         var eCard = document.getElementById('cap-card-expiry');
         var sCard = document.getElementById('cap-card-serial');

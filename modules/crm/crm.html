@@ -541,6 +541,14 @@
         };
 
         function switchTab(tabName) {
+            try {
+                var embedded = (window.self !== window.top)
+                    || (new URLSearchParams(window.location.search).get('embed') === '1');
+                if (embedded && tabName !== 'crm') {
+                    window.parent.postMessage({ type: 'TM_SHELL_SWITCH_TAB', tab: tabName }, '*');
+                    return;
+                }
+            } catch (e) { /* ignore */ }
             const urlMap = {
                 dashboard: '../dashboard/dashboard.html',
                 biz: '../SmartOps/SmartOps.html',

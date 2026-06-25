@@ -208,7 +208,9 @@
     <script>
         // 页面加载时注入公共 UI 组件
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.injectCommonUI) {
+            var embedded = (window.self !== window.top)
+                || (new URLSearchParams(window.location.search).get('embed') === '1');
+            if (!embedded && window.injectCommonUI) {
                 window.injectCommonUI();
             }
         });
@@ -1477,9 +1479,11 @@
         function updateDetailRemainingHint(order) {
             order = order || currentDetailOrder;
             if (!order) return { total: 0, received: 0, remaining: 0 };
-            var total = Number(order.totalAmount || 0);
+            var total = Number(order.totalAmount || order.total_amount || 0);
+            var returned = Number(order.returnedAmount || order.returned_amount || 0);
+            var netTotal = Math.max(0, total - returned);
             var received = getOrderReceivedAmount(order);
-            var remaining = getOrderRemainingAmount(order);
+            var remaining = Math.max(0, netTotal - received);
             var fmt = function (v) { return '¥' + (Number(v) || 0).toFixed(2); };
             var payTotal = document.getElementById('detail-pay-total');
             var totalEl = document.getElementById('detail-order-total');
@@ -1487,9 +1491,12 @@
             var recWrap = document.getElementById('detail-received-wrap');
             var remWrap = document.getElementById('detail-remaining-wrap');
             var remSum = document.getElementById('detail-remaining-sum');
-            if (payTotal) payTotal.textContent = fmt(total);
-            if (totalEl) totalEl.textContent = fmt(total);
-            if (recSum) recSum.textContent = fmt(received);
+            if (payTotal) payTotal.textContent = fmt(netTotal);
+            if (totalEl) {
+                totalEl.textContent = returned > 0
+                    ? (fmt(netTotal) + '（原' + fmt(total) + ' 已退' + fmt(returned) + '）')
+                    : fmt(total);
+            }
             if (recWrap) recWrap.classList.toggle('hidden', received <= 0);
             if (remWrap) remWrap.classList.toggle('hidden', remaining <= 0.001);
             if (remSum) remSum.textContent = fmt(remaining);
@@ -1661,21 +1668,27 @@
             }
             if (tbody) {
                 tbody.innerHTML = items.map(function (item, rowIdx) {
-                    var p = getProductDisplayById(item.productId);
+                    var p = getProductDisplayById(item.productId || item.product_id);
+                    if (item.product_name || item.productName) {
+                        p = { name: item.product_name || item.productName, sku: p.sku, unit: p.unit };
+                    }
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
+                    var returnedHint = line.returnedQty > 0
+                        ? ('<p class="text-[10px] text-amber-600 mt-0.5">已退 ' + line.returnedQty + ' · 可退 ' + line.returnableQty + '</p>')
+                        : '';
                     var chk = showShip
                         ? ('<td class="detail-ship-col px-2 py-2 text-center' + (showShip ? '' : ' hidden') + '">' +
                             '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '" data-row-index="' + rowIdx + '"' +
                             (proc ? ' checked disabled' : '') + ' aria-label="本次发货"></td>')
                         : '<td class="detail-ship-col hidden px-2 py-2"></td>';
                     return '<tr class="order-item-row">' + chk +
-                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p></td>' +
+                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p>' + returnedHint + '</td>' +
                         '<td class="tm-col-qty px-3 py-2 text-center font-mono">' + line.qty + '</td>' +
                         '<td class="tm-col-unit px-3 py-2 text-center text-slate-600">' + line.unit + '</td>' +
                         '<td class="tm-col-price px-3 py-2 text-center font-mono text-slate-700">' + formatCurrency(line.unitPrice) + '</td>' +
-                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(line.total) + '</td></tr>';
+                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(line.returnedQty > 0 ? line.netTotal : line.total) + '</td></tr>';
                 }).join('');
             }
             if (cards) {
@@ -1708,6 +1721,12 @@
             syncDetailShipUi(currentDetailOrder);
         }
         window.__TM_renderDetailOrderItems = renderDetailOrderItems;
+        window.renderDetailOrderItems = function (items) {
+            renderDetailOrderItems(items);
+            if (window.TM_Returns && window.TM_Returns.injectReturnColumns) {
+                window.TM_Returns.injectReturnColumns(items);
+            }
+        };
 
         function collectDetailShipItemIds() {
             var ids = [];
@@ -2676,7 +2695,10 @@
 
         function resolveOrderItemLine(item) {
             item = item || {};
+            var returned = Number(item.returnedQty != null ? item.returnedQty : (item.returned_qty != null ? item.returned_qty : 0)) || 0;
             var qty = Number(item.quantity != null ? item.quantity : 0) || 0;
+            var returnable = item.returnableQty != null ? Number(item.returnableQty)
+                : (item.returnable_qty != null ? Number(item.returnable_qty) : Math.max(0, qty - returned));
             var unitPrice = item.unitPrice != null ? Number(item.unitPrice)
                 : (item.unit_price != null ? Number(item.unit_price) : 0);
             var total = item.totalAmount != null ? Number(item.totalAmount)
@@ -2687,9 +2709,10 @@
             if ((!total || total <= 0) && qty > 0 && unitPrice > 0) {
                 total = Math.round(qty * unitPrice * 100) / 100;
             }
+            var netTotal = returned > 0 ? Math.round(Math.max(0, qty - returned) * unitPrice * 100) / 100 : total;
             var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit
-                || getProductUnitById(item.productId) || '件';
-            return { qty: qty, unitPrice: unitPrice, total: total, unit: unit };
+                || getProductUnitById(item.productId || item.product_id) || '件';
+            return { qty: qty, returnableQty: returnable, returnedQty: returned, unitPrice: unitPrice, total: total, netTotal: netTotal, unit: unit };
         }
 
         function sumOrderItemsTotal(items) {
@@ -4327,6 +4350,7 @@
             }
         }
         window.openOrderDetailModal = openOrderDetailModal;
+        window.loadOrderDetailContent = loadOrderDetailContent;
 
         // 关闭订单详情模态框
         function closeOrderDetail() {
@@ -4362,6 +4386,14 @@
 
         // 切换主标签页
         function switchTab(tabName) {
+            try {
+                var embedded = (window.self !== window.top)
+                    || (new URLSearchParams(window.location.search).get('embed') === '1');
+                if (embedded && tabName !== 'dashboard') {
+                    window.parent.postMessage({ type: 'TM_SHELL_SWITCH_TAB', tab: tabName }, '*');
+                    return;
+                }
+            } catch (e) { /* ignore */ }
             try {
                 // 根据 tabName 跳转到对应的物理路径
                 switch (tabName) {
@@ -5442,7 +5474,7 @@
     </script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
     <script src="../../assets/js/ui-sales-orders.js?v=20260623"></script>
-    <script src="../../assets/js/ui-returns.js?v=20260623"></script>
+    <script src="../../assets/js/ui-returns.js?v=20260625"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
     <script src="../../assets/js/dashboard-workbench.js?v=20260601audit"></script>

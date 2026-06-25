@@ -579,20 +579,14 @@
     };
 
     window.TM_openCrmOrderDetail = function (orderId) {
-        if (typeof window.switchTab === 'function') {
-            window.switchTab('dashboard');
-        }
-        var attempts = 0;
-        function tryOpen() {
-            attempts += 1;
-            if (typeof window.openOrderDetailModal === 'function') {
-                window.openOrderDetailModal(orderId, {});
+        try {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'TM_OPEN_ORDER_DETAIL', orderId: orderId }, '*');
                 return;
             }
-            if (attempts < 20) {
-                setTimeout(tryOpen, 300);
-            }
+        } catch (e) { /* ignore */ }
+        if (typeof window.TM_openOrderDetailFromShell === 'function') {
+            window.TM_openOrderDetailFromShell(orderId);
         }
-        setTimeout(tryOpen, 400);
     };
 })();
