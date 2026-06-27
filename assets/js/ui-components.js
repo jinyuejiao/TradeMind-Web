@@ -232,7 +232,7 @@
             } else if (currentPath.includes('/product-center/')) {
                 pageTitle = '产品中心';
             } else if (currentPath.includes('/supply-chain/')) {
-                pageTitle = '供应商管理';
+                pageTitle = '供货管理';
             }
             
             // 注入移动端顶部导航

@@ -1551,7 +1551,7 @@ function tmQuotaFeatureLines(q) {
         ['max_users', 'ph-user', '个账号'],
         ['max_products', 'ph-package', '个产品数量管理'],
         ['max_customers', 'ph-address-book', '个客户管理'],
-        ['max_suppliers', 'ph-warehouse', '个供应商管理']
+        ['max_suppliers', 'ph-warehouse', '个供货管理']
     ];
     var rows = [];
     for (var i = 0; i < pairs.length; i++) {
@@ -2500,7 +2500,7 @@ window.injectCommonUI = function() {
                 } else if (currentPath.includes('/product-center/')) {
                     pageTitle = '产品中心';
                 } else if (currentPath.includes('/supply-chain/')) {
-                    pageTitle = '供应商管理';
+                    pageTitle = '供货管理';
                 } else {
                     pageTitle = '商贸智脑';
                 }

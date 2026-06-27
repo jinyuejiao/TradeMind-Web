@@ -47,9 +47,17 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    function canonicalOrderStatus(st) {
+        if (window.TM_OrderDict && typeof window.TM_OrderDict.toCanonicalOrderStatusCode === 'function') {
+            return window.TM_OrderDict.toCanonicalOrderStatusCode(st);
+        }
+        return String(st || '').trim().toUpperCase().replace(/_/g, '');
+    }
+
     function returnableStatus(st) {
-        var s = String(st || '').toUpperCase();
-        return s === 'D010003' || s === 'D010006' || s === 'D010005' || s === 'SHIPPED' || s === 'PARTIAL_SHIPPED';
+        var s = canonicalOrderStatus(st);
+        return s === 'D010003' || s === 'D010004' || s === 'D010006' || s === 'D010005'
+            || s === 'SHIPPED' || s === 'PARTIALSHIPPED' || s === 'RECEIVED' || s === 'COMPLETED';
     }
 
     function ensureModals() {
@@ -149,16 +157,17 @@
 
     function patchDetailItemsRender() {
         if (_patched) return;
-        if (typeof window.renderDetailOrderItems === 'function') {
+        if (typeof window.renderDetailOrderItems !== 'function') return;
+        var orig = window.renderDetailOrderItems;
+        if (orig.__tmReturnsWrapped) {
             _patched = true;
             return;
         }
-        var orig = window.__TM_renderDetailOrderItems;
-        if (typeof orig !== 'function') return;
-        window.__TM_renderDetailOrderItems = function (items) {
+        window.renderDetailOrderItems = function (items) {
             orig(items);
             injectReturnColumns(items);
         };
+        window.renderDetailOrderItems.__tmReturnsWrapped = true;
         _patched = true;
     }
 
@@ -195,6 +204,16 @@
         document.querySelectorAll('#order-detail-modal .detail-return-col').forEach(function (el) {
             el.classList.toggle('hidden', !ok);
         });
+        var hintEl = document.getElementById('detail-order-return-hint');
+        if (hintEl) {
+            if (st && !ok) {
+                hintEl.classList.remove('hidden');
+                hintEl.textContent = '当前订单状态不可申请退货（需全部发货、部分发货或已签收）';
+            } else {
+                hintEl.classList.add('hidden');
+                hintEl.textContent = '';
+            }
+        }
     }
 
     function returnableQty(item) {

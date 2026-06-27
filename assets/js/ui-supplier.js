@@ -92,7 +92,10 @@ window.SupplierModule = {
             this.loadPurchases(),
             this.loadProducts(),
             this.loadAccounts(),
-            this.loadWarehouses()
+            this.loadWarehouses(),
+            window.TM_OrderDict && typeof window.TM_OrderDict.ensureSupplierReturnDictLoaded === 'function'
+                ? window.TM_OrderDict.ensureSupplierReturnDictLoaded()
+                : Promise.resolve()
         ]);
         this.renderSuppliers();
         this.renderPurchases();
@@ -2364,6 +2367,13 @@ window.SupplierModule = {
         }
     },
 
+    supplierReturnStatusLabel: function (code) {
+        if (window.TM_OrderDict && typeof window.TM_OrderDict.supplierReturnStatusLabel === 'function') {
+            return window.TM_OrderDict.supplierReturnStatusLabel(code);
+        }
+        return code || '—';
+    },
+
     renderSupplierReturns(data) {
         var container = document.getElementById('supplier-returns-list');
         if (!container) return;
@@ -2373,15 +2383,117 @@ window.SupplierModule = {
             return;
         }
         var fmt = typeof window.TM_formatCNY === 'function' ? window.TM_formatCNY : function (v) { return '¥' + Number(v || 0).toFixed(2); };
+        var self = this;
         container.innerHTML = records.map(function (r) {
-            var code = r.return_code || r.returnCode || ('SR-' + (r.supplier_return_id || r.supplierReturnId));
-            var st = r.status || '—';
-            return '<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">'
-                + '<div class="flex justify-between gap-2"><div><p class="text-sm font-bold text-slate-800">' + code + '</p>'
-                + '<p class="text-[10px] text-slate-400">' + (r.supplier_name || r.supplierName || '') + '</p></div>'
-                + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">' + st + '</span></div>'
+            var rid = r.supplier_return_id || r.supplierReturnId;
+            var code = r.return_code || r.returnCode || ('SR-' + rid);
+            var stLabel = self.supplierReturnStatusLabel(r.status);
+            var supName = r.supplier_name || r.supplierName || '';
+            return '<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm cursor-pointer hover:border-violet-200 transition-colors group" data-supplier-return-id="' + rid + '" role="button" tabindex="0">'
+                + '<div class="flex justify-between gap-2"><div class="min-w-0"><p class="text-sm font-bold text-slate-800 truncate">' + code + '</p>'
+                + '<p class="text-[10px] text-slate-400 truncate">' + supName + '</p></div>'
+                + '<div class="flex items-center gap-1 shrink-0"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">' + stLabel + '</span>'
+                + '<i class="ph ph-caret-right text-slate-300 group-hover:text-violet-500"></i></div></div>'
                 + '<p class="mt-2 text-xs font-mono font-bold text-brand-600">' + fmt(r.total_amount || r.totalAmount) + '</p></div>';
         }).join('');
+        container.querySelectorAll('[data-supplier-return-id]').forEach(function (el) {
+            var openDetail = function () {
+                var id = parseInt(el.getAttribute('data-supplier-return-id'), 10);
+                if (id) self.openSupplierReturnDetail(id);
+            };
+            el.addEventListener('click', openDetail);
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDetail();
+                }
+            });
+        });
+    },
+
+    openSupplierReturnDetail: async function (returnId) {
+        if (!returnId) return;
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/supplier-returns/' + returnId, { method: 'GET' });
+            if (!resp.ok) throw new Error('加载失败（HTTP ' + resp.status + '）');
+            var result = await resp.json();
+            if (!result.success || !result.data) throw new Error(result.message || '无数据');
+            var sr = result.data;
+            var codeEl = document.getElementById('detail-supplier-return-code');
+            var metaEl = document.getElementById('detail-supplier-return-meta');
+            var statusEl = document.getElementById('detail-supplier-return-status');
+            var remarkEl = document.getElementById('detail-supplier-return-remark');
+            var code = sr.return_code || sr.returnCode || ('SR-' + returnId);
+            if (codeEl) codeEl.textContent = code;
+            if (metaEl) {
+                var created = sr.create_time || sr.createTime || '';
+                metaEl.textContent = (sr.supplier_name || sr.supplierName || '') + (created ? (' · ' + String(created).replace('T', ' ').slice(0, 16)) : '');
+            }
+            if (statusEl) statusEl.textContent = this.supplierReturnStatusLabel(sr.status);
+            if (remarkEl) {
+                var remark = sr.remark || '';
+                if (remark) {
+                    remarkEl.textContent = '备注：' + remark;
+                    remarkEl.classList.remove('hidden');
+                } else {
+                    remarkEl.classList.add('hidden');
+                    remarkEl.textContent = '';
+                }
+            }
+            var tbody = document.getElementById('detail-supplier-return-items-body');
+            var items = sr.items || [];
+            var total = 0;
+            var fmt = typeof window.TM_formatCNY === 'function' ? window.TM_formatCNY : function (v) { return '¥' + Number(v || 0).toFixed(2); };
+            if (tbody) {
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-5 py-6 text-center text-slate-400">暂无明细</td></tr>';
+                } else {
+                    tbody.innerHTML = items.map(function (it) {
+                        var qty = Number(it.quantity || 0);
+                        var price = Number(it.unit_price != null ? it.unit_price : (it.unitPrice || 0));
+                        var sub = it.total_amount != null ? Number(it.total_amount) : qty * price;
+                        total += sub;
+                        var pname = it.product_name || it.productName || ('产品#' + (it.product_id || it.productId || ''));
+                        return '<tr><td class="px-5 py-3 font-bold">' + pname + '</td>'
+                            + '<td class="px-5 py-3 text-center font-mono">' + fmt(price) + '</td>'
+                            + '<td class="px-5 py-3 text-center font-mono">' + qty + '</td>'
+                            + '<td class="px-5 py-3 text-right font-mono font-bold">' + fmt(sub) + '</td></tr>';
+                    }).join('');
+                }
+            }
+            if (sr.total_amount != null || sr.totalAmount != null) {
+                total = Number(sr.total_amount != null ? sr.total_amount : sr.totalAmount);
+            }
+            var totEl = document.getElementById('detail-supplier-return-total');
+            if (totEl) totEl.textContent = fmt(total);
+            var modal = document.getElementById('supplier-return-detail-modal');
+            if (modal) {
+                if (typeof window.TM_openUnifiedModal === 'function') {
+                    window.TM_openUnifiedModal(modal);
+                } else if (typeof window.TM_applyDialogShell === 'function') {
+                    window.TM_applyDialogShell(modal);
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    modal.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+        } catch (e) {
+            console.error('openSupplierReturnDetail:', e);
+            alert(e.message || '加载退厂单详情失败');
+        }
+    },
+
+    closeSupplierReturnDetail: function () {
+        var modal = document.getElementById('supplier-return-detail-modal');
+        if (!modal) return;
+        if (typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
     },
 
     openSupplierReturnModal: async function () {
@@ -2459,3 +2571,5 @@ window.deletePurchase = function(purchaseId) { window.SupplierModule.deletePurch
 window.openSupplierReturnModal = function() { window.SupplierModule.openSupplierReturnModal(); };
 window.closeSupplierReturnModal = function() { window.SupplierModule.closeSupplierReturnModal(); };
 window.submitSupplierReturn = function() { window.SupplierModule.submitSupplierReturn(); };
+window.openSupplierReturnDetail = function(id) { window.SupplierModule.openSupplierReturnDetail(id); };
+window.closeSupplierReturnDetail = function() { window.SupplierModule.closeSupplierReturnDetail(); };

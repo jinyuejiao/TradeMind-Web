@@ -38,6 +38,9 @@
     }
 
     function statusLabel(code) {
+        if (window.TM_OrderDict && typeof window.TM_OrderDict.orderStatusLabel === 'function') {
+            return window.TM_OrderDict.orderStatusLabel(code);
+        }
         var map = window.TM_ORDER_STATUS_MAP || {};
         return map[code] || code || '—';
     }
@@ -65,7 +68,13 @@
         if (salesPanel) salesPanel.classList.toggle('hidden', view !== 'sales-orders');
         if (returnsPanel) returnsPanel.classList.toggle('hidden', view !== 'returns');
         setTabStyles(toggle, view);
-        if (view === 'sales-orders') loadSalesOrders(1);
+        if (view === 'sales-orders') {
+            var dictP = window.TM_OrderDict && window.TM_OrderDict.ensureOrderDictLoaded
+                ? window.TM_OrderDict.ensureOrderDictLoaded()
+                : Promise.resolve();
+            dictP.then(function () { loadSalesOrders(1); });
+            return;
+        }
         if (view === 'returns' && window.TM_Returns && window.TM_Returns.loadList) {
             window.TM_Returns.loadList(1);
         }
@@ -157,6 +166,9 @@
             searchBtn.addEventListener('click', function () { loadSalesOrders(1); });
         }
         _bound = true;
+        if (window.TM_OrderDict && typeof window.TM_OrderDict.ensureOrderDictLoaded === 'function') {
+            window.TM_OrderDict.ensureOrderDictLoaded();
+        }
     }
 
     window.TM_SalesOrders = { load: loadSalesOrders, init: initSalesOrdersView, switchView: switchView };

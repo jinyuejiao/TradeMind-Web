@@ -200,7 +200,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|ui-sales-orders\.js|ui-returns\.js/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|tm-order-dict\.js|ui-sales-orders\.js|ui-returns\.js/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -611,7 +611,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260625feat', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260625supply', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -727,7 +727,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260625poembed',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260625supply',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -743,7 +743,7 @@ const TM_NAV_CONFIG = [
     { tab: 'biz', label: '智能经营', mobileLabel: '经营', icon: 'ph-chart-line-up' },
     { tab: 'crm', label: '客户 CRM', mobileLabel: '客户', icon: 'ph-users' },
     { tab: 'supply', label: '产品中心', mobileLabel: '产研', icon: 'ph-flask' },
-    { tab: 'supplier', label: '供应商管理', mobileLabel: '供应', icon: 'ph-warehouse' }
+    { tab: 'supplier', label: '供货管理', mobileLabel: '供货', icon: 'ph-warehouse' }
 ];
 
 const TM_OPS_NAV_CONFIG = [
@@ -1704,7 +1704,7 @@ function switchTab(tabId) {
         window.TM_Responsive.syncMobileNav(tabId);
     }
 
-    const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供应商管理' };
+    const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供货管理' };
     if (document.getElementById('page-title')) document.getElementById('page-title').innerText = titles[tabId];
     document.getElementById('content-area').scrollTop = 0;
     try {
@@ -3019,7 +3019,7 @@ function closeNewProductReport() {
 }
 
 // 产品中心由 ui-product-center.js（ProductModule）提供；主壳不再内嵌模拟数据或重复 window.* 绑定。
-// --- 供应商管理交互逻辑 ---
+// --- 供货管理交互逻辑 ---
 
 
 // --- 供应商视图切换 ---

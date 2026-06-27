@@ -2285,7 +2285,7 @@ window.ProductModule = {
             var result = await window.handleApiResponse(response);
             if (!result) return;
             if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('进货单已生成（待审核），可在供应商管理中查看', 'success');
+                window.TM_UI.showNotification('进货单已生成（待审核），可在供货管理中查看', 'success');
             }
             self.removePurchaseGenSupplierGroup(supplierId);
             window.dispatchEvent(new CustomEvent('tm-purchases-changed'));

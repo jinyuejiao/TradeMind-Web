@@ -26,7 +26,7 @@
             padding-bottom: 0 !important;
         }
     </style>
-    <title>TradeMind 商贸智脑 - 供应商管理</title>
+    <title>TradeMind 商贸智脑 - 供货管理</title>
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -60,7 +60,8 @@
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526po"></script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
-    <script src="../../assets/js/ui-supplier.js?v=20260625"></script>
+    <script src="../../assets/js/tm-order-dict.js?v=20260625"></script>
+    <script src="../../assets/js/ui-supplier.js?v=20260625supply"></script>
     <style>
         .view-toggle-btn { transition: all 0.2s ease; }
         .view-toggle-btn.active {
@@ -83,7 +84,7 @@
             <button onclick="switchTab('biz')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-chart-line-up text-xl mr-3"></i><span class="text-sm font-medium">智能经营</span></button>
             <button onclick="switchTab('crm')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-users text-xl mr-3"></i><span class="text-sm font-medium">客户 CRM</span></button>
             <button onclick="switchTab('supply')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"><i class="ph ph-flask text-xl mr-3"></i><span class="text-sm font-medium">产品中心</span></button>
-            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-white bg-slate-800 rounded-lg transition-all active-nav border-l-4 border-[#14B8A6]"><i class="ph ph-warehouse text-xl mr-3"></i><span class="text-sm font-medium">供应商管理</span></button>
+            <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-white bg-slate-800 rounded-lg transition-all active-nav border-l-4 border-[#14B8A6]"><i class="ph ph-warehouse text-xl mr-3"></i><span class="text-sm font-medium">供货管理</span></button>
         </nav>
     </aside>
 
@@ -91,7 +92,7 @@
         <header class="hidden md:flex h-14 md:h-16 bg-white/90 backdrop-blur border-b border-slate-200 items-center justify-between px-4 md:px-8 sticky top-0 z-30 flex-shrink-0">
             <div class="flex items-center px-3 py-1 bg-slate-100 border border-slate-200 rounded-full">
                 <span class="w-2 h-2 bg-brand-500 rounded-full mr-2 tech-pulse"></span>
-                <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">供应商管理</span>
+                <span class="text-xs font-bold text-slate-600 tracking-wide" id="page-title">供货管理</span>
             </div>
             <button type="button" class="tm-header-icon-btn text-slate-400 hover:text-brand-600 transition" onclick="typeof TM_MerchantFeedback!=='undefined'&&TM_MerchantFeedback.open()" title="问题与建议" aria-label="问题与建议"><i class="ph ph-chat-circle-dots text-xl"></i></button>
         </header>
@@ -132,7 +133,7 @@
 
                 <div id="supplier-tab-supplier" class="supplier-tab-content hidden space-y-4">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">供应商管理</h3>
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">供应商档案</h3>
                         <button onclick="openSupplierModal()" class="bg-[#14B8A6] hover:bg-[#0D9488] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors">
                             <i class="ph ph-plus"></i> 新增供应商
                         </button>
@@ -215,6 +216,49 @@
             <div class="px-5 py-4 border-t border-slate-100 flex gap-3">
                 <button type="button" onclick="closeSupplierReturnModal()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold">取消</button>
                 <button type="button" onclick="submitSupplierReturn()" class="tm-btn-primary flex-[1.4] py-3 text-xs font-black">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="supplier-return-detail-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+        <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeSupplierReturnDetail()"></div>
+        <div class="tm-dialog-panel relative bg-white w-full max-w-4xl h-full max-h-[85vh] md:h-auto md:max-h-[90vh] rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box text-left">
+            <div class="px-5 py-4 md:px-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 bg-violet-500 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0"><i class="ph ph-arrow-u-up-left text-xl"></i></div>
+                    <div class="min-w-0">
+                        <h2 class="text-sm font-bold text-slate-800 truncate" id="detail-supplier-return-code">退厂单详情</h2>
+                        <p class="text-[9px] text-slate-400 font-medium uppercase tracking-tighter truncate" id="detail-supplier-return-meta">—</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSupplierReturnDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 md:p-8 no-scrollbar space-y-4">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span id="detail-supplier-return-status" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700">—</span>
+                </div>
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100/50 text-slate-400 font-black uppercase tracking-widest">
+                            <tr><th class="px-5 py-3">产品</th><th class="px-5 py-3 text-center">单价</th><th class="px-5 py-3 text-center">数量</th><th class="px-5 py-3 text-right">小计</th></tr>
+                        </thead>
+                        <tbody id="detail-supplier-return-items-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                    </table>
+                </div>
+                <div class="tm-order-total-card">
+                    <div class="tm-order-total-card__watermark" aria-hidden="true"><i class="ph ph-currency-cny"></i></div>
+                    <div class="tm-order-total-card__text">
+                        <p class="tm-order-total-card__title">退厂单合计</p>
+                        <p class="tm-order-total-card__subtitle">系统自动计算</p>
+                    </div>
+                    <div class="tm-order-total-card__amount-wrap">
+                        <span class="tm-order-total-card__amount" id="detail-supplier-return-total">¥0.00</span>
+                    </div>
+                </div>
+                <p id="detail-supplier-return-remark" class="hidden text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-100 px-4 py-3"></p>
+            </div>
+            <div class="tm-modal-footer-safe p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
+                <button type="button" onclick="closeSupplierReturnDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">关闭</button>
             </div>
         </div>
     </div>

@@ -241,7 +241,7 @@
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供货管理</span>
             </button>
         </nav>
         <!-- 用户信息区域 -->
@@ -426,16 +426,16 @@
                 </div>
             </div>
 
-            <!-- ================= [5] 供应商管理 ================= -->
+            <!-- ================= [5] 供货管理 ================= -->
             <div id="view-supplier" class="view-section w-full p-4 md:p-8 space-y-6 fade-in hidden">
                 <div class="flex flex-col md:flex-row md:items-end justify-between">
                     <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">供应商管理</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">供货管理</h1>
                         <p class="text-xs md:text-sm text-slate-500 mt-1">供应商信息与采购管理</p>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-slate-500">供应商管理模块内容</p>
+                    <p class="text-slate-500">供货管理模块内容</p>
                 </div>
             </div>
         </div>
@@ -819,6 +819,7 @@
                     </div>
                 </details>
             </div>
+            <div id="detail-order-return-hint" class="hidden mx-4 mb-1 md:mx-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 shrink-0" role="status"></div>
             <div class="tm-mobile-modal-footer tm-product-edit-footer p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
                 <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">返回工作台</button>
                 <button type="button" id="detail-apply-return-btn" onclick="TM_Returns && TM_Returns.openCreateFromDetail()" class="hidden tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px] text-amber-700 border-amber-200">申请退货</button>
@@ -3123,12 +3124,22 @@
                 normalized.sort(function (a, b) { return a.sort - b.sort; });
                 orderStatusDictMap = map;
                 orderStatusDictList = normalized;
+                if (window.TM_OrderDict && typeof window.TM_OrderDict.publishOrderMap === 'function') {
+                    window.TM_OrderDict.publishOrderMap(map);
+                } else {
+                    window.TM_ORDER_STATUS_MAP = Object.assign({}, TM_ORDER_STATUS_FALLBACK, map);
+                }
                 populateOrderStatusSelects();
             })
             .catch(error => {
                 console.warn('加载订单状态字典失败，使用状态码显示:', error);
                 orderStatusDictMap = Object.assign({}, TM_ORDER_STATUS_FALLBACK);
                 orderStatusDictList = getAllOrderStatusOptions();
+                if (window.TM_OrderDict && typeof window.TM_OrderDict.publishOrderMap === 'function') {
+                    window.TM_OrderDict.publishOrderMap(orderStatusDictMap);
+                } else {
+                    window.TM_ORDER_STATUS_MAP = Object.assign({}, orderStatusDictMap);
+                }
                 populateOrderStatusSelects();
             });
         }
@@ -3343,7 +3354,13 @@
             if (!auditProductRegistryReady || root.dataset.tmProductMounted !== '1') {
                 auditProductRegistryReady = window.TmProductRegistry.mount(root);
             }
-            return auditProductRegistryReady;
+            return auditProductRegistryReady.then(function () {
+                var PM = window.ProductModule;
+                if (PM && typeof PM.loadProductCapabilities === 'function') {
+                    return PM.loadProductCapabilities();
+                }
+                return null;
+            });
         }
 
         function showAuditOrderError(message, opts) {
@@ -4335,9 +4352,17 @@
 
             var itemsRes = await window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/items', {
                 method: 'GET', headers: { 'Content-Type': 'application/json' }
-            }).then(function (r) { return r.json(); }).catch(function () { return null; });
+            }).then(function (r) { return r.json(); }).catch(function (err) {
+                return { success: false, message: err && err.message ? err.message : '网络错误' };
+            });
 
             var items = itemsRes && itemsRes.success && Array.isArray(itemsRes.data) ? itemsRes.data : [];
+            if (itemsRes && !itemsRes.success) {
+                if (hintEl) {
+                    hintEl.classList.remove('hidden');
+                    hintEl.textContent = '加载订单明细失败：' + (itemsRes.message || '请检查服务与数据库迁移（returned_qty 字段）');
+                }
+            }
             syncOrderHeaderTotalFromItems(order, items);
             currentDetailOrder = order;
             if (window.TM_Returns && window.TM_Returns.patchDetailItemsRender) {
@@ -4347,6 +4372,9 @@
             updateDetailRemainingHint(order);
             if (window.TM_Returns && window.TM_Returns.syncDetailReturnUi) {
                 window.TM_Returns.syncDetailReturnUi(order);
+            }
+            if (window.TM_Returns && window.TM_Returns.injectReturnColumns) {
+                window.TM_Returns.injectReturnColumns(items);
             }
         }
         window.openOrderDetailModal = openOrderDetailModal;
@@ -5473,7 +5501,8 @@
         }
     </script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
-    <script src="../../assets/js/ui-sales-orders.js?v=20260623"></script>
+    <script src="../../assets/js/tm-order-dict.js?v=20260625"></script>
+    <script src="../../assets/js/ui-sales-orders.js?v=20260625"></script>
     <script src="../../assets/js/ui-returns.js?v=20260625"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>

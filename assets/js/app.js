@@ -280,7 +280,7 @@ function updatePageTitle(tabName) {
         supply: '产研供应链',
         marketing: '营销中心',
         intelligent: '智能经营',
-        supplier: '供应商管理'
+        supplier: '供货管理'
     };
     
     const pageTitle = document.getElementById('page-title');
