@@ -156,15 +156,21 @@
     }
 
     function patchDetailItemsRender() {
-        if (_patched) return;
-        if (typeof window.renderDetailOrderItems !== 'function') return;
-        var orig = window.renderDetailOrderItems;
-        if (orig.__tmReturnsWrapped) {
+        var core = window.__TM_renderDetailOrderItems;
+        if (typeof core !== 'function') {
+            if (typeof window.renderDetailOrderItems === 'function' && !window.renderDetailOrderItems.__tmReturnsWrapped) {
+                core = window.renderDetailOrderItems;
+                window.__TM_renderDetailOrderItems = core;
+            } else {
+                return;
+            }
+        }
+        if (window.renderDetailOrderItems && window.renderDetailOrderItems.__tmReturnsWrapped) {
             _patched = true;
             return;
         }
         window.renderDetailOrderItems = function (items) {
-            orig(items);
+            core(items);
             injectReturnColumns(items);
         };
         window.renderDetailOrderItems.__tmReturnsWrapped = true;
@@ -172,13 +178,18 @@
     }
 
     function injectReturnColumns(items) {
-        var show = document.getElementById('detail-apply-return-btn') &&
-            !document.getElementById('detail-apply-return-btn').classList.contains('hidden');
+        var detailModal = document.getElementById('order-detail-modal');
+        var btn = detailModal
+            ? detailModal.querySelector('#detail-apply-return-btn')
+            : document.getElementById('detail-apply-return-btn');
+        var show = btn && !btn.classList.contains('hidden');
         document.querySelectorAll('#order-detail-modal .detail-return-col').forEach(function (th) {
             th.classList.toggle('hidden', !show);
         });
         if (!show || !items || !items.length) return;
-        var tbody = document.getElementById('detail-order-items-body');
+        var tbody = detailModal
+            ? detailModal.querySelector('#detail-order-items-body')
+            : document.getElementById('detail-order-items-body');
         if (!tbody) return;
         tbody.querySelectorAll('tr.order-item-row').forEach(function (tr, idx) {
             if (tr.querySelector('.detail-return-col')) return;
@@ -196,7 +207,10 @@
 
     function syncDetailReturnUi(order) {
         ensureModals();
-        var btn = document.getElementById('detail-apply-return-btn');
+        var detailModal = document.getElementById('order-detail-modal');
+        var btn = detailModal
+            ? detailModal.querySelector('#detail-apply-return-btn')
+            : document.getElementById('detail-apply-return-btn');
         if (!btn) return;
         var st = order && (order.orderStatus || order.order_status);
         var ok = returnableStatus(st);
@@ -204,7 +218,9 @@
         document.querySelectorAll('#order-detail-modal .detail-return-col').forEach(function (el) {
             el.classList.toggle('hidden', !ok);
         });
-        var hintEl = document.getElementById('detail-order-return-hint');
+        var hintEl = detailModal
+            ? detailModal.querySelector('#detail-order-return-hint')
+            : document.getElementById('detail-order-return-hint');
         if (hintEl) {
             if (st && !ok) {
                 hintEl.classList.remove('hidden');
@@ -214,6 +230,161 @@
                 hintEl.textContent = '';
             }
         }
+    }
+
+    function repairModalOverlayState() {
+        var anyOpen = false;
+        try {
+            document.querySelectorAll('.tm-unified-mobile-modal, .tm-product-edit-modal, #member-modal').forEach(function (el) {
+                if (!el || el.classList.contains('hidden')) return;
+                if (el.getAttribute('aria-hidden') === 'true') return;
+                var st = window.getComputedStyle(el);
+                if (st && st.display !== 'none' && st.visibility !== 'hidden' && parseFloat(st.opacity) !== 0) {
+                    anyOpen = true;
+                }
+            });
+        } catch (e) { /* ignore */ }
+        if (!anyOpen) {
+            if (typeof window.TM_ensureShellOverlayVisible === 'function') {
+                window.TM_ensureShellOverlayVisible();
+            } else if (typeof window.TM_resetShellOverlay === 'function') {
+                window.TM_resetShellOverlay();
+            }
+            document.body.style.overflow = '';
+            document.documentElement.classList.remove('tm-embed-modal-open');
+            document.body.classList.remove('tm-embed-modal-open');
+        } else if (typeof window.TM_reconcileShellOverlay === 'function') {
+            window.TM_reconcileShellOverlay();
+        }
+    }
+
+    function returnRefundHint(r) {
+        var st = String(r.return_status || r.returnStatus || r.status || '').toUpperCase();
+        var fin = String(r.fin_status || r.finStatus || 'UNPAID').toUpperCase();
+        if (st.indexOf('D018001') === 0 || st === 'DRAFT') return '草稿，尚未进入收货流程';
+        if (st.indexOf('D018002') === 0 || st === 'PENDING_RECEIVE') return '待收货：验收完成后可冲减收款';
+        if (st.indexOf('D018003') === 0 || st === 'INSPECTING') return '验收中：完成后可冲减收款';
+        if (st.indexOf('D018004') === 0 || st === 'COMPLETED') {
+            if (fin === 'SETTLED' || fin === 'REFUNDED' || fin === 'D021003') return '退款/冲账已完成';
+            return '验收已完成：请在订单详情「仓库·收款」冲减已收';
+        }
+        if (st.indexOf('D018005') === 0 || st === 'REJECTED') return '已拒收，不涉及退款';
+        if (st.indexOf('D018006') === 0 || st === 'VOIDED') return '已作废';
+        return '商品退回入库后，冲减订单应收或已收款项';
+    }
+
+    function returnFinLabel(code) {
+        var fin = String(code || 'UNPAID').toUpperCase();
+        if (fin === 'SETTLED' || fin === 'D021003') return '已冲账';
+        if (fin === 'PARTIAL' || fin === 'D021002') return '部分冲账';
+        if (fin === 'REFUNDED') return '已退款';
+        return '待冲账';
+    }
+
+    function loadDetailReturnsSummary(orderId, order, items) {
+        var detailModal = document.getElementById('order-detail-modal');
+        var section = detailModal
+            ? detailModal.querySelector('#detail-order-returns-section')
+            : document.getElementById('detail-order-returns-section');
+        var summaryEl = detailModal
+            ? detailModal.querySelector('#detail-order-returns-summary')
+            : document.getElementById('detail-order-returns-summary');
+        var listEl = detailModal
+            ? detailModal.querySelector('#detail-order-returns-list')
+            : document.getElementById('detail-order-returns-list');
+        var viewAllBtn = detailModal
+            ? detailModal.querySelector('#detail-view-all-returns-btn')
+            : document.getElementById('detail-view-all-returns-btn');
+        if (!section || !summaryEl || !listEl) return;
+
+        order = order || {};
+        items = items || [];
+        var returnedAmt = parseFloat(order.returned_amount != null ? order.returned_amount : (order.returnedAmount || 0)) || 0;
+        var returnedQty = 0;
+        items.forEach(function (it) {
+            var rq = it.returned_qty != null ? it.returned_qty : (it.returnedQty || 0);
+            returnedQty += parseInt(rq, 10) || 0;
+        });
+
+        if (!orderId) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        var summaryParts = [];
+        if (returnedQty > 0) summaryParts.push('已退货 ' + returnedQty + ' 件');
+        if (returnedAmt > 0) summaryParts.push('扣减金额 ' + fmtMoney(returnedAmt));
+
+        apiFetch('GET', '/returns?orderId=' + encodeURIComponent(orderId) + '&pageNo=1&pageSize=20').then(function (res) {
+            var records = res && res.success && res.data && res.data.records ? res.data.records : [];
+            var hasReturns = records.length > 0 || returnedAmt > 0 || returnedQty > 0;
+            section.classList.toggle('hidden', !hasReturns);
+            if (viewAllBtn) viewAllBtn.classList.toggle('hidden', !records.length);
+
+            if (hasReturns) {
+                summaryEl.classList.remove('hidden');
+                var total = parseFloat(order.total_amount != null ? order.total_amount : (order.totalAmount || 0)) || 0;
+                var net = Math.max(0, total - returnedAmt);
+                summaryEl.innerHTML = ''
+                    + '<div class="flex flex-wrap items-center gap-2 mb-1.5">'
+                    + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">销售退货</span>'
+                    + '<span class="text-[10px] text-slate-400">非换货</span></div>'
+                    + '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-700">'
+                    + (returnedQty > 0 ? ('<div><p class="text-[10px] text-slate-400">累计退货</p><p class="font-bold">' + returnedQty + ' 件</p></div>') : '')
+                    + (returnedAmt > 0 ? ('<div><p class="text-[10px] text-slate-400">扣减金额</p><p class="font-mono font-bold text-amber-700">' + fmtMoney(returnedAmt) + '</p></div>') : '')
+                    + (returnedAmt > 0 ? ('<div><p class="text-[10px] text-slate-400">当前应收</p><p class="font-mono font-bold">' + fmtMoney(net) + '</p></div>') : '')
+                    + (records.length ? ('<div><p class="text-[10px] text-slate-400">退货单</p><p class="font-bold">' + records.length + ' 笔</p></div>') : '')
+                    + '</div>'
+                    + (summaryParts.length ? ('<p class="text-[10px] text-slate-500 mt-1.5">' + esc(summaryParts.join(' · ')) + '</p>') : '');
+            } else {
+                summaryEl.classList.add('hidden');
+                summaryEl.innerHTML = '';
+            }
+
+            if (!records.length) {
+                listEl.innerHTML = returnedAmt > 0 || returnedQty > 0
+                    ? '<p class="text-[11px] text-slate-400">订单已有退货汇总，关联退货单尚未同步或加载中。</p>'
+                    : '';
+                return;
+            }
+
+            listEl.innerHTML = records.map(function (r) {
+                var code = r.return_code || r.returnCode || ('RT-' + (r.return_id || r.returnId));
+                var st = returnStatusLabel(r.return_status || r.returnStatus || r.status);
+                var fin = returnFinLabel(r.fin_status || r.finStatus);
+                var refundHint = returnRefundHint(r);
+                var amt = fmtMoney(r.total_amount != null ? r.total_amount : r.totalAmount);
+                var dt = String(r.create_time || r.createTime || '').replace('T', ' ').slice(0, 16);
+                return '<div class="rounded-xl border border-slate-100 bg-white px-3 py-2.5 space-y-1.5">'
+                    + '<div class="flex justify-between gap-2 items-start">'
+                    + '<div class="min-w-0 flex-1">'
+                    + '<p class="text-xs font-bold text-slate-800 truncate">' + esc(code) + '</p>'
+                    + '<p class="text-[10px] text-slate-400">' + esc(dt) + ' · 类型：销售退货</p>'
+                    + '</div>'
+                    + '<div class="text-right shrink-0">'
+                    + '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">' + esc(st) + '</span>'
+                    + '<p class="text-xs font-mono font-bold text-slate-700 mt-0.5">退货 ' + amt + '</p>'
+                    + '</div></div>'
+                    + '<div class="flex flex-wrap items-center gap-2 text-[10px]">'
+                    + '<span class="px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-bold">退款 ' + esc(fin) + '</span>'
+                    + '<span class="text-slate-500">' + esc(refundHint) + '</span>'
+                    + '</div></div>';
+            }).join('');
+        }).catch(function () {
+            section.classList.toggle('hidden', !(returnedAmt > 0 || returnedQty > 0));
+            if (returnedAmt > 0 || returnedQty > 0) {
+                summaryEl.classList.remove('hidden');
+                summaryEl.innerHTML = '<p class="text-slate-600">' + esc(summaryParts.join(' · ') || '已有退货记录') + '</p>';
+            }
+            listEl.innerHTML = '<p class="text-[11px] text-red-400">加载关联退货单失败</p>';
+        });
+    }
+
+    function returnStatusLabel(code) {
+        if (window.TM_OrderDict && typeof window.TM_OrderDict.returnStatusLabel === 'function') {
+            return window.TM_OrderDict.returnStatusLabel(code);
+        }
+        return code || '—';
     }
 
     function returnableQty(item) {
@@ -288,12 +459,12 @@
             notify('请先打开订单详情', 'warning');
             return;
         }
-        var detailModal = document.getElementById('order-detail-modal');
-        if (detailModal && typeof window.TM_closeUnifiedModal === 'function') {
-            window.TM_closeUnifiedModal(detailModal);
-        } else if (detailModal) {
-            detailModal.classList.add('hidden');
-        }
+        window.__TM_returnCreateCtx = {
+            orderId: orderId,
+            custId: order && (order.custId || order.cust_id),
+            warehouseId: order && (order.warehouseId || order.warehouse_id),
+            fromDetail: true
+        };
         var container = document.getElementById('return-create-items');
         if (container) {
             container.innerHTML = '<p class="text-center text-slate-400 py-6 text-sm">加载可退商品...</p>';
@@ -304,11 +475,6 @@
             var items = Array.isArray(res.data) ? res.data : [];
             window.detailOrderItemsCache = items;
             renderReturnCreateItems(items);
-            window.__TM_returnCreateCtx = {
-                orderId: orderId,
-                custId: order && (order.custId || order.cust_id),
-                warehouseId: order && (order.warehouseId || order.warehouse_id)
-            };
         }).catch(function (err) {
             if (container) {
                 container.innerHTML = '<p class="text-center text-red-400 py-6 text-sm">' + esc(err.message || '加载失败') + '</p>';
@@ -318,6 +484,7 @@
 
     function closeCreateModal() {
         closeModal(document.getElementById('return-create-modal'));
+        repairModalOverlayState();
     }
 
     function submitCreate() {
@@ -355,6 +522,9 @@
             if (!res.success) throw new Error(res.message || '创建失败');
             notify('退货单已创建', 'success');
             closeCreateModal();
+            if (typeof window.__TM_dashboardCloseOrderDetail === 'function') {
+                window.__TM_dashboardCloseOrderDetail();
+            }
             refreshOrderDetailAfterReturn(ctx.orderId).then(function () {
                 if (typeof window.TM_emitOrderDataChanged === 'function') {
                     window.TM_emitOrderDataChanged({ orderId: ctx.orderId, custId: ctx.custId });
@@ -485,6 +655,9 @@
 
     function init() {
         ensureModals();
+        if (!window.renderDetailOrderItems || !window.renderDetailOrderItems.__tmReturnsWrapped) {
+            _patched = false;
+        }
         patchDetailItemsRender();
     }
 
@@ -499,6 +672,7 @@
         submitInspect: submitInspect,
         syncDetailReturnUi: syncDetailReturnUi,
         patchDetailItemsRender: patchDetailItemsRender,
-        injectReturnColumns: injectReturnColumns
+        injectReturnColumns: injectReturnColumns,
+        loadDetailReturnsSummary: loadDetailReturnsSummary
     };
 })();

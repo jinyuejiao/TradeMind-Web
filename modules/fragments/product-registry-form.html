@@ -44,6 +44,7 @@
                     <span id="cap-summary-variants" class="text-xs text-slate-500">未启用规格</span>
                 </summary>
                 <div class="mt-3 space-y-2">
+                    <p class="text-[10px] text-slate-400">颜色、尺码、容量等规格属性，生成多 SKU</p>
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="detail-track-variants" /> 启用多规格</label>
                     <select id="detail-variant-template" class="form-input w-full text-sm"><option value="">选择属性模板</option></select>
                     <div id="detail-variant-matrix" class="text-xs text-slate-500"></div>
@@ -69,10 +70,11 @@
             </details>
             <details id="cap-card-serial" class="tm-cap-card rounded-xl border border-slate-100 p-3">
                 <summary class="cursor-pointer flex items-center justify-between">
-                    <span><i class="ph ph-barcode text-violet-500 mr-2"></i><strong>序列号管理</strong></span>
+                    <span><i class="ph ph-barcode text-violet-500 mr-2"></i><strong>序列号管理（3C 一货一码）</strong></span>
                     <span id="cap-summary-serial" class="text-xs text-slate-500">未启用</span>
                 </summary>
                 <div class="mt-3 space-y-2">
+                    <p class="text-[10px] text-slate-400">适用于手机、数码等需唯一序列号追踪的商品</p>
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="detail-track-serial" /> 入库/出库需扫码</label>
                     <select id="detail-serial-mode" class="form-input w-full text-sm">
                         <option value="STRICT">严格模式（必须扫够码）</option>

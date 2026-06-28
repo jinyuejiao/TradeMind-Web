@@ -4,7 +4,8 @@
 (function (global) {
     'use strict';
 
-    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260625feat';
+    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260628feat';
+    var FRAGMENT_VER = '20260628feat';
 
     function normalizeAiProduct(raw) {
         if (!raw || typeof raw !== 'object') raw = {};
@@ -23,7 +24,7 @@
 
     function mount(container) {
         if (!container) return Promise.reject(new Error('产品档案表单容器不存在'));
-        if (container.dataset.tmProductMounted === '1') {
+        if (container.dataset.tmProductMounted === '1' && container.dataset.tmProductFormVer === FRAGMENT_VER) {
             return Promise.resolve(container);
         }
         return fetch(FRAGMENT_URL, { cache: 'no-store' })
@@ -34,6 +35,7 @@
             .then(function (html) {
                 container.innerHTML = html;
                 container.dataset.tmProductMounted = '1';
+                container.dataset.tmProductFormVer = FRAGMENT_VER;
                 return container;
             });
     }

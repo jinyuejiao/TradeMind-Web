@@ -192,6 +192,59 @@
         return code || '—';
     }
 
+    var TM_RETURN_STATUS_FALLBACK = {
+        D018001: '草稿',
+        D018002: '待收货',
+        D018003: '验收中',
+        D018004: '已完成',
+        D018005: '拒收',
+        D018006: '作废'
+    };
+
+    function toCanonicalReturnStatusCode(statusCode) {
+        var raw = String(statusCode || '').trim().toUpperCase();
+        if (!raw) return '';
+        if (raw === 'DRAFT') return 'D018001';
+        if (raw === 'PENDING_RECEIVE') return 'D018002';
+        if (raw === 'INSPECTING') return 'D018003';
+        if (raw === 'COMPLETED') return 'D018004';
+        if (raw === 'REJECTED') return 'D018005';
+        if (raw === 'VOIDED') return 'D018006';
+        var m = raw.match(/^D018[_-]?0*(\d{1,3})$/);
+        if (m) {
+            var n = m[1];
+            while (n.length < 3) n = '0' + n;
+            return 'D018' + n;
+        }
+        return normalizeDictCode(raw);
+    }
+
+    function returnStatusLabel(code) {
+        var canon = toCanonicalReturnStatusCode(code);
+        if (canon && TM_RETURN_STATUS_FALLBACK[canon]) return TM_RETURN_STATUS_FALLBACK[canon];
+        return code || '—';
+    }
+
+    function normalizeFinStatus(code) {
+        return String(code || 'UNPAID').trim().toUpperCase();
+    }
+
+    /** 与后端 OrderStatusCodes.isWorkbenchOpen 一致 */
+    function isWorkbenchOpenOrder(order) {
+        if (!order) return false;
+        var st = toCanonicalOrderStatusCode(order.order_status || order.orderStatus);
+        if (st === 'D010005') return false;
+        var fullyShipped = st === 'D010003' || st === 'D010004';
+        var settled = normalizeFinStatus(order.fin_status || order.finStatus) === 'SETTLED';
+        return !fullyShipped || !settled;
+    }
+
+    function dateDaysAgo(days) {
+        var d = new Date();
+        d.setDate(d.getDate() - days);
+        return d.toISOString().slice(0, 10);
+    }
+
     publishOrderMap(TM_ORDER_STATUS_FALLBACK);
     publishSupplierReturnMap(TM_SUPPLIER_RETURN_STATUS_FALLBACK);
 
@@ -207,6 +260,11 @@
         ensureOrderDictLoaded: loadOrderStatusDict,
         ensureSupplierReturnDictLoaded: loadSupplierReturnStatusDict,
         orderStatusLabel: orderStatusLabel,
-        supplierReturnStatusLabel: supplierReturnStatusLabel
+        supplierReturnStatusLabel: supplierReturnStatusLabel,
+        returnStatusLabel: returnStatusLabel,
+        toCanonicalReturnStatusCode: toCanonicalReturnStatusCode,
+        isWorkbenchOpenOrder: isWorkbenchOpenOrder,
+        normalizeFinStatus: normalizeFinStatus,
+        dateDaysAgo: dateDaysAgo
     };
 })();

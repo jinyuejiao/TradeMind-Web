@@ -11,6 +11,12 @@
     var ACTIVE_TAB = 'border-brand-200 bg-brand-50 text-brand-600';
     var INACTIVE_TAB = 'border-slate-200 text-slate-600 hover:bg-slate-50';
 
+    var filterState = {
+        dateRange: '90d',
+        logisticsStatus: '',
+        finStatus: ''
+    };
+
     function notify(msg, type) {
         if (window.TM_UI && window.TM_UI.showNotification) {
             window.TM_UI.showNotification(msg, type || 'info');
@@ -45,8 +51,55 @@
         return map[code] || code || '—';
     }
 
+    function finStatusLabel(code) {
+        var map = {
+            UNPAID: '未收款',
+            PARTIAL_PAID: '部分收款',
+            SETTLED: '已结清',
+            BAD_DEBT: '坏账'
+        };
+        var k = String(code || 'UNPAID').trim().toUpperCase();
+        return map[k] || k || '—';
+    }
+
+    function isOpenOrder(o) {
+        if (window.TM_OrderDict && typeof window.TM_OrderDict.isWorkbenchOpenOrder === 'function') {
+            return window.TM_OrderDict.isWorkbenchOpenOrder(o);
+        }
+        return false;
+    }
+
     function orderIdOf(o) {
         return o.order_id != null ? o.order_id : (o.orderId != null ? o.orderId : o.id);
+    }
+
+    function readFiltersFromDom() {
+        var dr = document.getElementById('sales-orders-date-range');
+        var ls = document.getElementById('sales-orders-logistics');
+        var fs = document.getElementById('sales-orders-fin-status');
+        filterState.dateRange = dr ? dr.value : '90d';
+        filterState.logisticsStatus = ls ? ls.value : '';
+        filterState.finStatus = fs ? fs.value : '';
+    }
+
+    function buildQueryString(pageNo) {
+        readFiltersFromDom();
+        var qs = '?pageNo=' + pageNo + '&pageSize=' + PAGE_SIZE;
+        var keywordEl = document.getElementById('sales-orders-keyword');
+        var keyword = keywordEl ? keywordEl.value.trim() : '';
+        if (keyword) qs += '&keyword=' + encodeURIComponent(keyword);
+        if (filterState.logisticsStatus) {
+            qs += '&logisticsStatus=' + encodeURIComponent(filterState.logisticsStatus);
+        }
+        if (filterState.finStatus) {
+            qs += '&finStatus=' + encodeURIComponent(filterState.finStatus);
+        }
+        if (filterState.dateRange === '90d' && window.TM_OrderDict && window.TM_OrderDict.dateDaysAgo) {
+            qs += '&startDate=' + encodeURIComponent(window.TM_OrderDict.dateDaysAgo(90));
+        } else if (filterState.dateRange === '30d' && window.TM_OrderDict && window.TM_OrderDict.dateDaysAgo) {
+            qs += '&startDate=' + encodeURIComponent(window.TM_OrderDict.dateDaysAgo(30));
+        }
+        return qs;
     }
 
     function setTabStyles(viewToggle, activeView) {
@@ -89,13 +142,24 @@
         }
         container.innerHTML = records.map(function (o) {
             var oid = orderIdOf(o);
+            var openBadge = isOpenOrder(o)
+                ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-100 ml-1">进行中</span>'
+                : '';
+            var returnedAmt = parseFloat(o.returned_amount != null ? o.returned_amount : (o.returnedAmount || 0));
+            var returnedHint = returnedAmt > 0
+                ? ('<p class="text-[10px] text-amber-600 mt-0.5">已退 ' + fmtMoney(returnedAmt) + '</p>')
+                : '';
+            var fin = o.fin_status || o.finStatus;
             return [
                 '<div class="tm-po-card cursor-pointer border border-slate-100 rounded-xl p-4 mb-3 hover:border-brand-200" data-order-id="' + oid + '">',
                 '  <div class="flex justify-between items-start gap-2">',
-                '    <div><p class="font-bold text-slate-800">' + (o.order_code || o.orderCode || ('#' + oid)) + '</p>',
-                '    <p class="text-xs text-slate-500">' + (o.cust_name || o.custName || '—') + ' · ' + fmtDate(o.create_time || o.createTime) + '</p></div>',
-                '    <div class="text-right"><p class="font-mono font-bold text-brand-600">' + fmtMoney(o.total_amount != null ? o.total_amount : o.totalAmount) + '</p>',
-                '    <p class="text-[10px] text-slate-400">' + statusLabel(o.order_status || o.orderStatus) + '</p></div>',
+                '    <div class="min-w-0 flex-1"><p class="font-bold text-slate-800 flex flex-wrap items-center gap-1">',
+                (o.order_code || o.orderCode || ('#' + oid)) + openBadge + '</p>',
+                '    <p class="text-xs text-slate-500 truncate">' + (o.cust_name || o.custName || '—') + ' · ' + fmtDate(o.create_time || o.createTime) + '</p>',
+                returnedHint + '</div>',
+                '    <div class="text-right shrink-0"><p class="font-mono font-bold text-brand-600">' + fmtMoney(o.total_amount != null ? o.total_amount : o.totalAmount) + '</p>',
+                '    <p class="text-[10px] text-slate-400">' + statusLabel(o.order_status || o.orderStatus) + '</p>',
+                '    <p class="text-[9px] text-slate-300">' + finStatusLabel(fin) + '</p></div>',
                 '  </div>',
                 '</div>'
             ].join('');
@@ -104,7 +168,7 @@
             el.addEventListener('click', function () {
                 var id = el.getAttribute('data-order-id');
                 if (typeof window.openOrderDetailModal === 'function') {
-                    window.openOrderDetailModal(parseInt(id, 10));
+                    window.openOrderDetailModal(parseInt(id, 10), {});
                 } else if (typeof window.openOrderDetail === 'function') {
                     window.openOrderDetail(parseInt(id, 10));
                 }
@@ -132,11 +196,7 @@
         pageNo = pageNo || 1;
         var container = document.getElementById('sales-orders-list');
         if (container) container.innerHTML = '<p class="text-center text-slate-400 py-8">加载中…</p>';
-        var keywordEl = document.getElementById('sales-orders-keyword');
-        var keyword = keywordEl ? keywordEl.value : '';
-        var qs = '?pageNo=' + pageNo + '&pageSize=' + PAGE_SIZE;
-        if (keyword) qs += '&keyword=' + encodeURIComponent(keyword);
-        apiFetch('/orders' + qs).then(function (res) {
+        apiFetch('/orders' + buildQueryString(pageNo)).then(function (res) {
             if (!res || !res.success) {
                 notify((res && res.message) || '加载销售订单失败', 'error');
                 if (container) container.innerHTML = '<p class="text-center text-red-400 py-8">加载失败</p>';
@@ -148,6 +208,15 @@
         }).catch(function (e) {
             notify('加载销售订单失败: ' + (e.message || '网络错误'), 'error');
             if (container) container.innerHTML = '<p class="text-center text-red-400 py-8">加载失败</p>';
+        });
+    }
+
+    function bindFilterControls() {
+        ['sales-orders-date-range', 'sales-orders-logistics', 'sales-orders-fin-status'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (!el || el.dataset.tmSalesFilterBound === '1') return;
+            el.dataset.tmSalesFilterBound = '1';
+            el.addEventListener('change', function () { loadSalesOrders(1); });
         });
     }
 
@@ -165,6 +234,7 @@
             searchBtn.dataset.tmBound = '1';
             searchBtn.addEventListener('click', function () { loadSalesOrders(1); });
         }
+        bindFilterControls();
         _bound = true;
         if (window.TM_OrderDict && typeof window.TM_OrderDict.ensureOrderDictLoaded === 'function') {
             window.TM_OrderDict.ensureOrderDictLoaded();

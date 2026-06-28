@@ -421,31 +421,164 @@
             headers: { 'Content-Type': 'application/json' }
         }).then(function (r) { return r.json(); }).then(function (res) {
             if (!res.success) return null;
-            window.TM_productCapabilities = res.data || {};
-            PM.applyProductCapabilityVisibility();
-            return res.data;
+            window.TM_productCapabilities = PM.normalizeProductCapabilities(res.data || {});
+            PM.applyProductCapabilityVisibility({ productCenterForm: true });
+            return window.TM_productCapabilities;
         }).catch(function () { return null; });
     };
 
-    PM.applyProductCapabilityVisibility = function () {
-        var caps = window.TM_productCapabilities || {};
-        var section = document.getElementById('product-capability-cards');
+    PM.normalizeProductCapabilities = function (raw) {
+        raw = raw || {};
+        var merchant = '';
+        try {
+            merchant = (document.documentElement.getAttribute('data-merchant-type') || '').toUpperCase();
+        } catch (e) { /* ignore */ }
+        var defaults = { allowVariants: false, allowExpiry: false, allowSerial: false };
+        if (merchant === 'ECOM') {
+            defaults.allowVariants = true;
+        } else if (merchant === 'WHOLESALE') {
+            defaults.allowVariants = true;
+            defaults.allowExpiry = true;
+            defaults.allowSerial = true;
+        } else if (merchant === 'FACTORY_TRADE') {
+            defaults.allowSerial = true;
+            defaults.allowExpiry = true;
+        }
+        function asBool(v, def) {
+            if (v === undefined || v === null || v === '') return def;
+            if (typeof v === 'string') return v === 'true' || v === '1';
+            return !!v;
+        }
+        return {
+            allowVariants: asBool(raw.allowVariants, defaults.allowVariants),
+            allowExpiry: asBool(raw.allowExpiry, defaults.allowExpiry),
+            allowSerial: asBool(raw.allowSerial, defaults.allowSerial)
+        };
+    };
+
+    PM.getCapabilityFormRoot = function () {
+        var auditRoot = PM.getAuditProductRoot && PM.getAuditProductRoot();
+        if (auditRoot) return auditRoot;
+        var modal = PM.getProductDetailModal && PM.getProductDetailModal();
+        if (modal) return modal;
+        return document.getElementById('product-detail-form-root') || document;
+    };
+
+    PM.applyProductCapabilityVisibility = function (opts) {
+        opts = opts || {};
+        var caps = PM.normalizeProductCapabilities(window.TM_productCapabilities || {});
+        var root = PM.getCapabilityFormRoot();
+        var section = root.querySelector('#product-capability-cards');
+        if (!section) section = document.getElementById('product-capability-cards');
         if (!section) return;
-        var any = caps.allowVariants || caps.allowExpiry || caps.allowSerial;
+        var showAllInProductCenter = !!opts.productCenterForm;
+        var any = showAllInProductCenter || caps.allowVariants || caps.allowExpiry || caps.allowSerial;
         section.classList.toggle('hidden', !any);
-        var hint = document.getElementById('product-capability-hint');
+        var hint = root.querySelector('#product-capability-hint') || document.getElementById('product-capability-hint');
         if (hint) {
             hint.classList.toggle('hidden', any);
             if (!any) {
                 hint.textContent = '当前租户未开启规格/保质期/序列号能力，可在智能经营-租户档案中配置，或联系管理员。';
             }
         }
-        var vCard = document.getElementById('cap-card-variants');
-        var eCard = document.getElementById('cap-card-expiry');
-        var sCard = document.getElementById('cap-card-serial');
-        if (vCard) vCard.classList.toggle('hidden', !caps.allowVariants);
-        if (eCard) eCard.classList.toggle('hidden', !caps.allowExpiry);
-        if (sCard) sCard.classList.toggle('hidden', !caps.allowSerial);
+        function card(id, allowed) {
+            var el = root.querySelector('#' + id) || document.getElementById(id);
+            if (!el) return;
+            var visible = showAllInProductCenter || allowed;
+            el.classList.toggle('hidden', !visible);
+        }
+        card('cap-card-variants', caps.allowVariants);
+        card('cap-card-expiry', caps.allowExpiry);
+        card('cap-card-serial', caps.allowSerial);
+    };
+
+    PM.loadAttributeTemplates = function () {
+        var sel = PM.el('detail-variant-template');
+        if (!sel) return Promise.resolve();
+        var fetchFn = window.wrappedFetch || fetch;
+        return fetchFn('/api/v1/rd/products/attribute-templates', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            var list = res && res.success && Array.isArray(res.data) ? res.data : [];
+            var cur = sel.value;
+            sel.innerHTML = '<option value="">选择属性模板</option>' + list.map(function (t) {
+                var id = t.template_id != null ? t.template_id : t.templateId;
+                var name = t.name || ('模板#' + id);
+                return '<option value="' + PM.escHtmlAttr(String(id)) + '">' + PM.escHtmlText(name) + '</option>';
+            }).join('');
+            if (cur) sel.value = cur;
+        }).catch(function () { /* ignore */ });
+    };
+
+    PM.populateCapabilityForm = function (spu) {
+        spu = spu || {};
+        var tv = PM.el('detail-track-variants');
+        var te = PM.el('detail-track-expiry');
+        var ts = PM.el('detail-track-serial');
+        var days = PM.el('detail-shelf-life-days');
+        var policy = PM.el('detail-expiry-policy');
+        var serialMode = PM.el('detail-serial-mode');
+        if (tv) tv.checked = !!(spu.track_variants || spu.trackVariants);
+        if (te) te.checked = !!(spu.track_expiry || spu.trackExpiry);
+        if (ts) ts.checked = !!(spu.track_serial || spu.trackSerial);
+        if (days) {
+            var d = spu.default_shelf_life_days != null ? spu.default_shelf_life_days : spu.defaultShelfLifeDays;
+            days.value = d != null ? String(d) : '';
+        }
+        if (policy) {
+            policy.value = spu.expiry_policy || spu.expiryPolicy || 'FEFO';
+        }
+        if (serialMode) {
+            serialMode.value = spu.serial_outbound_mode || spu.serialOutboundMode || 'STRICT';
+        }
+        if (typeof PM.syncCapabilitySummaries === 'function') {
+            PM.syncCapabilitySummaries();
+        }
+    };
+
+    PM.loadSpuFlagsForProduct = function (productId) {
+        if (!productId) {
+            PM.populateCapabilityForm({});
+            return Promise.resolve();
+        }
+        var fetchFn = window.wrappedFetch || fetch;
+        return fetchFn('/api/v1/rd/products/skus/options', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            var rows = res && res.success && Array.isArray(res.data) ? res.data : [];
+            var hit = rows.find(function (r) {
+                var legacy = r.legacy_product_id != null ? r.legacy_product_id : r.legacyProductId;
+                return legacy != null && String(legacy) === String(productId);
+            });
+            if (hit) {
+                PM.currentProduct = PM.currentProduct || {};
+                PM.currentProduct.spuId = hit.spu_id || hit.spuId;
+                PM.currentProduct.skuId = hit.sku_id || hit.skuId;
+                PM.populateCapabilityForm(hit);
+            } else {
+                PM.populateCapabilityForm({});
+            }
+        }).catch(function () {
+            PM.populateCapabilityForm({});
+        });
+    };
+
+    PM.bindCapabilityFormEvents = function () {
+        var root = PM.getCapabilityFormRoot();
+        if (!root || root.dataset.tmCapBound === '1') return;
+        root.dataset.tmCapBound = '1';
+        ['detail-track-variants', 'detail-track-expiry', 'detail-track-serial', 'detail-shelf-life-days'].forEach(function (id) {
+            var el = root.querySelector('#' + id);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+            });
+            el.addEventListener('input', function () {
+                if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+            });
+        });
     };
 
     PM.ensureProductFormMounted = async function () {
@@ -454,19 +587,24 @@
         if (window.TmProductRegistry && window.TmProductRegistry.mount) {
             await window.TmProductRegistry.mount(root);
         }
+        PM.bindCapabilityFormEvents();
         if (typeof PM.loadProductCapabilities === 'function') {
             await PM.loadProductCapabilities();
         }
-        PM.applyProductCapabilityVisibility();
+        PM.applyProductCapabilityVisibility({ productCenterForm: true });
+        if (typeof PM.loadAttributeTemplates === 'function') {
+            await PM.loadAttributeTemplates();
+        }
     };
 
     PM.syncCapabilitySummaries = function () {
         var tv = PM.el('detail-track-variants');
         var te = PM.el('detail-track-expiry');
         var ts = PM.el('detail-track-serial');
-        var sv = document.getElementById('cap-summary-variants');
-        var se = document.getElementById('cap-summary-expiry');
-        var ss = document.getElementById('cap-summary-serial');
+        var root = PM.getCapabilityFormRoot();
+        var sv = root.querySelector('#cap-summary-variants') || document.getElementById('cap-summary-variants');
+        var se = root.querySelector('#cap-summary-expiry') || document.getElementById('cap-summary-expiry');
+        var ss = root.querySelector('#cap-summary-serial') || document.getElementById('cap-summary-serial');
         if (sv) sv.textContent = tv && tv.checked ? '已启用多规格' : '未启用规格';
         if (se && te) {
             var days = PM.el('detail-shelf-life-days');
@@ -867,6 +1005,13 @@
         if (hint) hint.textContent = sku ? ('SKU: ' + sku) : '填写必填项即可保存';
         await PM.loadProductWarehouseStocks(productId);
         PM.bindStockSyncHandlers();
+        if (typeof PM.loadSpuFlagsForProduct === 'function') {
+            await PM.loadSpuFlagsForProduct(productId);
+        }
+        if (typeof PM.loadAttributeTemplates === 'function') {
+            await PM.loadAttributeTemplates();
+        }
+        PM.applyProductCapabilityVisibility({ productCenterForm: true });
         if (typeof PM.loadProductPriceTrend === 'function') {
             await PM.loadProductPriceTrend(productId);
         }
@@ -916,6 +1061,11 @@
         if (hint) hint.textContent = '请填写名称、售价、基本单位与库存';
         await PM.loadProductWarehouseStocks(null);
         PM.bindStockSyncHandlers();
+        PM.populateCapabilityForm({});
+        if (typeof PM.loadAttributeTemplates === 'function') {
+            await PM.loadAttributeTemplates();
+        }
+        PM.applyProductCapabilityVisibility({ productCenterForm: true });
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }

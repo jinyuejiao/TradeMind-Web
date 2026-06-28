@@ -371,6 +371,39 @@
                 </div>
                 </div>
                 <div id="workbench-sales-orders-panel" class="hidden space-y-4">
+                    <p class="text-[10px] text-slate-400 leading-relaxed">默认展示近 90 天订单；标有「进行中」的订单与工作台概览待办重叠，完整待办请见概览卡片。</p>
+                    <div class="flex flex-wrap gap-2 items-end">
+                        <div class="min-w-[7rem]">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sales-orders-date-range">时间范围</label>
+                            <select id="sales-orders-date-range" class="form-input text-xs py-2">
+                                <option value="90d" selected>近 90 天</option>
+                                <option value="30d">近 30 天</option>
+                                <option value="all">全部时间</option>
+                            </select>
+                        </div>
+                        <div class="min-w-[7rem]">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sales-orders-logistics">物流状态</label>
+                            <select id="sales-orders-logistics" class="form-input text-xs py-2">
+                                <option value="">全部</option>
+                                <option value="D010001">待配货</option>
+                                <option value="D010002">拣货中</option>
+                                <option value="D010006">部分发货</option>
+                                <option value="D010003">全部发货</option>
+                                <option value="D010004">已签收</option>
+                                <option value="D010005">退货</option>
+                            </select>
+                        </div>
+                        <div class="min-w-[7rem]">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sales-orders-fin-status">收款状态</label>
+                            <select id="sales-orders-fin-status" class="form-input text-xs py-2">
+                                <option value="">全部</option>
+                                <option value="UNPAID">未收款</option>
+                                <option value="PARTIAL_PAID">部分收款</option>
+                                <option value="SETTLED">已结清</option>
+                                <option value="BAD_DEBT">坏账</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="flex flex-wrap gap-2 items-center justify-between">
                         <div class="flex gap-2 flex-1 min-w-[200px]">
                             <input type="search" id="sales-orders-keyword" class="form-input text-sm flex-1" placeholder="单号 / 客户名" />
@@ -752,6 +785,7 @@
                             <span class="text-[11px] text-slate-500">应收 <strong class="font-mono text-slate-800" id="detail-order-total">¥0.00</strong></span>
                         </div>
                     </div>
+                    <div id="detail-amount-breakdown" class="hidden mt-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[11px] text-slate-600 space-y-1"></div>
                     <div id="detail-order-items-cards" class="md:hidden space-y-2"></div>
                     <div class="tm-order-items-scroll hidden md:block overflow-x-auto bg-slate-50 rounded-xl border border-slate-100">
                         <table class="tm-order-detail-table text-xs">
@@ -769,6 +803,17 @@
                             <tbody class="divide-y divide-slate-100 bg-white" id="detail-order-items-body"></tbody>
                         </table>
                     </div>
+                </section>
+                <section id="detail-order-returns-section" class="mt-3 shrink-0 hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div>
+                            <h3 class="text-xs font-black text-slate-700">销售退货</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">仅支持退货入库与退款冲账，不含换货</p>
+                        </div>
+                        <button type="button" id="detail-view-all-returns-btn" onclick="TM_SalesOrders && TM_SalesOrders.switchView('returns')" class="hidden text-[10px] font-bold text-brand-600">全部退货单</button>
+                    </div>
+                    <div id="detail-order-returns-summary" class="hidden rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 mb-2 text-[11px]"></div>
+                    <div id="detail-order-returns-list" class="space-y-2"></div>
                 </section>
             </div>
             </div>
@@ -788,6 +833,7 @@
                             </div>
                             <div id="detail-remaining-hint" class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
                                 应收 <span id="detail-pay-total" class="font-mono font-bold">¥0.00</span>
+                                <span class="hidden text-amber-700" id="detail-returned-wrap"> · 退货扣减 <span id="detail-returned-sum" class="font-mono">¥0.00</span></span>
                                 <span class="hidden" id="detail-received-wrap"> · 已收 <span id="detail-received-sum" class="font-mono">¥0.00</span></span>
                                 <span class="hidden text-teal-700 font-bold" id="detail-remaining-wrap"> · 剩 <span id="detail-remaining-sum" class="font-mono">¥0.00</span></span>
                             </div>
@@ -1480,27 +1526,48 @@
         function updateDetailRemainingHint(order) {
             order = order || currentDetailOrder;
             if (!order) return { total: 0, received: 0, remaining: 0 };
+            var detailModal = document.getElementById('order-detail-modal');
+            function q(sel) {
+                return detailModal ? detailModal.querySelector(sel) : document.getElementById(sel.replace('#', ''));
+            }
             var total = Number(order.totalAmount || order.total_amount || 0);
             var returned = Number(order.returnedAmount || order.returned_amount || 0);
             var netTotal = Math.max(0, total - returned);
             var received = getOrderReceivedAmount(order);
             var remaining = Math.max(0, netTotal - received);
             var fmt = function (v) { return '¥' + (Number(v) || 0).toFixed(2); };
-            var payTotal = document.getElementById('detail-pay-total');
-            var totalEl = document.getElementById('detail-order-total');
-            var recSum = document.getElementById('detail-received-sum');
-            var recWrap = document.getElementById('detail-received-wrap');
-            var remWrap = document.getElementById('detail-remaining-wrap');
-            var remSum = document.getElementById('detail-remaining-sum');
+            var payTotal = q('#detail-pay-total');
+            var totalEl = q('#detail-order-total');
+            var recSum = q('#detail-received-sum');
+            var recWrap = q('#detail-received-wrap');
+            var remWrap = q('#detail-remaining-wrap');
+            var remSum = q('#detail-remaining-sum');
+            var returnedWrap = q('#detail-returned-wrap');
+            var returnedSum = q('#detail-returned-sum');
             if (payTotal) payTotal.textContent = fmt(netTotal);
-            if (totalEl) {
-                totalEl.textContent = returned > 0
-                    ? (fmt(netTotal) + '（原' + fmt(total) + ' 已退' + fmt(returned) + '）')
-                    : fmt(total);
+            if (totalEl) totalEl.textContent = fmt(netTotal);
+            if (returnedWrap && returnedSum) {
+                returnedWrap.classList.toggle('hidden', returned <= 0);
+                if (returned > 0) returnedSum.textContent = fmt(returned);
+            }
+            var breakdown = q('#detail-amount-breakdown');
+            if (breakdown) {
+                if (returned > 0) {
+                    breakdown.classList.remove('hidden');
+                    breakdown.innerHTML = ''
+                        + '<div class="flex justify-between gap-2"><span class="text-slate-500">订单原价</span><span class="font-mono">' + fmt(total) + '</span></div>'
+                        + '<div class="flex justify-between gap-2 text-amber-700"><span>退货扣减（商品退回）</span><span class="font-mono">-' + fmt(returned) + '</span></div>'
+                        + '<div class="flex justify-between gap-2 font-bold text-slate-800 border-t border-amber-100/80 pt-1 mt-1"><span>当前应收</span><span class="font-mono">' + fmt(netTotal) + '</span></div>'
+                        + '<p class="text-[10px] text-slate-400 pt-0.5">说明：退货验收完成后，可在下方「仓库·收款」冲减已收或标记退款。</p>';
+                } else {
+                    breakdown.classList.add('hidden');
+                    breakdown.innerHTML = '';
+                }
             }
             if (recWrap) recWrap.classList.toggle('hidden', received <= 0);
             if (remWrap) remWrap.classList.toggle('hidden', remaining <= 0.001);
             if (remSum) remSum.textContent = fmt(remaining);
+            if (recSum) recSum.textContent = fmt(received);
             updateDetailAuxSummary(order, remaining);
             return { total: total, received: received, remaining: remaining };
         }
@@ -1656,8 +1723,13 @@
         function renderDetailOrderItems(items) {
             detailOrderItemsCache = items || [];
             window.detailOrderItemsCache = detailOrderItemsCache;
-            var tbody = document.getElementById('detail-order-items-body');
-            var cards = document.getElementById('detail-order-items-cards');
+            var detailModal = document.getElementById('order-detail-modal');
+            var tbody = detailModal
+                ? detailModal.querySelector('#detail-order-items-body')
+                : document.getElementById('detail-order-items-body');
+            var cards = detailModal
+                ? detailModal.querySelector('#detail-order-items-cards')
+                : document.getElementById('detail-order-items-cards');
             var st = resolveDetailOrderStatusForShip();
             var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
             if (!items || !items.length) {
@@ -1722,12 +1794,16 @@
             syncDetailShipUi(currentDetailOrder);
         }
         window.__TM_renderDetailOrderItems = renderDetailOrderItems;
-        window.renderDetailOrderItems = function (items) {
-            renderDetailOrderItems(items);
-            if (window.TM_Returns && window.TM_Returns.injectReturnColumns) {
-                window.TM_Returns.injectReturnColumns(items);
+        window.renderDetailOrderItems = renderDetailOrderItems;
+
+        function invokeDetailOrderItemsRender(items) {
+            if (window.TM_Returns && typeof window.TM_Returns.patchDetailItemsRender === 'function') {
+                window.TM_Returns.patchDetailItemsRender();
             }
-        };
+            if (typeof window.renderDetailOrderItems === 'function') {
+                window.renderDetailOrderItems(items);
+            }
+        }
 
         function collectDetailShipItemIds() {
             var ids = [];
@@ -1775,7 +1851,7 @@
                 statusSel.setAttribute('data-tm-status-bound', '1');
                 statusSel.addEventListener('change', function () {
                     updateDetailBadges(currentDetailOrder);
-                    renderDetailOrderItems(detailOrderItemsCache);
+                    invokeDetailOrderItemsRender(detailOrderItemsCache);
                 });
             }
             window._detailFinBound = true;
@@ -1918,7 +1994,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
                         var items = res && res.success && Array.isArray(res.data) ? res.data : [];
-                        renderDetailOrderItems(items);
+                        invokeDetailOrderItemsRender(items);
                         updateDetailRemainingHint(result.data);
                     });
                 if (isClosedWorkbenchOrder(result.data)) {
@@ -4321,7 +4397,13 @@
 
         async function loadOrderDetailContent(orderId, order) {
             order = order || {};
-            var hintEl = document.getElementById('detail-order-status-hint');
+            if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                window.TM_Returns.init();
+            }
+            var detailModal = document.getElementById('order-detail-modal');
+            var hintEl = detailModal
+                ? detailModal.querySelector('#detail-order-status-hint')
+                : document.getElementById('detail-order-status-hint');
             if (hintEl) { hintEl.classList.add('hidden'); hintEl.textContent = ''; }
 
             var orderRes = await window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
@@ -4368,13 +4450,13 @@
             if (window.TM_Returns && window.TM_Returns.patchDetailItemsRender) {
                 window.TM_Returns.patchDetailItemsRender();
             }
-            renderDetailOrderItems(items);
+            invokeDetailOrderItemsRender(items);
             updateDetailRemainingHint(order);
             if (window.TM_Returns && window.TM_Returns.syncDetailReturnUi) {
                 window.TM_Returns.syncDetailReturnUi(order);
             }
-            if (window.TM_Returns && window.TM_Returns.injectReturnColumns) {
-                window.TM_Returns.injectReturnColumns(items);
+            if (window.TM_Returns && window.TM_Returns.loadDetailReturnsSummary) {
+                window.TM_Returns.loadDetailReturnsSummary(orderId, order, items);
             }
         }
         window.openOrderDetailModal = openOrderDetailModal;
@@ -4384,6 +4466,8 @@
         function closeOrderDetail() {
             currentDetailOrderId = null;
             currentDetailOrder = null;
+            window.currentDetailOrderId = null;
+            window.currentDetailOrder = null;
             var detailModal = document.getElementById('order-detail-modal');
             if (detailModal && typeof window.TM_closeUnifiedModal === 'function') {
                 window.TM_closeUnifiedModal(detailModal);
@@ -4398,6 +4482,9 @@
                 if (typeof window.TM_reconcileShellOverlay === 'function') {
                     window.TM_reconcileShellOverlay();
                 }
+            }
+            if (typeof window.TM_ensureShellOverlayVisible === 'function') {
+                window.TM_ensureShellOverlayVisible();
             }
         }
 
@@ -5501,9 +5588,9 @@
         }
     </script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
-    <script src="../../assets/js/tm-order-dict.js?v=20260625"></script>
-    <script src="../../assets/js/ui-sales-orders.js?v=20260625"></script>
-    <script src="../../assets/js/ui-returns.js?v=20260625"></script>
+    <script src="../../assets/js/tm-order-dict.js?v=20260626"></script>
+    <script src="../../assets/js/ui-sales-orders.js?v=20260626"></script>
+    <script src="../../assets/js/ui-returns.js?v=20260628"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
     <script src="../../assets/js/dashboard-workbench.js?v=20260601audit"></script>

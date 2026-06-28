@@ -611,7 +611,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260625supply', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260628', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
