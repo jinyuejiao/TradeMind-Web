@@ -1127,6 +1127,16 @@
             if (saved.productId != null) {
                 PM.currentProduct.id = saved.productId;
             }
+            if (saved.spuId != null) {
+                PM.currentProduct.spuId = saved.spuId;
+            }
+            if (saved.spu_id != null) {
+                PM.currentProduct.spuId = saved.spu_id;
+            }
+            var spuIdForCover = PM.currentProduct.spuId || saved.spuId || saved.spu_id;
+            if (spuIdForCover && typeof PM.uploadProductCover === 'function') {
+                await PM.uploadProductCover(spuIdForCover);
+            }
             var mapped = PM.mapProductFromApi(saved);
             if (mapped.unitConversions && mapped.unitConversions.length) {
                 PM.currentProduct.unitConversions = mapped.unitConversions;
@@ -1574,5 +1584,33 @@
     PM.init = async function () {
         if (typeof _origInit === 'function') await _origInit.apply(this, arguments);
         if (typeof PM.loadProductCapabilities === 'function') await PM.loadProductCapabilities();
+        if (typeof PM.bindProductCoverInput === 'function') PM.bindProductCoverInput();
+    };
+
+    PM.bindProductCoverInput = function () {
+        var input = PM.el('detail-product-cover-input');
+        if (!input || input.__tmCoverBound) return;
+        input.__tmCoverBound = true;
+        input.addEventListener('change', function () {
+            var preview = PM.el('detail-product-cover-preview');
+            if (preview && input.files && input.files[0]) {
+                preview.innerHTML = '<img src="' + URL.createObjectURL(input.files[0]) + '" class="w-full h-full object-cover" alt="" />';
+            }
+        });
+    };
+
+    PM.uploadProductCover = async function (spuId) {
+        var input = PM.el('detail-product-cover-input');
+        if (!input || !input.files || !input.files[0] || !spuId || !window.wrappedFetch) return;
+        var fd = new FormData();
+        fd.append('file', input.files[0]);
+        fd.append('spuId', String(spuId));
+        fd.append('mediaType', 'COVER');
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/products/media/upload', { method: 'POST', body: fd });
+            await window.handleApiResponse(resp);
+        } catch (e) {
+            console.warn('[ProductEnhance] 主图上传失败', e);
+        }
     };
 })();

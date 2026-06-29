@@ -3357,17 +3357,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 const url = gatewayUrl + '/api/v1/tenant/register';
                 
                 // 构建注册数据
+                const merchantTypeEl = document.querySelector('input[name="tmMerchantType"]:checked');
+                const industryEl = document.querySelector('input[name="tmIndustryVertical"]:checked');
                 const registerData = {
                     username: username,
                     email: email || null,
                     phone: phone,
-                    tenantName: company, // 公司名称
-                    tenantCode: creditCode, // 社会信用代码
+                    tenantName: company,
+                    tenantCode: creditCode,
                     password: encryptedPassword,
                     referralCode: inviteCode,
                     smsToken: registerSmsToken || '',
                     smsCode: smsCode,
-                    merchantType: 'WHOLESALE'
+                    merchantType: merchantTypeEl ? merchantTypeEl.value : 'WHOLESALE',
+                    industryVertical: industryEl ? industryEl.value : 'GENERAL'
                 };
                 
                 // 发送注册请求
