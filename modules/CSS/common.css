@@ -842,15 +842,6 @@ textarea {
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
     }
 
-    /* 弹窗打开时隐藏功能导览 FAB，避免遮挡底部按钮 */
-    body.tm-embed-modal-open .tm-onboarding-checklist-fab,
-    body.tm-embed-modal-open .tm-onboarding-checklist-panel,
-    html.tm-embed-modal-open .tm-onboarding-checklist-fab,
-    html.tm-embed-modal-open .tm-onboarding-checklist-panel {
-        visibility: hidden !important;
-        pointer-events: none !important;
-    }
-
     /* 仓库管理：桌面端保持右侧 Drawer */
     #warehouse-drawer.tm-unified-mobile-modal {
         justify-content: flex-end !important;

@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260531unit">
     <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260531ordfix">
     <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
+    <link rel="stylesheet" href="../../assets/css/tm-first-login-wizard.css?v=20260630">
+    <link rel="stylesheet" href="../../assets/css/rapid-order.css?v=20260701">
 
     <style>
         body {
@@ -295,40 +297,13 @@
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div id="dashboard-turnover-rate" class="mt-2 font-mono font-bold text-slate-800">0.00</div></div>
                 </div>
 
-                <section id="workbench-quick-order-panel" class="bg-white rounded-3xl border border-brand-200 shadow-sm overflow-hidden fade-in mt-6 hidden">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-brand-50/50 flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2 text-sm font-bold text-slate-800">
-                            <i class="ph ph-lightning text-brand-600 text-lg"></i> 快速开单
-                            <span id="wq-industry-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-white border border-brand-200 text-brand-600 font-bold">通用</span>
-                        </div>
-                        <span class="text-[10px] text-slate-400">门店库存不足时自动记欠货</span>
-                    </div>
-                    <div class="p-4 space-y-3">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400" for="wq-order-customer">客户</label>
-                                <select id="wq-order-customer" class="form-input form-input--compact w-full mt-0.5 text-xs font-bold"></select>
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400" for="wq-order-warehouse">开单仓/门店</label>
-                                <select id="wq-order-warehouse" class="form-input form-input--compact w-full mt-0.5 text-xs"></select>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto rounded-xl border border-slate-100">
-                            <table class="w-full text-xs min-w-[480px]">
-                                <thead class="bg-slate-50 text-slate-500"><tr id="wq-order-thead"></tr></thead>
-                                <tbody id="wq-order-tbody" class="divide-y divide-slate-50"></tbody>
-                            </table>
-                        </div>
-                        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-                            <button type="button" onclick="TM_addQuickOrderRow()" class="text-[11px] font-bold text-brand-600 flex items-center gap-1"><i class="ph ph-plus"></i> 加一行</button>
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs text-slate-500">合计 <strong id="wq-order-total" class="font-mono text-slate-800">¥0.00</strong></span>
-                                <button type="button" onclick="TM_saveQuickOrder()" class="btn-brand px-4 py-2 rounded-xl text-xs font-bold shadow-md">保存订单</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                <div class="mt-6">
+                    <button type="button" onclick="TM_openRapidOrder()" class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold text-base shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-transform">
+                        <i class="ph ph-lightning text-2xl"></i>
+                        <span>⚡ 极速开单</span>
+                    </button>
+                    <p class="text-center text-[10px] text-slate-400 mt-2">移动点单式选品 · 支持欠货开单</p>
+                </div>
 
                 <details id="workbench-ai-supplement" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in mt-6 group">
                     <summary class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center cursor-pointer list-none text-sm font-bold text-slate-800">
@@ -677,7 +652,7 @@
                 <p data-tm-device-wait-text class="text-sm font-bold text-brand-600">正在等待设备响应...</p>
             </div>
             <div id="voice-ready-ui">
-                <div id="voice-onboarding-tips" class="hidden">
+                <div id="voice-tips" class="mb-4">
                     <p class="voice-tip-title">推荐说法格式</p>
                     <p class="voice-tip-formula">客户名 + 产品 + 数量 + 总价</p>
                     <p id="voice-tip-example-text" class="voice-tip-example">示例：华强北李总批发矿泉水 200 箱，总价 8600 元</p>
@@ -1082,21 +1057,9 @@
             return false;
         }
 
-        function tmOnboardingPrepareVoiceComplete() {
-            try {
-                if (window.TmOnboarding && typeof window.TmOnboarding.prepareVoiceComplete === 'function') {
-                    window.TmOnboarding.prepareVoiceComplete();
-                }
-            } catch (e) { /* ignore */ }
-        }
+        function tmOnboardingPrepareVoiceComplete() { /* removed legacy onboarding */ }
 
-        function tmOnboardingNotifyVoiceComplete() {
-            try {
-                if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceComplete === 'function') {
-                    window.TmOnboarding.onVoiceComplete();
-                }
-            } catch (e) { /* ignore */ }
-        }
+        function tmOnboardingNotifyVoiceComplete() { /* removed legacy onboarding */ }
 
         function tmVoiceIsDashboardReady() {
             var impl = window.__TM_dashboardVoice;
@@ -4630,9 +4593,6 @@
         function closeVoiceModal(opts) {
             opts = opts || {};
             var reason = opts.reason || 'user_cancel';
-            if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalClosing === 'function') {
-                window.TmOnboarding.notifyVoiceModalClosing(reason);
-            }
             if (voiceAbortController) {
                 try { voiceAbortController.abort(); } catch (abortErr) { /* ignore */ }
                 voiceAbortController = null;
@@ -4811,10 +4771,6 @@
                 recording = true;
                 voiceStopInProgress = false;
                 voiceOnstopHandled = false;
-                if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceRecordingStarted === 'function') {
-                    window.TmOnboarding.onVoiceRecordingStarted();
-                }
-
                 recorder.ondataavailable = function (event) {
                     if (event.data && event.data.size > 0) {
                         audioChunks.push(event.data);
@@ -4846,16 +4802,7 @@
                 }
                 stopAllVoiceTracks();
                 recording = false;
-                var inOnbVoice = window.TmOnboarding && typeof window.TmOnboarding.isVoiceModalPhase === 'function'
-                    && window.TmOnboarding.isVoiceModalPhase();
-                if (inOnbVoice) {
-                    showVoiceReadyPanel();
-                    if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceRecordingEnded === 'function') {
-                        window.TmOnboarding.onVoiceRecordingEnded();
-                    }
-                } else {
-                    closeVoiceModal({ reason: 'error' });
-                }
+                closeVoiceModal({ reason: 'error' });
             }
         }
 
@@ -5636,10 +5583,14 @@
     <script src="../../assets/js/ui-returns.js?v=20260628"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
-    <script src="../../assets/js/tm-workbench-profile.js?v=20260629"></script>
-    <script src="../../assets/js/workbench-quick-order.js?v=20260629"></script>
+    <script src="../../assets/js/tm-product-thumb.js?v=20260630"></script>
+    <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260630"></script>
+    <script src="../../assets/js/tm-industry-ui.js?v=20260630"></script>
+    <script src="../../assets/js/tm-workbench-profile.js?v=20260630"></script>
+    <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
+    <script src="../../assets/js/rapid-order.js?v=20260701"></script>
     <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260629"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260630"></script>
 </body>
 </html>
 

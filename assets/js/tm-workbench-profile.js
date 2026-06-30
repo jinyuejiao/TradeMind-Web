@@ -4,18 +4,20 @@
 (function () {
     'use strict';
 
-    var COLUMN_PRESETS = {
-        GENERAL: ['product', 'qty', 'price', 'amount'],
-        CLOTHING: ['product', 'spec', 'qty', 'price', 'amount'],
-        FOOD: ['product', 'spec', 'expiry', 'qty', 'price', 'amount'],
-        DIGITAL_3C: ['product', 'spec', 'serial', 'qty', 'price', 'amount']
-    };
-
     var INDUSTRY_LABELS = {
+        PENDING: '待选择',
         GENERAL: '通用',
         CLOTHING: '服装',
         FOOD: '食品',
         DIGITAL_3C: '3C数码'
+    };
+
+    var COLUMN_PRESETS = {
+        PENDING: ['product', 'qty', 'price', 'amount'],
+        GENERAL: ['product', 'qty', 'price', 'amount'],
+        CLOTHING: ['product', 'spec', 'qty', 'price', 'amount'],
+        FOOD: ['product', 'spec', 'expiry', 'qty', 'price', 'amount'],
+        DIGITAL_3C: ['product', 'spec', 'serial', 'qty', 'price', 'amount']
     };
 
     function parseJwtPayload() {
@@ -43,7 +45,7 @@
 
     window.TM_WorkbenchProfile = {
         merchantType: 'WHOLESALE',
-        industryVertical: 'GENERAL',
+        industryVertical: 'PENDING',
         roleType: 'ADMIN',
         capabilities: {},
         uiProfile: {},
@@ -52,7 +54,7 @@
         load: async function () {
             var jwt = parseJwtPayload();
             this.merchantType = jwt.merchantType || 'WHOLESALE';
-            this.industryVertical = jwt.industryVertical || 'GENERAL';
+            this.industryVertical = jwt.industryVertical || 'PENDING';
             this.roleType = jwt.roleType || 'ADMIN';
             this.quickOrderColumns = COLUMN_PRESETS[this.industryVertical] || COLUMN_PRESETS.GENERAL;
 
@@ -69,9 +71,30 @@
                             this.quickOrderColumns = COLUMN_PRESETS[ops.industryVertical];
                         }
                     }
+                    try {
+                        var onbResp = await window.wrappedFetch('/api/v1/tenant/onboarding/status', { method: 'GET' });
+                        var onbJson = await window.handleApiResponse(onbResp);
+                        var onb = onbJson && onbJson.data ? onbJson.data : onbJson;
+                        if (onb && onb.industryVertical && onb.industryVertical !== 'PENDING') {
+                            this.industryVertical = onb.industryVertical;
+                            if (COLUMN_PRESETS[onb.industryVertical]) {
+                                this.quickOrderColumns = COLUMN_PRESETS[onb.industryVertical];
+                            }
+                        }
+                    } catch (e2) { /* ignore */ }
                 } catch (e) { /* ignore */ }
             }
+            this.afterLoad();
             return this;
+        },
+
+        afterLoad: function () {
+            if (window.TM_IndustryUI) {
+                window.TM_IndustryUI.apply(document.body, this);
+            }
+            if (window.TM_FirstLoginWizard && typeof window.TM_FirstLoginWizard.checkAndShow === 'function') {
+                window.TM_FirstLoginWizard.checkAndShow();
+            }
         },
 
         industryLabel: function () {

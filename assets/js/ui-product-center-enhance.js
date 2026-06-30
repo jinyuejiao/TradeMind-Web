@@ -1015,6 +1015,9 @@
         if (typeof PM.loadProductPriceTrend === 'function') {
             await PM.loadProductPriceTrend(productId);
         }
+        if (typeof PM.loadProductCoverPreview === 'function') {
+            await PM.loadProductCoverPreview();
+        }
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }
@@ -1123,7 +1126,9 @@
                 }
                 return;
             }
-            var saved = data.data || {};
+            var savedRaw = data.data || {};
+            var saved = typeof PM.unwrapSavePayload === 'function'
+                ? PM.unwrapSavePayload(savedRaw) : savedRaw;
             if (saved.productId != null) {
                 PM.currentProduct.id = saved.productId;
             }
@@ -1482,10 +1487,13 @@
             }
             var data = await window.handleApiResponse(response);
             if (!data) return;
-            var saved = data.data || {};
+            var savedRaw = data.data || {};
+            var saved = typeof PM.unwrapSavePayload === 'function'
+                ? PM.unwrapSavePayload(savedRaw) : savedRaw;
             if (saved.productId != null) {
                 PM.currentProduct = PM.currentProduct || {};
                 PM.currentProduct.id = saved.productId;
+                if (saved.spuId != null) PM.currentProduct.spuId = saved.spuId;
                 var mapped = PM.mapProductFromApi(saved);
                 if (mapped.unitConversions && mapped.unitConversions.length) {
                     PM.currentProduct.unitConversions = mapped.unitConversions;
@@ -1609,8 +1617,40 @@
         try {
             var resp = await window.wrappedFetch('/api/v1/rd/products/media/upload', { method: 'POST', body: fd });
             await window.handleApiResponse(resp);
+            input.value = '';
         } catch (e) {
             console.warn('[ProductEnhance] 主图上传失败', e);
+        }
+    };
+
+    PM.loadProductCoverPreview = async function () {
+        var preview = PM.el('detail-product-cover-preview');
+        if (!preview) return;
+        var cp = PM.currentProduct || {};
+        var coverUrl = cp.coverUrl || cp.cover_url;
+        var spuId = cp.spuId || cp.spu_id;
+        if (!coverUrl && spuId && window.wrappedFetch) {
+            try {
+                var resp = await window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId, { method: 'GET' });
+                var data = await window.handleApiResponse(resp);
+                var items = data && data.data ? data.data : [];
+                var cover = Array.isArray(items) ? items.find(function (m) {
+                    return (m.mediaType || m.media_type) === 'COVER';
+                }) : null;
+                if (cover) {
+                    coverUrl = cover.url || cover.coverUrl;
+                } else if (items.length && items[0].url) {
+                    coverUrl = items[0].url;
+                }
+                if (coverUrl) PM.currentProduct.coverUrl = coverUrl;
+            } catch (e) {
+                console.warn('[ProductEnhance] 封面加载失败', e);
+            }
+        }
+        if (coverUrl && window.TM_ProductThumb) {
+            window.TM_ProductThumb.mount(preview, { coverUrl: coverUrl, size: 96, alt: cp.name || '' });
+        } else {
+            preview.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="ph ph-image text-2xl"></i></div>';
         }
     };
 })();

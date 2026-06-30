@@ -3107,9 +3107,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
                             window.TM_UI.applyContextFromToken(data.token);
                         }
-                        if (window.TM_ONBOARDING_SYNC && data.onboarding) {
-                            window.TM_ONBOARDING_SYNC.stashLoginBootstrap(data.onboarding);
-                        }
                         
                         window.location.href = getPostLoginEntryPath(data.user || {});
                     } else {
@@ -3129,9 +3126,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
                             window.TM_UI.applyContextFromToken(data.data.token);
-                        }
-                        if (window.TM_ONBOARDING_SYNC && data.data.onboarding) {
-                            window.TM_ONBOARDING_SYNC.stashLoginBootstrap(data.data.onboarding);
                         }
                         
                         window.location.href = getPostLoginEntryPath(data.data.user || {});
@@ -3357,8 +3351,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 const url = gatewayUrl + '/api/v1/tenant/register';
                 
                 // 构建注册数据
-                const merchantTypeEl = document.querySelector('input[name="tmMerchantType"]:checked');
-                const industryEl = document.querySelector('input[name="tmIndustryVertical"]:checked');
                 const registerData = {
                     username: username,
                     email: email || null,
@@ -3369,8 +3361,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     referralCode: inviteCode,
                     smsToken: registerSmsToken || '',
                     smsCode: smsCode,
-                    merchantType: merchantTypeEl ? merchantTypeEl.value : 'WHOLESALE',
-                    industryVertical: industryEl ? industryEl.value : 'GENERAL'
+                    merchantType: 'WHOLESALE'
                 };
                 
                 // 发送注册请求

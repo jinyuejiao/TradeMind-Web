@@ -81,13 +81,7 @@ function TM_syncDashboardOverlays(htmlString) {
             const current = document.getElementById(id);
             var preserveVoiceOpen = false;
             if (id === 'voice-modal') {
-                var wasDomOpen = current && !current.classList.contains('hidden');
-                var inVoiceTour = window.TmOnboarding && typeof window.TmOnboarding.isVoiceModalPhase === 'function'
-                    && window.TmOnboarding.isVoiceModalPhase();
-                preserveVoiceOpen = !!(wasDomOpen || inVoiceTour);
-                if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
-                    window.TmOnboarding.setVoiceOverlaySyncLock(true);
-                }
+                preserveVoiceOpen = !!(current && !current.classList.contains('hidden'));
             }
             const cloned = nextNode.cloneNode(true);
             if (current && current.parentNode) {
@@ -108,13 +102,6 @@ function TM_syncDashboardOverlays(htmlString) {
             if (id === 'voice-modal' && preserveVoiceOpen) {
                 cloned.classList.remove('hidden');
                 cloned.style.zIndex = '210';
-            }
-            if (id === 'voice-modal') {
-                if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalReplaced === 'function') {
-                    window.TmOnboarding.notifyVoiceModalReplaced(preserveVoiceOpen);
-                } else if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
-                    window.TmOnboarding.setVoiceOverlaySyncLock(false);
-                }
             }
         });
         TM_rebindVoiceStopAfterOverlaySync();
@@ -1885,10 +1872,6 @@ async function downloadPoster() {
         var impl = tmVoiceImpl();
         if (impl && typeof impl.closeVoiceModal === 'function') {
             return impl.closeVoiceModal(opts);
-        }
-        if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalClosing === 'function') {
-            var reason = (opts && opts.reason) ? opts.reason : 'user_cancel';
-            window.TmOnboarding.notifyVoiceModalClosing(reason);
         }
         var m = document.getElementById('voice-modal');
         if (m) m.classList.add('hidden');

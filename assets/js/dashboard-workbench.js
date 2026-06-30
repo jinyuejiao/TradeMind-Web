@@ -1463,6 +1463,11 @@
     function boot() {
         patchAuditAndPending();
         console.log('[DashboardWorkbench] 工作台增强已加载');
+        if (window.TM_loadWorkbenchProfile) {
+            window.TM_loadWorkbenchProfile().catch(function (err) {
+                console.warn('[DashboardWorkbench] 工作台配置加载失败', err);
+            });
+        }
         if (document.getElementById('pending-orders-list')) {
             TM_PendingOrdersStore.refresh(true);
         }

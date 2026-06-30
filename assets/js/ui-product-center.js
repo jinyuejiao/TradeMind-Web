@@ -25,6 +25,9 @@ window.ProductModule = {
         }) : [];
         return {
             id: apiProduct.productId || apiProduct.id,
+            spuId: apiProduct.spuId != null ? apiProduct.spuId : apiProduct.spu_id,
+            skuId: apiProduct.skuId != null ? apiProduct.skuId : apiProduct.sku_id,
+            coverUrl: apiProduct.coverUrl || apiProduct.cover_url || null,
             name: apiProduct.productName || apiProduct.name,
             sku: apiProduct.productSku || apiProduct.sku,
             categoryId: apiProduct.categoryId != null ? Number(apiProduct.categoryId) : null,
@@ -56,6 +59,32 @@ window.ProductModule = {
                 stockNum >= 10 ? '预警' : '缺货'
             )
         };
+    },
+
+    renderProductThumbHtml: function(product, size) {
+        size = size || 40;
+        if (window.TM_ProductThumb) {
+            return window.TM_ProductThumb.html({
+                coverUrl: product && (product.coverUrl || product.cover_url),
+                size: size,
+                alt: product && product.name ? product.name : ''
+            });
+        }
+        return '<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">' +
+            '<i class="ph ph-package text-xl"></i></div>';
+    },
+
+    unwrapSavePayload: function(saved) {
+        if (!saved || typeof saved !== 'object') return {};
+        if (saved.product && typeof saved.product === 'object') {
+            var p = saved.product;
+            return Object.assign({}, p, {
+                productId: saved.productId != null ? saved.productId : p.productId,
+                spuId: saved.spuId != null ? saved.spuId : (saved.spu_id != null ? saved.spu_id : p.spuId),
+                skuId: saved.skuId != null ? saved.skuId : (saved.sku_id != null ? saved.sku_id : p.skuId)
+            });
+        }
+        return saved;
     },
 
     mapCategoryFromApi: function(apiCategory) {
@@ -1027,9 +1056,7 @@ window.ProductModule = {
             <tr onclick="window.ProductModule.openProductDetail(${product.id})" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-500 transition-colors">
-                            <i class="ph ph-${product.icon} text-xl"></i>
-                        </div>
+                        ${window.ProductModule.renderProductThumbHtml(product, 40)}
                         <div>
                             <p class="font-bold text-slate-800 product-name-cell">${product.name}</p>
                             <p class="text-[10px] text-slate-400 font-mono product-sku-cell uppercase mt-1">SKU: ${product.sku}</p>
@@ -1090,9 +1117,7 @@ window.ProductModule = {
             const pulse = product.stockStatus === '缺货' ? 'animate-pulse' : '';
             return `
         <div class="mobile-product-row flex items-stretch gap-2 px-3 py-1.5 cursor-pointer hover:bg-slate-50/90 active:bg-slate-50" onclick="window.ProductModule.openProductDetail(${product.id})">
-            <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                <i class="ph ph-${product.icon} text-base"></i>
-            </div>
+            ${window.ProductModule.renderProductThumbHtml(product, 36)}
             <div class="flex-1 min-w-0 py-0">
                 <div class="flex justify-between gap-2 items-start">
                     <p class="font-bold text-slate-800 text-[12px] leading-tight line-clamp-2">${product.name}</p>
@@ -1540,9 +1565,17 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            const saved = data.data || {};
+            const savedRaw = data.data || {};
+            const saved = this.unwrapSavePayload(savedRaw);
             if (saved.productId != null && !this.currentProduct.id) {
                 this.currentProduct.id = saved.productId;
+            }
+            if (saved.spuId != null) {
+                this.currentProduct.spuId = saved.spuId;
+            }
+            var spuIdForCover = this.currentProduct.spuId || saved.spuId;
+            if (spuIdForCover && typeof this.uploadProductCover === 'function') {
+                await this.uploadProductCover(spuIdForCover);
             }
 
             console.log('[ProductModule] 产品保存成功');
