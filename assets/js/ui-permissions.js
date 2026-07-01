@@ -27,7 +27,9 @@
         SENSITIVE_SETTINGS: 'sensitive.settings',
         BIZ_VIEW: 'biz.view',
         SUPPLIER_SETTLE: 'supplier.settle',
-        MEMBER_MANAGE: 'member.manage'
+        MEMBER_MANAGE: 'member.manage',
+        PRINT_ORDER: 'print.order',
+        MANAGE_PRINTER: 'printer.manage'
     };
 
     var FIELD = {
@@ -68,7 +70,8 @@
                 ACTION.WAREHOUSE_MANAGE,
                 ACTION.PURCHASE_ORDER,
                 ACTION.CRM_CREATE,
-                ACTION.SUPPLIER_SETTLE
+                ACTION.SUPPLIER_SETTLE,
+                ACTION.PRINT_ORDER
             ],
             masked_fields: [],
             hidden_fields: [],
@@ -92,7 +95,8 @@
                 ACTION.PRODUCT_CATEGORY,
                 ACTION.WAREHOUSE_MANAGE,
                 ACTION.PURCHASE_ORDER,
-                ACTION.CRM_CREATE
+                ACTION.CRM_CREATE,
+                ACTION.PRINT_ORDER
             ],
             masked_fields: [],
             hidden_fields: [FIELD.PURCHASE_PRICE],
@@ -110,7 +114,8 @@
             allowed_actions: [
                 ACTION.PRODUCT_EDIT,
                 ACTION.WAREHOUSE_MANAGE,
-                ACTION.PURCHASE_ORDER
+                ACTION.PURCHASE_ORDER,
+                ACTION.PRINT_ORDER
             ],
             masked_fields: [],
             hidden_fields: [FIELD.SALES_PRICE],

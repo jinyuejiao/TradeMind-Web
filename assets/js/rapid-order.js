@@ -73,6 +73,9 @@
     }
 
     function closeRapidOrderModal() {
+        if (window.TM_ScanRouter && typeof window.TM_ScanRouter.clearContext === 'function') {
+            window.TM_ScanRouter.clearContext();
+        }
         var modal = document.getElementById('rapid-order-modal');
         if (!modal) return;
         if (typeof window.TM_closeUnifiedModal === 'function') {
@@ -135,6 +138,76 @@
         }
     }
 
+    function findSkuRowFromScan(code, decodeResult) {
+        var rows = window.TM_SkuCatalogCache ? window.TM_SkuCatalogCache.getRows() : [];
+        if (decodeResult && decodeResult.match) {
+            var m = decodeResult.match;
+            var skuId = m.sku_id || m.skuId;
+            var prodId = m.product_id || m.legacy_product_id;
+            if (skuId) {
+                var hit = rows.find(function (r) { return String(r.skuId) === String(skuId); });
+                if (hit) return hit;
+            }
+            if (prodId) {
+                return rows.find(function (r) { return String(r.legacyProductId) === String(prodId); });
+            }
+        }
+        if (!code) return null;
+        return rows.find(function (r) {
+            return String(r.skuCode || r.sku_code || '') === String(code);
+        }) || null;
+    }
+
+    async function handleRapidOrderScan(code, decodeResult) {
+        var modal = document.getElementById('rapid-order-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+        var row = findSkuRowFromScan(code, decodeResult);
+        if (!row && window.TM_SkuCatalogCache) {
+            var wh = document.getElementById('rop-warehouse');
+            var whId = wh && wh.value ? parseInt(wh.value, 10) : null;
+            await window.TM_SkuCatalogCache.load(whId, true);
+            row = findSkuRowFromScan(code, decodeResult);
+        }
+        if (!row) {
+            notify('未识别条码：' + code, 'error');
+            return;
+        }
+        var line = getCartLine(row.skuId);
+        line.qty = (line.qty || 0) + 1;
+        updateCartUi();
+        await renderOrderLines();
+        notify('已添加 ' + row.name, 'success');
+    }
+
+    function bindScanRouterForRapidOrder() {
+        if (!window.TM_ScanRouter || typeof window.TM_ScanRouter.setContext !== 'function') return;
+        window.TM_ScanRouter.setContext({
+            name: 'RAPID_ORDER',
+            minLength: 3,
+            onScan: function (code, decodeResult) {
+                handleRapidOrderScan(code, decodeResult);
+            }
+        });
+    }
+
+    async function offerPrintAfterCreate(orderId) {
+        if (!orderId || !window.TM_PrintTriggers) return;
+        var doPrint = false;
+        if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {
+            doPrint = await window.TM_UI.confirm({
+                title: '打印单据',
+                message: '订单已创建，是否立即打印？',
+                confirmLabel: '打印',
+                cancelLabel: '稍后'
+            });
+        } else {
+            doPrint = window.confirm('订单已创建，是否立即打印？');
+        }
+        if (doPrint) {
+            await window.TM_PrintTriggers.printLastRapidOrder(orderId);
+        }
+    }
+
     function ensurePickerDom() {
         if (document.getElementById('rapid-order-picker')) return;
         var el = document.createElement('div');
@@ -180,8 +253,10 @@
             '<div class="rop-modal-panel tm-document-modal bg-white w-full shadow-xl flex flex-col min-h-0">' +
             '<header class="rop-modal-header px-4 py-3 border-b flex justify-between items-center shrink-0">' +
             '<h3 class="font-bold text-slate-800">⚡ 极速开单</h3>' +
+            '<div class="flex items-center gap-1">' +
+            '<button type="button" id="rop-scan-camera" class="p-2 hover:bg-slate-100 rounded-full text-teal-600" title="相机扫码加 SKU"><i class="ph ph-camera text-lg"></i></button>' +
             '<button type="button" id="rop-modal-close" class="p-2 -mr-2 hover:bg-slate-100 rounded-full" aria-label="关闭">' +
-            '<i class="ph ph-x text-lg text-slate-400"></i></button></header>' +
+            '<i class="ph ph-x text-lg text-slate-400"></i></button></div></header>' +
             '<main class="rop-modal-body p-4 space-y-3 flex-1 min-h-0 overflow-y-auto">' +
             '<div class="rop-modal-form-grid">' +
             '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">客户</label>' +
@@ -230,6 +305,21 @@
         var scanBtn = modal.querySelector('#rop-scan-tracking');
         if (scanBtn) {
             scanBtn.addEventListener('click', scanTrackingNo);
+        }
+        var camBtn = modal.querySelector('#rop-scan-camera');
+        if (camBtn) {
+            camBtn.addEventListener('click', function () {
+                if (!window.TM_ScanCamera) {
+                    notify('相机扫码未加载', 'error');
+                    return;
+                }
+                window.TM_ScanCamera.open({
+                    context: 'RAPID_ORDER',
+                    onScan: function (code, decodeResult) {
+                        handleRapidOrderScan(code, decodeResult);
+                    }
+                });
+            });
         }
         modal.querySelector('#rop-warehouse').addEventListener('change', function () {
             batchCache.clear();
@@ -561,6 +651,7 @@
         }
         await renderOrderLines();
         syncFulfillmentPanel();
+        bindScanRouterForRapidOrder();
         var modal = document.getElementById('rapid-order-modal');
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -651,11 +742,20 @@
             });
             var data = await window.handleApiResponse(resp);
             if (!data) return;
+            var saved = data.data || {};
+            var orderId = saved.orderId || saved.order_id || saved.id;
             notify('订单已创建', 'success');
             closeRapidOrderModal();
             cart.clear();
             batchCache.clear();
             if (typeof window.loadInProgressOrders === 'function') window.loadInProgressOrders();
+            if (orderId) {
+                if (window.TM_PrintTriggers && window.TM_PrintTriggers.offerPrintAfterCreate) {
+                    await window.TM_PrintTriggers.offerPrintAfterCreate(orderId);
+                } else {
+                    await offerPrintAfterCreate(orderId);
+                }
+            }
         } catch (e) {
             notify(e.message || '提交失败', 'error');
         }

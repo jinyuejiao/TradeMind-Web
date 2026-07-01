@@ -10,7 +10,11 @@
 
 销售/进货单据已落地**物流状态 + 财务状态双线模型**（字典 **D010–D012** 物流、**D015–D017** 财务/流水类型）：物流驱动 **`warehouse_stock`** 精准出入库（明细 **`is_processed`** 幂等），财务经 **`record-payment`** 独立记账（详见 §1.3.7–§1.4.4、§2.9）。前端 **`tm-layout-engine.css`** 统一手机端三段式壳层与弹窗 Bottom Sheet（§3.1.0、§7.5）。
 
-**商户端 RBAC 壳层**（§3.1.0、§7.7）：**`ui-permissions.js`** + **`ui-role-engine.js`** 按 JWT **`roleType`** 物理移除无权限导航/按钮，并脱敏 **`data-field`** 价格字段；**`switchTab`** 内置路由守卫。**工作台增强**（§3.1.1）：**`dashboard-workbench.js`** 待确认单据 Store 轮询、**`ui-ai-service.js`** 多端录音/拍照、**`ai-order-extract-parse.js`** 统一解析 AI 结果、**`order-workbench-modal.js`** 订单弹窗布局。**商户问题反馈**（§1.6.5、§3.1.9）：**`merchant_feedback`** 表 + 顶栏 **`TM_MerchantFeedback`** 提交，运维在 **`ops-hub.html`** 处理（§3.1.10）。
+**产品 SPU/SKU 双轨**（§1.3.10）：在保留 Legacy **`products`** 表与 **`legacy_product_id`** 映射的前提下，**`product_spu` / `product_sku`** 为新能力主路径；**`warehouse_stock`** 扩展 **`sku_id` + `stock_type`**；列表/开单缩略图经 **`product_spu_media` / `product_sku_media`**（§3.1.3、§3.2.4）。
+
+**行业垂直与批发工作台**（§2.10、§3.1.1）：**`tenants.industry_vertical`**（`PENDING` / `GENERAL` / `CLOTHING` / `FOOD` / `DIGITAL_3C`）与 **`merchant_type`（D013）** 独立；**`tenant_ops_profile.product_capabilities`** + **`ui_profile`** 驱动 **`TM_WorkbenchProfile`**、**`TM_IndustryUI`**；首登 **`tm-first-login-wizard.js`** → **`PUT /onboarding/complete`**；批发商工作台内嵌 **极速开单**（**`rapid-order.js`** + **`tm-sku-catalog-cache.js`**）；销售退货 **`sales_returns`** + **`ui-returns.js`**（字典 **D018–D020**）。
+
+**商户端 RBAC 壳层**（§3.1.0、§7.7）：**`ui-permissions.js`** + **`ui-role-engine.js`** 按 JWT **`roleType`** 物理移除无权限导航/按钮，并脱敏 **`data-field`** 价格字段；**`switchTab`** 内置路由守卫。**工作台增强**（§3.1.1）：**`dashboard-workbench.js`** 待确认单据 Store 轮询、**`ui-ai-service.js`** 多端录音/拍照、**`ai-order-extract-parse.js`** 统一解析 AI 结果、**`order-workbench-modal.js`** 订单弹窗布局、**`workbench-order-shipment.js`** 明细发货。**商户问题反馈**（§1.6.5、§3.1.9）：**`merchant_feedback`** 表 + 顶栏 **`TM_MerchantFeedback`** 提交，运维在 **`ops-hub.html`** 处理（§3.1.10）。
 
 ## 系统架构
 
@@ -20,7 +24,7 @@
 
 ## 1. 数据库表结构设计
 
-**DDL 权威来源**：**仅 `InitCfgService`** 在启动时执行数据库初始化；**`DatabaseInitService.initProductionBaseline()`** 按序幂等执行 **`db/schema-production.sql`**（33 张表 + 索引 + 存量列补齐 `ALTER`）→ **`db/seed-data.sql`**（运维租户、D001–D017 字典、16 行订阅方案）→ **`validateCoreSchema()`**（Java 校验表/关键列/字典/索引与 spec 对齐）。**Hibernate `ddl-auto: none`** 全局禁用自动建表；业务微服务 **禁止** 在启动时执行 `CREATE TABLE` 或自带迁移脚本。上线前清库重置流程见 **`docs/Database_Deployment_Guide.md`**；手工自检见 **`db/check_schema.sql`**。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**。
+**DDL 权威来源**：**仅 `InitCfgService`** 在启动时执行数据库初始化；**`DatabaseInitService.initProductionBaseline()`** 按序幂等执行 **`db/schema-production.sql`**（**50 张表** + 索引 + 存量列补齐 `ALTER` + 存量 **`products` → `product_spu`/`product_sku`** 幂等迁移块）→ **`db/seed-data.sql`**（运维租户、字典 **D001–D021**、16 行订阅方案）→ **`validateCoreSchema()`**（Java 校验表/关键列/字典/索引与 spec 对齐）。**Hibernate `ddl-auto: none`** 全局禁用自动建表；业务微服务 **禁止** 在启动时执行 `CREATE TABLE` 或自带迁移脚本。上线前清库重置流程见 **`docs/Database_Deployment_Guide.md`**；手工自检见 **`db/check_schema.sql`**。下列 **字段名** 均为 **PostgreSQL 物理蛇形列名**。
 
 ### 1.1 核心业务表
 
@@ -39,11 +43,30 @@
 | sub_end_time | TIMESTAMP | - | 否 | - | 订阅结束时间 |
 | tenant_status | VARCHAR | 50 | 否 | NORMAL | 租户状态 |
 | merchant_type | VARCHAR | 50 | 否 | WHOLESALE | 商户类型（字典 **D013** `dict_code`），与 JWT、网关 `X-Merchant-Type` 一致 |
+| industry_vertical | VARCHAR | 32 | 否 | PENDING | 行业垂直：`PENDING` / `GENERAL` / `CLOTHING` / `FOOD` / `DIGITAL_3C`；与 **`merchant_type`** 独立；JWT **`industryVertical`** |
+| industry_selected_at | TIMESTAMP | - | 是 | NULL | 用户确认行业垂直的时间 |
+| onboarding_completed_at | TIMESTAMP | - | 是 | NULL | 首登行业向导完成时间（**`PUT /onboarding/complete`**） |
 | current_plan_id | UUID | - | 是 | NULL | 当前生效方案 `subscription_plans.plan_id` |
 | access_mode | VARCHAR | 32 | 否 | FULL | **`FULL`** / **`READ_ONLY`** / **`BILLING_ONLY`**，与 JWT `accessMode` 一致 |
 | grace_until | TIMESTAMP | - | 是 | NULL | 宽限期截止时间（可选） |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
+
+
+#### 1.1.1.1 租户运营配置表（tenant_ops_profile）
+
+按租户一行，承载注册/首登后的 **产品能力开关** 与 **UI 偏好**；与 **`tenants`** 1:1。
+
+| 字段名 | 类型 | 可空 | 说明 |
+| ----- | --- | --- | --- |
+| tenant_id | VARCHAR(32) PK | 否 | FK → `tenants(tenant_id)` |
+| warehouse_migrated_at | TIMESTAMP | 是 | 仓库数据迁移完成时间 |
+| account_migrated_at | TIMESTAMP | 是 | 账户数据迁移完成时间 |
+| product_capabilities | JSONB | 否 | **`{ allowVariants, allowExpiry, allowSerial }`**；注册/改行业时由 **`TenantProfileInitService.buildDefaultCapabilities`** 按 **`merchant_type` + `industry_vertical`** 合并初始化 |
+| ui_profile | JSONB | 否 | UI 偏好，典型键：`defaultFulfillmentWarehouseId`、`defaultStoreWarehouseId`、`defaultCustomerId`、`defaultAccountId`、`onboardingStatus`（`PENDING`/`DONE`）、`quickOrderPrintTemplate` |
+| create_time / update_time | TIMESTAMP | 是 | 创建/更新时间 |
+
+**读写 API**：**`GET /api/v1/rd/tenant/ops-profile`**（RDService **`TenantOpsController`**）；**`PUT /api/v1/rd/tenant/ui-profile`** 局部更新 **`ui_profile`**。
 
 
 #### 1.1.2 用户表（users）
@@ -333,9 +356,11 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | ------------ | --------- | --- | --- | ---------------- | ------- |
 | stock_id     | SERIAL    | -   | 否   | -                | 库存记录主键  |
 | tenant_id    | VARCHAR   | 32  | 否   | -                | 租户ID    |
-| product_id   | INT       | -   | 否   | -                | 产品ID    |
+| product_id   | INT       | -   | 否   | -                | Legacy 产品 ID（`products.product_id`）；与 **`sku_id`** 双轨并存 |
+| sku_id       | INT       | -   | 是   | NULL             | SKU ID（`product_sku.sku_id`）；新库存主键路径 |
 | warehouse_id | INT     | -   | 否   | -                | 仓库ID    |
 | stock        | INT       | -   | 否   | 0                | 库存数量    |
+| stock_type   | VARCHAR   | 16  | 否   | SELLABLE         | 库存类型（如 **`SELLABLE`**）；与 **`sku_id`** 组合唯一（部分索引 **`uq_wh_stock_sku_sellable`**） |
 | create_time  | TIMESTAMP | -   | 是   | CURRENT_TIMESTAMP | 创建时间    |
 | update_time  | TIMESTAMP | -   | 是   | CURRENT_TIMESTAMP | 更新时间    |
 
@@ -352,6 +377,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | update_time | TIMESTAMP | -   | 是   | CURRENT_TIMESTAMP | 更新时间  |
 
 #### 1.3.5 产品表（products）
+
+> **Legacy 双轨**：本表为历史单 SKU 模型；新能力以 **`product_spu` / `product_sku`** 为主路径（§1.3.10）。存量行经启动迁移脚本回填 **`product_sku.legacy_product_id`**；列表/保存 API 仍兼容 **`product_id`** 视图。
 
 | 字段名           | 类型        | 长度   | 可空  | 默认值              | 说明                                      |
 | ------------- | --------- | ---- | --- | ---------------- | --------------------------------------- |
@@ -404,6 +431,13 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | order_status | VARCHAR | 50 | 否 | D010001 | 订单**物流**状态（字典 **D010** `dict_code`，持久化 **`D010001`…`D010006`**；DDL 默认 **`D010001`（待配货）**；兼容 `ALLOCATING`/`PICKING` 等别名，入库前经 **`OrderStatusCodes.normalizeForStorage`**） |
 | fin_status | VARCHAR | 50 | 否 | UNPAID | 订单**财务**状态（字典 **D015**：`UNPAID`/`PARTIAL_PAID`/`SETTLED`/`BAD_DEBT`） |
 | warehouse_id | INT | - | 是 | NULL | 发出仓库 FK → `warehouse(warehouse_id)` ON DELETE SET NULL |
+| fulfillment_warehouse_id | INT | - | 是 | NULL | 履约/配货仓 FK → `warehouse(warehouse_id)` |
+| fulfillment_type | VARCHAR | 16 | 否 | SELF_PICKUP | 履约方式：`SELF_PICKUP` / `LOGISTICS` / `DELIVERY_VEHICLE` 等 |
+| fulfillment_address_id | INT | - | 是 | NULL | 客户地址簿 ID → `fulfillment_addresses(address_id)` |
+| fulfillment_address_snapshot | JSONB | - | 是 | NULL | 下单时地址/车辆快照（物流/自送字段约定见 §2.10.3） |
+| logistics_provider | VARCHAR | 32 | 是 | NULL | 物流商编码（冗余，与明细发货子表并存） |
+| logistics_tracking_no | VARCHAR | 64 | 是 | NULL | 运单号（冗余） |
+| has_shortage | BOOLEAN | - | 否 | FALSE | 是否存在欠货行（部分发货场景） |
 | received_amount | DECIMAL | 12,2 | 否 | 0 | 累计已收金额；与 **`total_amount`** 比较驱动 **`fin_status`** |
 | delivery_date | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 交付日期 |
 | create_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 创建时间 |
@@ -417,11 +451,17 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | ----- | --- | --- | --- | --- | --- |
 | item_id | SERIAL | - | 否 | - | 明细 ID，主键 |
 | order_id | INT | - | 否 | - | 订单 ID，FK → `orders` |
-| product_id | INT | - | 否 | - | 产品 ID，FK → `products` |
+| product_id | INT | - | 否 | - | Legacy 产品 ID，FK → `products` |
+| sku_id | INT | - | 是 | NULL | SKU ID，FK → `product_sku(sku_id)`；新明细主路径 |
 | quantity | INT | - | 否 | - | 数量 |
 | unit_price | DECIMAL | 10,2 | 否 | - | 单价 |
 | total_amount | DECIMAL | 12,2 | 否 | - | 行总金额 |
 | item_status | VARCHAR | 50 | 否 | - | 明细**物流**状态（字典 **D011**） |
+| shortage_qty | INT | - | 否 | 0 | 欠货数量（部分发货） |
+| item_exception_code | VARCHAR | 50 | 是 | NULL | 行级异常码 |
+| fulfillment_plan | VARCHAR | 32 | 是 | NULL | 履约计划（如调拨/直发） |
+| source_warehouse_id | INT | - | 是 | NULL | 调出仓 FK |
+| target_warehouse_id | INT | - | 是 | NULL | 调入仓 FK |
 | is_processed | BOOLEAN | - | 否 | FALSE | 是否已完成出库处理（发货幂等标志） |
 | processed_at | TIMESTAMP | - | 是 | NULL | 出库处理时间 |
 | processed_qty | INT | - | 是 | NULL | 已处理数量（通常等于 `quantity`） |
@@ -448,6 +488,86 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | update_time | TIMESTAMP | - | 是 | CURRENT_TIMESTAMP | 更新时间 |
 
 索引：`idx_production_tenant_id`、`idx_production_product_id`、`idx_production_user_id`。
+
+
+#### 1.3.10 SPU/SKU 产品模型与扩展表（2026-06 落地）
+
+> **设计要点**：**`product_spu`** 承载款级信息与 **`track_variants` / `track_expiry` / `track_serial`**；**`product_sku`** 为可售 SKU，**`legacy_product_id`** 关联旧 **`products`**；缩略图 **`product_sku_media` → `product_spu_media(COVER)`**；批次/序列号经 **`inventory_batch` / `inventory_serial`** 扩展。
+
+##### 1.3.10.1 商品 SPU（product_spu）
+
+| 字段名 | 类型 | 说明 |
+| ----- | --- | --- |
+| spu_id | SERIAL PK | SPU 主键 |
+| tenant_id / user_id | VARCHAR(32) / INT | 租户 / 创建用户 |
+| name | VARCHAR(100) | 商品名称 |
+| category_id | INT | FK → `product_categories`，可空 |
+| description | TEXT | 描述 |
+| default_supplier_id | INT | 默认供应商 |
+| track_variants / track_expiry / track_serial | BOOLEAN | 是否启用规格/效期/序列号 |
+| default_shelf_life_days | INT | 默认保质期天数 |
+| expiry_policy / serial_outbound_mode | VARCHAR(16) | 效期/出库策略 |
+| status | VARCHAR(20) | 默认 `ACTIVE` |
+
+##### 1.3.10.2 商品 SKU（product_sku）
+
+| 字段名 | 类型 | 说明 |
+| ----- | --- | --- |
+| sku_id | SERIAL PK | SKU 主键 |
+| spu_id | INT FK | → `product_spu` |
+| sku_code | VARCHAR(50) | 租户内唯一（**`uq_product_sku_tenant_code`**） |
+| name / price / stock / warning_stock | — | 名称、售价、汇总库存、预警 |
+| base_unit / purchase_unit / sales_unit | VARCHAR(20) | 单位 |
+| is_default | BOOLEAN | 是否 SPU 默认 SKU |
+| legacy_product_id | INT | FK → `products`，迁移桥接 |
+| attributes_display | VARCHAR(200) | 规格展示文案（如「红 / L」） |
+
+##### 1.3.10.3 属性模板（attribute_template / attribute_definition / sku_attribute_value）
+
+- **`attribute_template`**：租户或系统模板（**`is_system`**）；行业种子如 `SYS_CLOTHING`（颜色+尺码）等。
+- **`attribute_definition`**：模板下属性定义（**`attr_type`**、**`enum_values` JSONB**、**`matrix_key`**）。
+- **`sku_attribute_value`**：SKU 属性值；唯一 **`(sku_id, attr_def_id)`**。
+
+##### 1.3.10.4 批次与序列号
+
+| 表 | 说明 |
+| --- | --- |
+| `inventory_batch` | SKU 批次（**`batch_no`**、**`production_date`**、**`expiry_date`**） |
+| `warehouse_batch_stock` | 仓×批次×**`stock_type`** 数量 |
+| `inventory_serial` | 序列号档案（**`status`**：`IN_STOCK` 等；**`uq_inventory_serial_tenant_no`**） |
+| `inventory_movement_serial` | 流水与序列号关联 |
+
+##### 1.3.10.5 产品媒体（product_spu_media / product_sku_media）
+
+| 表 | 说明 |
+| --- | --- |
+| `product_spu_media` | SPU 图：**`media_type`** = `COVER` / `GALLERY`（图册最多 9 张，应用层校验）；**`object_key`** + **`url`** |
+| `product_sku_media` | SKU 规格差异图；每 SKU 最多 1 张封面（**`uq_sku_media_one_cover`**） |
+
+上传 API：**`POST /api/v1/rd/products/media/upload`**（multipart **`file`**，Query **`spuId`/`skuId`/`mediaType`**）。
+
+##### 1.3.10.6 订单明细发货子表（order_item_shipment）
+
+按明细行记录快递/调拨等发货事实：**`shipment_type`**（默认 `EXPRESS`）、**`logistics_brand`**、**`tracking_no`**、**`shipped_qty`**、**`from_warehouse_id`/`to_warehouse_id`**。
+
+##### 1.3.10.7 履约地址簿（fulfillment_addresses）
+
+客户级收货/自送地址：**`label`**、联系人、省市区、**`detail`**、**`vehicle_plate`**（自送）、**`is_default`**。
+
+##### 1.3.10.8 销售退货（sales_returns / sales_return_items）
+
+| 表 | 关键字段 |
+| --- | --- |
+| `sales_returns` | **`return_code`**、**`order_id`**、**`return_status`**（字典 **D018**，默认 **`D018002` 待收货**）、**`fin_status`**、**`reason_code`**（**D019**） |
+| `sales_return_items` | **`sku_id`** / **`product_id`**、**`received_qty`/`good_qty`/`defective_qty`/`scrap_qty`**、**`batch_id`**、**`serial_refs` JSONB** |
+
+##### 1.3.10.9 供应商退厂（supplier_returns / supplier_return_items）
+
+**`supplier_returns.status`** 字典 **D021**（默认 **`D021001` 草稿**）；明细含 **`sku_id`** / **`product_id`**。
+
+##### 1.3.10.10 明细表 SKU 扩展
+
+**`purchase_items.sku_id`**、**`unitConversion.sku_id`**：与 **`product_id`** 并存，迁移后新写入优先 **`sku_id`**。
 
 
 ### 1.4 供应链模块表
@@ -586,11 +706,15 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | D015   | NULL     | ORDER_FIN_STATUS    | 销售单财务状态  | 1         | 15   | `orders.fin_status` |
 | D016   | NULL     | PURCHASE_FIN_STATUS | 进货单财务状态  | 1         | 16   | `purchases.fin_status` |
 | D017   | NULL     | LEDGER_BIZ_TYPE     | 财务流水业务类型 | 1         | 17   | `biz_account_ledger.biz_type_code` |
+| D018   | NULL     | SALES_RETURN_STATUS | 销售退货状态   | 1         | 18   | `sales_returns.return_status` |
+| D019   | NULL     | RETURN_REASON       | 退货原因     | 1         | 19   | `sales_returns.reason_code` |
+| D020   | NULL     | RETURN_ITEM_CONDITION | 退货验收品相 | 1         | 20   | `sales_return_items.item_condition` |
+| D021   | NULL     | SUPPLIER_RETURN_STATUS | 退厂单状态 | 1         | 21   | `supplier_returns.status` |
 
 
 ##### 1.5.2.2 字典子项详细列表
 
-> **实现说明**：`InitCfgService` **`db/seed-data.sql`** 物理写入的 `dict_code` 为大写下划线风格（如 `SUBSCRIPTION_TYPE`、`MERCHANT_TYPE`）；下表与 **种子 SQL 保持一致**。字典编号 **D014** 预留未使用。
+> **实现说明**：`InitCfgService` **`db/seed-data.sql`** 物理写入的 `dict_code` 为大写下划线风格（如 `SUBSCRIPTION_TYPE`、`MERCHANT_TYPE`）；下表与 **种子 SQL 保持一致**。字典 **D014** 用于客户特色标签 **`CUSTOMER_SEGMENT`**（§1.2.2）。
 
 **D001 - 订阅类型**
 
@@ -1169,12 +1293,12 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 #### 2.7.2 注册与登录（TenantService）
 
-- **注册** `POST /register`：请求体可传 **`merchantType`**（兼容 **`industryType`**），缺省 **`WHOLESALE`**；可选 **`referralCode`**（推荐码，绑定 **`referral_records`**）。事务内顺序：**持久化租户** → **校验并绑定推荐** → **创建管理员用户** → **`SubscriptionLifecycleService.startTrial`**（按 **`subscription_plans`** 中该业态 **`TRIAL`** 行的 **`trial_days`** 写 **`tenant_subscriptions`**，并同步 **`tenants.subscription_type`**、**`sub_*`**、**`current_plan_id`**）→ **`ReferralCodeAllocator`** 为用户生成 **`JYxxxxxx`**。非法 **`merchantType`** 或无效推荐码返回 **400**。
-- **登录** `POST /login`：**`ReferralCodeAllocator.assignIfAbsent`** 兼容存量用户补码；**`AccessModeEvaluator.evaluateAndPersist`** 写回 **`access_mode`**；签发 JWT（见 §2.7.3）。响应体除 **`token`**、**`user`**、**`merchantType`** 外，含 **`accessMode`**、**`referralCode`**、**`onboarding`**（首登/必学摘要，详情见 **`GET /onboarding/state`**）。
+- **注册** `POST /register`：请求体可传 **`merchantType`**（兼容 **`industryType`**），缺省 **`WHOLESALE`**；可选 **`referralCode`**。**`industryVertical`** 注册时默认 **`PENDING`**，首登经 **`PUT /onboarding/complete`** 选定（§2.10）。事务内顺序：**持久化租户** → **校验并绑定推荐** → **创建管理员用户** → **`TenantProfileInitService.initOnRegister`**（写 **`tenant_ops_profile.product_capabilities`/`ui_profile`** 默认值）→ **`SubscriptionLifecycleService.startTrial`** → **`ReferralCodeAllocator`**。
+- **登录** `POST /login`：**`ReferralCodeAllocator.assignIfAbsent`**；**`AccessModeEvaluator.evaluateAndPersist`**；签发 JWT（见 §2.7.3）。响应体含 **`token`**、**`user`**、**`merchantType`**、**`industryVertical`**、**`accessMode`**、**`referralCode`**、**`onboarding`**（Legacy 导览摘要；行业向导见 **`GET /onboarding/status`**）。
 
 #### 2.7.3 JWT 与网关
 
-- JWT（HS256）Claims（业务相关）：`userId`、`userName`、`tenantId`、`roleType`、**`merchantType`**（必填）、**`accessMode`**（`FULL`/`READ_ONLY`/`BILLING_ONLY`）、**`subscriptionTier`**（对齐 **`tenants.subscription_type`** / D001 `dict_code`）、**`subEndMs`**（**`sub_end_time`** 的本地时区毫秒时间戳）。**mock-token**（仅 **`allow-mock-token=true`**）解析为 **`WHOLESALE` + `FULL`**。
+- JWT（HS256）Claims（业务相关）：`userId`、`userName`、`tenantId`、`roleType`、**`merchantType`**（必填）、**`industryVertical`**（默认 `PENDING`）、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**。**mock-token** 解析为 **`WHOLESALE` + `FULL` + `PENDING`**。
 - 网关 **`AuthGlobalFilter`**：校验 JWT 通过后，依据 **`accessMode`** 调用 **`AuthService.isTenantSubscriptionAccessAllowed`**（§2.4.4）；运维路径额外校验 **`isOpsAdmin`**（§2.4.5）；**保留** `Authorization: Bearer` 转发下游，并注入 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**。
 - **付费开通**：**`POST .../internal/subscription/activate-paid`** + Header **`X-Internal-Token`**；Body **`tenantId`、`tierCode`、`months`、`pricePaid`、`externalOrderId`**；**`SubscriptionLifecycleService.applyPaidPlan`** 叠加 **`sub_end_time`**，若 **`pricePaid > 0`** 则 **`ReferralQualificationService`** 将对应 **`referral_records`** 置 **`QUALIFIED`** 并写入 **`referral_rewards`**（金额 **`custom.referral.reward-per-qualified`**）。
 - **AIService** `HeaderInterceptor`：`X-Merchant-Type` 缺失则 **401**（须经网关访问）。
@@ -1183,7 +1307,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 #### 2.7.4 前端（TradeMind-Web）要点
 
 - **注册意图**：`auth.js` 中 `tmResolveMerchantIntent()`，支持 URL 参数 `merchantType`、`industryType`、`industry`、`version`（合法值归一为 D013 `dict_code`），并写入 `sessionStorage`。
-- **运行时上下文**：`/assets/js/tm-ui-loader.js` — `TM_UI_CONTEXT.industry`、`TM_UI.applyContextFromToken(token)`、`TM_UI.injectSlots(root)`、`TM_RoleGate.apply(root)`（`data-role`）；壳层就绪后派发 **`tm-role-ui-ready`**（供新手导览启动）。
+- **运行时上下文**：`/assets/js/tm-ui-loader.js` — `TM_UI_CONTEXT.industry`、`TM_UI.applyContextFromToken(token)`、`TM_UI.injectSlots(root)`、`TM_RoleGate.apply(root)`；**`tm-workbench-profile.js`** 加载后 **`TM_IndustryUI.apply`** 按 **`product_capabilities`** 裁剪 DOM（**`data-tm-cap-*`** / **`data-tm-industry`**）。
 - **行业片段**：`/fragments/{wholesale|foreign|ecom|factory}/{scope}/{slot}.html`；模块 HTML 内预留 `data-tm-fragment-scope` + `data-tm-slot`。
 - **主壳**：单页 **`index-app.html`** + **`ui-main.js`** 按 Tab 注入模块；**PC** 左侧 `aside` 导航，**移动** 底栏 **`#tm-app-tabbar`**（由 **`TM_renderIdentityTabbar()`** 按身份渲染，§3.1.0）。
 - **角色壳层**：**`ui-permissions.js`**（`TM_ROLE_SCHEMA`）+ **`ui-role-engine.js`**（`applyRoleUI()`）；控件标注 **`data-tm-nav` / `data-action` / `data-field`**，无权限节点 **物理移除**（§7.7、`Framework_Guide.md`）。
@@ -1205,7 +1329,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 #### 2.8.3 配额指标「可配置」位置 recap
 
 - **按业态 × 等级** 的数值上限：**`subscription_plans.quota_limits`（JSONB）**，键名约定见 §1.5.3。
-- **初始化**：表结构、索引与存量列补齐均由 **`InitCfgService`** 启动时幂等执行 **`db/schema-production.sql`**（33 张表，含 **`user_onboarding_state`**、**`production`**、**`tenant_ops_profile`**、**`merchant_feedback`** 等）；核心元数据（运维租户、字典 D001–D017、16 行订阅方案）由 **`db/seed-data.sql`** 注入；**`validateCoreSchema()`** 校验与 spec 对齐。上线前清库重置见 **`docs/Database_Deployment_Guide.md`**。
+- **初始化**：表结构、索引与存量列补齐均由 **`InitCfgService`** 启动时幂等执行 **`db/schema-production.sql`**（**50 张表**，含 **`product_spu`/`product_sku`**、退货/退厂、**`order_item_shipment`**、**`fulfillment_addresses`**、媒体表等）；核心元数据（运维租户、字典 **D001–D021**、16 行订阅方案）由 **`db/seed-data.sql`** 注入；**`validateCoreSchema()`** 校验与 spec 对齐。上线前清库重置见 **`docs/Database_Deployment_Guide.md`**。
 - **演进**：不同商户类型在同一等级下的指标差异，仅需 **增删改方案行或 JSON 字段**，不依赖发版；必要时配合 **`quota_metric_definitions`** 约束可用键集合。
 
 #### 2.8.4 实现对照（代码与配置，2026-05-07）
@@ -1214,7 +1338,7 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | --- | --- |
 | 实体与表 | **`Tenant`/`User`** 扩展字段；**`SubscriptionPlan`、`TenantSubscription`、`ReferralRecord`、`ReferralReward`**（**`TenantService`** JPA） |
 | 种子方案 | **`InitCfgService`** **`db/seed-data.sql`**（表为空时 16 行）；**`SubscriptionPlanSeedService`** 已废弃 |
-| 字典种子 | **`InitCfgService`** **`db/seed-data.sql`**（D001–D017）；**`DictionaryInitService`** 已废弃 |
+| 字典种子 | **`InitCfgService`** **`db/seed-data.sql`**（**D001–D021**）；**`DictionaryInitService`** 已废弃 |
 | 注册试用 | **`SubscriptionLifecycleService.startTrial`** |
 | 内部付费 | **`InternalSubscriptionController`** + **`SubscriptionLifecycleService.applyPaidPlan`** |
 | 推荐码 | **`ReferralCodeAllocator`**（**`JY` + 6 位**，冲突重试） |
@@ -1222,7 +1346,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | 达标发奖 | **`ReferralQualificationService`**（首笔 **`pricePaid > 0`**） |
 | 会员门户 API | **`SubscriptionPortalController`**：`/subscription/*`（含 **`renew`/`upgrade`**）、`/referral/*`、`/user/payout-profile` |
 | 子账号管理 | **`TenantUserController`** + **`TenantUserManagementService`**（席位 **`quota_limits.max_users`**） |
-| 新手导览 | **`OnboardingController`**（`/onboarding/state` GET/PUT）、**`OnboardingStateService`**、**`OnboardingRoleCodes`**；登录 **`peekLoginSummary`** |
+| 新手导览 | **`OnboardingController`**（`/onboarding/state` GET/PUT）、**`OnboardingStateService`**（Legacy **`user_onboarding_state`**）；**行业首登** **`TenantOnboardingController`**（**`/onboarding/status`**、**`/onboarding/complete`**） |
+| 租户运营配置 | **`TenantProfileInitService`**、**`TenantOpsController`**（RDService **`/tenant/ops-profile`**）；**`ProductSpuController`** **`/products/capabilities`** |
 | 订阅支付 | **`SubscriptionPaymentController`** + **`HccbPaymentNotifyController`**（杭州银行收银台） |
 | 运维中台 | **`OpsService`**（租户树、延期、推荐运维、**商户反馈**、推广员开号、AI 用量、公告）；网关 **`isOpsAdmin`** |
 | 商户反馈 | **`MerchantFeedbackService`**（TenantService **`/feedback/*`**）；**`FeedbackOpsService`**（OpsService **`/ops/feedback/*`**）；截图经 **`OssMediaUploadService`** / **`TMOssUpload.uploadFeedbackImage`** |
@@ -1302,6 +1427,48 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 - 订单 **`COMPLETED`/`D010003` → `D010004`（已签收）**；**`PENDING`/`PROCESSING` → D010001/D010002**。
 - 已签收且绑定了账户的历史订单：**`fin_status` 置 `SETTLED`**（仅当原值为 `UNPAID`）。
 
+### 2.10 行业垂直与批发工作台（2026-06 落地）
+
+#### 2.10.1 三层差异化模型
+
+| 维度 | 存储 | 决定什么 |
+| --- | --- | --- |
+| **merchant_type** | `tenants.merchant_type`（D013） | 模块包：工作台/CRM/供货/智能经营等 |
+| **industry_vertical** | `tenants.industry_vertical` | 属性模板默认、**`product_capabilities`** 预填、开单/列表 **额外列** |
+| **product_capabilities** | `tenant_ops_profile.product_capabilities` | 租户是否启用规格/效期/序列号（用户可关） |
+| **roleType** | JWT / `users` | Tab、按钮、极速开单可见性（§3.1.1） |
+
+**行业垂直枚举**：`PENDING`（待首登选择）、`GENERAL`、`CLOTHING`、`FOOD`、`DIGITAL_3C`。
+
+**能力默认**（注册/完成向导时 **`TenantProfileInitService.buildDefaultCapabilities`**）：
+
+| industry_vertical | allowVariants | allowExpiry | allowSerial |
+| --- | --- | --- | --- |
+| GENERAL | false | false | false |
+| CLOTHING | true | false | false |
+| FOOD | true | true | false |
+| DIGITAL_3C | true | false | true |
+
+#### 2.10.2 首登行业向导
+
+- **前端**：**`tm-first-login-wizard.js`** — **`GET /api/v1/tenant/onboarding/status`** 判断 **`needsWizard`** → 四选一行业卡片 → **`PUT /api/v1/tenant/onboarding/complete`**（Body **`industryVertical`**，可选 **`defaultFulfillmentWarehouseId`**）。
+- **后端**：**`TenantOnboardingController`**；写 **`tenants.industry_vertical`**、**`industry_selected_at`**、**`onboarding_completed_at`**；合并 **`tenant_ops_profile.product_capabilities`** 与 **`ui_profile.onboardingStatus=DONE`**。
+- **与 Legacy 导览关系**：**`user_onboarding_state`** / **`tm-onboarding.js`** 仍服务 WHOLESALE 角色必学；行业向导为 **租户级** 配置，优先于旧版欢迎流程。
+
+#### 2.10.3 极速开单与履约
+
+- **入口**：工作台 **`TM_WorkbenchProfile.showQuickOrder()`**（`ADMIN`/`SALES`）→ **`rapid-order.js`** 全屏选品 + 订单弹窗。
+- **选品缓存**：**`tm-sku-catalog-cache.js`** — **`GET /api/v1/rd/products/skus/catalog?warehouseId=`**（TTL 5 分钟 + sessionStorage 预热）。
+- **行业列**：**`TM_WorkbenchProfile.quickOrderColumns`** — 服装加 **`spec`**，食品加 **`expiry`** + 批次选择（**`GET /inventory/sku/{skuId}/batches`**），3C 加 **`serial`** + 文本/扫码（**`tm-serial-capture.js`**）。
+- **下单**：**`POST /api/v1/rd/orders`** — 行级 **`skuId`**、可选 **`batchId`** / 序列号列表；订单级 **`fulfillmentType`**、**`fulfillmentAddressSnapshot`**。
+- **欠货**：**`order_items.shortage_qty`** + **`orders.has_shortage`**；明细发货 **`order_item_shipment`** + **`workbench-order-shipment.js`**。
+
+#### 2.10.4 销售退货
+
+- **表**：**`sales_returns` / `sales_return_items`**（§1.3.10.8）；状态 **D018**，原因 **D019**，验收品相 **D020**。
+- **API**：**`POST/GET /api/v1/rd/returns`**、**`GET /returns/{id}`**、**`POST /returns/{id}/inspect`**（RDService **`ReturnController`**）。
+- **前端**：**`ui-returns.js`** — 工作台订单详情「申请退货」、销售订单 Tab「退货」列表/验收/详情。
+
 ---
 
 ## 3. 模块功能列表
@@ -1322,6 +1489,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | AI 工作台 | `dashboard-voice-upload.js`、`ui-ai-service.js`、`ai-order-extract-parse.js`、`ui-ai-service.css` | 语音/拍照设备层与结果解析（§3.1.1） |
 | 壳层/合规 | `tm-shell-insets.js`、`tm-compliance.js`、`tm-merchant-feedback.js` | 布局度量、备案、问题反馈 |
 | 认证/会员 | `auth.js`、`referral-rewards.js` | JWT、会员中心、登录后跳转 |
+| 行业/开单 | `tm-workbench-profile.js`、`tm-industry-ui.js`、`tm-first-login-wizard.js`、`tm-sku-catalog-cache.js`、`rapid-order.js` + **`rapid-order.css`** | 工作台差异化、首登向导、SKU 目录缓存、极速开单 |
+| 产品共用 | `tm-product-registry-form.js`、`tm-product-thumb.js` | AI 核对/产品中心共用表单片段、列表缩略图 |
 | 应用核 | `main-app.js` → `ui-permissions.js` → `ui-role-engine.js` → `TM_Responsive.js` → `ui-components.js` → `tm-ui-loader.js` | 角色引擎须在 **`tm-ui-loader`** 之前 |
 | 模块 | `ui-main.js`、`ui-product-center*.js`、`tm-onboarding*.js` | Tab 切换、各业务模块 |
 
@@ -1355,12 +1524,19 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 - **增强脚本**（由 `dashboard.html` 尾部或主壳预加载）：
   - **`dashboard-workbench.js`** — **`TM_PendingOrdersStore`**：`GET /api/v1/ai/records` 轮询（含 **`EXTRACTING`** 态）、待确认卡片增量渲染、语音/文本/拍照提交后刷新、自动建档下单；
   - **`order-workbench-modal.js`** — **`TM_OrderModal`**：订单详情/新建弹窗行数滚动、辅助区折叠；
+  - **`rapid-order.js`** — 极速开单：全屏 **`#rapid-order-picker`** 选 SKU、**`#rapid-order-modal`** 下单（客户/仓库/履约方式/批次/序列号）；依赖 **`TM_SkuCatalogCache`**、**`TM_WorkbenchProfile`**；
+  - **`tm-workbench-profile.js`** — **`TM_WorkbenchProfile.load()`**：JWT + **`GET /rd/tenant/ops-profile`** + **`GET /tenant/onboarding/status`** → 列预设、能力开关、默认履约仓；
+  - **`tm-first-login-wizard.js`** — 首登行业四选一（§2.10.2）；
+  - **`ui-returns.js`** — **`TM_Returns`**：销售退货创建/列表/验收/详情；订单详情「申请退货」；
+  - **`workbench-order-shipment.js`** — 订单明细行级发货/物流录入；
+  - **`tm-serial-capture.js`** — 扫码录入序列号（html5-qrcode）；
   - **`ui-ai-service.js`** — **`TM_AIService`**：HarmonyOS/iOS 等 **MediaDevices + MediaRecorder** 兼容、权限提示、图片 Canvas 压缩（≤2MB）；
   - **`ai-order-extract-parse.js`** — **`parseAiOrderExtractResult`**：统一解析 `ai_result`（去 Markdown 围栏、归一 **`new_products_found`** / 订单行单位）；
   - **`dashboard-voice-upload.js`**、**`tm-dashboard-photo.js`**、**`tm-oss-upload.js`** — 语音/识图上传（工作台走 AIService 服务端；反馈截图走 TenantService **`/feedback/{id}/image`**）。
 - **功能**：
   - 系统概览展示（今日营收、待识别数、库存预警等 **`loadDashboardOverviewStats`**）
-  - **左栏·待确认单据**：`TM_PendingOrdersStore` → `GET /api/v1/ai/records`，展示 **`SUCCESS`**（待核对）与 **`EXTRACTING`**（识别中）；点击打开 **`audit-modal`** 核对弹窗
+  - **批发商 · 内嵌极速开单**（**`WHOLESALE`** + 角色 **`ADMIN`/`SALES`**）：工作台概览区 **`openRapidOrder`**；AI 提单仍走左栏待确认（§2.10.3）
+  - **左栏·待确认单据**：`TM_PendingOrdersStore` → `GET /api/v1/ai/records`，展示 **`SUCCESS`**（待核对）与 **`EXTRACTING`**（识别中）；点击打开 **`audit-modal`** 核对弹窗；新产品 Tab 共用 **`TmProductRegistry`** + **`product-registry-form.html`**
   - **右栏·进行中业务单据**：
     - 数据：**`GET /api/v1/rd/orders/in-progress`**（物流态 **D010001 待配货 + D010002 拣货中 + D010003 已发货 + D010006 部分发货** 等；接口不可用时回退全量订单客户端 **`isWorkbenchOpenOrder`** 筛选）
     - **双维筛选**：「筛选」按钮弹出面板（**`inprogress-filter-panel`**），可按 **D010 物流** + **D015/D016 财务 `finStatus`** 组合过滤（**`filterInProgressOrders`** / **`inProgressFilterState`**）
@@ -1383,32 +1559,41 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 #### 3.1.3 产品中心（Product Center）
 
-- **路径**：`/modules/product-center/product-center.html`；弹窗片段 **`product-overlays.html`**
-- **前端脚本**：`/assets/js/ui-product-center.js`、**`/assets/js/ui-product-center-enhance.js`**
+- **路径**：`/modules/product-center/product-center.html`；弹窗片段 **`product-overlays.html`**；共用表单 **`/modules/fragments/product-registry-form.html`**（**`tm-product-registry-form.js`** / **`TmProductRegistry.mount`**）
+- **前端脚本**：`/assets/js/ui-product-center.js`、**`/assets/js/ui-product-center-enhance.js`**、**`tm-product-thumb.js`**
 - **功能**：
-  - 产品信息增删改查（真实API对接）
+  - **Legacy 列表**：**`GET /api/v1/rd/products`** — **`mapProductFromApi`** 同时映射 **`spuId`/`skuId`/`coverUrl`**
+  - **SPU 档案**（增强路径）：规格矩阵、属性模板、多 SKU 保存 — **`GET /spu`**、**`GET /spu/{id}`**、**`POST /spu/save`**、**`GET /spu/{id}/skus`**
   - 产品分类管理（真实API对接）；**新增/编辑时类别非必填**（与 DB **`category_id` 可空** 一致）
-  - 仓库管理（真实API对接）
-  - 库存管理
-  - **单位换算**：弹窗默认展示已有配置；无配置时展示 **1 行**待填行；**「+」最多增至 2 行**；支持删除行（至少保留 1 行）；保存经 **`POST /api/v1/rd/products/save`**
-  - **高级配置**：折叠区 **`#product-advanced-drawer`**；使用 **`ProductModule.toggleAdvanced`**（全局 **`toggleProductAdvanced`**），避免被 dashboard 内联脚本覆盖导致无法展开
-  - 库存预警提醒
-  - 产品列表筛选和搜索
-  - 桌面端表格和移动端卡片双布局
-  - 仓库调拨功能
-  - 产品/供应商弹窗经 **`TM_applyDialogShell(..., { variant: 'sheet' })`** 适配移动 Bottom Sheet
+  - 仓库管理、分仓库存编辑（**`warehouseStockDraft`**）、库存预警
+  - **产品图片**：列表/表单缩略图 **`TM_ProductThumb`**；上传 **`POST /products/media/upload`**（COVER/GALLERY）
+  - **单位换算**：弹窗默认展示已有配置；无配置时展示 **1 行**待填行；**「+」最多增至 2 行**；保存经 **`POST /api/v1/rd/products/save`** 或 SPU **`/spu/save`**
+  - **高级配置**：折叠区 **`#product-advanced-drawer`**；**`data-tm-cap-*`** 字段由 **`TM_IndustryUI`** 按能力裁剪
+  - 桌面端表格和移动端卡片双布局；仓库调拨；弹窗经 **`TM_applyDialogShell(..., { variant: 'sheet' })`**
 - **技术实现**：
   - 使用`window.wrappedFetch()`进行API请求
   - 使用`window.handleApiResponse()`统一响应处理
   - 自动JWT认证和租户隔离
   - 完整错误处理和用户反馈
-- **后端接口**：
-  - `GET /api/v1/rd/products` - 获取产品列表
+- **后端接口（Legacy + SPU 扩展）**：
+  - `GET /api/v1/rd/products` - 获取产品列表（含 SPU/SKU 桥接字段）
   - `GET /api/v1/rd/products/{id}` - 获取产品详情
   - `POST /api/v1/rd/products` - 创建产品
   - `PUT /api/v1/rd/products/{id}` - 更新产品
   - `DELETE /api/v1/rd/products/{id}` - 删除产品
-  - `POST /api/v1/rd/products/save` - 保存产品（含单位换算）
+  - `POST /api/v1/rd/products/save` - 保存产品（含单位换算、分仓库存）
+  - `GET /api/v1/rd/products/spu` - SPU 分页列表
+  - `GET /api/v1/rd/products/spu/{spuId}` - SPU 详情（含 SKU 列表、媒体）
+  - `POST /api/v1/rd/products/spu/save` - 保存 SPU + SKU 矩阵
+  - `GET /api/v1/rd/products/skus/options` - SKU 下拉/搜款（工作台、进货）
+  - `GET /api/v1/rd/products/skus/catalog` - 极速开单 SKU 目录（可选 **`warehouseId`**）
+  - `GET/PUT /api/v1/rd/products/capabilities` - 租户产品能力开关
+  - `GET/POST/DELETE /api/v1/rd/products/attribute-templates` - 属性模板 CRUD
+  - `POST /api/v1/rd/products/media/upload` - 产品图片上传
+  - `DELETE /api/v1/rd/products/media/{mediaId}` - 删除媒体
+  - `GET /api/v1/rd/inventory/sku/{skuId}/batches` - SKU 批次列表
+  - `GET /api/v1/rd/inventory/serials` - 序列号列表
+  - `GET /api/v1/rd/inventory/alerts/expiry` - 临期预警
   - `GET /api/v1/rd/products/categories` - 获取分类列表
   - `POST /api/v1/rd/products/categories/save` - 保存分类
   - `GET /api/v1/rd/products/warehouses` - 获取仓库列表
@@ -1421,6 +1606,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
   - `GET /api/v1/rd/products/unit-conversions/all` - 获取租户全部单位换算
   - `DELETE /api/v1/rd/products/categories/{id}` - 删除产品分类
   - `PUT /api/v1/rd/products/stock/batch-update` - 批量更新产品库存
+  - `GET /api/v1/rd/tenant/ops-profile` - 租户运营配置（能力 + UI）
+  - `PUT /api/v1/rd/tenant/ui-profile` - 更新 UI 偏好
 
 #### 3.1.4 供应链管理（Supply Chain）
 
@@ -1444,19 +1631,21 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
   - AI智能处理
   - 报表分析展示
 
-#### 3.1.6 新手导览（Onboarding）
+#### 3.1.6 新手导览与首登向导
 
-- **范围**：当前自动导览仅 **`WHOLESALE`** 业态（`tm-onboarding.js` **`shouldRun()`**）；运维账号不进商户导览。
-- **脚本**：`/assets/js/tm-onboarding-registry.js`（步骤/角色必学路径、`targets.desktop` / `targets.mobile`）、`/assets/js/tm-onboarding.js`（引擎）、`/assets/js/tm-onboarding-sync.js`（服务端同步）、`/assets/js/ui-permissions.js` + **`/assets/js/ui-role-engine.js`**（菜单/动作/字段 RBAC，§7.7）。
-- **样式**：`/assets/css/tm-onboarding.css`。
-- **角色必学（批发商示例）**：`ADMIN`/`SALES` 含工作台介绍 + 语音首单（阻塞导航）；`FINANCE`/`WAREHOUSE`/`READONLY` 见 registry **`MANDATORY_PROFILES`**。
-- **流程**：
-  1. 登录成功 → 可选缓存 **`onboarding`** 摘要 → 进入 **`index-app.html`**；
-  2. **`GET /api/v1/tenant/onboarding/state`**（`markFirstLogin=true` 时写入 **`first_login_at`**）并与本地 merge；
-  3. **`isFirstLogin && !welcomed`** → 欢迎弹窗；**`!mandatoryDone`** → 每次登录续做必学（含 **`mandatoryStepIndex`**）；
-  4. 必学完成后 → 可选 **功能导览 FAB** + 清单面板（可「不再提示」）；**不**在 PC 顶栏重复「新手引导」按钮。
-- **与子账号**：`sessionStorage.tm_auth_subuser_id` 存在时 **`subjectType=SUBUSER`**，与主账号分表存储。
-- **公开 API**：`window.TmOnboarding`（`openChecklist`、`restart`、`onVoiceComplete` 等）；工作台语音完成回调 **`TmOnboarding.onVoiceComplete()`**。
+**A. 首登行业向导（当前主路径）**
+
+- **脚本**：**`/assets/js/tm-first-login-wizard.js`** + **`tm-first-login-wizard.css`**
+- **触发**：登录后 **`TM_WorkbenchProfile.load()`** → **`TM_FirstLoginWizard.checkAndShow()`**；或 **`GET /api/v1/tenant/onboarding/status`** 返回 **`needsWizard: true`**
+- **流程**：四选一行业（GENERAL / CLOTHING / FOOD / DIGITAL_3C）→ **`PUT /api/v1/tenant/onboarding/complete`** → 刷新 **`TM_WorkbenchProfile`** 与 SKU 缓存
+- **后端**：**`TenantOnboardingController`**（§2.10.2）
+
+**B. Legacy 角色导览（WHOLESALE 可选）**
+
+- **范围**：**`tm-onboarding.js`** **`shouldRun()`** 仍限 **`WHOLESALE`** 业态；运维账号不进商户导览。
+- **脚本**：`/assets/js/tm-onboarding-registry.js`、`tm-onboarding.js`、`tm-onboarding-sync.js`；样式 **`tm-onboarding.css`**
+- **持久化**：**`user_onboarding_state`** + **`GET/PUT /onboarding/state`**（§1.1.2.1）
+- **公开 API**：`window.TmOnboarding`（`openChecklist`、`restart`、`onVoiceComplete` 等）
 
 #### 3.1.7 会员中心与推荐 UI
 
@@ -1541,9 +1730,11 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | `/info/{tenantId}` | GET  | 获取租户信息            |
 | `/create`          | POST | 创建租户              |
 | `/register`        | POST | 租户注册（Body 含 `smsToken`、`smsCode`、**`merchantType`**（可选）、**`referralCode`**（可选）；注册成功后开通 **D001/TRIAL 对应试用** 与 `subscription_plans` 中该业态试用方案；`dysms.enabled=true` 时须先 `send-code`） |
-| `/login`           | POST | 用户登录（JWT 含 **`merchantType`**、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**；响应体可含 `merchantType`、`accessMode`、`referralCode`、**`onboarding`** 摘要 `{ isFirstLogin, mandatoryDone }`） |
-| `/onboarding/state` | GET | 拉取导览快照；Query `industry`、`roleType`、`subjectType`、`subjectId`、`markFirstLogin`；首次 GET 可写入 **`first_login_at`**（需 Bearer） |
-| `/onboarding/state` | PUT | 保存导览 **`snapshot`** JSONB（需 Bearer） |
+| `/login`           | POST | 用户登录（JWT 含 **`merchantType`**、**`industryVertical`**、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**；响应体可含 `onboarding` Legacy 摘要） |
+| `/onboarding/status` | GET | 首登行业向导状态：**`needsWizard`**、**`industryVertical`**、**`onboardingStatus`**（**`TenantOnboardingController`**） |
+| `/onboarding/complete` | PUT | 完成行业选择；Body **`industryVertical`**、可选 **`defaultFulfillmentWarehouseId`** |
+| `/onboarding/state` | GET | Legacy 角色导览快照；Query `industry`、`roleType`、`subjectType`、`subjectId`、`markFirstLogin` |
+| `/onboarding/state` | PUT | 保存 Legacy 导览 **`snapshot`** JSONB |
 | `/send-code`       | POST | 发送注册短信验证码（阿里云 Dysms SendSms：返回 `smsToken` 票据；未开启时为开发占位） |
 | `/subscription/me` | GET  | 当前租户订阅摘要（含 **`userSeatMax`/`userSeatUsed`**、**`canManageUsers`**、**`pricingHints`**；需 Bearer） |
 | `/subscription/plans` | GET | 某业态可售方案列表；Query `merchantType`（默认 `WHOLESALE`）；**网关可免 JWT**（见网关白名单） |
@@ -1576,8 +1767,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 应用启动时 **`DatabaseInitService.initProductionBaseline()`** 按序幂等执行：
 
-1. **`db/schema-production.sql`** — 33 张表（L1 基础设施 → L5 运营管理）、索引、存量列 **`ALTER`**
-2. **`db/seed-data.sql`** — **`SYSTEM_OPS`** / **`ops_admin`**、字典 **D001–D017**（**D014** 客户特色标签固定码）、**`subscription_plans`** 16 行（含 WHOLESALE 定价覆盖）
+1. **`db/schema-production.sql`** — **50 张表**（L1 基础设施 → L5 运营 + SPU/SKU/退货/媒体/履约扩展）、索引、存量列 **`ALTER`**、**`products` → SPU/SKU** 幂等迁移
+2. **`db/seed-data.sql`** — **`SYSTEM_OPS`** / **`ops_admin`**、字典 **D001–D021**、**`subscription_plans`** 16 行
 3. **`validateCoreSchema()`** — Java 校验表存在性、关键列（如 **`orders.fin_status`**、**`production`**）、字典大类、**`uq_products_tenant_sku`** 等
 
 初始化失败则 **InitCfgService 终止启动**。手工自检：**`db/check_schema.sql`**；清库重建流程：**`docs/Database_Deployment_Guide.md`**。
@@ -1670,6 +1861,34 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | `/api/v1/rd/products/save`                                | POST   | 保存产品及其单位换算信息 |
 | `/api/v1/rd/products/restock/suggestions`                 | GET    | 获取进货建议列表     |
 | `/api/v1/rd/products/stock/batch-update`                  | PUT    | 批量更新产品库存     |
+
+
+**主要接口 - SPU/SKU 与库存扩展**（**`ProductSpuController`** / **`ReturnController`** / **`ProductMediaController`**）：
+
+
+| 接口路径 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/v1/rd/products/spu` | GET | SPU 分页列表 |
+| `/api/v1/rd/products/spu/{spuId}` | GET | SPU 详情（SKU、媒体、库存） |
+| `/api/v1/rd/products/spu/save` | POST | 保存 SPU + SKU 矩阵 |
+| `/api/v1/rd/products/spu/{spuId}/skus` | GET | SPU 下 SKU 列表 |
+| `/api/v1/rd/products/skus/options` | GET | SKU 搜款/下拉 |
+| `/api/v1/rd/products/skus/catalog` | GET | 极速开单目录；Query **`warehouseId`** |
+| `/api/v1/rd/products/capabilities` | GET/PUT | 租户 **`product_capabilities`** |
+| `/api/v1/rd/products/attribute-templates` | GET/POST | 属性模板 |
+| `/api/v1/rd/products/attribute-templates/{id}` | GET/DELETE | 模板详情/删除 |
+| `/api/v1/rd/products/media/upload` | POST | 图片上传（multipart） |
+| `/api/v1/rd/products/media/{mediaId}` | DELETE | 删除媒体 |
+| `/api/v1/rd/tenant/ops-profile` | GET | 运营配置（能力 + UI + 行业） |
+| `/api/v1/rd/tenant/ui-profile` | PUT | 更新 **`ui_profile`** |
+| `/api/v1/rd/inventory/sku/{skuId}/batches` | GET | SKU 批次 |
+| `/api/v1/rd/inventory/serials` | GET | 序列号列表 |
+| `/api/v1/rd/inventory/alerts/expiry` | GET | 临期预警 |
+| `/api/v1/rd/returns` | POST/GET | 销售退货创建/列表 |
+| `/api/v1/rd/returns/{id}` | GET | 退货详情 |
+| `/api/v1/rd/returns/{id}/inspect` | POST | 退货验收 |
+| `/api/v1/rd/supplier-returns` | POST/GET | 供应商退厂 |
+| `/api/v1/rd/supplier-returns/{id}` | GET | 退厂详情 |
 
 
 **主要接口 - 分类管理**：
@@ -1799,6 +2018,26 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | `/api/v1/ai/records/{recordId}/result` | PUT | 更新 AI 提取结果（用户确认/修正） |
 | `/api/v1/ai/records/{recordId}` | DELETE | 删除 AI 操作记录 |
 
+**外设 / 打印 / 扫码（`/api/v1/ai/peripheral/**`，不写入 `ai_operation_records`）**：
+
+| 接口路径（网关入口） | 方法 | 说明 | 网关 RBAC |
+| --- | --- | --- | --- |
+| `/api/v1/ai/peripheral/devices` | GET | 外设列表 | 放行（租户隔离） |
+| `/api/v1/ai/peripheral/devices` | POST/PUT/DELETE | 注册/更新/禁用外设 | ADMIN |
+| `/api/v1/ai/peripheral/devices/{id}/test` | POST | 测试打印 | 放行 |
+| `/api/v1/ai/peripheral/print/documents/{docType}/{docId}` | GET | 聚合打印文档（销售/进货/SKU 标签） | 放行 |
+| `/api/v1/ai/peripheral/print/jobs` | POST | 创建打印任务（BROWSER 审计 / CLOUD 提交） | ADMIN/SALES/WAREHOUSE/FINANCE |
+| `/api/v1/ai/peripheral/print/jobs/{jobId}` | GET | 查询任务状态 | 放行 |
+| `/api/v1/ai/peripheral/print/settings` | GET | 店铺抬头与默认打印机 | 放行 |
+| `/api/v1/ai/peripheral/print/settings` | PUT | 保存抬头/默认机 | ADMIN |
+| `/api/v1/ai/peripheral/scan/decode` | POST | 轻量条码解析（HID / 相机 decodedText） | ADMIN/SALES/WAREHOUSE/FINANCE |
+
+**相关表**（`InitCfgService/db/schema-production.sql`）：`peripheral_devices`、`peripheral_jobs`、`tenant_print_settings`。
+
+**云打印**：`CloudPrintGateway` 支持飞鹅（`FEIE`）、易联云（`YILIAN`）；开发者凭证环境变量 `FEIE_USER`/`FEIE_UKEY`、`YILIAN_PARTNER`/`YILIAN_API_KEY`，或设备 `config_json.cloudSn`/`cloudKey`。
+
+**前端入口**：工作台「打印·外设」、订单详情打印菜单、极速开单扫码、供应链进货单打印（`tm-print-*`、`tm-scan-router.js`、`tm-scan-camera.js`）。
+
 
 #### 3.2.7 智能报表服务（IMService）
 
@@ -1873,13 +2112,22 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 ```
 tenants (租户)
+   ├─ 1:1 ──> tenant_ops_profile (运营配置：product_capabilities / ui_profile)
    ├─ 1:N ──> users (用户)
+   ├─ 1:N ──> product_spu (商品 SPU)
+   │            ├─ 1:N ──> product_sku (SKU；legacy_product_id → products)
+   │            ├─ 1:N ──> product_spu_media (SPU 封面/图册)
+   │            └─ 1:N ──> sku_attribute_value ← attribute_definition
+   ├─ 1:N ──> products (Legacy 单 SKU，迁移桥接)
+   ├─ 1:N ──> sales_returns (销售退货)
+   │            └─ 1:N ──> sales_return_items
+   ├─ 1:N ──> supplier_returns (供应商退厂)
+   ├─ 1:N ──> fulfillment_addresses (履约地址簿)
    ├─ 1:N ──> balanceChgDetails (能量变动记录)
    ├─ 1:N ──> customers (客户)
    ├─ 1:N ──> supplier (供应商)
    ├─ 1:N ──> product_categories (产品分类)
    ├─ 1:N ──> warehouse (仓库)
-   ├─ 1:N ──> products (产品)
    ├─ 1:N ──> orders (订单)
    ├─ 1:N ──> production (生产)
    ├─ 1:N ──> purchases (进货单)
@@ -1890,46 +2138,35 @@ tenants (租户)
    ├─ 1:N ──> ops_subscription_logs (订阅延期审计，target)
    └─ 1:N ──> dictionary (字典表)
 
-users (用户)
-   ├─ 1:N ──> customers (客户)
-   ├─ 1:N ──> supplier (供应商)
-   ├─ 1:N ──> products (产品)
-   ├─ 1:N ──> product_categories (产品分类)
-   ├─ 1:N ──> orders (订单)
-   ├─ 1:N ──> production (生产，历史表)
-   ├─ 1:N ──> purchases (进货单)
-   ├─ 1:N ──> biz_accounts (账户信息)
-   ├─ 1:N ──> ai_operation_records (AI操作记录)
-   ├─ 1:N ──> ops_subscription_logs (运维操作人)
-   └─ 1:N ──> system_announcements (公告创建人)
+product_sku (SKU)
+   ├─ 1:N ──> warehouse_stock (分仓库存，sku_id + stock_type)
+   ├─ 1:N ──> inventory_batch → warehouse_batch_stock
+   ├─ 1:N ──> inventory_serial
+   ├─ 1:N ──> product_sku_media
+   ├─ 1:N ──> order_items (sku_id)
+   └─ 1:N ──> purchase_items (sku_id)
 
-customers (客户)
-   └─ 1:N ──> orders (订单)
+orders (订单)
+   ├─ N:1 ──> biz_accounts (结算账户)
+   ├─ N:1 ──> warehouse (发出仓库，可选)
+   ├─ N:1 ──> fulfillment_addresses (履约地址，可选)
+   └─ 1:N ──> order_items (订单明细)
+            └─ 1:N ──> order_item_shipment (明细发货子表)
 
-supplier (供应商)
-   ├─ 1:N ──> products (产品)
-   └─ 1:N ──> purchases (进货单)
+products (Legacy)
+   ├─ 1:N ──> order_items (product_id，存量)
+   ├─ 1:N ──> unitConversion
+   └─ 1:N ──> warehouse_stock (product_id，迁移后并存 sku_id)
 
 warehouse (仓库)
    └─ 1:N ──> warehouse_stock (仓库库存)
 
 product_categories (产品分类)
-   └─ 1:N ──> products (产品)
-
-products (产品)
-   ├─ 1:N ──> order_items (订单明细)
-   ├─ 1:N ──> production (生产)
-   ├─ 1:N ──> unitConversion (单位换算)
-   ├─ 1:N ──> purchase_items (进货明细)
-   └─ 1:N ──> warehouse_stock (仓库库存)
+   ├─ 1:N ──> products (产品)
+   └─ 1:N ──> product_spu (SPU)
 
 biz_accounts (经营账户)
    └─ 1:N ──> biz_account_ledger (账户流水)
-
-orders (订单)
-   ├─ N:1 ──> biz_accounts (结算账户)
-   ├─ N:1 ──> warehouse (发出仓库，可选)
-   └─ 1:N ──> order_items (订单明细)
 
 purchases (进货单)
    ├─ N:1 ──> biz_accounts (付款账户)
@@ -1943,7 +2180,8 @@ dictionary (字典表)
 ### 4.2 外键关系说明
 
 - **tenants**是所有业务表的父表，通过`tenant_id`实现多租户隔离
-- **tenants.merchant_type** 存字典 **D013** 子项 `dict_code`（应用层校验；是否建 DB 外键视部署规范而定）
+- **tenants.merchant_type** 存字典 **D013** 子项 `dict_code`；**`tenants.industry_vertical`** 与 **`merchant_type`** 独立（§2.10）
+- **product_sku.legacy_product_id** 桥接 Legacy **`products`**；新写入优先 **`sku_id`**
 - **users**与**tenants**多对一关系
 - 所有业务表都通过`tenant_id`关联到租户
 - 所有业务表都通过`user_id`关联到创建用户
@@ -1998,10 +2236,10 @@ dictionary (字典表)
 
 1. 用户输入用户名密码（密码前端 MD5 后与现网 TenantService 约定一致）
 2. 前端经网关调用 `POST /api/v1/tenant/login`
-3. TenantService 验证用户信息，读取租户 **`merchant_type`**
-4. 生成 JWT（有效期以 `InitCfgService` `/config/auth` 中 `jwtTtl` 为准；Claims 含 **`merchantType`**）
-5. 前端将 Token 存入 `localStorage`，后续请求 **`Authorization: Bearer <token>`** 访问网关
-6. 网关校验 JWT 后 **保留** `Authorization` 并注入身份头 **`X-User-Id`、`X-Tenant-Id`、`X-User-Role`、`X-Merchant-Type`**（客户端不应伪造后者；策略逻辑以服务端租户库为准）
+3. TenantService 验证用户信息，读取租户 **`merchant_type`**、**`industry_vertical`**
+4. 生成 JWT（Claims 含 **`merchantType`**、**`industryVertical`**、**`accessMode`** 等）
+5. 前端将 Token 存入 `localStorage`，进入 **`index-app.html`**；**`TM_FirstLoginWizard`** 按需弹出行业选择（§2.10.2）
+6. 后续请求 **`Authorization: Bearer <token>`** 访问网关；网关校验后注入身份头（含 **`X-Merchant-Type`**）
 
 ### 6.2 AI订单提取流程
 
@@ -2107,11 +2345,12 @@ dictionary (字典表)
 - **`MobileAdapt/TM_Responsive.js`**：`isMobile()` / **`isMobileView()`**、`body.tm-layout-mobile`；样式分界与 Tailwind `md`（768px）对齐时，自定义 CSS 建议使用 **`max-width: 767px`**
 - **`MobileAdapt/mobile.css`**、**`ui-mobile.css`**：壳层规则已迁移至 **`tm-layout-engine.css`**，保留 **`@deprecated`** 兼容引用
 
-### 7.6 多商户类型（业态）
+### 7.6 多商户类型（业态）与行业垂直
 
 - 字典 **D013** 为商户类型唯一字典来源；持久化字段 **`tenants.merchant_type`**。
+- **行业垂直** **`tenants.industry_vertical`** 与业态独立（§2.10）；JWT **`industryVertical`**；前端 **`TM_WorkbenchProfile`** / **`TM_IndustryUI`** 裁剪开单列与产品能力字段。
 - 运行时身份：**JWT `merchantType`** → 网关 **`X-Merchant-Type`** → 各服务 **`UserContext`**（或等价上下文）。
-- 前端按业态加载 **`/fragments/...`**，根节点 **`data-merchant-type`** 驱动主题令牌（见 `theme.css`）。
+- 前端按业态加载 **`/fragments/...`**，根节点 **`data-merchant-type`**、**`data-industry-vertical`** 驱动主题与布局。
 
 ### 7.7 前端 RBAC 与敏感字段
 
@@ -2133,8 +2372,8 @@ TM_Project/
 ├── InitCfgService/             # 初始化配置服务（唯一 DDL 入口）
 │   └── src/main/resources/
 │       └── db/
-│           ├── schema-production.sql   # 生产基线 DDL（33 表 + 索引 + 存量 ALTER）
-│           ├── seed-data.sql           # 运维租户、字典、订阅方案
+│           ├── schema-production.sql   # 生产基线 DDL（50 表 + 索引 + 存量 ALTER + SPU 迁移）
+│           ├── seed-data.sql           # 运维租户、字典 D001–D021、订阅方案
 │           └── check_schema.sql        # 手工自检
 ├── CRMService/                 # 客户关系服务
 │   └── 结构同其他服务
@@ -2165,6 +2404,8 @@ TM_Project/
     │   ├── css/
     │   │   ├── tm-layout-engine.css  # 手机端三段式壳层 + Bottom Sheet（权威）
     │   │   ├── tm-onboarding.css
+    │   │   ├── tm-first-login-wizard.css
+    │   │   ├── rapid-order.css
     │   │   ├── tm-merchant-feedback.css
     │   │   ├── ui-ai-service.css
     │   │   ├── dashboard-audit.css
@@ -2176,7 +2417,12 @@ TM_Project/
     │       ├── tm-ui-loader.js      # TM_UI_CONTEXT、injectSlots、tm-role-ui-ready
     │       ├── ui-permissions.js / ui-role-engine.js  # RBAC Schema + 渲染引擎
     │       ├── tm-onboarding.js / tm-onboarding-registry.js / tm-onboarding-sync.js
-    │       ├── dashboard-workbench.js / order-workbench-modal.js  # 工作台增强
+    │       ├── tm-workbench-profile.js / tm-industry-ui.js / tm-first-login-wizard.js
+    │       ├── tm-sku-catalog-cache.js / rapid-order.js
+    │       ├── tm-product-registry-form.js / tm-product-thumb.js
+    │       ├── tm-serial-capture.js / tm-order-dict.js
+    │       ├── dashboard-workbench.js / order-workbench-modal.js / workbench-order-shipment.js
+    │       ├── ui-returns.js / ui-sales-orders.js
     │       ├── ui-ai-service.js / ai-order-extract-parse.js / dashboard-voice-upload.js
     │       ├── tm-dashboard-photo.js / tm-oss-upload.js
     │       ├── tm-merchant-feedback.js
@@ -2222,7 +2468,7 @@ TM_Project/
 
 ### 9.1 认证与授权
 
-- JWT Token 认证机制；Claims 含 **`merchantType`**（与租户库一致）、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**；网关据此执行订阅访问策略（§2.4.4）与运维 RBAC（§2.4.5）
+- JWT Token 认证机制；Claims 含 **`merchantType`**、**`industryVertical`**、**`accessMode`**、**`subscriptionTier`**、**`subEndMs`**；网关据此执行订阅访问策略（§2.4.4）与运维 RBAC（§2.4.5）
 - Token 有效期以配置中心 `jwtTtl` 为准（文档示例常为 24 小时）
 - 经网关访问时：下游业务服务通过 **`Authorization: Bearer`**（TenantService 等二次解析）及 **`X-Tenant-Id`、`X-User-Id`、`X-User-Role`、`X-Merchant-Type`** 获取用户与租户上下文（身份头由网关注入，勿信任浏览器随意伪造 Header）
 - **`/api/v1/ops/**`** 仅限 **`tenantId=SYSTEM_OPS`** 且 **`roleType=ROLE_OPS_ADMIN`**
@@ -2252,6 +2498,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.26 | 2026-07-01 | **SPU/SKU + 行业垂直 + 批发工作台对齐**：§1 **`industry_vertical`**、**`tenant_ops_profile`**、§1.3.10 SPU/SKU/媒体/退货/履约扩展表；**`warehouse_stock.sku_id+stock_type`**、订单/明细履约与欠货列；字典 **D018–D021**；§2.10 行业向导/极速开单/退货；§3.1 新增 **`rapid-order.js`**、**`tm-workbench-profile.js`**、**`tm-first-login-wizard.js`**、**`ui-returns.js`** 等；§3.2.1 **`/onboarding/status|complete`**；§3.2.4 SPU/库存/退货 API；§4 ER、§8 目录树；DDL **50 表** |
 | v1.25 | 2026-06-21 | **代码实现对齐（TradeMind-Web + 反馈/RBAC/工作台）**：§1.6.5 **`merchant_feedback`** / **`merchant_feedback_followups`**；§3.1.0 主壳脚本链、运维/商户双 Tabbar、**`modules/fragments/`**；§3.1.1 **`dashboard-workbench.js`**、**`ui-ai-service.js`**、**`ai-order-extract-parse.js`**、**`order-workbench-modal.js`**、**`TM_syncDashboardOverlays`**；§3.1.5 **`SmartOps/SmartOps.html`** iframe；§3.1.9–§3.1.10 商户反馈 + **`ops-hub.html`** 六路由；§3.2.1/§3.2.8 反馈 API；§5.1/§6.2/§6.6/§7.7；§8 目录树；文档版本脚注修正 |
 | v1.24 | 2026-06-01 | **独立推广员系统**：§1.1.2 **`wechat_mp_openid`**；§2.4.7 推广员网关白名单；§2.8.6–§2.8.7 开号/奖励 150/流水状态；§3.1.8 **`promoter-portal.html`** 与微信公众号 OAuth 流程；§3.2.8 **`POST /ops/promoters`**；§3.2.9 推广员 API；**`PromoterController`**、**`InternalPromoterController`**、网关 **`RewritePath`** |
 | v1.23 | 2026-05-31 | **CRM 客户双标签**：§1.2.1 增补 `cust_segment`、`tags_computed_at`；§1.2.2 价值+特色打标规则；**D009** 扩展 `NEW`/`HIGH_VALUE`；启用 **D014** `CUSTOMER_SEGMENT`；§3.1.2、§3.2.3 API 响应与写约束、`/customers/tags/recalc` |
@@ -2281,6 +2528,6 @@ TM_Project/
 
 ---
 
-**文档版本**：v1.25
-**最后更新**：2026-06-21
+**文档版本**：v1.26
+**最后更新**：2026-07-01
 **维护者**：TradeMind开发团队

@@ -278,6 +278,13 @@ window.SupplierModule = {
         });
     },
 
+    syncPurchasePrintBtn: function () {
+        var btn = document.getElementById('purchase-print-btn');
+        if (!btn) return;
+        var pid = this.currentPurchase && this.currentPurchase.purchaseId;
+        btn.classList.toggle('hidden', !pid);
+    },
+
     syncFinStatusUI: function(purchase, opts) {
         opts = opts || {};
         var finSel = document.getElementById('purchase-fin-status');
@@ -332,6 +339,7 @@ window.SupplierModule = {
 
         this.updatePurchaseBadges(purchase || this.currentPurchase);
         this.updateAuxSummary();
+        this.syncPurchasePrintBtn();
     },
 
     bindPurchaseFinEvents: function() {
@@ -2252,8 +2260,12 @@ window.SupplierModule = {
     savePurchase: async function() {
         var result = await this.persistPurchase({ refreshList: true });
         if (result && result.success) {
+            var purchaseId = this.currentPurchase && (this.currentPurchase.purchaseId || this.currentPurchase.purchase_id);
             this.closePurchaseModal();
             this.notify('进货单据已保存', 'success', { useDialog: true, title: '保存成功' });
+            if (purchaseId && window.TM_PrintTriggers && window.TM_PrintTriggers.offerPrintPurchaseAfterSave) {
+                await window.TM_PrintTriggers.offerPrintPurchaseAfterSave(purchaseId);
+            }
         }
     },
 

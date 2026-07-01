@@ -1450,6 +1450,9 @@
             if (typeof window.loadDashboardOverviewStats === 'function') {
                 window.loadDashboardOverviewStats();
             }
+            if (orderId && window.TM_PrintTriggers && window.TM_PrintTriggers.offerPrintAfterCreate) {
+                await window.TM_PrintTriggers.offerPrintAfterCreate(orderId, null, '订单已创建，是否立即打印？');
+            }
         } catch (e) {
             notify(e.message || '创建订单失败', 'error');
         }
