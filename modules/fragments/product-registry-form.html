@@ -11,6 +11,11 @@
                 <p class="tm-product-hint">保存产品后可上传；规格图在规格矩阵行上传</p>
             </div>
         </div>
+        <div class="tm-product-gallery-row mb-3">
+            <label class="tm-product-label block mb-1">SPU 图册 <span class="text-[10px] text-slate-400 font-normal">最多 9 张</span></label>
+            <div id="detail-product-gallery" class="flex flex-wrap gap-2 min-h-[3rem]"></div>
+            <input type="file" id="detail-product-gallery-input" accept="image/*" multiple capture="environment" class="text-[11px] text-slate-500 mt-1" />
+        </div>
         <div class="tm-product-edit-grid">
             <div class="tm-product-field tm-product-field--full">
                 <label class="tm-product-label" for="detail-product-name">产品名称<span class="tm-product-required">*</span></label>
@@ -57,7 +62,11 @@
                     <p class="text-[10px] text-slate-400">颜色、尺码、容量等规格属性，生成多 SKU</p>
                     <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="detail-track-variants" /> 启用多规格</label>
                     <select id="detail-variant-template" class="form-input w-full text-sm"><option value="">选择属性模板</option></select>
-                    <div id="detail-variant-matrix" class="text-xs text-slate-500"></div>
+                    <div id="product-variant-matrix-panel" class="mt-2 space-y-2 hidden">
+                        <p class="text-[10px] text-slate-400">勾选各属性取值，保存时将笛卡尔积生成 SKU</p>
+                        <div id="detail-variant-matrix" class="text-xs space-y-2"></div>
+                        <p id="detail-variant-matrix-preview" class="text-[10px] font-mono text-brand-600"></p>
+                    </div>
                 </div>
             </details>
             <details id="cap-card-expiry" class="tm-cap-card rounded-xl border border-slate-100 p-3">

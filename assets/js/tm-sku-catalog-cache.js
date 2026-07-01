@@ -5,7 +5,7 @@
     'use strict';
 
     var CACHE_TTL_MS = 5 * 60 * 1000;
-    var state = { rows: [], categories: [], loadedAt: 0, warehouseId: null };
+    var state = { rows: [], categories: [], categoryNames: {}, loadedAt: 0, warehouseId: null };
 
     function mapRow(r) {
         return {
@@ -26,9 +26,12 @@
 
     function buildCategories(rows) {
         var map = { 0: { id: 0, name: '全部' } };
+        var names = state.categoryNames || {};
         rows.forEach(function (r) {
             var cid = r.categoryId != null ? r.categoryId : 0;
-            if (!map[cid]) map[cid] = { id: cid, name: '分类#' + cid };
+            if (!map[cid]) {
+                map[cid] = { id: cid, name: names[cid] || ('分类#' + cid) };
+            }
         });
         return Object.keys(map).map(function (k) { return map[k]; });
     }
@@ -54,6 +57,17 @@
             var data = await window.handleApiResponse(resp);
             var raw = data && data.data ? data.data : (Array.isArray(data) ? data : []);
             state.rows = raw.map(mapRow);
+            try {
+                var catResp = await window.wrappedFetch('/api/v1/rd/products/categories', { method: 'GET' });
+                var catData = await window.handleApiResponse(catResp);
+                var catList = catData && catData.data ? catData.data : [];
+                state.categoryNames = {};
+                catList.forEach(function (c) {
+                    var id = c.categoryId != null ? c.categoryId : c.category_id;
+                    var name = c.categoryName || c.name || c.category_name;
+                    if (id != null && name) state.categoryNames[id] = name;
+                });
+            } catch (e) { state.categoryNames = {}; }
             state.categories = buildCategories(state.rows);
             state.loadedAt = Date.now();
             state.warehouseId = warehouseId != null ? warehouseId : null;

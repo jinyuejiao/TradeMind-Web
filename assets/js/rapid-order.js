@@ -72,6 +72,69 @@
         }
     }
 
+    function closeRapidOrderModal() {
+        var modal = document.getElementById('rapid-order-modal');
+        if (!modal) return;
+        if (typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        if (typeof window.TM_ensureShellOverlayVisible === 'function') {
+            window.TM_ensureShellOverlayVisible();
+        }
+    }
+
+    function getCustomerLookupMap() {
+        if (window.customerLookupById && Object.keys(window.customerLookupById).length) {
+            return window.customerLookupById;
+        }
+        try {
+            if (window.parent && window.parent !== window && window.parent.customerLookupById) {
+                return window.parent.customerLookupById;
+            }
+        } catch (e) { /* ignore */ }
+        return window.customerMapCache || window.customersCache || {};
+    }
+
+    async function fetchCustomersForRop() {
+        if (typeof window.loadCustomerList === 'function') {
+            await window.loadCustomerList();
+        }
+        var map = getCustomerLookupMap();
+        if (map && Object.keys(map).length) return map;
+        if (!window.wrappedFetch) return {};
+        try {
+            var resp = await window.wrappedFetch('/api/v1/crm/customers', { method: 'GET' });
+            var data = await window.handleApiResponse(resp);
+            var list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+            var out = {};
+            list.forEach(function (c) {
+                var cid = c.cust_id || c.custId || c.id;
+                var name = c.name || c.customerName || c.customer_name || '';
+                if (cid && name) out[String(cid)] = { id: Number(cid), name: String(name).trim() };
+            });
+            window.customerLookupById = out;
+            return out;
+        } catch (e) {
+            console.warn('[RapidOrder] 加载客户失败', e);
+            return {};
+        }
+    }
+
+    async function fetchWarehousesForRop() {
+        if (!window.wrappedFetch) return [];
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' });
+            var data = await window.handleApiResponse(resp);
+            return data && data.data ? data.data : (Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.warn('[RapidOrder] 加载仓库失败', e);
+            return [];
+        }
+    }
+
     function ensurePickerDom() {
         if (document.getElementById('rapid-order-picker')) return;
         var el = document.createElement('div');
@@ -104,48 +167,70 @@
     }
 
     function ensureOrderModal() {
-        if (document.getElementById('rapid-order-modal')) return;
+        var existing = document.getElementById('rapid-order-modal');
+        if (existing && !existing.querySelector('.rop-modal-form-grid')) {
+            existing.remove();
+            existing = null;
+        }
+        if (existing) return;
         var modal = document.createElement('div');
         modal.id = 'rapid-order-modal';
-        modal.className = 'tm-unified-mobile-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8';
+        modal.className = 'tm-unified-mobile-modal rop-modal-shell hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8';
         modal.innerHTML =
-            '<div class="tm-document-modal bg-white w-full md:max-w-lg rounded-t-2xl md:rounded-2xl shadow-xl max-h-[92vh] flex flex-col">' +
-            '<div class="px-4 py-3 border-b flex justify-between items-center">' +
+            '<div class="rop-modal-panel tm-document-modal bg-white w-full shadow-xl flex flex-col min-h-0">' +
+            '<header class="rop-modal-header px-4 py-3 border-b flex justify-between items-center shrink-0">' +
             '<h3 class="font-bold text-slate-800">⚡ 极速开单</h3>' +
-            '<button type="button" id="rop-modal-close" class="text-slate-400"><i class="ph ph-x text-lg"></i></button></div>' +
-            '<div class="p-4 space-y-3 overflow-y-auto flex-1">' +
-            '<div><label class="text-[10px] font-bold text-slate-400">客户</label>' +
+            '<button type="button" id="rop-modal-close" class="p-2 -mr-2 hover:bg-slate-100 rounded-full" aria-label="关闭">' +
+            '<i class="ph ph-x text-lg text-slate-400"></i></button></header>' +
+            '<main class="rop-modal-body p-4 space-y-3 flex-1 min-h-0 overflow-y-auto">' +
+            '<div class="rop-modal-form-grid">' +
+            '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">客户</label>' +
             '<select id="rop-customer" class="form-input form-input--compact w-full text-xs font-bold mt-0.5"></select></div>' +
-            '<div><label class="text-[10px] font-bold text-slate-400">开单仓</label>' +
+            '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">开单仓</label>' +
             '<select id="rop-warehouse" class="form-input form-input--compact w-full text-xs mt-0.5"></select></div>' +
-            '<div><label class="text-[10px] font-bold text-slate-400">发货方式</label>' +
+            '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">收款账户</label>' +
+            '<select id="rop-account" class="form-input form-input--compact w-full text-xs mt-0.5"></select></div>' +
+            '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">发货方式</label>' +
             '<select id="rop-fulfillment-type" class="form-input form-input--compact w-full text-xs mt-0.5">' +
             '<option value="SELF_PICKUP">自提（默认）</option>' +
             '<option value="LOGISTICS">发物流</option>' +
             '<option value="DELIVERY_ADDRESS">送指定地点</option>' +
             '<option value="DELIVERY_VEHICLE">送车</option></select></div>' +
-            '<div id="rop-address-panel" class="rop-fulfillment-panel hidden space-y-2 p-2 rounded-lg bg-slate-50 border border-slate-100">' +
+            '<div id="rop-logistics-panel" class="rop-fulfillment-panel rop-field-full hidden space-y-2 p-2 rounded-lg bg-slate-50 border border-slate-100">' +
+            '<select id="rop-logistics-provider" class="form-input form-input--compact w-full text-xs">' +
+            '<option value="">选择物流商</option>' +
+            '<option value="SF">顺丰</option><option value="YTO">圆通</option><option value="ZTO">中通</option>' +
+            '<option value="STO">申通</option><option value="YD">韵达</option><option value="JD">京东</option>' +
+            '<option value="OTHER">其他</option></select>' +
+            '<div class="flex gap-2"><input id="rop-tracking-no" class="form-input form-input--compact flex-1 text-xs font-mono" placeholder="运单号" />' +
+            '<button type="button" id="rop-scan-tracking" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 shrink-0">扫码</button></div></div>' +
+            '<div id="rop-address-panel" class="rop-fulfillment-panel rop-field-full hidden space-y-2 p-2 rounded-lg bg-slate-50 border border-slate-100">' +
             '<input id="rop-addr-contact" class="form-input form-input--compact w-full text-xs" placeholder="联系人" />' +
             '<input id="rop-addr-phone" class="form-input form-input--compact w-full text-xs" placeholder="电话" />' +
             '<input id="rop-addr-detail" class="form-input form-input--compact w-full text-xs" placeholder="详细地址" />' +
-            '<input id="rop-addr-vehicle" class="form-input form-input--compact w-full text-xs hidden" placeholder="车牌号" /></div>' +
+            '<input id="rop-addr-vehicle" class="form-input form-input--compact w-full text-xs hidden" placeholder="车牌号" />' +
+            '<input id="rop-addr-driver-name" class="form-input form-input--compact w-full text-xs hidden" placeholder="司机姓名" />' +
+            '<input id="rop-addr-driver-phone" class="form-input form-input--compact w-full text-xs hidden" placeholder="司机电话" />' +
+            '<input id="rop-addr-ship-from" class="form-input form-input--compact w-full text-xs hidden" placeholder="发货地址" /></div>' +
+            '</div>' +
             '<p class="text-[10px] text-amber-600 hidden" data-tm-cap-expiry>食品行业：含批次商品请在明细中选择批次</p>' +
             '<p class="text-[10px] text-indigo-600 hidden" data-tm-cap-serial>3C 行业：可在明细中填写序列号（逗号分隔）</p>' +
             '<button type="button" id="rop-open-picker" class="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-200 text-teal-600 text-xs font-bold">' +
             '+ 选择产品</button>' +
             '<div id="rop-lines" class="text-xs space-y-2 min-h-[2rem]"></div>' +
-            '<div class="text-right font-mono font-bold text-slate-800">合计 <span id="rop-total">¥0.00</span></div>' +
-            '</div>' +
-            '<div class="p-4 border-t">' +
-            '<button type="button" id="rop-submit" class="w-full py-3 rounded-xl bg-teal-500 text-white font-bold text-sm">提交订单</button></div></div>';
+            '<div class="text-right font-mono font-bold text-slate-800 sticky bottom-0 bg-white pt-2">合计 <span id="rop-total">¥0.00</span></div>' +
+            '</main>' +
+            '<footer class="rop-modal-footer p-4 border-t shrink-0">' +
+            '<button type="button" id="rop-submit" class="w-full py-3 rounded-xl bg-teal-500 text-white font-bold text-sm">提交订单</button></footer></div>';
         document.body.appendChild(modal);
-        modal.querySelector('#rop-modal-close').addEventListener('click', function () {
-            modal.classList.add('hidden');
-            document.body.style.overflow = '';
-        });
+        modal.querySelector('#rop-modal-close').addEventListener('click', closeRapidOrderModal);
         modal.querySelector('#rop-open-picker').addEventListener('click', openPicker);
         modal.querySelector('#rop-submit').addEventListener('click', submitOrder);
         modal.querySelector('#rop-fulfillment-type').addEventListener('change', syncFulfillmentPanel);
+        var scanBtn = modal.querySelector('#rop-scan-tracking');
+        if (scanBtn) {
+            scanBtn.addEventListener('click', scanTrackingNo);
+        }
         modal.querySelector('#rop-warehouse').addEventListener('change', function () {
             batchCache.clear();
             renderOrderLines();
@@ -153,14 +238,83 @@
         applyIndustryUi(modal);
     }
 
+    function formatStockDisplay(stock) {
+        var n = Number(stock);
+        if (isNaN(n)) n = 0;
+        if (n < 0) return '欠货 ' + Math.abs(n);
+        return '库存 ' + n;
+    }
+
     function syncFulfillmentPanel() {
         var type = document.getElementById('rop-fulfillment-type').value;
-        var panel = document.getElementById('rop-address-panel');
+        var addrPanel = document.getElementById('rop-address-panel');
+        var logPanel = document.getElementById('rop-logistics-panel');
         var veh = document.getElementById('rop-addr-vehicle');
-        if (!panel) return;
-        var needAddr = type !== 'SELF_PICKUP';
-        panel.classList.toggle('hidden', !needAddr);
-        if (veh) veh.classList.toggle('hidden', type !== 'DELIVERY_VEHICLE');
+        var driverName = document.getElementById('rop-addr-driver-name');
+        var driverPhone = document.getElementById('rop-addr-driver-phone');
+        var shipFrom = document.getElementById('rop-addr-ship-from');
+        if (logPanel) logPanel.classList.toggle('hidden', type !== 'LOGISTICS');
+        if (addrPanel) {
+            var needAddr = type === 'DELIVERY_ADDRESS' || type === 'DELIVERY_VEHICLE';
+            addrPanel.classList.toggle('hidden', !needAddr);
+        }
+        var isVehicle = type === 'DELIVERY_VEHICLE';
+        if (veh) veh.classList.toggle('hidden', !isVehicle);
+        if (driverName) driverName.classList.toggle('hidden', !isVehicle);
+        if (driverPhone) driverPhone.classList.toggle('hidden', !isVehicle);
+        if (shipFrom) shipFrom.classList.toggle('hidden', !isVehicle);
+    }
+
+    function scanTrackingNo() {
+        if (!window.TmSerialCapture || typeof window.TmSerialCapture.open !== 'function') {
+            notify('扫码组件未加载', 'error');
+            return;
+        }
+        window.TmSerialCapture.open({
+            mode: 'tracking',
+            expectedQty: 1,
+            onComplete: function (serials) {
+                var inp = document.getElementById('rop-tracking-no');
+                if (inp && serials && serials.length) inp.value = serials[0];
+            }
+        });
+    }
+
+    async function fetchAccountsForRop() {
+        if (typeof window.loadBizAccounts === 'function') {
+            await window.loadBizAccounts();
+        }
+        return window.bizAccountsList || [];
+    }
+
+    async function confirmShortageIfNeeded(lines) {
+        var shortages = lines.filter(function (x) {
+            var stock = Number(x.row.stock != null ? x.row.stock : 0);
+            return stock < x.qty;
+        });
+        if (!shortages.length) return true;
+        var msg = shortages.map(function (x) {
+            var stock = Number(x.row.stock != null ? x.row.stock : 0);
+            var lack = x.qty - Math.max(0, stock);
+            return x.row.name + '：需 ' + x.qty + '，可用 ' + stock + '，欠 ' + lack;
+        }).join('\n');
+        var fullMsg = '以下商品库存不足，是否欠货开单？\n\n' + msg;
+        if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {
+            return window.TM_UI.confirm({ title: '库存不足', message: fullMsg, confirmLabel: '欠货开单', cancelLabel: '返回修改' });
+        }
+        if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
+            return new Promise(function (resolve) {
+                window.TmConfirm.open({
+                    title: '库存不足',
+                    message: fullMsg,
+                    confirmLabel: '欠货开单',
+                    cancelLabel: '返回修改',
+                    onConfirm: function () { resolve(true); },
+                    onCancel: function () { resolve(false); }
+                });
+            });
+        }
+        return window.confirm(fullMsg);
     }
 
     function renderCategories() {
@@ -191,7 +345,7 @@
             return '<div class="rop-item" data-sku="' + r.skuId + '">' + thumb +
                 '<div class="rop-item__info"><div class="rop-item__name">' + r.name + '</div>' +
                 (r.specDisplay ? '<div class="rop-item__spec">' + r.specDisplay + '</div>' : '') +
-                '<div class="rop-item__stock">库存 ' + r.stock + ' · ¥' + r.price + '</div></div>' +
+                '<div class="rop-item__stock">' + formatStockDisplay(r.stock) + ' · ¥' + r.price + '</div></div>' +
                 '<div class="rop-qty"><button type="button" data-act="dec" data-sku="' + r.skuId + '">−</button>' +
                 '<span>' + qty + '</span><button type="button" data-act="inc" data-sku="' + r.skuId + '">+</button></div></div>';
         }).join('') || '<p class="text-center text-slate-400 text-sm py-8">暂无商品</p>';
@@ -338,38 +492,56 @@
     }
 
     async function populateCustomersAndWarehouses() {
-        if (typeof window.loadCustomerList === 'function') await window.loadCustomerList();
-        if (typeof window.loadProductList === 'function') await window.loadProductList();
+        var custMap = await fetchCustomersForRop();
         var custSel = document.getElementById('rop-customer');
-        var map = window.customerMapCache || window.customersCache || {};
         if (custSel) {
             custSel.innerHTML = '<option value="">选择客户</option>';
-            Object.keys(map).forEach(function (cid) {
-                var c = map[cid];
+            Object.keys(custMap).forEach(function (cid) {
+                var c = custMap[cid];
                 if (!c || !c.name) return;
                 var o = document.createElement('option');
-                o.value = cid;
+                o.value = String(c.id != null ? c.id : cid);
                 o.textContent = c.name;
                 custSel.appendChild(o);
             });
+            var defCust = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.uiProfile &&
+                (window.TM_WorkbenchProfile.uiProfile.defaultCustomerId ||
+                    window.TM_WorkbenchProfile.uiProfile.default_customer_id);
+            if (defCust) custSel.value = String(defCust);
         }
+        var whList = await fetchWarehousesForRop();
         var whSel = document.getElementById('rop-warehouse');
-        if (whSel && window.wrappedFetch) {
-            try {
-                var resp = await window.wrappedFetch('/api/v1/rd/warehouses', { method: 'GET' });
-                var data = await window.handleApiResponse(resp);
-                var list = data && data.data ? data.data : [];
-                whSel.innerHTML = '<option value="">默认仓库</option>';
-                list.forEach(function (w) {
-                    var o = document.createElement('option');
-                    o.value = w.warehouseId || w.warehouse_id || w.id;
-                    o.textContent = w.name || ('仓#' + o.value);
-                    whSel.appendChild(o);
+        if (whSel) {
+            whSel.innerHTML = '<option value="">默认仓库</option>';
+            whList.forEach(function (w) {
+                var o = document.createElement('option');
+                o.value = w.warehouseId || w.warehouse_id || w.id;
+                o.textContent = w.warehouseName || w.name || ('仓#' + o.value);
+                whSel.appendChild(o);
+            });
+            var def = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId &&
+                window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId();
+            if (def) whSel.value = String(def);
+        }
+        var accList = await fetchAccountsForRop();
+        var accSel = document.getElementById('rop-account');
+        if (accSel) {
+            accSel.innerHTML = '<option value="">默认收款账户</option>';
+            accList.forEach(function (a) {
+                var o = document.createElement('option');
+                o.value = a.accountId || a.account_id;
+                o.textContent = a.accountName || a.account_name || ('账户#' + o.value);
+                accSel.appendChild(o);
+            });
+            var ui = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.uiProfile;
+            var defAcc = ui && (ui.defaultAccountId || ui.default_account_id);
+            if (!defAcc) {
+                var defItem = accList.find(function (a) {
+                    return a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't';
                 });
-                var def = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId &&
-                    window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId();
-                if (def) whSel.value = String(def);
-            } catch (e) { /* ignore */ }
+                if (defItem) defAcc = defItem.accountId || defItem.account_id;
+            }
+            if (defAcc) accSel.value = String(defAcc);
         }
     }
 
@@ -400,8 +572,12 @@
         if (!custId) { notify('请选择客户', 'error'); return; }
         var lines = cartLines();
         if (!lines.length) { notify('请先选择产品', 'error'); return; }
+        var proceed = await confirmShortageIfNeeded(lines);
+        if (!proceed) return;
         var whId = document.getElementById('rop-warehouse').value;
         var warehouseId = whId ? parseInt(whId, 10) : null;
+        var accVal = document.getElementById('rop-account') && document.getElementById('rop-account').value;
+        var accountId = accVal ? parseInt(accVal, 10) : null;
         var ft = document.getElementById('rop-fulfillment-type').value;
         var items = [];
         for (var i = 0; i < lines.length; i++) {
@@ -426,18 +602,34 @@
         }
         var grand = items.reduce(function (s, it) { return s + it.totalAmount; }, 0);
         var addrSnap = null;
-        if (ft !== 'SELF_PICKUP') {
+        var logisticsProvider = null;
+        var logisticsTrackingNo = null;
+        if (ft === 'LOGISTICS') {
+            logisticsProvider = (document.getElementById('rop-logistics-provider').value || '').trim();
+            logisticsTrackingNo = (document.getElementById('rop-tracking-no').value || '').trim();
+            addrSnap = { provider: logisticsProvider, trackingNo: logisticsTrackingNo };
+        } else if (ft === 'DELIVERY_ADDRESS') {
+            addrSnap = {
+                contactName: document.getElementById('rop-addr-contact').value.trim(),
+                contactPhone: document.getElementById('rop-addr-phone').value.trim(),
+                detail: document.getElementById('rop-addr-detail').value.trim()
+            };
+        } else if (ft === 'DELIVERY_VEHICLE') {
             addrSnap = {
                 contactName: document.getElementById('rop-addr-contact').value.trim(),
                 contactPhone: document.getElementById('rop-addr-phone').value.trim(),
                 detail: document.getElementById('rop-addr-detail').value.trim(),
-                vehiclePlate: document.getElementById('rop-addr-vehicle').value.trim()
+                vehiclePlate: document.getElementById('rop-addr-vehicle').value.trim(),
+                driverName: document.getElementById('rop-addr-driver-name').value.trim(),
+                driverPhone: document.getElementById('rop-addr-driver-phone').value.trim(),
+                shipFromAddress: document.getElementById('rop-addr-ship-from').value.trim()
             };
         }
         var payload = {
             allowShortage: true,
             order: {
                 custId: custId,
+                accountId: accountId,
                 totalAmount: grand,
                 orderStatus: 'D010001',
                 finStatus: 'UNPAID',
@@ -445,6 +637,8 @@
                 fulfillmentType: ft,
                 fulfillmentWarehouseId: warehouseId,
                 warehouseId: warehouseId,
+                logisticsProvider: logisticsProvider,
+                logisticsTrackingNo: logisticsTrackingNo,
                 fulfillmentAddressSnapshot: addrSnap
             },
             orderItems: items
@@ -458,8 +652,7 @@
             var data = await window.handleApiResponse(resp);
             if (!data) return;
             notify('订单已创建', 'success');
-            document.getElementById('rapid-order-modal').classList.add('hidden');
-            document.body.style.overflow = '';
+            closeRapidOrderModal();
             cart.clear();
             batchCache.clear();
             if (typeof window.loadInProgressOrders === 'function') window.loadInProgressOrders();

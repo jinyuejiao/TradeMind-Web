@@ -605,6 +605,7 @@ window.ProductModule = {
             const payload = data.data || data;
             const records = payload.records || payload || [];
             this.renderSpuDesktopTable(Array.isArray(records) ? records : []);
+            this.renderSpuMobileCards(Array.isArray(records) ? records : []);
             this.productTotal = Number(payload.total || records.length || 0);
             this.productTotalPages = Math.max(1, Math.ceil(this.productTotal / this.PAGE_SIZE));
             this.renderPaginationBar({
@@ -652,6 +653,31 @@ window.ProductModule = {
                 '<td class="px-6 py-4 text-right col-hide-mobile text-slate-400">—</td>' +
                 '<td class="px-6 py-4 text-right font-mono font-bold text-slate-700">' + stock + '</td>' +
                 '<td class="px-6 py-4 text-right"><button type="button" class="action-icon-btn" onclick="event.stopPropagation(); window.ProductModule.openSpuDetail(' + spuId + ')" title="查看 SKU"><i class="ph ph-eye text-lg"></i></button></td></tr>';
+        }).join('');
+    },
+
+    renderSpuMobileCards: function(spuList) {
+        var container = document.getElementById('mobile-product-cards');
+        if (!container) return;
+        if (this.listViewMode !== 'spu') return;
+        if (!spuList.length) {
+            container.innerHTML = '<div class="py-10 px-4 text-center"><i class="ph ph-tree-structure text-3xl text-slate-300"></i>'
+                + '<p class="text-slate-400 font-bold mt-2 text-xs">暂无 SPU</p></div>';
+            return;
+        }
+        container.innerHTML = spuList.map(function (spu) {
+            var spuId = spu.spu_id || spu.spuId;
+            var name = spu.name || '—';
+            var skuCount = spu.sku_count != null ? spu.sku_count : (spu.skuCount || 0);
+            var stock = spu.total_stock != null ? spu.total_stock : (spu.totalStock || 0);
+            var stockLabel = Number(stock) < 0 ? ('欠货 ' + Math.abs(Number(stock))) : (stock + ' 库存');
+            return '<div class="mobile-product-row flex items-stretch gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 active:bg-slate-50" onclick="window.ProductModule.openSpuDetail(' + spuId + ')">'
+                + '<div class="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center text-teal-500 shrink-0"><i class="ph ph-tree-structure text-lg"></i></div>'
+                + '<div class="flex-1 min-w-0">'
+                + '<p class="font-bold text-slate-800 text-[12px] leading-tight line-clamp-2">' + name + '</p>'
+                + '<p class="text-[10px] text-slate-400 mt-0.5">' + skuCount + ' SKU · ' + stockLabel + '</p>'
+                + '</div>'
+                + '<i class="ph ph-caret-right text-slate-300 self-center shrink-0"></i></div>';
         }).join('');
     },
 
@@ -1615,7 +1641,9 @@ window.ProductModule = {
     },
 
     formatCompoundStockDisplay: function(product) {
-        var baseQty = Math.max(0, Math.floor(Number(product && product.stock != null ? product.stock : 0) || 0));
+        var raw = Number(product && product.stock != null ? product.stock : 0) || 0;
+        if (raw < 0) return '欠货' + Math.abs(Math.floor(raw));
+        var baseQty = Math.max(0, Math.floor(raw));
         var baseUnit = (product && product.baseUnit ? String(product.baseUnit).trim() : '') || '件';
         var convs = (product && product.unitConversions) || [];
         if (!convs.length) return baseQty.toLocaleString() + baseUnit;

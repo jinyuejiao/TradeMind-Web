@@ -99,6 +99,18 @@
             + '      <button type="button" onclick="TM_Returns.submitInspect()" class="tm-btn-primary flex-[1.4] py-3 text-xs font-black">确认验收</button>'
             + '    </div>'
             + '  </div>'
+            + '</div>'
+            + '<div id="return-detail-modal" class="tm-unified-mobile-modal hidden fixed inset-0 z-[115] flex items-end md:items-center justify-center p-0 md:p-6">'
+            + '  <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="TM_Returns.closeDetail()"></div>'
+            + '  <div class="relative bg-white w-full max-w-lg md:max-w-2xl rounded-t-[2rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">'
+            + '    <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">'
+            + '      <div><h3 class="text-sm font-bold text-slate-800">退货详情</h3>'
+            + '        <p id="return-detail-meta" class="text-[10px] text-slate-400 mt-0.5"></p></div>'
+            + '      <button type="button" onclick="TM_Returns.closeDetail()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-lg text-slate-400"></i></button>'
+            + '    </div>'
+            + '    <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3 no-scrollbar" id="return-detail-body"></div>'
+            + '    <div class="px-5 py-4 border-t border-slate-100 shrink-0" id="return-detail-actions"></div>'
+            + '  </div>'
             + '</div>';
         document.body.appendChild(wrap);
         var sel = document.getElementById('return-reason-select');
@@ -554,14 +566,14 @@
             var stLabel = STATUS_LABEL[st] || st || '—';
             var canInspect = st === 'D018002' || st === 'D018003';
             return ''
-                + '<div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">'
+                + '<div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm cursor-pointer hover:border-teal-200 transition-colors" onclick="TM_Returns.openDetail(' + id + ')">'
                 + '  <div class="flex flex-wrap items-start justify-between gap-2">'
                 + '    <div><p class="text-sm font-bold text-slate-800">' + esc(code) + '</p>'
                 + '      <p class="text-[10px] text-slate-400 mt-0.5">' + esc(r.cust_name || r.custName || '') + ' · ' + fmtDate(r.create_time || r.createTime) + '</p></div>'
                 + '    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">' + esc(stLabel) + '</span>'
                 + '  </div>'
                 + '  <p class="mt-2 text-xs font-mono font-bold text-brand-600">' + fmtMoney(r.total_amount || r.totalAmount) + '</p>'
-                + (canInspect ? ('<button type="button" onclick="TM_Returns.openInspect(' + id + ')" class="mt-3 w-full py-2 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold">验收</button>') : '')
+                + (canInspect ? ('<button type="button" onclick="event.stopPropagation(); TM_Returns.openInspect(' + id + ')" class="mt-3 w-full py-2 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold">验收</button>') : '')
                 + '</div>';
         }).join('');
     }
@@ -595,6 +607,56 @@
     }
 
     var _inspectReturnId = null;
+
+    function openDetail(returnId) {
+        ensureModals();
+        apiFetch('GET', '/returns/' + returnId).then(function (res) {
+            if (!res.success || !res.data) throw new Error('加载退货单失败');
+            var d = res.data;
+            var meta = document.getElementById('return-detail-meta');
+            var body = document.getElementById('return-detail-body');
+            var actions = document.getElementById('return-detail-actions');
+            if (!body) return;
+            var code = d.return_code || d.returnCode || ('RT-' + returnId);
+            var st = d.return_status || d.returnStatus || '';
+            var stLabel = STATUS_LABEL[st] || st || '—';
+            if (meta) meta.textContent = code + ' · ' + stLabel;
+            var reasonCode = d.reason_code || d.reasonCode || '';
+            var reasonHit = REASONS.find(function (r) { return r.code === reasonCode; });
+            var reasonLabel = reasonHit ? reasonHit.label : reasonCode;
+            var items = d.items || [];
+            body.innerHTML = ''
+                + '<div class="grid grid-cols-2 gap-3 text-xs">'
+                + '  <div><p class="text-[10px] text-slate-400">客户</p><p class="font-bold text-slate-700">' + esc(d.cust_name || d.custName || '—') + '</p></div>'
+                + '  <div><p class="text-[10px] text-slate-400">金额</p><p class="font-mono font-bold text-brand-600">' + fmtMoney(d.total_amount || d.totalAmount) + '</p></div>'
+                + '  <div><p class="text-[10px] text-slate-400">原因</p><p class="text-slate-700">' + esc(reasonLabel || '—') + '</p></div>'
+                + '  <div><p class="text-[10px] text-slate-400">创建时间</p><p class="text-slate-600">' + fmtDate(d.create_time || d.createTime) + '</p></div>'
+                + '</div>'
+                + (d.remark ? ('<p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">' + esc(d.remark) + '</p>') : '')
+                + '<div class="space-y-2"><p class="text-[10px] font-bold text-slate-400 uppercase">明细</p>'
+                + (items.length ? items.map(function (it) {
+                    var name = it.product_name || it.productName || ('产品#' + (it.product_id || it.productId || ''));
+                    var qty = it.return_qty != null ? it.return_qty : (it.returnQty || it.quantity || 0);
+                    return '<div class="flex justify-between text-xs py-2 border-b border-slate-50">'
+                        + '<span class="text-slate-700">' + esc(name) + ' ×' + qty + '</span>'
+                        + '<span class="font-mono text-slate-500">' + fmtMoney(it.total_amount || it.totalAmount) + '</span></div>';
+                }).join('') : '<p class="text-slate-400 text-xs">无明细</p>')
+                + '</div>';
+            if (actions) {
+                var canInspect = st === 'D018002' || st === 'D018003';
+                actions.innerHTML = canInspect
+                    ? '<button type="button" onclick="TM_Returns.closeDetail(); TM_Returns.openInspect(' + returnId + ')" class="w-full py-3 rounded-xl bg-teal-500 text-white text-xs font-bold">去验收</button>'
+                    : '<button type="button" onclick="TM_Returns.closeDetail()" class="w-full py-3 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold">关闭</button>';
+            }
+            openModal(document.getElementById('return-detail-modal'));
+        }).catch(function (err) {
+            notify(err.message || '加载详情失败', 'error');
+        });
+    }
+
+    function closeDetail() {
+        closeModal(document.getElementById('return-detail-modal'));
+    }
 
     function openInspect(returnId) {
         ensureModals();
@@ -664,6 +726,8 @@
     window.TM_Returns = {
         init: init,
         loadList: loadList,
+        openDetail: openDetail,
+        closeDetail: closeDetail,
         openCreateFromDetail: openCreateFromDetail,
         closeCreateModal: closeCreateModal,
         submitCreate: submitCreate,

@@ -6,6 +6,8 @@
     background: #f8fafc;
     display: flex;
     flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
 }
 #rapid-order-picker.hidden { display: none !important; }
 .rop-header {
@@ -141,4 +143,80 @@
 .rop-order-line .rop-line-serial:focus {
     outline: none;
     border-color: #14b8a6;
+}
+
+/* 三段式开单弹窗 */
+@media (max-width: 767px) {
+    .rop-modal-shell:not(.hidden) {
+        align-items: flex-end;
+    }
+}
+.rop-modal-panel {
+    max-height: min(100dvh, 100%);
+    border-radius: 1rem 1rem 0 0;
+}
+@media (min-width: 768px) {
+    #rapid-order-modal.rop-modal-shell:not(.hidden) {
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 2rem;
+    }
+    #rapid-order-modal .rop-modal-panel {
+        width: min(52rem, 94vw);
+        max-width: 52rem;
+        min-height: min(36rem, 82vh);
+        max-height: min(88dvh, 920px);
+        border-radius: 1rem;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+    }
+    #rapid-order-modal .rop-modal-header {
+        padding: 1rem 1.5rem;
+    }
+    #rapid-order-modal .rop-modal-header h3 {
+        font-size: 1.125rem;
+    }
+    #rapid-order-modal .rop-modal-body {
+        padding: 1rem 1.5rem 1.25rem;
+    }
+    #rapid-order-modal .rop-modal-footer {
+        padding: 1rem 1.5rem 1.25rem;
+    }
+    #rapid-order-modal .rop-modal-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.875rem 1.25rem;
+    }
+    #rapid-order-modal .rop-modal-form-grid .rop-field-full {
+        grid-column: 1 / -1;
+    }
+    #rapid-order-modal .rop-modal-form-grid label {
+        font-size: 0.6875rem;
+    }
+    #rapid-order-modal .rop-modal-form-grid .form-input {
+        font-size: 0.8125rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+    #rapid-order-modal #rop-open-picker {
+        padding: 1rem;
+        font-size: 0.875rem;
+    }
+    #rapid-order-modal #rop-lines {
+        min-height: 9rem;
+    }
+    #rapid-order-modal #rop-submit {
+        padding-top: 0.875rem;
+        padding-bottom: 0.875rem;
+        font-size: 0.9375rem;
+    }
+}
+.rop-modal-header {
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+.rop-modal-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+.rop-modal-body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }

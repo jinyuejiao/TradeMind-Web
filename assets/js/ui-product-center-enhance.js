@@ -370,6 +370,10 @@
         if (unitPayload.length > 0) {
             resultBody.unitConversions = unitPayload;
         }
+        var matrixPayload = PM.buildVariantMatrixPayload();
+        if (matrixPayload) {
+            resultBody.variantMatrix = matrixPayload;
+        }
         return {
             error: null,
             body: resultBody
@@ -508,7 +512,105 @@
                 return '<option value="' + PM.escHtmlAttr(String(id)) + '">' + PM.escHtmlText(name) + '</option>';
             }).join('');
             if (cur) sel.value = cur;
+            if (!sel.__tmMatrixBound) {
+                sel.__tmMatrixBound = true;
+                sel.addEventListener('change', function () {
+                    PM.loadVariantMatrixFromTemplate(sel.value);
+                });
+            }
         }).catch(function () { /* ignore */ });
+    };
+
+    PM._variantMatrixSelection = {};
+
+    PM.loadVariantMatrixFromTemplate = function (templateId) {
+        var panel = PM.el('product-variant-matrix-panel');
+        var box = PM.el('detail-variant-matrix');
+        PM._variantMatrixSelection = {};
+        if (!templateId || !box) {
+            if (panel) panel.classList.add('hidden');
+            if (box) box.innerHTML = '';
+            PM.updateVariantMatrixPreview();
+            return Promise.resolve();
+        }
+        var fetchFn = window.wrappedFetch || fetch;
+        return fetchFn('/api/v1/rd/products/attribute-templates/' + templateId, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            var detail = res && res.success ? (res.data || {}) : {};
+            var defs = detail.definitions || [];
+            if (panel) panel.classList.remove('hidden');
+            box.innerHTML = defs.map(function (def) {
+                var name = def.name || '';
+                var values = def.enum_values || def.enumValues || [];
+                if (typeof values === 'string') {
+                    try { values = JSON.parse(values); } catch (e) { values = []; }
+                }
+                if (!Array.isArray(values)) values = [];
+                PM._variantMatrixSelection[name] = [];
+                return '<div class="rounded-lg border border-slate-100 p-2" data-attr="' + PM.escHtmlAttr(name) + '">'
+                    + '<p class="font-bold text-slate-700 mb-1">' + PM.escHtmlText(name) + '</p>'
+                    + '<div class="flex flex-wrap gap-2">' + values.map(function (v) {
+                        return '<label class="inline-flex items-center gap-1 text-[11px]">'
+                            + '<input type="checkbox" class="tm-matrix-val" data-attr="' + PM.escHtmlAttr(name) + '" value="' + PM.escHtmlAttr(String(v)) + '" /> '
+                            + PM.escHtmlText(String(v)) + '</label>';
+                    }).join('') + '</div></div>';
+            }).join('') || '<p class="text-slate-400">模板无属性定义</p>';
+            box.querySelectorAll('.tm-matrix-val').forEach(function (cb) {
+                cb.addEventListener('change', function () {
+                    var attr = cb.getAttribute('data-attr');
+                    if (!PM._variantMatrixSelection[attr]) PM._variantMatrixSelection[attr] = [];
+                    var arr = PM._variantMatrixSelection[attr];
+                    var val = cb.value;
+                    var idx = arr.indexOf(val);
+                    if (cb.checked && idx < 0) arr.push(val);
+                    if (!cb.checked && idx >= 0) arr.splice(idx, 1);
+                    PM.updateVariantMatrixPreview();
+                });
+            });
+            PM.updateVariantMatrixPreview();
+        }).catch(function () {
+            if (panel) panel.classList.add('hidden');
+        });
+    };
+
+    PM.updateVariantMatrixPreview = function () {
+        var preview = PM.el('detail-variant-matrix-preview');
+        if (!preview) return;
+        var sel = PM._variantMatrixSelection || {};
+        var keys = Object.keys(sel).filter(function (k) { return sel[k] && sel[k].length; });
+        if (!keys.length) {
+            preview.textContent = '';
+            return;
+        }
+        var count = keys.reduce(function (acc, k) { return acc * sel[k].length; }, 1);
+        preview.textContent = '将生成约 ' + count + ' 个 SKU 组合';
+    };
+
+    PM.buildVariantMatrixPayload = function () {
+        var tv = PM.el('detail-track-variants');
+        if (!tv || !tv.checked) return null;
+        var tplSel = PM.el('detail-variant-template');
+        var templateId = tplSel && tplSel.value ? parseInt(tplSel.value, 10) : null;
+        if (!templateId) return null;
+        var selected = PM._variantMatrixSelection || {};
+        var filtered = {};
+        Object.keys(selected).forEach(function (k) {
+            if (selected[k] && selected[k].length) filtered[k] = selected[k].slice();
+        });
+        if (!Object.keys(filtered).length) return null;
+        return { templateId: templateId, selectedValues: filtered };
+    };
+
+    PM.syncVariantMatrixPanelVisibility = function () {
+        var tv = PM.el('detail-track-variants');
+        var panel = PM.el('product-variant-matrix-panel');
+        var vertical = (window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.industryVertical) || '';
+        var forceShow = vertical === 'CLOTHING' && tv && tv.checked;
+        if (panel && forceShow && PM.el('detail-variant-template') && PM.el('detail-variant-template').value) {
+            panel.classList.remove('hidden');
+        }
     };
 
     PM.populateCapabilityForm = function (spu) {
@@ -574,6 +676,9 @@
             if (!el) return;
             el.addEventListener('change', function () {
                 if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+                if (id === 'detail-track-variants' && typeof PM.syncVariantMatrixPanelVisibility === 'function') {
+                    PM.syncVariantMatrixPanelVisibility();
+                }
             });
             el.addEventListener('input', function () {
                 if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
@@ -1142,6 +1247,9 @@
             if (spuIdForCover && typeof PM.uploadProductCover === 'function') {
                 await PM.uploadProductCover(spuIdForCover);
             }
+            if (spuIdForCover && typeof PM.uploadPendingGallery === 'function') {
+                await PM.uploadPendingGallery(spuIdForCover);
+            }
             var mapped = PM.mapProductFromApi(saved);
             if (mapped.unitConversions && mapped.unitConversions.length) {
                 PM.currentProduct.unitConversions = mapped.unitConversions;
@@ -1593,6 +1701,105 @@
         if (typeof _origInit === 'function') await _origInit.apply(this, arguments);
         if (typeof PM.loadProductCapabilities === 'function') await PM.loadProductCapabilities();
         if (typeof PM.bindProductCoverInput === 'function') PM.bindProductCoverInput();
+        if (typeof PM.bindGalleryInput === 'function') PM.bindGalleryInput();
+    };
+
+    PM._pendingGalleryFiles = [];
+
+    PM.bindGalleryInput = function () {
+        var input = PM.el('detail-product-gallery-input');
+        if (!input || input.__tmGalleryBound) return;
+        input.__tmGalleryBound = true;
+        input.addEventListener('change', function () {
+            if (!input.files || !input.files.length) return;
+            var current = (PM._pendingGalleryFiles || []).length;
+            var existing = (PM._galleryMediaIds || []).length;
+            var maxAdd = Math.max(0, 9 - current - existing);
+            for (var i = 0; i < input.files.length && i < maxAdd; i++) {
+                PM._pendingGalleryFiles.push(input.files[i]);
+            }
+            if (input.files.length > maxAdd && window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('图册最多 9 张', 'warning');
+            }
+            input.value = '';
+            PM.renderGalleryPreview();
+        });
+    };
+
+    PM.renderGalleryPreview = function () {
+        var box = PM.el('detail-product-gallery');
+        if (!box) return;
+        var html = (PM._galleryUrls || []).map(function (item) {
+            return '<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-100">'
+                + '<img src="' + PM.escHtmlAttr(item.url) + '" class="w-full h-full object-cover" alt="" />'
+                + (item.mediaId ? ('<button type="button" class="absolute top-0 right-0 bg-black/50 text-white text-[10px] px-1 tm-gallery-del" data-id="' + item.mediaId + '">×</button>') : '')
+                + '</div>';
+        }).join('');
+        (PM._pendingGalleryFiles || []).forEach(function (file, idx) {
+            html += '<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-dashed border-brand-200">'
+                + '<img src="' + URL.createObjectURL(file) + '" class="w-full h-full object-cover opacity-80" alt="" />'
+                + '<span class="absolute bottom-0 inset-x-0 bg-brand-500/80 text-white text-[8px] text-center">待传</span></div>';
+        });
+        box.innerHTML = html || '<span class="text-[10px] text-slate-400">暂无图册</span>';
+        box.querySelectorAll('.tm-gallery-del').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                PM.deleteGalleryMedia(parseInt(btn.getAttribute('data-id'), 10));
+            });
+        });
+    };
+
+    PM.loadGalleryPreview = async function (spuId) {
+        PM._galleryUrls = [];
+        PM._galleryMediaIds = [];
+        PM._pendingGalleryFiles = [];
+        if (!spuId || !window.wrappedFetch) {
+            PM.renderGalleryPreview();
+            return;
+        }
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId, { method: 'GET' });
+            var data = await window.handleApiResponse(resp);
+            var items = data && data.data ? data.data : [];
+            PM._galleryUrls = (Array.isArray(items) ? items : []).filter(function (m) {
+                return (m.mediaType || m.media_type) === 'GALLERY';
+            }).map(function (m) {
+                return { url: m.url, mediaId: m.media_id || m.mediaId };
+            });
+            PM._galleryMediaIds = PM._galleryUrls.map(function (x) { return x.mediaId; }).filter(Boolean);
+        } catch (e) {
+            console.warn('[ProductEnhance] 图册加载失败', e);
+        }
+        PM.renderGalleryPreview();
+    };
+
+    PM.uploadPendingGallery = async function (spuId) {
+        var files = PM._pendingGalleryFiles || [];
+        if (!spuId || !files.length || !window.wrappedFetch) return;
+        for (var i = 0; i < files.length; i++) {
+            var fd = new FormData();
+            fd.append('file', files[i]);
+            fd.append('spuId', String(spuId));
+            fd.append('mediaType', 'GALLERY');
+            try {
+                await window.wrappedFetch('/api/v1/rd/products/media/upload', { method: 'POST', body: fd });
+            } catch (e) {
+                console.warn('[ProductEnhance] 图册上传失败', e);
+            }
+        }
+        PM._pendingGalleryFiles = [];
+        await PM.loadGalleryPreview(spuId);
+    };
+
+    PM.deleteGalleryMedia = async function (mediaId) {
+        if (!mediaId || !window.wrappedFetch) return;
+        try {
+            await window.wrappedFetch('/api/v1/rd/products/media/' + mediaId, { method: 'DELETE' });
+            PM._galleryUrls = (PM._galleryUrls || []).filter(function (x) { return x.mediaId !== mediaId; });
+            PM.renderGalleryPreview();
+        } catch (e) {
+            console.warn('[ProductEnhance] 删除图册失败', e);
+        }
     };
 
     PM.bindProductCoverInput = function () {
@@ -1651,6 +1858,12 @@
             window.TM_ProductThumb.mount(preview, { coverUrl: coverUrl, size: 96, alt: cp.name || '' });
         } else {
             preview.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="ph ph-image text-2xl"></i></div>';
+        }
+        if (spuId && typeof PM.loadGalleryPreview === 'function') {
+            await PM.loadGalleryPreview(spuId);
+        }
+        if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
+            PM.syncVariantMatrixPanelVisibility();
         }
     };
 })();
