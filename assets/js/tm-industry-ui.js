@@ -10,6 +10,23 @@
         allowSerial: '[data-tm-cap="allowSerial"],[data-tm-cap-serial]'
     };
 
+    function industryAllowsCapability(key, vertical) {
+        vertical = String(vertical || 'GENERAL').toUpperCase();
+        if (vertical === 'GENERAL' || vertical === 'PENDING') {
+            return false;
+        }
+        if (key === 'allowVariants') {
+            return vertical === 'CLOTHING' || vertical === 'FOOD' || vertical === 'DIGITAL_3C';
+        }
+        if (key === 'allowExpiry') {
+            return vertical === 'FOOD';
+        }
+        if (key === 'allowSerial') {
+            return vertical === 'DIGITAL_3C';
+        }
+        return false;
+    }
+
     function capsFromProfile(profile) {
         profile = profile || window.TM_WorkbenchProfile || {};
         var c = profile.capabilities || {};
@@ -22,11 +39,16 @@
     }
 
     window.TM_IndustryUI = {
+        industryAllowsCapability: industryAllowsCapability,
+
         apply: function (root, profile) {
             root = root || document.body;
             var caps = capsFromProfile(profile);
+            var vertical = caps.industryVertical;
             Object.keys(CAP_RULES).forEach(function (key) {
-                var on = caps[key];
+                var tenantOn = caps[key];
+                var industryOn = industryAllowsCapability(key, vertical);
+                var on = tenantOn && industryOn;
                 root.querySelectorAll(CAP_RULES[key]).forEach(function (el) {
                     el.classList.toggle('hidden', !on);
                     el.setAttribute('aria-hidden', on ? 'false' : 'true');
@@ -34,11 +56,11 @@
             });
             root.querySelectorAll('[data-tm-industry]').forEach(function (el) {
                 var need = el.getAttribute('data-tm-industry');
-                var iv = caps.industryVertical;
+                var iv = vertical;
                 var show = !need || need === iv || need === 'ANY';
                 el.classList.toggle('hidden', !show);
             });
-            document.documentElement.setAttribute('data-industry-vertical', caps.industryVertical);
+            document.documentElement.setAttribute('data-industry-vertical', vertical);
         }
     };
 })();

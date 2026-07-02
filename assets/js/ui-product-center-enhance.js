@@ -134,24 +134,51 @@
         return null;
     };
 
+    PM.getProductFormRoot = function () {
+        var auditRoot = PM.getAuditProductRoot && PM.getAuditProductRoot();
+        if (auditRoot) return auditRoot;
+        var modal = PM.getProductDetailModal && PM.getProductDetailModal();
+        if (modal) {
+            var formRoot = modal.querySelector('#product-detail-form-root');
+            if (formRoot) return formRoot;
+        }
+        return document.getElementById('product-detail-form-root');
+    };
+
+    PM.resolveScopedId = function (id, root) {
+        if (!id || !root) return id;
+        var scope = root.dataset && root.dataset.tmFormScope;
+        if (!scope || id.indexOf(scope + '-detail-') === 0) return id;
+        if (id.indexOf('detail-') === 0) return scope + '-' + id;
+        return id;
+    };
+
     PM.el = function () {
         var ids = Array.prototype.slice.call(arguments);
-        var auditRoot = PM.getAuditProductRoot();
-        if (auditRoot) {
+
+        function findInRoot(root) {
+            if (!root) return null;
             for (var i = 0; i < ids.length; i++) {
                 if (!ids[i]) continue;
-                var scoped = auditRoot.querySelector('#' + ids[i]);
-                if (scoped) return scoped;
+                var scopedId = PM.resolveScopedId(ids[i], root);
+                var node = root.querySelector('#' + scopedId);
+                if (node) return node;
+                if (scopedId !== ids[i]) {
+                    node = root.querySelector('#' + ids[i]);
+                    if (node) return node;
+                }
             }
+            return null;
         }
-        var productModal = PM.getProductDetailModal();
-        if (productModal) {
-            for (var p = 0; p < ids.length; p++) {
-                if (!ids[p]) continue;
-                var inModal = productModal.querySelector('#' + ids[p]);
-                if (inModal) return inModal;
-            }
-        }
+
+        var auditRoot = PM.getAuditProductRoot();
+        var hit = findInRoot(auditRoot);
+        if (hit) return hit;
+
+        var formRoot = PM.getProductFormRoot();
+        hit = findInRoot(formRoot);
+        if (hit) return hit;
+
         for (var j = 0; j < ids.length; j++) {
             var id = ids[j];
             if (!id) continue;
@@ -418,6 +445,73 @@
         };
     };
 
+    PM.getIndustryVertical = function () {
+        var p = window.TM_WorkbenchProfile || {};
+        var iv = String(p.industryVertical || 'GENERAL').toUpperCase();
+        if (iv === 'PENDING') return 'GENERAL';
+        return iv;
+    };
+
+    PM.isIndustryCardAllowed = function (cardKey, vertical) {
+        if (window.TM_IndustryUI && typeof window.TM_IndustryUI.industryAllowsCapability === 'function') {
+            var map = { variants: 'allowVariants', expiry: 'allowExpiry', serial: 'allowSerial' };
+            return window.TM_IndustryUI.industryAllowsCapability(map[cardKey], vertical || PM.getIndustryVertical());
+        }
+        vertical = vertical || PM.getIndustryVertical();
+        if (vertical === 'GENERAL') return false;
+        if (cardKey === 'variants') {
+            return vertical === 'CLOTHING' || vertical === 'FOOD' || vertical === 'DIGITAL_3C';
+        }
+        if (cardKey === 'expiry') return vertical === 'FOOD';
+        if (cardKey === 'serial') return vertical === 'DIGITAL_3C';
+        return false;
+    };
+
+    PM.applyIndustryProductDefaults = function (opts) {
+        opts = opts || {};
+        if (opts.editMode) return;
+        var iv = PM.getIndustryVertical();
+        if (iv === 'GENERAL') return;
+        var tv = PM.el('detail-track-variants');
+        var te = PM.el('detail-track-expiry');
+        var ts = PM.el('detail-track-serial');
+        if (iv === 'CLOTHING' || iv === 'FOOD' || iv === 'DIGITAL_3C') {
+            if (tv) tv.checked = true;
+        }
+        if (iv === 'FOOD' && te) te.checked = true;
+        if (iv === 'DIGITAL_3C' && ts) ts.checked = true;
+        var days = PM.el('detail-shelf-life-days');
+        if (iv === 'FOOD' && days && !days.value) days.value = '180';
+        PM.applyDefaultIndustryTemplate();
+        if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+        if (typeof PM.syncVariantMatrixPanelVisibility === 'function') PM.syncVariantMatrixPanelVisibility();
+    };
+
+    PM.applyDefaultIndustryTemplate = function () {
+        var sel = PM.el('detail-variant-template');
+        if (!sel || sel.value) return;
+        var iv = PM.getIndustryVertical();
+        if (iv === 'GENERAL') return;
+        var defaultId = PM._defaultAttributeTemplateId;
+        if (defaultId) {
+            sel.value = String(defaultId);
+            PM.loadVariantMatrixFromTemplate(sel.value);
+            return;
+        }
+        var opts = Array.prototype.slice.call(sel.options);
+        var hit = null;
+        opts.forEach(function (o) {
+            if (!o.value) return;
+            var t = (o.getAttribute('data-industry') || '').toUpperCase();
+            if (t === iv) hit = o;
+        });
+        if (!hit && opts.length > 1) hit = opts[1];
+        if (hit) {
+            sel.value = hit.value;
+            PM.loadVariantMatrixFromTemplate(sel.value);
+        }
+    };
+
     PM.loadProductCapabilities = function () {
         var fetchFn = window.wrappedFetch || fetch;
         return fetchFn('/api/v1/rd/products/capabilities', {
@@ -426,13 +520,17 @@
         }).then(function (r) { return r.json(); }).then(function (res) {
             if (!res.success) return null;
             window.TM_productCapabilities = PM.normalizeProductCapabilities(res.data || {});
-            PM.applyProductCapabilityVisibility({ productCenterForm: true });
+            PM.applyProductCapabilityVisibility();
             return window.TM_productCapabilities;
         }).catch(function () { return null; });
     };
 
     PM.normalizeProductCapabilities = function (raw) {
         raw = raw || {};
+        var profile = window.TM_WorkbenchProfile || {};
+        if (profile.capabilities && typeof profile.capabilities === 'object') {
+            raw = Object.assign({}, profile.capabilities, raw);
+        }
         var merchant = '';
         try {
             merchant = (document.documentElement.getAttribute('data-merchant-type') || '').toUpperCase();
@@ -468,48 +566,60 @@
         return document.getElementById('product-detail-form-root') || document;
     };
 
-    PM.applyProductCapabilityVisibility = function (opts) {
-        opts = opts || {};
+    PM.applyProductCapabilityVisibility = function () {
         var caps = PM.normalizeProductCapabilities(window.TM_productCapabilities || {});
+        var vertical = PM.getIndustryVertical();
         var root = PM.getCapabilityFormRoot();
         var section = root.querySelector('#product-capability-cards');
         if (!section) section = document.getElementById('product-capability-cards');
         if (!section) return;
-        var showAllInProductCenter = !!opts.productCenterForm;
-        var any = showAllInProductCenter || caps.allowVariants || caps.allowExpiry || caps.allowSerial;
+        var showVariants = PM.isIndustryCardAllowed('variants', vertical) && caps.allowVariants;
+        var showExpiry = PM.isIndustryCardAllowed('expiry', vertical) && caps.allowExpiry;
+        var showSerial = PM.isIndustryCardAllowed('serial', vertical) && caps.allowSerial;
+        var any = showVariants || showExpiry || showSerial;
         section.classList.toggle('hidden', !any);
         var hint = root.querySelector('#product-capability-hint') || document.getElementById('product-capability-hint');
         if (hint) {
             hint.classList.toggle('hidden', any);
             if (!any) {
-                hint.textContent = '当前租户未开启规格/保质期/序列号能力，可在智能经营-租户档案中配置，或联系管理员。';
+                if (vertical === 'GENERAL') {
+                    hint.textContent = '通用行业仅展示基础信息与高级配置；如需多规格/批次/序列号，请在租户档案中选择对应行业。';
+                } else {
+                    hint.textContent = '当前租户未开启规格/保质期/序列号能力，可在智能经营-租户档案中配置，或联系管理员。';
+                }
             }
         }
-        function card(id, allowed) {
+        function card(id, visible) {
             var el = root.querySelector('#' + id) || document.getElementById(id);
             if (!el) return;
-            var visible = showAllInProductCenter || allowed;
             el.classList.toggle('hidden', !visible);
         }
-        card('cap-card-variants', caps.allowVariants);
-        card('cap-card-expiry', caps.allowExpiry);
-        card('cap-card-serial', caps.allowSerial);
+        card('cap-card-variants', showVariants);
+        card('cap-card-expiry', showExpiry);
+        card('cap-card-serial', showSerial);
     };
 
     PM.loadAttributeTemplates = function () {
         var sel = PM.el('detail-variant-template');
         if (!sel) return Promise.resolve();
         var fetchFn = window.wrappedFetch || fetch;
-        return fetchFn('/api/v1/rd/products/attribute-templates', {
+        var iv = PM.getIndustryVertical();
+        var url = '/api/v1/rd/products/attribute-templates';
+        if (iv && iv !== 'GENERAL') {
+            url += '?industryVertical=' + encodeURIComponent(iv);
+        }
+        return fetchFn(url, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         }).then(function (r) { return r.json(); }).then(function (res) {
             var list = res && res.success && Array.isArray(res.data) ? res.data : [];
+            PM._defaultAttributeTemplateId = res && res.defaultTemplateId != null ? res.defaultTemplateId : null;
             var cur = sel.value;
             sel.innerHTML = '<option value="">选择属性模板</option>' + list.map(function (t) {
                 var id = t.template_id != null ? t.template_id : t.templateId;
                 var name = t.name || ('模板#' + id);
-                return '<option value="' + PM.escHtmlAttr(String(id)) + '">' + PM.escHtmlText(name) + '</option>';
+                var industry = t.industry_vertical != null ? t.industry_vertical : t.industryVertical;
+                return '<option value="' + PM.escHtmlAttr(String(id)) + '" data-industry="' + PM.escHtmlAttr(String(industry || '')) + '">' + PM.escHtmlText(name) + '</option>';
             }).join('');
             if (cur) sel.value = cur;
             if (!sel.__tmMatrixBound) {
@@ -521,16 +631,101 @@
         }).catch(function () { /* ignore */ });
     };
 
-    PM._variantMatrixSelection = {};
+    PM.resolveDefinitionEnumValues = function (def) {
+        def = def || {};
+        var values = def.enum_values || def.enumValues || def.enum_options || def.enumOptions || [];
+        if (typeof values === 'string') {
+            try { values = JSON.parse(values); } catch (e) { values = []; }
+        }
+        if (values && typeof values === 'object' && !Array.isArray(values)) {
+            if (values.value != null) {
+                try { values = JSON.parse(String(values.value)); } catch (e2) { values = []; }
+            } else {
+                values = [];
+            }
+        }
+        if (Array.isArray(values) && values.length && typeof values[0] === 'object') {
+            return values.map(function (o) {
+                return o.enum_label || o.enumLabel || o.label || o.name || '';
+            }).filter(Boolean);
+        }
+        if (!Array.isArray(values)) return [];
+        return values.map(function (v) { return String(v); }).filter(function (s) { return s.length > 0; });
+    };
 
+    PM.syncCustomAttrsToMatrix = function () {
+        var list = PM.el('detail-custom-attrs-list');
+        if (!list) return;
+        list.querySelectorAll('.tm-custom-attr-row').forEach(function (row) {
+            var nameInp = row.querySelector('.tm-custom-attr-name');
+            var valInp = row.querySelector('.tm-custom-attr-values');
+            if (!nameInp || !valInp) return;
+            var name = String(nameInp.value || '').trim();
+            if (!name) return;
+            var vals = String(valInp.value || '').split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+            if (vals.length) PM._variantMatrixSelection[name] = vals;
+        });
+        PM.updateVariantMatrixPreview();
+    };
+
+    PM.renderCustomAttrRows = function () {
+        var list = PM.el('detail-custom-attrs-list');
+        if (!list) return;
+        var rows = PM._customAttrRows || [];
+        list.innerHTML = rows.map(function (row, idx) {
+            return '<div class="tm-custom-attr-row rounded-lg border border-slate-100 p-2 space-y-1" data-idx="' + idx + '">'
+                + '<div class="flex gap-2 items-center">'
+                + '<input type="text" class="tm-custom-attr-name form-input flex-1 text-xs py-1.5" placeholder="规格名，如：材质" value="' + PM.escHtmlAttr(row.name || '') + '" />'
+                + '<button type="button" class="tm-custom-attr-del text-[10px] text-red-400 px-1" data-idx="' + idx + '">删除</button>'
+                + '</div>'
+                + '<input type="text" class="tm-custom-attr-values form-input w-full text-xs py-1.5" placeholder="取值，逗号分隔，如：棉,涤纶" value="' + PM.escHtmlAttr((row.values || []).join(',')) + '" />'
+                + '</div>';
+        }).join('');
+        list.querySelectorAll('.tm-custom-attr-name, .tm-custom-attr-values').forEach(function (inp) {
+            inp.addEventListener('input', function () { PM.syncCustomAttrsToMatrix(); });
+            inp.addEventListener('change', function () { PM.syncCustomAttrsToMatrix(); });
+        });
+        list.querySelectorAll('.tm-custom-attr-del').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var i = parseInt(btn.getAttribute('data-idx'), 10);
+                if (!isNaN(i)) {
+                    PM._customAttrRows.splice(i, 1);
+                    PM.renderCustomAttrRows();
+                    PM.syncCustomAttrsToMatrix();
+                }
+            });
+        });
+    };
+
+    PM.addCustomAttrRow = function (name, values) {
+        PM._customAttrRows = PM._customAttrRows || [];
+        PM._customAttrRows.push({ name: name || '', values: values || [] });
+        PM.renderCustomAttrRows();
+        PM.syncCustomAttrsToMatrix();
+    };
+
+    PM.bindCustomAttrHandlers = function () {
+        var btn = PM.el('detail-add-custom-attr');
+        if (!btn || btn.__tmCustomBound) return;
+        btn.__tmCustomBound = true;
+        btn.addEventListener('click', function () { PM.addCustomAttrRow('', []); });
+    };
+
+    PM.resetVariantMatrixUi = function () {
+        PM._variantMatrixSelection = {};
+        PM._customAttrRows = [];
+        var box = PM.el('detail-variant-matrix');
+        var list = PM.el('detail-custom-attrs-list');
+        if (box) box.innerHTML = '';
+        if (list) list.innerHTML = '';
+        PM.updateVariantMatrixPreview();
+    };
     PM.loadVariantMatrixFromTemplate = function (templateId) {
         var panel = PM.el('product-variant-matrix-panel');
         var box = PM.el('detail-variant-matrix');
-        PM._variantMatrixSelection = {};
+        PM.resetVariantMatrixUi();
         if (!templateId || !box) {
             if (panel) panel.classList.add('hidden');
-            if (box) box.innerHTML = '';
-            PM.updateVariantMatrixPreview();
             return Promise.resolve();
         }
         var fetchFn = window.wrappedFetch || fetch;
@@ -541,22 +736,21 @@
             var detail = res && res.success ? (res.data || {}) : {};
             var defs = detail.definitions || [];
             if (panel) panel.classList.remove('hidden');
+            PM.bindCustomAttrHandlers();
             box.innerHTML = defs.map(function (def) {
                 var name = def.name || '';
-                var values = def.enum_values || def.enumValues || [];
-                if (typeof values === 'string') {
-                    try { values = JSON.parse(values); } catch (e) { values = []; }
-                }
-                if (!Array.isArray(values)) values = [];
+                var values = PM.resolveDefinitionEnumValues(def);
                 PM._variantMatrixSelection[name] = [];
                 return '<div class="rounded-lg border border-slate-100 p-2" data-attr="' + PM.escHtmlAttr(name) + '">'
                     + '<p class="font-bold text-slate-700 mb-1">' + PM.escHtmlText(name) + '</p>'
-                    + '<div class="flex flex-wrap gap-2">' + values.map(function (v) {
-                        return '<label class="inline-flex items-center gap-1 text-[11px]">'
-                            + '<input type="checkbox" class="tm-matrix-val" data-attr="' + PM.escHtmlAttr(name) + '" value="' + PM.escHtmlAttr(String(v)) + '" /> '
-                            + PM.escHtmlText(String(v)) + '</label>';
-                    }).join('') + '</div></div>';
-            }).join('') || '<p class="text-slate-400">模板无属性定义</p>';
+                    + (values.length
+                        ? ('<div class="flex flex-wrap gap-2">' + values.map(function (v) {
+                            return '<label class="inline-flex items-center gap-1 text-[11px]">'
+                                + '<input type="checkbox" class="tm-matrix-val" data-attr="' + PM.escHtmlAttr(name) + '" value="' + PM.escHtmlAttr(String(v)) + '" /> '
+                                + PM.escHtmlText(String(v)) + '</label>';
+                        }).join('') + '</div>')
+                        : ('<p class="text-[10px] text-slate-400">模板未配置取值，请在下方的「自定义规格」中添加</p>'));
+            }).join('') || '<p class="text-slate-400">模板无属性定义，可使用下方自定义规格</p>';
             box.querySelectorAll('.tm-matrix-val').forEach(function (cb) {
                 cb.addEventListener('change', function () {
                     var attr = cb.getAttribute('data-attr');
@@ -591,25 +785,26 @@
     PM.buildVariantMatrixPayload = function () {
         var tv = PM.el('detail-track-variants');
         if (!tv || !tv.checked) return null;
+        PM.syncCustomAttrsToMatrix();
         var tplSel = PM.el('detail-variant-template');
         var templateId = tplSel && tplSel.value ? parseInt(tplSel.value, 10) : null;
-        if (!templateId) return null;
         var selected = PM._variantMatrixSelection || {};
         var filtered = {};
         Object.keys(selected).forEach(function (k) {
             if (selected[k] && selected[k].length) filtered[k] = selected[k].slice();
         });
         if (!Object.keys(filtered).length) return null;
-        return { templateId: templateId, selectedValues: filtered };
+        return { templateId: templateId || null, selectedValues: filtered };
     };
 
     PM.syncVariantMatrixPanelVisibility = function () {
         var tv = PM.el('detail-track-variants');
         var panel = PM.el('product-variant-matrix-panel');
-        var vertical = (window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.industryVertical) || '';
-        var forceShow = vertical === 'CLOTHING' && tv && tv.checked;
-        if (panel && forceShow && PM.el('detail-variant-template') && PM.el('detail-variant-template').value) {
+        var tpl = PM.el('detail-variant-template');
+        if (panel && tv && tv.checked && tpl && tpl.value) {
             panel.classList.remove('hidden');
+        } else if (panel) {
+            panel.classList.add('hidden');
         }
     };
 
@@ -689,14 +884,18 @@
     PM.ensureProductFormMounted = async function () {
         var root = document.getElementById('product-detail-form-root');
         if (!root) return;
+        if (window.TM_WorkbenchProfile && typeof window.TM_WorkbenchProfile.load === 'function') {
+            await window.TM_WorkbenchProfile.load();
+        }
         if (window.TmProductRegistry && window.TmProductRegistry.mount) {
             await window.TmProductRegistry.mount(root);
         }
         PM.bindCapabilityFormEvents();
+        PM.bindCustomAttrHandlers();
         if (typeof PM.loadProductCapabilities === 'function') {
             await PM.loadProductCapabilities();
         }
-        PM.applyProductCapabilityVisibility({ productCenterForm: true });
+        PM.applyProductCapabilityVisibility();
         if (typeof PM.loadAttributeTemplates === 'function') {
             await PM.loadAttributeTemplates();
         }
@@ -1116,7 +1315,7 @@
         if (typeof PM.loadAttributeTemplates === 'function') {
             await PM.loadAttributeTemplates();
         }
-        PM.applyProductCapabilityVisibility({ productCenterForm: true });
+        PM.applyProductCapabilityVisibility();
         if (typeof PM.loadProductPriceTrend === 'function') {
             await PM.loadProductPriceTrend(productId);
         }
@@ -1173,7 +1372,10 @@
         if (typeof PM.loadAttributeTemplates === 'function') {
             await PM.loadAttributeTemplates();
         }
-        PM.applyProductCapabilityVisibility({ productCenterForm: true });
+        PM.applyProductCapabilityVisibility();
+        if (typeof PM.applyIndustryProductDefaults === 'function') {
+            PM.applyIndustryProductDefaults();
+        }
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }
@@ -1735,12 +1937,26 @@
                 + (item.mediaId ? ('<button type="button" class="absolute top-0 right-0 bg-black/50 text-white text-[10px] px-1 tm-gallery-del" data-id="' + item.mediaId + '">×</button>') : '')
                 + '</div>';
         }).join('');
-        (PM._pendingGalleryFiles || []).forEach(function (file, idx) {
+        (PM._pendingGalleryFiles || []).forEach(function (file) {
             html += '<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-dashed border-brand-200">'
                 + '<img src="' + URL.createObjectURL(file) + '" class="w-full h-full object-cover opacity-80" alt="" />'
                 + '<span class="absolute bottom-0 inset-x-0 bg-brand-500/80 text-white text-[8px] text-center">待传</span></div>';
         });
-        box.innerHTML = html || '<span class="text-[10px] text-slate-400">暂无图册</span>';
+        var totalCount = (PM._galleryUrls || []).length + (PM._pendingGalleryFiles || []).length;
+        if (totalCount < 9) {
+            html += '<button type="button" class="tm-gallery-add-btn w-14 h-14 rounded-lg border border-dashed border-brand-200 text-brand-500 flex items-center justify-center hover:bg-brand-50" title="添加图册"><i class="ph ph-plus text-lg"></i></button>';
+        }
+        if (!html) {
+            html = '<button type="button" class="tm-gallery-add-btn w-14 h-14 rounded-lg border border-dashed border-brand-200 text-brand-500 flex items-center justify-center hover:bg-brand-50" title="添加图册"><i class="ph ph-plus text-lg"></i></button>'
+                + '<span class="text-[10px] text-slate-400 self-center">点击 + 添加图册</span>';
+        }
+        box.innerHTML = html;
+        var galleryInput = PM.el('detail-product-gallery-input');
+        box.querySelectorAll('.tm-gallery-add-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (galleryInput) galleryInput.click();
+            });
+        });
         box.querySelectorAll('.tm-gallery-del').forEach(function (btn) {
             btn.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -1804,8 +2020,13 @@
 
     PM.bindProductCoverInput = function () {
         var input = PM.el('detail-product-cover-input');
+        var trigger = PM.el('detail-product-cover-trigger');
         if (!input || input.__tmCoverBound) return;
         input.__tmCoverBound = true;
+        var openPicker = function () { input.click(); };
+        if (trigger) {
+            trigger.addEventListener('click', openPicker);
+        }
         input.addEventListener('change', function () {
             var preview = PM.el('detail-product-cover-preview');
             if (preview && input.files && input.files[0]) {
