@@ -4,8 +4,8 @@
 (function (global) {
     'use strict';
 
-    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260702fix';
-    var FRAGMENT_VER = '20260702fix';
+    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260704refactor1';
+    var FRAGMENT_VER = '20260704refactor1';
 
     function normalizeAiProduct(raw) {
         if (!raw || typeof raw !== 'object') raw = {};
@@ -42,6 +42,7 @@
             })
             .then(function (html) {
                 container.dataset.tmFormScope = scope;
+                delete container.dataset.tmCapBound;
                 container.innerHTML = scopeFragmentHtml(html, scope);
                 container.dataset.tmProductMounted = '1';
                 container.dataset.tmProductFormVer = FRAGMENT_VER;

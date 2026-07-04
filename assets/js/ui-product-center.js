@@ -57,8 +57,18 @@ window.ProductModule = {
             stockStatus: apiProduct.stockStatus || (
                 stockNum >= 100 ? '充足' :
                 stockNum >= 10 ? '预警' : '缺货'
-            )
+            ),
+            createTime: apiProduct.createTime || apiProduct.create_time || null,
+            updateTime: apiProduct.updateTime || apiProduct.update_time || null
         };
+    },
+
+    _productSortKey: function(product) {
+        if (!product) return 0;
+        var t = product.updateTime || product.createTime;
+        if (!t) return 0;
+        var ms = new Date(t).getTime();
+        return isNaN(ms) ? 0 : ms;
     },
 
     renderProductThumbHtml: function(product, size) {
@@ -108,62 +118,61 @@ window.ProductModule = {
     },
 
     // ==================== API调用函数 ====================
-    loadProducts: async function() {
-        console.log('[ProductModule] loadProducts 被调用 ===');
-        console.log('[ProductModule] 时间:', new Date().toISOString());
+    loadProducts: async function(options) {
+        var opts = options || {};
+        var force = !!opts.force;
+        if (!force && this._listCache && this._listCache.products
+            && (Date.now() - this._listCache.at) < 45000) {
+            this.products = this._listCache.products;
+            await this.refreshProductListView(opts);
+            return this.products;
+        }
         try {
             if (window.checkAuth && !window.checkAuth()) {
-                console.error('[ProductModule] checkAuth failed');
                 return;
             }
 
-            console.log('[ProductModule] 准备调用API: /api/v1/rd/products');
             const response = await window.wrappedFetch('/api/v1/rd/products', {
                 method: 'GET'
             });
-            console.log('[ProductModule] API响应状态:', response.status);
 
             const data = await window.handleApiResponse(response);
-            console.log('[ProductModule] 解析后的数据:', data);
             if (!data) {
-                console.error('[ProductModule] handleApiResponse返回null');
                 return;
             }
 
-            console.log('[ProductModule] 产品数据原始内容:', data);
             const productList = data.data || data;
-            console.log('[ProductModule] 产品列表:', productList);
-            console.log('[ProductModule] 产品列表是否为数组:', Array.isArray(productList));
-            
             if (Array.isArray(productList)) {
-                console.log('[ProductModule] 开始映射产品数据');
-                this.products = productList.map(product => {
-                    const mapped = this.mapProductFromApi(product);
-                    console.log('[ProductModule] 原始产品:', product, '→ 映射后:', mapped);
-                    return mapped;
-                });
-                console.log('[ProductModule] 产品数据映射完成，数量:', this.products.length);
-                console.log('[ProductModule] 准备调用renderProducts');
-                this.renderProducts(this.products);
-            } else {
-                console.error('[ProductModule] productList不是数组:', typeof productList);
+                this.products = productList.map(product => this.mapProductFromApi(product));
+                this._listCache = { products: this.products, at: Date.now() };
+                await this.refreshProductListView(opts);
             }
             
             return this.products;
         } catch (error) {
             console.error('[ProductModule] 加载产品数据异常:', error);
-            console.error('[ProductModule] 错误堆栈:', error.stack);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('加载产品数据失败: ' + error.message, 'error');
             }
         }
     },
 
+    invalidateProductListCache: function () {
+        this._listCache = null;
+    },
+
     loadCategories: async function() {
-        console.log('[ProductModule] loadCategories 被调用 ===');
         try {
+            if (window.TM_MasterDataCache) {
+                var cached = await window.TM_MasterDataCache.getCategories(false);
+                if (cached && cached.length) {
+                    this.categories = cached.map(function (c) {
+                        return this.mapCategoryFromApi(c);
+                    }, this);
+                    return;
+                }
+            }
             if (window.checkAuth && !window.checkAuth()) {
-                console.error('[ProductModule] checkAuth failed');
                 return;
             }
 
@@ -174,12 +183,10 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 分类数据:', data);
             const categoryList = data.data || data;
             
             if (Array.isArray(categoryList)) {
                 this.categories = categoryList.map(category => this.mapCategoryFromApi(category));
-                console.log('[ProductModule] 分类数据映射完成，数量:', this.categories.length);
             }
             
             return this.categories;
@@ -894,6 +901,68 @@ window.ProductModule = {
         }
     },
 
+    refreshProductListView: async function(options) {
+        var opts = options || {};
+        if (this.filterState.warehouseId != null) {
+            await this.loadWarehouseStockFilter(this.filterState.warehouseId);
+        }
+        if (this.listViewMode === 'spu') {
+            if (opts.resetPage !== false) {
+                this.productCurrentPage = 1;
+            }
+            await this.loadSpuList();
+        } else {
+            this.filterProducts();
+        }
+        if (opts.focusProductId != null) {
+            this.focusProductInList(opts.focusProductId);
+        }
+    },
+
+    focusProductInList: function(productId) {
+        var pid = Number(productId);
+        if (!pid || this.listViewMode === 'spu') return false;
+        var list = this.filteredProducts || [];
+        var idx = list.findIndex(function (p) { return Number(p.id) === pid; });
+        if (idx < 0) return false;
+        var page = Math.floor(idx / this.PAGE_SIZE) + 1;
+        this.productCurrentPage = page;
+        var paged = this.paginateData(list, page, this.PAGE_SIZE);
+        this.renderDesktopTable(paged.records);
+        this.renderMobileCards(paged.records);
+        this.renderPaginationBar({
+            containerId: 'product-pagination',
+            page: this.productCurrentPage,
+            totalPages: this.productTotalPages,
+            total: this.productTotal,
+            pageSize: this.PAGE_SIZE,
+            onPrev: 'window.ProductModule.setProductPage(' + (this.productCurrentPage - 1) + ')',
+            onNext: 'window.ProductModule.setProductPage(' + (this.productCurrentPage + 1) + ')'
+        });
+        setTimeout(function () {
+            var row = document.querySelector('#existingProdTable tbody tr[data-product-id="' + pid + '"]');
+            if (!row) return;
+            row.classList.add('ring-2', 'ring-brand-400', 'bg-brand-50/40');
+            setTimeout(function () {
+                row.classList.remove('ring-2', 'ring-brand-400', 'bg-brand-50/40');
+            }, 2200);
+            var scrollRoot = document.getElementById('product-library-scroll');
+            if (scrollRoot) {
+                try {
+                    var rowRect = row.getBoundingClientRect();
+                    var rootRect = scrollRoot.getBoundingClientRect();
+                    var delta = rowRect.top - rootRect.top + scrollRoot.scrollTop - 72;
+                    scrollRoot.scrollTop = Math.max(0, delta);
+                } catch (eScroll) {
+                    row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                }
+            } else {
+                row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }, 60);
+        return true;
+    },
+
     // ==================== 渲染功能 ====================
     renderProducts: function(productList, options) {
         const opts = options || {};
@@ -904,7 +973,13 @@ window.ProductModule = {
         }
         
         console.log('[ProductModule] 产品列表内容:', productList);
-        const sortedProducts = [...productList].sort((a, b) => b.salesVolume - a.salesVolume);
+        const self = this;
+        const sortedProducts = [...productList].sort(function (a, b) {
+            var tb = self._productSortKey(b);
+            var ta = self._productSortKey(a);
+            if (tb !== ta) return tb - ta;
+            return (Number(b.salesVolume) || 0) - (Number(a.salesVolume) || 0);
+        });
         console.log('[ProductModule] 排序后的产品列表:', sortedProducts);
         this.filteredProducts = sortedProducts;
         this.productTotal = sortedProducts.length;
@@ -1079,7 +1154,7 @@ window.ProductModule = {
         tbody.innerHTML = productList.map(product => {
             console.log('[ProductModule] 渲染产品:', product);
             return `
-            <tr onclick="window.ProductModule.openProductDetail(${product.id})" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
+            <tr data-product-id="${product.id}" onclick="window.ProductModule.openProductDetail(${product.id})" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
                         ${window.ProductModule.renderProductThumbHtml(product, 40)}
@@ -1304,10 +1379,8 @@ window.ProductModule = {
 
     // ==================== 弹窗功能 ====================
     openProductDetail: async function(productId) {
-        console.log('[ProductModule] openProductDetail 被调用，产品ID:', productId);
         try {
             if (window.checkAuth && !window.checkAuth()) {
-                console.error('[ProductModule] checkAuth failed');
                 return;
             }
 
@@ -1320,13 +1393,16 @@ window.ProductModule = {
 
             const apiProduct = data.data || data;
             const product = this.mapProductFromApi(apiProduct);
-            console.log('[ProductModule] 产品详情:', product);
             
             this.currentProduct = product;
             this.syncDraftFromApiConversions(product.unitConversions);
             
-            await this.loadCategories();
-            await this.loadSuppliers();
+            if (!this.categories || !this.categories.length) {
+                await this.loadCategories();
+            }
+            if (!this.suppliers || !this.suppliers.length) {
+                await this.loadSuppliers();
+            }
 
             const modal = document.getElementById('product-detail-modal');
             if (modal) {
@@ -1343,10 +1419,6 @@ window.ProductModule = {
                     modal.setAttribute('aria-hidden', 'false');
                 }
             }
-
-            this.populateCategorySelect(product.categoryId);
-            this.populateSupplierSelect(product.supplierId || product.supplier);
-            this.populateProductForm(product);
         } catch (error) {
             console.error('[ProductModule] 加载产品详情异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -1552,70 +1624,10 @@ window.ProductModule = {
         return { error: null, body: { product: productPayload, unitConversions: unitPayload } };
     },
 
-    saveProduct: async function() {
-        console.log('[ProductModule] saveProduct 被调用 ===');
-        try {
-            if (window.checkAuth && !window.checkAuth()) {
-                console.error('[ProductModule] checkAuth failed');
-                return;
-            }
-
-            if (!this.currentProduct) {
-                console.error('[ProductModule] 没有选中的产品');
-                return;
-            }
-
-            var validUnitConv = this.collectValidConversionsFromDraft();
-            var built = this.buildProductSaveBodyWithUnits(validUnitConv);
-            if (built.error) {
-                if (window.TM_UI && window.TM_UI.showNotification) {
-                    window.TM_UI.showNotification(
-                        built.error.indexOf('单位换算') >= 0
-                            ? '请先在「配置单位换算」中保存至少一条包装单位换算'
-                            : built.error,
-                        'error'
-                    );
-                }
-                return;
-            }
-
-            const body = built.body;
-            console.log('[ProductModule] 保存产品与单位换算:', body);
-
-            const response = await window.wrappedFetch('/api/v1/rd/products/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-
-            const data = await window.handleApiResponse(response);
-            if (!data) return;
-
-            const savedRaw = data.data || {};
-            const saved = this.unwrapSavePayload(savedRaw);
-            if (saved.productId != null && !this.currentProduct.id) {
-                this.currentProduct.id = saved.productId;
-            }
-            if (saved.spuId != null) {
-                this.currentProduct.spuId = saved.spuId;
-            }
-            var spuIdForCover = this.currentProduct.spuId || saved.spuId;
-            if (spuIdForCover && typeof this.uploadProductCover === 'function') {
-                await this.uploadProductCover(spuIdForCover);
-            }
-
-            console.log('[ProductModule] 产品保存成功');
-            if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('产品保存成功！', 'success');
-            }
-
-            this.closeProductDetail();
-            await this.loadProducts();
-        } catch (error) {
-            console.error('[ProductModule] 保存产品异常:', error);
-            if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('保存产品失败: ' + error.message, 'error');
-            }
+    /** 保存由 ui-product-center-enhance.js 接管；基座保留占位避免未加载增强时 onclick 报错 */
+    saveProduct: async function () {
+        if (window.TM_UI && window.TM_UI.showNotification) {
+            window.TM_UI.showNotification('产品保存模块未就绪，请刷新页面后重试', 'error');
         }
     },
 
@@ -2928,34 +2940,8 @@ window.ProductModule = {
         }
     },
 
-    switchTransferType: function(isVariablePrice) {
-        console.log('[ProductModule] switchTransferType 被调用，变价调拨:', isVariablePrice);
-        this.transferState.isVariablePrice = isVariablePrice;
-        
-        const tbody = document.getElementById('transfer-product-list');
-        if (tbody) {
-            const priceInputs = tbody.querySelectorAll('.transfer-price-input');
-            const totalInputs = tbody.querySelectorAll('.transfer-total-input');
-            
-            priceInputs.forEach(input => {
-                input.readOnly = !isVariablePrice;
-                if (!isVariablePrice) {
-                    input.classList.add('bg-slate-100');
-                } else {
-                    input.classList.remove('bg-slate-100');
-                }
-            });
-            
-            totalInputs.forEach(input => {
-                input.readOnly = !isVariablePrice;
-                if (!isVariablePrice) {
-                    input.classList.add('bg-slate-100');
-                } else {
-                    input.classList.remove('bg-slate-100');
-                }
-            });
-        }
-    },
+    /** 仅平价调拨；变价分支已移除，由 enhance 接管 confirmTransfer */
+    switchTransferType: function () { },
 
     addProductRow: function() {
         console.log('[ProductModule] addProductRow 被调用');

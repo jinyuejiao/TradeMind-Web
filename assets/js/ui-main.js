@@ -24,13 +24,13 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260623feat';
+    var url = '/modules/product-center/product-overlays.html?v=20260704refactor1';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
             var parser = new DOMParser();
             var doc = parser.parseFromString(html, 'text/html');
-            var ids = ['product-detail-modal', 'product-unit-modal', 'warehouse-transfer-modal'];
+            var ids = ['product-detail-modal', 'product-unit-modal', 'product-variant-modal', 'warehouse-transfer-modal'];
             ids.forEach(function (id) {
                 var nextNode = doc.getElementById(id);
                 if (!nextNode) return;
@@ -660,7 +660,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260527pc', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260704refactor1', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {

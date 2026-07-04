@@ -13,7 +13,11 @@
     function thumbUrl(rawUrl, size) {
         if (!rawUrl) return null;
         var s = String(rawUrl);
+        if (s.indexOf('data:') === 0) return s;
+        if (s.indexOf('http://') !== 0 && s.indexOf('https://') !== 0) return null;
         if (s.indexOf('x-oss-process=') >= 0) return s;
+        // 预签名 URL 追加处理参数会破坏签名，直接使用原图
+        if (s.indexOf('OSSAccessKeyId=') >= 0 || s.indexOf('Signature=') >= 0) return s;
         var sep = s.indexOf('?') >= 0 ? '&' : '?';
         var dim = size || 100;
         return s + sep + 'x-oss-process=image/resize,w_' + dim + ',h_' + dim + ',m_fill/quality,q_80';

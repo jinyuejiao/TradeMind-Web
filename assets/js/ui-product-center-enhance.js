@@ -599,23 +599,14 @@
         card('cap-card-serial', showSerial);
     };
 
-    PM.loadAttributeTemplates = function () {
+    PM.loadAttributeTemplates = function (force) {
         var sel = PM.el('detail-variant-template');
         if (!sel) return Promise.resolve();
-        var fetchFn = window.wrappedFetch || fetch;
         var iv = PM.getIndustryVertical();
-        var url = '/api/v1/rd/products/attribute-templates';
-        if (iv && iv !== 'GENERAL') {
-            url += '?industryVertical=' + encodeURIComponent(iv);
-        }
-        return fetchFn(url, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        }).then(function (r) { return r.json(); }).then(function (res) {
-            var list = res && res.success && Array.isArray(res.data) ? res.data : [];
-            PM._defaultAttributeTemplateId = res && res.defaultTemplateId != null ? res.defaultTemplateId : null;
+        var applyList = function (list, defaultId) {
+            PM._defaultAttributeTemplateId = defaultId != null ? defaultId : null;
             var cur = sel.value;
-            sel.innerHTML = '<option value="">选择属性模板</option>' + list.map(function (t) {
+            sel.innerHTML = '<option value="">选择属性模板</option>' + (list || []).map(function (t) {
                 var id = t.template_id != null ? t.template_id : t.templateId;
                 var name = t.name || ('模板#' + id);
                 var industry = t.industry_vertical != null ? t.industry_vertical : t.industryVertical;
@@ -628,7 +619,72 @@
                     PM.loadVariantMatrixFromTemplate(sel.value);
                 });
             }
+        };
+        if (window.TM_MasterDataCache) {
+            return window.TM_MasterDataCache.getAttributeTemplates(iv, !!force).then(function (res) {
+                applyList(res.list, res.defaultTemplateId);
+            });
+        }
+        var fetchFn = window.wrappedFetch || fetch;
+        var url = '/api/v1/rd/products/attribute-templates';
+        if (iv && iv !== 'GENERAL') {
+            url += '?industryVertical=' + encodeURIComponent(iv);
+        }
+        return fetchFn(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            var list = res && res.success && Array.isArray(res.data) ? res.data : [];
+            applyList(list, res && res.defaultTemplateId != null ? res.defaultTemplateId : null);
         }).catch(function () { /* ignore */ });
+    };
+
+    PM.applySpuFlagsFromSpuDetail = function (spuDetail, productId) {
+        if (!spuDetail) {
+            PM.populateCapabilityForm({});
+            return;
+        }
+        var spu = spuDetail.spu || {};
+        var skus = spuDetail.skus || [];
+        var hit = null;
+        if (productId != null) {
+            hit = skus.find(function (r) {
+                var legacy = r.legacy_product_id != null ? r.legacy_product_id : r.legacyProductId;
+                return legacy != null && String(legacy) === String(productId);
+            });
+        }
+        if (!hit && skus.length) hit = skus[0];
+        PM.currentProduct = PM.currentProduct || {};
+        if (spu.spu_id != null || spu.spuId != null) {
+            PM.currentProduct.spuId = spu.spu_id != null ? spu.spu_id : spu.spuId;
+        }
+        if (hit) {
+            PM.currentProduct.skuId = hit.sku_id || hit.skuId;
+        }
+        var capHit = Object.assign({}, hit || {}, {
+            track_variants: spu.track_variants != null ? spu.track_variants : spu.trackVariants,
+            track_expiry: spu.track_expiry != null ? spu.track_expiry : spu.trackExpiry,
+            track_serial: spu.track_serial != null ? spu.track_serial : spu.trackSerial,
+            spu_id: PM.currentProduct.spuId,
+            sku_id: PM.currentProduct.skuId
+        });
+        PM.populateCapabilityForm(capHit);
+    };
+
+    PM.loadSpuFlagsForProduct = function (productId) {
+        if (!productId) {
+            PM.populateCapabilityForm({});
+            return Promise.resolve();
+        }
+        var spuId = PM.currentProduct && (PM.currentProduct.spuId || PM.currentProduct.spu_id);
+        if (spuId && window.TM_MasterDataCache) {
+            return window.TM_MasterDataCache.getSpuDetail(spuId, null).then(function (detail) {
+                PM.applySpuFlagsFromSpuDetail(detail, productId);
+            }).catch(function () {
+                PM.populateCapabilityForm({});
+            });
+        }
+        return Promise.resolve(PM.populateCapabilityForm({}));
     };
 
     PM.resolveDefinitionEnumValues = function (def) {
@@ -654,7 +710,12 @@
     };
 
     PM.syncCustomAttrsToMatrix = function () {
-        var list = PM.el('detail-custom-attrs-list');
+        var list = null;
+        var modal = document.getElementById('product-variant-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            list = document.getElementById('tm-variant-modal-custom-list');
+        }
+        if (!list) list = PM.el('detail-custom-attrs-list');
         if (!list) return;
         list.querySelectorAll('.tm-custom-attr-row').forEach(function (row) {
             var nameInp = row.querySelector('.tm-custom-attr-name');
@@ -665,7 +726,32 @@
             var vals = String(valInp.value || '').split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
             if (vals.length) PM._variantMatrixSelection[name] = vals;
         });
-        PM.updateVariantMatrixPreview();
+        if (typeof PM.updateVariantEntrySummary === 'function') {
+            PM.updateVariantEntrySummary();
+        }
+    };
+
+    PM.syncCustomAttrRowsFromDom = function (listEl) {
+        var list = listEl || null;
+        if (!list) {
+            var modal = document.getElementById('product-variant-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                list = document.getElementById('tm-variant-modal-custom-list');
+            }
+        }
+        if (!list) list = PM.el('detail-custom-attrs-list');
+        if (!list) return;
+        var rows = [];
+        list.querySelectorAll('.tm-custom-attr-row').forEach(function (row) {
+            var nameInp = row.querySelector('.tm-custom-attr-name');
+            var valInp = row.querySelector('.tm-custom-attr-values');
+            var name = nameInp ? String(nameInp.value || '').trim() : '';
+            var vals = valInp
+                ? String(valInp.value || '').split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean)
+                : [];
+            rows.push({ name: name, values: vals });
+        });
+        PM._customAttrRows = rows;
     };
 
     PM.renderCustomAttrRows = function () {
@@ -698,6 +784,7 @@
     };
 
     PM.addCustomAttrRow = function (name, values) {
+        PM.syncCustomAttrRowsFromDom();
         PM._customAttrRows = PM._customAttrRows || [];
         PM._customAttrRows.push({ name: name || '', values: values || [] });
         PM.renderCustomAttrRows();
@@ -718,12 +805,17 @@
         var list = PM.el('detail-custom-attrs-list');
         if (box) box.innerHTML = '';
         if (list) list.innerHTML = '';
-        PM.updateVariantMatrixPreview();
+        if (typeof PM.updateVariantEntrySummary === 'function') {
+            PM.updateVariantEntrySummary();
+        }
     };
-    PM.loadVariantMatrixFromTemplate = function (templateId) {
+    PM.loadVariantMatrixFromTemplate = function (templateId, opts) {
+        opts = opts || {};
         var panel = PM.el('product-variant-matrix-panel');
         var box = PM.el('detail-variant-matrix');
-        PM.resetVariantMatrixUi();
+        if (!opts.preserve) {
+            PM.resetVariantMatrixUi();
+        }
         if (!templateId || !box) {
             if (panel) panel.classList.add('hidden');
             return Promise.resolve();
@@ -735,12 +827,16 @@
         }).then(function (r) { return r.json(); }).then(function (res) {
             var detail = res && res.success ? (res.data || {}) : {};
             var defs = detail.definitions || [];
-            if (panel) panel.classList.remove('hidden');
+            if (panel) panel.classList.add('hidden');
             PM.bindCustomAttrHandlers();
             box.innerHTML = defs.map(function (def) {
                 var name = def.name || '';
                 var values = PM.resolveDefinitionEnumValues(def);
-                PM._variantMatrixSelection[name] = [];
+                if (!opts.preserve) {
+                    PM._variantMatrixSelection[name] = [];
+                } else if (!PM._variantMatrixSelection[name]) {
+                    PM._variantMatrixSelection[name] = [];
+                }
                 return '<div class="rounded-lg border border-slate-100 p-2" data-attr="' + PM.escHtmlAttr(name) + '">'
                     + '<p class="font-bold text-slate-700 mb-1">' + PM.escHtmlText(name) + '</p>'
                     + (values.length
@@ -760,28 +856,23 @@
                     var idx = arr.indexOf(val);
                     if (cb.checked && idx < 0) arr.push(val);
                     if (!cb.checked && idx >= 0) arr.splice(idx, 1);
-                    PM.updateVariantMatrixPreview();
+                    if (typeof PM.updateVariantEntrySummary === 'function') {
+                        PM.updateVariantEntrySummary();
+                    }
+                    if (typeof PM.generateVariantCombos === 'function') {
+                        PM.generateVariantCombos();
+                    }
                 });
             });
-            PM.updateVariantMatrixPreview();
+            if (typeof PM.updateVariantEntrySummary === 'function') {
+                PM.updateVariantEntrySummary();
+            }
         }).catch(function () {
             if (panel) panel.classList.add('hidden');
         });
     };
 
-    PM.updateVariantMatrixPreview = function () {
-        var preview = PM.el('detail-variant-matrix-preview');
-        if (!preview) return;
-        var sel = PM._variantMatrixSelection || {};
-        var keys = Object.keys(sel).filter(function (k) { return sel[k] && sel[k].length; });
-        if (!keys.length) {
-            preview.textContent = '';
-            return;
-        }
-        var count = keys.reduce(function (acc, k) { return acc * sel[k].length; }, 1);
-        preview.textContent = '将生成约 ' + count + ' 个 SKU 组合';
-    };
-
+    /** 规格弹窗未确认时的轻量 fallback；完整 skuCombos 由 tm-product-variant-modal.js 提供 */
     PM.buildVariantMatrixPayload = function () {
         var tv = PM.el('detail-track-variants');
         if (!tv || !tv.checked) return null;
@@ -800,11 +891,20 @@
     PM.syncVariantMatrixPanelVisibility = function () {
         var tv = PM.el('detail-track-variants');
         var panel = PM.el('product-variant-matrix-panel');
-        var tpl = PM.el('detail-variant-template');
-        if (panel && tv && tv.checked && tpl && tpl.value) {
-            panel.classList.remove('hidden');
-        } else if (panel) {
+        var openBtn = PM.el('detail-variant-open-btn');
+        var summary = PM.el('detail-variant-entry-summary');
+        if (panel) {
             panel.classList.add('hidden');
+            panel.setAttribute('aria-hidden', 'true');
+        }
+        if (openBtn && tv) {
+            var show = !!tv.checked;
+            openBtn.classList.toggle('opacity-0', !show);
+            openBtn.classList.toggle('pointer-events-none', !show);
+            openBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
+        }
+        if (summary && tv && !tv.checked) {
+            summary.textContent = '未启用多规格';
         }
     };
 
@@ -832,42 +932,20 @@
         if (typeof PM.syncCapabilitySummaries === 'function') {
             PM.syncCapabilitySummaries();
         }
-    };
-
-    PM.loadSpuFlagsForProduct = function (productId) {
-        if (!productId) {
-            PM.populateCapabilityForm({});
-            return Promise.resolve();
+        if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
+            PM.syncVariantMatrixPanelVisibility();
         }
-        var fetchFn = window.wrappedFetch || fetch;
-        return fetchFn('/api/v1/rd/products/skus/options', {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        }).then(function (r) { return r.json(); }).then(function (res) {
-            var rows = res && res.success && Array.isArray(res.data) ? res.data : [];
-            var hit = rows.find(function (r) {
-                var legacy = r.legacy_product_id != null ? r.legacy_product_id : r.legacyProductId;
-                return legacy != null && String(legacy) === String(productId);
-            });
-            if (hit) {
-                PM.currentProduct = PM.currentProduct || {};
-                PM.currentProduct.spuId = hit.spu_id || hit.spuId;
-                PM.currentProduct.skuId = hit.sku_id || hit.skuId;
-                PM.populateCapabilityForm(hit);
-            } else {
-                PM.populateCapabilityForm({});
-            }
-        }).catch(function () {
-            PM.populateCapabilityForm({});
-        });
+        if (typeof PM.updateVariantEntrySummary === 'function') {
+            PM.updateVariantEntrySummary();
+        }
     };
 
     PM.bindCapabilityFormEvents = function () {
-        var root = PM.getCapabilityFormRoot();
-        if (!root || root.dataset.tmCapBound === '1') return;
-        root.dataset.tmCapBound = '1';
+        var formRoot = PM.getProductFormRoot();
+        if (!formRoot || formRoot.dataset.tmCapBound === '1') return;
+        formRoot.dataset.tmCapBound = '1';
         ['detail-track-variants', 'detail-track-expiry', 'detail-track-serial', 'detail-shelf-life-days'].forEach(function (id) {
-            var el = root.querySelector('#' + id);
+            var el = PM.el(id);
             if (!el) return;
             el.addEventListener('change', function () {
                 if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
@@ -881,6 +959,26 @@
         });
     };
 
+    PM.resetProductMediaDraft = function () {
+        PM._pendingMediaFiles = [];
+        PM._coverMedia = null;
+        PM._galleryMedia = [];
+        if (typeof PM.renderMediaGrid === 'function') PM.renderMediaGrid();
+    };
+
+    PM.countMediaSlots = function () {
+        var pending = PM._pendingMediaFiles || [];
+        var gallery = PM._galleryMedia || [];
+        var coverSlot = PM._coverMedia || pending.length > 0 ? 1 : 0;
+        var pendingGallery = PM._coverMedia ? pending.length : Math.max(0, pending.length - 1);
+        return coverSlot + gallery.length + pendingGallery;
+    };
+
+    PM.ensureProductMediaBindings = function () {
+        if (typeof PM.bindProductMediaEvents === 'function') PM.bindProductMediaEvents();
+        if (typeof PM.renderMediaGrid === 'function') PM.renderMediaGrid();
+    };
+
     PM.ensureProductFormMounted = async function () {
         var root = document.getElementById('product-detail-form-root');
         if (!root) return;
@@ -890,8 +988,17 @@
         if (window.TmProductRegistry && window.TmProductRegistry.mount) {
             await window.TmProductRegistry.mount(root);
         }
+        delete root.dataset.tmCapBound;
+        var tvReset = root.querySelector('[id$="detail-track-variants"]');
+        if (tvReset) delete tvReset.dataset.tmVarModalBound;
         PM.bindCapabilityFormEvents();
         PM.bindCustomAttrHandlers();
+        if (typeof PM.bindVariantModalTriggers === 'function') {
+            PM.bindVariantModalTriggers();
+        }
+        if (typeof PM.ensureProductMediaBindings === 'function') {
+            PM.ensureProductMediaBindings();
+        }
         if (typeof PM.loadProductCapabilities === 'function') {
             await PM.loadProductCapabilities();
         }
@@ -1267,16 +1374,6 @@
         try {
             var skuId = PM.currentProduct && (PM.currentProduct.skuId || PM.currentProduct.sku_id);
             if (!skuId) {
-                var optResp = await window.wrappedFetch('/api/v1/rd/products/skus/options', { method: 'GET' });
-                var optData = await window.handleApiResponse(optResp);
-                var rows = optData && optData.data ? optData.data : [];
-                var hit = rows.find(function (r) {
-                    var legacy = r.legacy_product_id || r.legacyProductId;
-                    return legacy != null && Number(legacy) === Number(productId);
-                });
-                if (hit) skuId = hit.sku_id || hit.skuId;
-            }
-            if (!skuId) {
                 body.innerHTML = '<p class="text-slate-400">暂无 SKU 关联，无法展示趋势</p>';
                 return;
             }
@@ -1300,37 +1397,86 @@
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
         await PM.ensureProductFormMounted();
-        await PM.loadTenantUnitNames();
+        var unitsPromise = PM.loadTenantUnitNames();
         await _openProductDetail.call(PM, productId);
         PM.repopulateProductDetailForm(PM.currentProduct);
         PM.collapseAdvancedDrawer();
         var hint = PM.el('detail-sku-hint', 'detail-sku');
         var sku = PM.currentProduct && PM.currentProduct.sku;
         if (hint) hint.textContent = sku ? ('SKU: ' + sku) : '填写必填项即可保存';
-        await PM.loadProductWarehouseStocks(productId);
         PM.bindStockSyncHandlers();
-        if (typeof PM.loadSpuFlagsForProduct === 'function') {
+
+        var spuId = PM.currentProduct && (PM.currentProduct.spuId || PM.currentProduct.spu_id);
+        var whStocksPromise = PM.loadProductWarehouseStocks(productId);
+        var templatesPromise = PM.loadAttributeTemplates(false);
+        await unitsPromise;
+
+        var spuDetail = null;
+        if (spuId && window.TM_MasterDataCache) {
+            spuDetail = await window.TM_MasterDataCache.getSpuDetail(spuId, null);
+        }
+
+        await Promise.all([
+            whStocksPromise,
+            templatesPromise,
+            spuId ? PM.loadProductMediaPreview(spuId, { spuDetail: spuDetail }) : Promise.resolve()
+        ]);
+
+        if (spuDetail) {
+            PM.applySpuFlagsFromSpuDetail(spuDetail, productId);
+            if (typeof PM.loadVariantDraftFromSpu === 'function') {
+                await PM.loadVariantDraftFromSpu(spuId, { cachedDetail: spuDetail, skipTemplateFetch: true });
+            }
+        } else if (typeof PM.loadSpuFlagsForProduct === 'function') {
             await PM.loadSpuFlagsForProduct(productId);
         }
-        if (typeof PM.loadAttributeTemplates === 'function') {
-            await PM.loadAttributeTemplates();
-        }
+
         PM.applyProductCapabilityVisibility();
-        if (typeof PM.loadProductPriceTrend === 'function') {
-            await PM.loadProductPriceTrend(productId);
+        if (typeof PM.applyDefaultIndustryTemplate === 'function') {
+            PM.applyDefaultIndustryTemplate();
         }
-        if (typeof PM.loadProductCoverPreview === 'function') {
-            await PM.loadProductCoverPreview();
+        if (typeof PM.initProductPriceTrendLazy === 'function') {
+            PM.initProductPriceTrendLazy(productId);
+        } else if (typeof PM.loadProductPriceTrend === 'function') {
+            PM.loadProductPriceTrend(productId);
+        }
+        if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
+            PM.syncVariantMatrixPanelVisibility();
+        }
+        if (typeof PM.updateVariantEntrySummary === 'function') {
+            PM.updateVariantEntrySummary();
         }
         if (typeof window.TM_openUnifiedModal !== 'function') {
             PM.lockBodyScroll(true);
         }
     };
 
+    PM.initProductPriceTrendLazy = function (productId) {
+        var body = document.getElementById('product-price-trend-body');
+        if (!body) return;
+        body.innerHTML = '<p class="text-slate-400 text-xs">展开高级选项查看进货价趋势</p>';
+        var drawer = document.getElementById('product-advanced-drawer');
+        if (!drawer || drawer.dataset.tmPriceTrendBound === '1') return;
+        drawer.dataset.tmPriceTrendBound = '1';
+        drawer.addEventListener('toggle', function () {
+            if (drawer.open && typeof PM.loadProductPriceTrend === 'function') {
+                PM.loadProductPriceTrend(productId);
+            }
+        });
+    };
+
     var _openCreate = PM.openCreateProductModal;
     PM.openCreateProductModal = async function (prefill) {
         await PM.ensureProductFormMounted();
         await _openCreate.call(PM);
+        PM.currentProduct = {};
+        PM._variantComboDraft = [];
+        PM._variantMatrixConfirmed = false;
+        PM._variantMatrixSelection = {};
+        if (typeof PM.resetVariantMatrixUi === 'function') PM.resetVariantMatrixUi();
+        if (typeof PM.resetProductMediaDraft === 'function') {
+            PM.resetProductMediaDraft();
+        }
         PM.populateProductForm({
             name: '',
             sku: '',
@@ -1392,8 +1538,13 @@
 
     var _saveProduct = PM.saveProduct;
     PM.saveProduct = async function () {
+        if (PM._saveInProgress) return;
+        PM._saveInProgress = true;
         PM.showFormErrors('product-form-errors', []);
-        if (!PM.validateProductForm()) return;
+        if (!PM.validateProductForm()) {
+            PM._saveInProgress = false;
+            return;
+        }
         if (!PM.currentProduct) {
             PM.currentProduct = {};
         }
@@ -1408,10 +1559,14 @@
             if (built.error !== '__validation__' && window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification(built.error, 'error');
             }
+            PM._saveInProgress = false;
             return;
         }
         try {
-            if (window.checkAuth && !window.checkAuth()) return;
+            if (window.checkAuth && !window.checkAuth()) {
+                PM._saveInProgress = false;
+                return;
+            }
             var response = await window.wrappedFetch('/api/v1/rd/products/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1424,6 +1579,7 @@
                 if (window.TM_UI && window.TM_UI.showNotification) {
                     window.TM_UI.showNotification(errMsg, 'error');
                 }
+                PM._saveInProgress = false;
                 return;
             }
             var data = await window.handleApiResponse(response);
@@ -1431,6 +1587,7 @@
                 if (window.TM_UI && window.TM_UI.showNotification) {
                     window.TM_UI.showNotification('保存产品失败，请稍后重试', 'error');
                 }
+                PM._saveInProgress = false;
                 return;
             }
             var savedRaw = data.data || {};
@@ -1446,11 +1603,19 @@
                 PM.currentProduct.spuId = saved.spu_id;
             }
             var spuIdForCover = PM.currentProduct.spuId || saved.spuId || saved.spu_id;
-            if (spuIdForCover && typeof PM.uploadProductCover === 'function') {
-                await PM.uploadProductCover(spuIdForCover);
+            var mediaOk = true;
+            if (spuIdForCover && typeof PM.uploadPendingMedia === 'function') {
+                mediaOk = await PM.uploadPendingMedia(spuIdForCover);
             }
-            if (spuIdForCover && typeof PM.uploadPendingGallery === 'function') {
-                await PM.uploadPendingGallery(spuIdForCover);
+            if (spuIdForCover && typeof PM.uploadPendingSkuMedia === 'function') {
+                var skuMediaOk = await PM.uploadPendingSkuMedia(spuIdForCover);
+                mediaOk = mediaOk && skuMediaOk;
+            }
+            if (spuIdForCover && typeof PM.loadProductMediaPreview === 'function') {
+                await PM.loadProductMediaPreview(spuIdForCover);
+            }
+            if (spuIdForCover && typeof PM.loadVariantDraftFromSpu === 'function') {
+                await PM.loadVariantDraftFromSpu(spuIdForCover);
             }
             var mapped = PM.mapProductFromApi(saved);
             if (mapped.unitConversions && mapped.unitConversions.length) {
@@ -1460,7 +1625,11 @@
                 PM.currentProduct.unitConversions = built.body.unitConversions;
             }
             if (window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('产品保存成功！', 'success');
+                var mediaErr = PM._lastMediaUploadErrors && PM._lastMediaUploadErrors[0];
+                window.TM_UI.showNotification(
+                    mediaOk ? '产品保存成功！' : ('产品已保存，但图片上传失败' + (mediaErr ? '：' + mediaErr : '，请重新打开编辑后重试')),
+                    mediaOk ? 'success' : 'warning'
+                );
             }
             if (typeof PM.auditSaveCallback === 'function') {
                 var cb = PM.auditSaveCallback;
@@ -1469,11 +1638,18 @@
             } else {
                 PM.closeProductDetail();
             }
-            await PM.loadProducts();
+            var savedProductId = saved.productId != null ? saved.productId : saved.id;
+            await PM.loadProducts({ focusProductId: savedProductId, resetPage: true, force: true });
+            if (typeof PM.invalidateProductListCache === 'function') PM.invalidateProductListCache();
+            if (window.TM_MasterDataCache && spuIdForCover) {
+                window.TM_MasterDataCache.invalidateSpu(spuIdForCover);
+            }
         } catch (error) {
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('保存产品失败: ' + error.message, 'error');
             }
+        } finally {
+            PM._saveInProgress = false;
         }
     };
 
@@ -1819,7 +1995,7 @@
                 PM.auditSaveCallback = null;
                 await cb(saved, built.body.product);
             }
-            await PM.loadProducts();
+            await PM.loadProducts({ focusProductId: saved.productId, resetPage: true });
         } catch (error) {
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('保存产品失败: ' + error.message, 'error');
@@ -1900,189 +2076,334 @@
 
     var _origInit = PM.init;
     PM.init = async function () {
-        if (typeof _origInit === 'function') await _origInit.apply(this, arguments);
-        if (typeof PM.loadProductCapabilities === 'function') await PM.loadProductCapabilities();
-        if (typeof PM.bindProductCoverInput === 'function') PM.bindProductCoverInput();
-        if (typeof PM.bindGalleryInput === 'function') PM.bindGalleryInput();
+        await Promise.all([
+            typeof _origInit === 'function' ? _origInit.apply(this, arguments) : Promise.resolve(),
+            typeof PM.loadProductCapabilities === 'function' ? PM.loadProductCapabilities() : Promise.resolve()
+        ]);
     };
 
-    PM._pendingGalleryFiles = [];
+    PM._pendingMediaFiles = [];
+    PM._coverMedia = null;
+    PM._galleryMedia = [];
+    PM._mediaFormRoot = null;
+    PM._mediaClickHandler = null;
+    PM._mediaChangeHandler = null;
 
-    PM.bindGalleryInput = function () {
-        var input = PM.el('detail-product-gallery-input');
-        if (!input || input.__tmGalleryBound) return;
-        input.__tmGalleryBound = true;
-        input.addEventListener('change', function () {
-            if (!input.files || !input.files.length) return;
-            var current = (PM._pendingGalleryFiles || []).length;
-            var existing = (PM._galleryMediaIds || []).length;
-            var maxAdd = Math.max(0, 9 - current - existing);
-            for (var i = 0; i < input.files.length && i < maxAdd; i++) {
-                PM._pendingGalleryFiles.push(input.files[i]);
-            }
-            if (input.files.length > maxAdd && window.TM_UI && window.TM_UI.showNotification) {
-                window.TM_UI.showNotification('图册最多 9 张', 'warning');
-            }
-            input.value = '';
-            PM.renderGalleryPreview();
-        });
+    PM.unbindProductMediaEvents = function () {
+        if (PM._mediaFormRoot && PM._mediaClickHandler) {
+            PM._mediaFormRoot.removeEventListener('click', PM._mediaClickHandler);
+        }
+        if (PM._mediaFormRoot && PM._mediaChangeHandler) {
+            PM._mediaFormRoot.removeEventListener('change', PM._mediaChangeHandler);
+        }
+        PM._mediaFormRoot = null;
+        PM._mediaClickHandler = null;
+        PM._mediaChangeHandler = null;
     };
 
-    PM.renderGalleryPreview = function () {
-        var box = PM.el('detail-product-gallery');
-        if (!box) return;
-        var html = (PM._galleryUrls || []).map(function (item) {
-            return '<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-100">'
-                + '<img src="' + PM.escHtmlAttr(item.url) + '" class="w-full h-full object-cover" alt="" />'
-                + (item.mediaId ? ('<button type="button" class="absolute top-0 right-0 bg-black/50 text-white text-[10px] px-1 tm-gallery-del" data-id="' + item.mediaId + '">×</button>') : '')
-                + '</div>';
-        }).join('');
-        (PM._pendingGalleryFiles || []).forEach(function (file) {
-            html += '<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-dashed border-brand-200">'
-                + '<img src="' + URL.createObjectURL(file) + '" class="w-full h-full object-cover opacity-80" alt="" />'
-                + '<span class="absolute bottom-0 inset-x-0 bg-brand-500/80 text-white text-[8px] text-center">待传</span></div>';
-        });
-        var totalCount = (PM._galleryUrls || []).length + (PM._pendingGalleryFiles || []).length;
-        if (totalCount < 9) {
-            html += '<button type="button" class="tm-gallery-add-btn w-14 h-14 rounded-lg border border-dashed border-brand-200 text-brand-500 flex items-center justify-center hover:bg-brand-50" title="添加图册"><i class="ph ph-plus text-lg"></i></button>';
-        }
-        if (!html) {
-            html = '<button type="button" class="tm-gallery-add-btn w-14 h-14 rounded-lg border border-dashed border-brand-200 text-brand-500 flex items-center justify-center hover:bg-brand-50" title="添加图册"><i class="ph ph-plus text-lg"></i></button>'
-                + '<span class="text-[10px] text-slate-400 self-center">点击 + 添加图册</span>';
-        }
-        box.innerHTML = html;
-        var galleryInput = PM.el('detail-product-gallery-input');
-        box.querySelectorAll('.tm-gallery-add-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                if (galleryInput) galleryInput.click();
-            });
-        });
-        box.querySelectorAll('.tm-gallery-del').forEach(function (btn) {
-            btn.addEventListener('click', function (e) {
+    PM.bindProductMediaEvents = function () {
+        var root = PM.getProductFormRoot();
+        if (!root) return;
+        if (PM._mediaFormRoot === root && PM._mediaClickHandler) return;
+        PM.unbindProductMediaEvents();
+        PM._mediaFormRoot = root;
+        PM._mediaClickHandler = function (e) {
+            var addBtn = e.target.closest('.tm-media-add-btn');
+            if (addBtn) {
                 e.preventDefault();
-                PM.deleteGalleryMedia(parseInt(btn.getAttribute('data-id'), 10));
-            });
-        });
+                e.stopPropagation();
+                var input = PM.el('detail-product-media-input');
+                if (input) input.click();
+                return;
+            }
+            var delBtn = e.target.closest('.tm-media-del');
+            if (delBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                PM.removeMediaItem(
+                    delBtn.getAttribute('data-kind'),
+                    delBtn.getAttribute('data-id'),
+                    delBtn.getAttribute('data-pending-idx'));
+            }
+        };
+        PM._mediaChangeHandler = function (e) {
+            var t = e.target;
+            if (!t || !t.id || t.id.indexOf('detail-product-media-input') === -1) return;
+            PM.handleMediaFilesSelected(t).finally(function () { t.value = ''; });
+        };
+        root.addEventListener('click', PM._mediaClickHandler);
+        root.addEventListener('change', PM._mediaChangeHandler);
     };
 
-    PM.loadGalleryPreview = async function (spuId) {
-        PM._galleryUrls = [];
-        PM._galleryMediaIds = [];
-        PM._pendingGalleryFiles = [];
-        if (!spuId || !window.wrappedFetch) {
-            PM.renderGalleryPreview();
+    PM.compressMediaFile = async function (file) {
+        if (!file) return file;
+        var aiSvc = window.TM_AIService;
+        try {
+            if (aiSvc && typeof aiSvc.compressForOrderUpload === 'function') {
+                return await aiSvc.compressForOrderUpload(file);
+            }
+            if (aiSvc && typeof aiSvc.compressImageIfNeeded === 'function') {
+                return await aiSvc.compressImageIfNeeded(file, { maxBytes: 1800 * 1024 });
+            }
+        } catch (e) {
+            console.warn('[ProductEnhance] 图片压缩失败，使用原图', e);
+        }
+        return file;
+    };
+
+    PM.handleMediaFilesSelected = async function (input) {
+        if (!input.files || !input.files.length) return;
+        PM._pendingMediaFiles = PM._pendingMediaFiles || [];
+        var maxAdd = Math.max(0, 9 - PM.countMediaSlots());
+        var added = 0;
+        for (var i = 0; i < input.files.length && i < maxAdd; i++) {
+            var compressed = await PM.compressMediaFile(input.files[i]);
+            PM._pendingMediaFiles.push(compressed);
+            added++;
+        }
+        if (input.files.length > maxAdd && window.TM_UI && window.TM_UI.showNotification) {
+            window.TM_UI.showNotification('最多 9 张图片（首张为主图）', 'warning');
+        }
+        PM.renderMediaGrid();
+        if (added > 0 && window.TM_UI && window.TM_UI.showNotification) {
+            window.TM_UI.showNotification('已添加 ' + added + ' 张图片（保存后上传）', 'success');
+        }
+    };
+
+    PM.removeMediaItem = function (kind, id, pendingIdx) {
+        if (kind === 'pending') {
+            var idx = parseInt(pendingIdx, 10);
+            if (!isNaN(idx) && PM._pendingMediaFiles) {
+                PM._pendingMediaFiles.splice(idx, 1);
+                PM.renderMediaGrid();
+            }
             return;
         }
-        try {
-            var resp = await window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId, { method: 'GET' });
-            var data = await window.handleApiResponse(resp);
-            var items = data && data.data ? data.data : [];
-            PM._galleryUrls = (Array.isArray(items) ? items : []).filter(function (m) {
-                return (m.mediaType || m.media_type) === 'GALLERY';
-            }).map(function (m) {
-                return { url: m.url, mediaId: m.media_id || m.mediaId };
+        if (!id || !window.wrappedFetch) return;
+        var mediaId = parseInt(id, 10);
+        if (isNaN(mediaId)) return;
+        window.wrappedFetch('/api/v1/rd/products/media/' + mediaId, { method: 'DELETE' }).then(function () {
+            if (kind === 'cover') PM._coverMedia = null;
+            else PM._galleryMedia = (PM._galleryMedia || []).filter(function (x) {
+                return x.mediaId !== mediaId;
             });
-            PM._galleryMediaIds = PM._galleryUrls.map(function (x) { return x.mediaId; }).filter(Boolean);
-        } catch (e) {
-            console.warn('[ProductEnhance] 图册加载失败', e);
-        }
-        PM.renderGalleryPreview();
+            PM.renderMediaGrid();
+        }).catch(function () { /* ignore */ });
     };
 
-    PM.uploadPendingGallery = async function (spuId) {
-        var files = PM._pendingGalleryFiles || [];
-        if (!spuId || !files.length || !window.wrappedFetch) return;
-        for (var i = 0; i < files.length; i++) {
-            var fd = new FormData();
-            fd.append('file', files[i]);
-            fd.append('spuId', String(spuId));
-            fd.append('mediaType', 'GALLERY');
-            try {
-                await window.wrappedFetch('/api/v1/rd/products/media/upload', { method: 'POST', body: fd });
-            } catch (e) {
-                console.warn('[ProductEnhance] 图册上传失败', e);
-            }
-        }
-        PM._pendingGalleryFiles = [];
-        await PM.loadGalleryPreview(spuId);
-    };
+    PM.renderMediaGrid = function () {
+        var box = PM.el('detail-product-media-grid');
+        if (!box) return;
+        var html = '';
+        var pending = PM._pendingMediaFiles || [];
+        var pendingIdx = 0;
 
-    PM.deleteGalleryMedia = async function (mediaId) {
-        if (!mediaId || !window.wrappedFetch) return;
-        try {
-            await window.wrappedFetch('/api/v1/rd/products/media/' + mediaId, { method: 'DELETE' });
-            PM._galleryUrls = (PM._galleryUrls || []).filter(function (x) { return x.mediaId !== mediaId; });
-            PM.renderGalleryPreview();
-        } catch (e) {
-            console.warn('[ProductEnhance] 删除图册失败', e);
+        function thumbWrap(inner, badge, kind, id, pIdx) {
+            var del = '<button type="button" class="tm-media-del absolute top-0 right-0 bg-black/50 text-white text-[10px] px-1 leading-none" data-kind="'
+                + PM.escHtmlAttr(kind) + '" data-id="' + PM.escHtmlAttr(String(id || '')) + '" data-pending-idx="'
+                + PM.escHtmlAttr(String(pIdx != null ? pIdx : '')) + '">×</button>';
+            var tag = badge ? ('<span class="absolute bottom-0 inset-x-0 bg-brand-600/90 text-white text-[8px] text-center">' + badge + '</span>') : '';
+            return '<div class="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-100 shrink-0">' + inner + tag + del + '</div>';
         }
-    };
 
-    PM.bindProductCoverInput = function () {
-        var input = PM.el('detail-product-cover-input');
-        var trigger = PM.el('detail-product-cover-trigger');
-        if (!input || input.__tmCoverBound) return;
-        input.__tmCoverBound = true;
-        var openPicker = function () { input.click(); };
-        if (trigger) {
-            trigger.addEventListener('click', openPicker);
+        if (PM._coverMedia && PM._coverMedia.url) {
+            html += thumbWrap('<img src="' + PM.escHtmlAttr(PM._coverMedia.url) + '" class="w-full h-full object-cover" alt="" />', '主图', 'cover', PM._coverMedia.mediaId, null);
+        } else if (pending.length) {
+            html += thumbWrap('<img src="' + URL.createObjectURL(pending[0]) + '" class="w-full h-full object-cover opacity-90" alt="" />', '主图', 'pending', null, 0);
+            pendingIdx = 1;
         }
-        input.addEventListener('change', function () {
-            var preview = PM.el('detail-product-cover-preview');
-            if (preview && input.files && input.files[0]) {
-                preview.innerHTML = '<img src="' + URL.createObjectURL(input.files[0]) + '" class="w-full h-full object-cover" alt="" />';
-            }
+
+        (PM._galleryMedia || []).forEach(function (item) {
+            html += thumbWrap('<img src="' + PM.escHtmlAttr(item.url) + '" class="w-full h-full object-cover" alt="" />', '', 'gallery', item.mediaId, null);
+        });
+
+        for (var i = pendingIdx; i < pending.length; i++) {
+            html += thumbWrap('<img src="' + URL.createObjectURL(pending[i]) + '" class="w-full h-full object-cover opacity-90" alt="" />', '待传', 'pending', null, i);
+        }
+
+        if (PM.countMediaSlots() < 9) {
+            html += '<button type="button" class="tm-media-add-btn w-14 h-14 rounded-lg border border-dashed border-brand-200 text-brand-500 flex items-center justify-center hover:bg-brand-50 shrink-0" title="添加图片"><i class="ph ph-plus text-lg"></i></button>';
+        }
+        var skuCovers = PM._skuCoverCandidates || [];
+        if (skuCovers.length) {
+            html += '<div class="w-full basis-full mt-2 pt-2 border-t border-slate-100">';
+            html += '<p class="text-[10px] text-slate-400 mb-1.5">SKU 图片（点击设为主图）</p>';
+            html += '<div class="flex flex-wrap gap-2">';
+            skuCovers.forEach(function (item) {
+                var isMain = PM._coverMedia && PM._coverMedia.url === item.url;
+                html += '<button type="button" class="tm-sku-cover-pick relative w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 '
+                    + (isMain ? 'border-brand-500 ring-2 ring-brand-200' : 'border-slate-100 hover:border-brand-300')
+                    + '" data-sku-id="' + PM.escHtmlAttr(String(item.skuId)) + '" title="' + PM.escHtmlAttr(item.label) + '">'
+                    + '<img src="' + PM.escHtmlAttr(item.url) + '" class="w-full h-full object-cover" alt="" />'
+                    + (isMain ? '<span class="absolute bottom-0 inset-x-0 bg-brand-600/90 text-white text-[7px] text-center">主图</span>' : '')
+                    + '</button>';
+            });
+            html += '</div></div>';
+        }
+        if (!html) {
+            html = '<button type="button" class="tm-media-add-btn w-14 h-14 rounded-lg border border-dashed border-brand-200 text-brand-500 flex items-center justify-center hover:bg-brand-50 shrink-0" title="添加图片"><i class="ph ph-plus text-lg"></i></button>'
+                + '<span class="text-[10px] text-slate-400 self-center">点击 + 添加图片</span>';
+        }
+        box.innerHTML = html;
+        box.querySelectorAll('.tm-sku-cover-pick').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var skuId = parseInt(btn.getAttribute('data-sku-id'), 10);
+                var spuId = PM.currentProduct && (PM.currentProduct.spuId || PM.currentProduct.spu_id);
+                if (spuId && skuId && typeof PM.setSpuCoverFromSku === 'function') {
+                    PM.setSpuCoverFromSku(spuId, skuId);
+                }
+            });
         });
     };
 
-    PM.uploadProductCover = async function (spuId) {
-        var input = PM.el('detail-product-cover-input');
-        if (!input || !input.files || !input.files[0] || !spuId || !window.wrappedFetch) return;
-        var fd = new FormData();
-        fd.append('file', input.files[0]);
-        fd.append('spuId', String(spuId));
-        fd.append('mediaType', 'COVER');
-        try {
-            var resp = await window.wrappedFetch('/api/v1/rd/products/media/upload', { method: 'POST', body: fd });
-            await window.handleApiResponse(resp);
-            input.value = '';
-        } catch (e) {
-            console.warn('[ProductEnhance] 主图上传失败', e);
+    PM.loadProductMediaPreview = async function (spuId, opts) {
+        opts = opts || {};
+        PM._coverMedia = null;
+        PM._galleryMedia = [];
+        PM._pendingMediaFiles = [];
+        PM._skuCoverCandidates = [];
+        if (!spuId || !window.wrappedFetch) {
+            PM.renderMediaGrid();
+            return;
         }
+        var spuMediaPromise = window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId, { method: 'GET' })
+            .then(function (resp) { return window.handleApiResponse(resp); })
+            .catch(function () { return null; });
+        var skuMediaPromise = window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId + '/skus', { method: 'GET' })
+            .then(function (resp) { return window.handleApiResponse(resp); })
+            .catch(function () { return null; });
+
+        var results = await Promise.all([spuMediaPromise, skuMediaPromise]);
+        try {
+            var items = results[0] && results[0].data ? results[0].data : (Array.isArray(results[0]) ? results[0] : []);
+            (Array.isArray(items) ? items : []).forEach(function (m) {
+                var type = (m.mediaType || m.media_type || '').toUpperCase();
+                var row = { url: m.url, mediaId: m.media_id || m.mediaId };
+                if (type === 'COVER') PM._coverMedia = row;
+                else if (type === 'GALLERY') PM._galleryMedia.push(row);
+            });
+            if (!PM._coverMedia && PM._galleryMedia.length) {
+                PM._coverMedia = PM._galleryMedia.shift();
+            }
+        } catch (e) {
+            console.warn('[ProductEnhance] 图片加载失败', e);
+        }
+        try {
+            var skuMediaItems = results[1] && results[1].data ? results[1].data : [];
+            (Array.isArray(skuMediaItems) ? skuMediaItems : []).forEach(function (m) {
+                var url = m.url;
+                var sid = m.sku_id || m.skuId;
+                if (!url || !sid) return;
+                var label = m.attributes_display || m.attributesDisplay || '';
+                PM._skuCoverCandidates.push({
+                    skuId: sid,
+                    url: url,
+                    label: label || ('SKU#' + sid)
+                });
+            });
+        } catch (e) {
+            console.warn('[ProductEnhance] SKU 媒体列表加载失败', e);
+        }
+        try {
+            var detail = opts.spuDetail;
+            if (!detail && window.TM_MasterDataCache) {
+                detail = await window.TM_MasterDataCache.getSpuDetail(spuId, null);
+            }
+            var skus = detail && detail.skus ? detail.skus : [];
+            var seen = {};
+            PM._skuCoverCandidates.forEach(function (item) {
+                if (item.url) seen[item.url] = true;
+            });
+            skus.forEach(function (sku) {
+                var url = sku.coverUrl || sku.cover_url;
+                if (!url || seen[url]) return;
+                seen[url] = true;
+                var label = sku.attributesDisplay || sku.attributes_display || '';
+                if (!label && sku.attributes && typeof sku.attributes === 'object') {
+                    label = Object.keys(sku.attributes).map(function (k) { return sku.attributes[k]; }).join(' / ');
+                }
+                PM._skuCoverCandidates.push({
+                    skuId: sku.skuId || sku.sku_id,
+                    url: url,
+                    label: label || ('SKU#' + (sku.skuId || sku.sku_id))
+                });
+            });
+        } catch (e) {
+            console.warn('[ProductEnhance] SKU 图片加载失败', e);
+        }
+        PM.renderMediaGrid();
+    };
+
+    PM.setSpuCoverFromSku = async function (spuId, skuId) {
+        if (!spuId || !skuId || !window.wrappedFetch) return false;
+        try {
+            var resp = await window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId + '/cover-from-sku/' + skuId, { method: 'POST' });
+            var data = await window.handleApiResponse(resp);
+            if (data && data.success !== false) {
+                await PM.loadProductMediaPreview(spuId);
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('已设为 SPU 主图', 'success');
+                }
+                return true;
+            }
+        } catch (e) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('设置主图失败', 'error');
+            }
+        }
+        return false;
+    };
+
+    PM.uploadPendingMedia = async function (spuId) {
+        var pending = (PM._pendingMediaFiles || []).slice();
+        if (!spuId || !pending.length || !window.wrappedFetch) return true;
+        var uploadErrors = [];
+
+        async function doUpload(file, mediaType) {
+            if (!file || !file.size) {
+                uploadErrors.push('上传文件为空');
+                return false;
+            }
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('spuId', String(spuId));
+            fd.append('mediaType', mediaType);
+            try {
+                var resp = await window.wrappedFetch('/api/v1/rd/products/media/upload', { method: 'POST', body: fd });
+                var body = await resp.json().catch(function () { return {}; });
+                if (resp.ok && body && body.success !== false) {
+                    return true;
+                }
+                var errMsg = (body && body.message) || ('上传失败 (' + resp.status + ')');
+                if (resp.status === 413) {
+                    errMsg = '图片过大，单张请不超过 5MB';
+                }
+                uploadErrors.push(errMsg);
+                return false;
+            } catch (e) {
+                uploadErrors.push(e && e.message ? e.message : '上传失败');
+                return false;
+            }
+        }
+
+        var allOk = true;
+        if (!PM._coverMedia && pending.length) {
+            allOk = await doUpload(pending.shift(), 'COVER') && allOk;
+        }
+        for (var i = 0; i < pending.length; i++) {
+            allOk = await doUpload(pending[i], 'GALLERY') && allOk;
+        }
+        PM._lastMediaUploadErrors = uploadErrors;
+        if (allOk) {
+            PM._pendingMediaFiles = [];
+        }
+        await PM.loadProductMediaPreview(spuId);
+        return allOk;
     };
 
     PM.loadProductCoverPreview = async function () {
-        var preview = PM.el('detail-product-cover-preview');
-        if (!preview) return;
-        var cp = PM.currentProduct || {};
-        var coverUrl = cp.coverUrl || cp.cover_url;
-        var spuId = cp.spuId || cp.spu_id;
-        if (!coverUrl && spuId && window.wrappedFetch) {
-            try {
-                var resp = await window.wrappedFetch('/api/v1/rd/products/media/spu/' + spuId, { method: 'GET' });
-                var data = await window.handleApiResponse(resp);
-                var items = data && data.data ? data.data : [];
-                var cover = Array.isArray(items) ? items.find(function (m) {
-                    return (m.mediaType || m.media_type) === 'COVER';
-                }) : null;
-                if (cover) {
-                    coverUrl = cover.url || cover.coverUrl;
-                } else if (items.length && items[0].url) {
-                    coverUrl = items[0].url;
-                }
-                if (coverUrl) PM.currentProduct.coverUrl = coverUrl;
-            } catch (e) {
-                console.warn('[ProductEnhance] 封面加载失败', e);
-            }
-        }
-        if (coverUrl && window.TM_ProductThumb) {
-            window.TM_ProductThumb.mount(preview, { coverUrl: coverUrl, size: 96, alt: cp.name || '' });
-        } else {
-            preview.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="ph ph-image text-2xl"></i></div>';
-        }
-        if (spuId && typeof PM.loadGalleryPreview === 'function') {
-            await PM.loadGalleryPreview(spuId);
-        }
+        var spuId = PM.currentProduct && (PM.currentProduct.spuId || PM.currentProduct.spu_id);
+        await PM.loadProductMediaPreview(spuId || null);
         if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
             PM.syncVariantMatrixPanelVisibility();
         }

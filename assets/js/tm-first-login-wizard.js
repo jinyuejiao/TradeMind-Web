@@ -77,6 +77,7 @@
             if (!window.wrappedFetch || !window.checkAuth || !window.checkAuth()) return;
             try {
                 var resp = await window.wrappedFetch('/api/v1/tenant/onboarding/status', { method: 'GET' });
+                if (!resp.ok) return;
                 var data = await window.handleApiResponse(resp);
                 var st = data && data.data ? data.data : data;
                 if (!st || !st.needsWizard) return;

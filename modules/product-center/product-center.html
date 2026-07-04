@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/assets/css/ui-main.css">
     <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260525layout">
     <link rel="stylesheet" href="/modules/CSS/common.css?v=20260525layout">
-    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260519pc">
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260704refactor1">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -33,9 +33,15 @@
     <script src="/assets/js/ui-components.js"></script>
     <script src="/assets/js/ui-main.js?v=20260519pc"></script>
     <script src="/assets/js/tenant-ops.js?v=20260526ops"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260531modal-fix"></script>
-    <script src="/assets/js/tm-product-registry-form.js?v=20260702fix"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260702fix"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260704refactor1"></script>
+    <script src="/assets/js/ui-ai-service.js?v=20260603jpeg"></script>
+    <script src="/assets/js/tm-product-thumb.js?v=20260704refactor1"></script>
+    <script src="/assets/js/tm-product-domain.js?v=20260704refactor1"></script>
+    <script src="/assets/js/tm-master-data-cache.js?v=20260704refactor1"></script>
+    <script src="/assets/js/tm-industry-product-registry.js?v=20260704refactor1"></script>
+    <script src="/assets/js/tm-product-registry-form.js?v=20260704refactor1"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260704refactor1"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260704refactor1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('[product-center] 页面加载完成');
@@ -208,7 +214,7 @@
                         </button>
                     </div>
 
-                    <div class="overflow-x-auto no-scrollbar hidden md:block">
+                    <div id="product-library-scroll" class="tm-product-list-scroll hidden md:block">
                         <table class="w-full text-left border-collapse" id="existingProdTable">
                             <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
                                 <tr>
@@ -226,8 +232,8 @@
                     <div id="product-pagination" class="hidden md:block"></div>
                 </div>
 
-                <div class="md:hidden mt-3 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" id="mobile-product-shell">
-                    <div id="mobile-product-cards" class="divide-y divide-slate-100"></div>
+                <div class="md:hidden mt-3 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col max-h-[min(70vh,32rem)]" id="mobile-product-shell">
+                    <div id="mobile-product-cards" class="divide-y divide-slate-100 overflow-y-auto tm-product-list-scroll flex-1 min-h-0"></div>
                     <div id="mobile-product-pagination" class="border-t border-slate-100 bg-slate-50/70 px-3 py-2"></div>
                 </div>
             </div>

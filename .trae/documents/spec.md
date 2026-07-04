@@ -1489,8 +1489,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 | AI 工作台 | `dashboard-voice-upload.js`、`ui-ai-service.js`、`ai-order-extract-parse.js`、`ui-ai-service.css` | 语音/拍照设备层与结果解析（§3.1.1） |
 | 壳层/合规 | `tm-shell-insets.js`、`tm-compliance.js`、`tm-merchant-feedback.js` | 布局度量、备案、问题反馈 |
 | 认证/会员 | `auth.js`、`referral-rewards.js` | JWT、会员中心、登录后跳转 |
-| 行业/开单 | `tm-workbench-profile.js`、`tm-industry-ui.js`、`tm-first-login-wizard.js`、`tm-sku-catalog-cache.js`、`rapid-order.js` + **`rapid-order.css`** | 工作台差异化、首登向导、SKU 目录缓存、极速开单 |
-| 产品共用 | `tm-product-registry-form.js`、`tm-product-thumb.js` | AI 核对/产品中心共用表单片段、列表缩略图 |
+| 行业/开单 | `tm-workbench-profile.js`、`tm-industry-ui.js`、`tm-first-login-wizard.js`、`tm-product-domain.js`、`tm-master-data-cache.js`、`tm-industry-product-registry.js`、`tm-sku-catalog-cache.js`、`rapid-order.js` + **`rapid-order.css`** | 工作台差异化、领域工具、主数据缓存、行业注册、极速开单 |
+| 产品共用 | `tm-product-registry-form.js`、`tm-product-thumb.js`、`tm-product-variant-modal.js` | 表单片段、缩略图、规格弹窗 |
 | 应用核 | `main-app.js` → `ui-permissions.js` → `ui-role-engine.js` → `TM_Responsive.js` → `ui-components.js` → `tm-ui-loader.js` | 角色引擎须在 **`tm-ui-loader`** 之前 |
 | 模块 | `ui-main.js`、`ui-product-center*.js`、`tm-onboarding*.js` | Tab 切换、各业务模块 |
 
@@ -1524,7 +1524,8 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 - **增强脚本**（由 `dashboard.html` 尾部或主壳预加载）：
   - **`dashboard-workbench.js`** — **`TM_PendingOrdersStore`**：`GET /api/v1/ai/records` 轮询（含 **`EXTRACTING`** 态）、待确认卡片增量渲染、语音/文本/拍照提交后刷新、自动建档下单；
   - **`order-workbench-modal.js`** — **`TM_OrderModal`**：订单详情/新建弹窗行数滚动、辅助区折叠；
-  - **`rapid-order.js`** — 极速开单：全屏 **`#rapid-order-picker`** 选 SKU、**`#rapid-order-modal`** 下单（客户/仓库/履约方式/批次/序列号）；依赖 **`TM_SkuCatalogCache`**、**`TM_WorkbenchProfile`**；
+  - **`rapid-order.js`** — 极速开单：全屏 **`#rapid-order-picker`** 选 SKU、**`#rapid-order-modal`** 下单（客户/仓库/履约方式/批次/序列号）；依赖 **`TM_SkuCatalogCache`**、**`TM_MasterDataCache`**、**`TM_ProductDomain`**、**`TM_WorkbenchProfile`**；
+  - **性能（v1.27）**：**`TM_openRapidOrder`** **await** 目录预载；**`TM_SkuCatalogCache.load`** 与分类 **Promise.all** 并行；多规格 sheet 复用 **SPU 详情缓存**；订单行批次 **Promise.all** 并行加载；打印走 **`TM_PrintTriggers.offerPrintAfterCreate`**
   - **`tm-workbench-profile.js`** — **`TM_WorkbenchProfile.load()`**：JWT + **`GET /rd/tenant/ops-profile`** + **`GET /tenant/onboarding/status`** → 列预设、能力开关、默认履约仓；
   - **`tm-first-login-wizard.js`** — 首登行业四选一（§2.10.2）；
   - **`ui-returns.js`** — **`TM_Returns`**：销售退货创建/列表/验收/详情；订单详情「申请退货」；
@@ -1559,55 +1560,46 @@ CRM 列表/详情 **仅展示 2 个系统标签**，用户不可编辑；新增/
 
 #### 3.1.3 产品中心（Product Center）
 
-- **路径**：`/modules/product-center/product-center.html`；弹窗片段 **`product-overlays.html`**；共用表单 **`/modules/fragments/product-registry-form.html`**（**`tm-product-registry-form.js`** / **`TmProductRegistry.mount`**）
-- **前端脚本**：`/assets/js/ui-product-center.js`、**`/assets/js/ui-product-center-enhance.js`**、**`tm-product-thumb.js`**
+- **路径**：`/modules/product-center/product-center.html`；弹窗片段 **`product-overlays.html`**（经 **`TM_syncProductCenterOverlays`** 注入）；共用表单 **`/modules/fragments/product-registry-form.html`**（**`tm-product-registry-form.js`** / **`TmProductRegistry.mount`**）
+- **前端脚本分层（2026-07-04 重构）**：
+
+| 层级 | 脚本 | 职责 |
+| --- | --- | --- |
+| 基座 | **`ui-product-center.js`** | 列表/分页/筛选/仓库/调拨；**45s 列表短缓存**；打开详情仅拉 **`GET /products/{id}`** 并开 modal |
+| 增强 | **`ui-product-center-enhance.js`** | 详情/保存编排、能力开关、媒体、行业模板；**并行加载**副数据 |
+| 规格 | **`tm-product-variant-modal.js`** | 规格矩阵唯一编辑入口（**`skuCombos`** 载荷）；**draft 内存复用** |
+| 领域 | **`tm-product-domain.js`** | **`comboKey` / 属性解析 / 笛卡尔积 / 分仓查找** — 规格弹窗与极速开单共用 |
+| 缓存 | **`tm-master-data-cache.js`** | 属性模板、SPU 详情、分类、仓库 TTL 缓存 |
+| 行业 | **`tm-industry-product-registry.js`** | 按 **`industry_vertical`** 注册能力默认值与 UI 扩展点 |
+| 共用 | **`tm-product-registry-form.js`**、**`tm-product-thumb.js`** | 表单片段挂载、缩略图 |
+
+- **保存主路径（不变）**：**`POST /api/v1/rd/products/save`** → **`syncFromLegacyProduct`** → **`applyVariantMatrixAfterLegacySave`**（含 **`variantMatrix.skuCombos`**、分仓库存、SKU 媒体迁移）
+- **打开详情性能策略**：
+  - **`GET /spu/{spuId}` 单次请求**，结果经 **`TM_MasterDataCache`** 供能力回显、规格 draft、SKU 图列表复用
+  - **并行**：分仓库存、属性模板、SPU 媒体（**`/media/spu/{id}`** + **`/media/spu/{id}/skus`**）
+  - **懒加载**：进货价趋势在展开 **`#product-advanced-drawer`** 后请求
+  - **已移除**：详情打开时对 **`GET /skus/options` 全量扫描**（改从 SPU 详情解析 **`spuId/skuId`**）
+- **极速开单（§3.1.1 关联）**：**`TM_openRapidOrder`** **await** 目录预载；**`TM_SkuCatalogCache.load`** 与分类 **并行**；规格 sheet 使用 **`TM_MasterDataCache.getSpuDetail`**；批次行 **`Promise.all`** 并行加载
 - **功能**：
   - **Legacy 列表**：**`GET /api/v1/rd/products`** — **`mapProductFromApi`** 同时映射 **`spuId`/`skuId`/`coverUrl`**
-  - **SPU 档案**（增强路径）：规格矩阵、属性模板、多 SKU 保存 — **`GET /spu`**、**`GET /spu/{id}`**、**`POST /spu/save`**、**`GET /spu/{id}/skus`**
-  - 产品分类管理（真实API对接）；**新增/编辑时类别非必填**（与 DB **`category_id` 可空** 一致）
-  - 仓库管理、分仓库存编辑（**`warehouseStockDraft`**）、库存预警
-  - **产品图片**：列表/表单缩略图 **`TM_ProductThumb`**；上传 **`POST /products/media/upload`**（COVER/GALLERY）
-  - **单位换算**：弹窗默认展示已有配置；无配置时展示 **1 行**待填行；**「+」最多增至 2 行**；保存经 **`POST /api/v1/rd/products/save`** 或 SPU **`/spu/save`**
-  - **高级配置**：折叠区 **`#product-advanced-drawer`**；**`data-tm-cap-*`** 字段由 **`TM_IndustryUI`** 按能力裁剪
-  - 桌面端表格和移动端卡片双布局；仓库调拨；弹窗经 **`TM_applyDialogShell(..., { variant: 'sheet' })`**
-- **技术实现**：
-  - 使用`window.wrappedFetch()`进行API请求
-  - 使用`window.handleApiResponse()`统一响应处理
-  - 自动JWT认证和租户隔离
-  - 完整错误处理和用户反馈
+  - **SPU 档案**：规格矩阵、属性模板、多 SKU 保存（经 Legacy save + variantMatrix，非直接 **`POST /spu/save`** UI 路径）
+  - 产品分类管理；**新增/编辑时类别非必填**
+  - 仓库管理、分仓库存编辑、库存预警
+  - **产品图片**：**`TM_ProductThumb`**；SKU 图列表可设 SPU 主图（**`POST /media/spu/{id}/cover-from-sku/{skuId}`**）
+  - **单位换算**：最多 2 行；**高级配置**折叠区 **`#product-advanced-drawer`**
+  - 桌面表格 + 移动卡片；仓库调拨；弹窗 **`TM_applyDialogShell` sheet**
 - **后端接口（Legacy + SPU 扩展）**：
-  - `GET /api/v1/rd/products` - 获取产品列表（含 SPU/SKU 桥接字段）
+  - `GET /api/v1/rd/products` - 获取产品列表
   - `GET /api/v1/rd/products/{id}` - 获取产品详情
-  - `POST /api/v1/rd/products` - 创建产品
-  - `PUT /api/v1/rd/products/{id}` - 更新产品
-  - `DELETE /api/v1/rd/products/{id}` - 删除产品
-  - `POST /api/v1/rd/products/save` - 保存产品（含单位换算、分仓库存）
-  - `GET /api/v1/rd/products/spu` - SPU 分页列表
-  - `GET /api/v1/rd/products/spu/{spuId}` - SPU 详情（含 SKU 列表、媒体）
-  - `POST /api/v1/rd/products/spu/save` - 保存 SPU + SKU 矩阵
-  - `GET /api/v1/rd/products/skus/options` - SKU 下拉/搜款（工作台、进货）
+  - `POST /api/v1/rd/products/save` - 保存产品（含 **`variantMatrix`**、单位换算、分仓库存）
+  - `GET /api/v1/rd/products/spu/{spuId}` - SPU 详情（含 SKU 列表、**`coverUrl`**、**`warehouseStocks`**）
+  - `GET /api/v1/rd/products/media/spu/{spuId}/skus` - SPU 下全部 SKU 媒体（详情 SKU 图列表）
   - `GET /api/v1/rd/products/skus/catalog` - 极速开单 SKU 目录（可选 **`warehouseId`**）
-  - `GET/PUT /api/v1/rd/products/capabilities` - 租户产品能力开关
+  - `GET /api/v1/rd/products/skus/options` - SKU 下拉/搜款（工作台进货等；**产品详情不再依赖全量扫描**）
   - `GET/POST/DELETE /api/v1/rd/products/attribute-templates` - 属性模板 CRUD
-  - `POST /api/v1/rd/products/media/upload` - 产品图片上传
-  - `DELETE /api/v1/rd/products/media/{mediaId}` - 删除媒体
-  - `GET /api/v1/rd/inventory/sku/{skuId}/batches` - SKU 批次列表
-  - `GET /api/v1/rd/inventory/serials` - 序列号列表
-  - `GET /api/v1/rd/inventory/alerts/expiry` - 临期预警
-  - `GET /api/v1/rd/products/categories` - 获取分类列表
-  - `POST /api/v1/rd/products/categories/save` - 保存分类
-  - `GET /api/v1/rd/products/warehouses` - 获取仓库列表
-  - `POST /api/v1/rd/products/warehouses/save` - 保存仓库
-  - `DELETE /api/v1/rd/products/warehouses/{id}` - 删除仓库
-  - `POST /api/v1/rd/products/transfer` - 仓库调拨产品
-  - `GET /api/v1/rd/products/restock/suggestions` - 获取进货建议列表
-  - `GET /api/v1/rd/products/{id}/warehouse-stocks` - 获取产品各仓库库存
-  - `GET /api/v1/rd/products/stocks/by-warehouse/{warehouseId}` - 按仓库获取库存列表
-  - `GET /api/v1/rd/products/unit-conversions/all` - 获取租户全部单位换算
-  - `DELETE /api/v1/rd/products/categories/{id}` - 删除产品分类
-  - `PUT /api/v1/rd/products/stock/batch-update` - 批量更新产品库存
-  - `GET /api/v1/rd/tenant/ops-profile` - 租户运营配置（能力 + UI）
-  - `PUT /api/v1/rd/tenant/ui-profile` - 更新 UI 偏好
+  - `POST /api/v1/rd/products/media/upload` - 产品/SKU 图片上传
+  - `GET /api/v1/rd/products/{id}/warehouse-stocks` - 分仓库存
+  - （其余分类/仓库/调拨/能力接口同 v1.26，略）
 
 #### 3.1.4 供应链管理（Supply Chain）
 
@@ -2418,6 +2410,7 @@ TM_Project/
     │       ├── ui-permissions.js / ui-role-engine.js  # RBAC Schema + 渲染引擎
     │       ├── tm-onboarding.js / tm-onboarding-registry.js / tm-onboarding-sync.js
     │       ├── tm-workbench-profile.js / tm-industry-ui.js / tm-first-login-wizard.js
+    │       ├── tm-product-domain.js / tm-master-data-cache.js / tm-industry-product-registry.js
     │       ├── tm-sku-catalog-cache.js / rapid-order.js
     │       ├── tm-product-registry-form.js / tm-product-thumb.js
     │       ├── tm-serial-capture.js / tm-order-dict.js
@@ -2430,7 +2423,7 @@ TM_Project/
     │       ├── main-app.js
     │       ├── ui-main.js           # switchTab、loadDashboard、iframe 嵌入、运维 Tabbar
     │       ├── ui-ops.js            # 运维门户 TM_OPS.loadModule
-    │       ├── ui-product-center.js / ui-product-center-enhance.js
+    │       ├── ui-product-center.js / ui-product-center-enhance.js / tm-product-variant-modal.js
     │       ├── ui-crm.js / ui-supplier.js
     │       └── env-config.js
     ├── modules/
@@ -2498,6 +2491,7 @@ TM_Project/
 
 | 版本    | 日期         | 更新内容                                                                                                                                                                                |
 | ----- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| v1.27 | 2026-07-04 | **产品中心/极速开单前端重构**：§3.1.3 脚本分层（**`tm-product-domain`**、**`tm-master-data-cache`**、**`tm-industry-product-registry`**）；详情 **SPU 单次请求 + 并行副加载**；移除详情 **`/skus/options` 全量扫描**；列表 **45s 短缓存**；极速开单 **await 目录预载**、批次 **Promise.all**；规格弹窗 **draft 复用**、取消勾选自动弹窗；新增 **`GET /media/spu/{id}/skus`**；脚本版本 **`20260704refactor1`** |
 | v1.26 | 2026-07-01 | **SPU/SKU + 行业垂直 + 批发工作台对齐**：§1 **`industry_vertical`**、**`tenant_ops_profile`**、§1.3.10 SPU/SKU/媒体/退货/履约扩展表；**`warehouse_stock.sku_id+stock_type`**、订单/明细履约与欠货列；字典 **D018–D021**；§2.10 行业向导/极速开单/退货；§3.1 新增 **`rapid-order.js`**、**`tm-workbench-profile.js`**、**`tm-first-login-wizard.js`**、**`ui-returns.js`** 等；§3.2.1 **`/onboarding/status|complete`**；§3.2.4 SPU/库存/退货 API；§4 ER、§8 目录树；DDL **50 表** |
 | v1.25 | 2026-06-21 | **代码实现对齐（TradeMind-Web + 反馈/RBAC/工作台）**：§1.6.5 **`merchant_feedback`** / **`merchant_feedback_followups`**；§3.1.0 主壳脚本链、运维/商户双 Tabbar、**`modules/fragments/`**；§3.1.1 **`dashboard-workbench.js`**、**`ui-ai-service.js`**、**`ai-order-extract-parse.js`**、**`order-workbench-modal.js`**、**`TM_syncDashboardOverlays`**；§3.1.5 **`SmartOps/SmartOps.html`** iframe；§3.1.9–§3.1.10 商户反馈 + **`ops-hub.html`** 六路由；§3.2.1/§3.2.8 反馈 API；§5.1/§6.2/§6.6/§7.7；§8 目录树；文档版本脚注修正 |
 | v1.24 | 2026-06-01 | **独立推广员系统**：§1.1.2 **`wechat_mp_openid`**；§2.4.7 推广员网关白名单；§2.8.6–§2.8.7 开号/奖励 150/流水状态；§3.1.8 **`promoter-portal.html`** 与微信公众号 OAuth 流程；§3.2.8 **`POST /ops/promoters`**；§3.2.9 推广员 API；**`PromoterController`**、**`InternalPromoterController`**、网关 **`RewritePath`** |
@@ -2528,6 +2522,6 @@ TM_Project/
 
 ---
 
-**文档版本**：v1.26
+**文档版本**：v1.27
 **最后更新**：2026-07-01
 **维护者**：TradeMind开发团队

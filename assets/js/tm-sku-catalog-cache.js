@@ -8,14 +8,19 @@
     var state = { rows: [], categories: [], categoryNames: {}, loadedAt: 0, warehouseId: null };
 
     function mapRow(r) {
+        var cover = r.cover_url || r.coverUrl || null;
+        if (cover && cover.indexOf('http') !== 0 && cover.indexOf('data:') !== 0) {
+            cover = null;
+        }
+        var price = Number(r.price || 0);
         return {
             skuId: r.sku_id || r.skuId,
             spuId: r.spu_id || r.spuId,
             name: r.spu_name || r.spuName || r.name || '',
             specDisplay: r.spec_display || r.specDisplay || r.attributes_display || '',
-            price: Number(r.price || 0),
+            price: price,
             stock: Number(r.stock_qty != null ? r.stock_qty : (r.stock || 0)),
-            coverUrl: r.cover_url || r.coverUrl || null,
+            coverUrl: cover,
             categoryId: r.category_id != null ? r.category_id : r.categoryId,
             legacyProductId: r.legacy_product_id || r.legacyProductId,
             trackExpiry: !!(r.track_expiry || r.trackExpiry),
@@ -53,21 +58,25 @@
             }
             if (!window.wrappedFetch) return [];
             var qs = warehouseId != null ? ('?warehouseId=' + encodeURIComponent(warehouseId)) : '';
-            var resp = await window.wrappedFetch('/api/v1/rd/products/skus/catalog' + qs, { method: 'GET' });
-            var data = await window.handleApiResponse(resp);
+            var catalogPromise = window.wrappedFetch('/api/v1/rd/products/skus/catalog' + qs, { method: 'GET' })
+                .then(function (resp) { return window.handleApiResponse(resp); });
+            var catPromise = window.TM_MasterDataCache
+                ? window.TM_MasterDataCache.getCategories(!!force)
+                : window.wrappedFetch('/api/v1/rd/products/categories', { method: 'GET' })
+                    .then(function (r) { return window.handleApiResponse(r); })
+                    .then(function (d) { return d && d.data ? d.data : []; });
+
+            var results = await Promise.all([catalogPromise, catPromise]);
+            var data = results[0];
             var raw = data && data.data ? data.data : (Array.isArray(data) ? data : []);
             state.rows = raw.map(mapRow);
-            try {
-                var catResp = await window.wrappedFetch('/api/v1/rd/products/categories', { method: 'GET' });
-                var catData = await window.handleApiResponse(catResp);
-                var catList = catData && catData.data ? catData.data : [];
-                state.categoryNames = {};
-                catList.forEach(function (c) {
-                    var id = c.categoryId != null ? c.categoryId : c.category_id;
-                    var name = c.categoryName || c.name || c.category_name;
-                    if (id != null && name) state.categoryNames[id] = name;
-                });
-            } catch (e) { state.categoryNames = {}; }
+            var catList = results[1] || [];
+            state.categoryNames = {};
+            catList.forEach(function (c) {
+                var id = c.categoryId != null ? c.categoryId : c.category_id;
+                var name = c.categoryName || c.name || c.category_name;
+                if (id != null && name) state.categoryNames[id] = name;
+            });
             state.categories = buildCategories(state.rows);
             state.loadedAt = Date.now();
             state.warehouseId = warehouseId != null ? warehouseId : null;
@@ -80,6 +89,46 @@
         filterByCategory: function (categoryId) {
             if (categoryId == null || categoryId === 0 || categoryId === '0') return state.rows;
             return state.rows.filter(function (r) { return String(r.categoryId) === String(categoryId); });
+        },
+
+        groupBySpu: function (categoryId) {
+            var rows = window.TM_SkuCatalogCache.filterByCategory(categoryId);
+            var map = {};
+            rows.forEach(function (r) {
+                var sid = r.spuId != null ? String(r.spuId) : ('legacy-' + (r.legacyProductId || r.skuId));
+                if (!map[sid]) {
+                    map[sid] = {
+                        spuId: r.spuId,
+                        key: sid,
+                        name: r.name,
+                        coverUrl: r.coverUrl || null,
+                        categoryId: r.categoryId,
+                        skus: [],
+                        minPrice: 0,
+                        totalStock: 0,
+                        hasVariants: false
+                    };
+                }
+                var g = map[sid];
+                g.skus.push(r);
+                if (r.coverUrl && !g.coverUrl) g.coverUrl = r.coverUrl;
+                var p = Number(r.price) || 0;
+                if (p > 0) {
+                    g.minPrice = g.minPrice > 0 ? Math.min(g.minPrice, p) : p;
+                }
+                g.totalStock += r.stock || 0;
+                if (r.specDisplay) g.hasVariants = true;
+            });
+            return Object.keys(map).map(function (k) {
+                var g = map[k];
+                g.hasVariants = g.skus.length > 1 || g.hasVariants;
+                return g;
+            });
+        },
+
+        findSkuById: function (skuId) {
+            var id = Number(skuId);
+            return state.rows.find(function (r) { return Number(r.skuId) === id; }) || null;
         },
 
         warmFromSession: function () {
