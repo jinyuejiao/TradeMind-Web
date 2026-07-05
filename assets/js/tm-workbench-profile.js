@@ -33,6 +33,29 @@
         }
     }
 
+    async function refreshSubscriptionTokenIfNeeded() {
+        if (!window.wrappedFetch) return null;
+        try {
+            var meResp = await window.wrappedFetch('/api/v1/tenant/subscription/me', { method: 'GET' });
+            var meJson = await meResp.json().catch(function () { return {}; });
+            if (meJson.newToken) {
+                localStorage.setItem('token', meJson.newToken);
+            }
+            if (meJson.accessMode && window.TM_WorkbenchProfile) {
+                window.TM_WorkbenchProfile.accessMode = meJson.accessMode;
+            }
+            window._tmMemberMe = meJson;
+            return meJson;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function isWriteBlockedBySubscription(accessMode) {
+        var mode = (accessMode || '').toUpperCase();
+        return mode === 'READ_ONLY' || mode === 'BILLING_ONLY';
+    }
+
     function roleAllowsQuickOrder(role) {
         var r = (role || 'ADMIN').toUpperCase();
         return r === 'ADMIN' || r === 'SALES';
@@ -42,6 +65,8 @@
         var r = (role || '').toUpperCase();
         return r === 'ADMIN' || r === 'WAREHOUSE' || r === 'SALES';
     }
+
+    window.TM_refreshSubscriptionToken = refreshSubscriptionTokenIfNeeded;
 
     window.TM_WorkbenchProfile = {
         merchantType: 'WHOLESALE',
@@ -56,7 +81,16 @@
             this.merchantType = jwt.merchantType || 'WHOLESALE';
             this.industryVertical = jwt.industryVertical || 'PENDING';
             this.roleType = jwt.roleType || 'ADMIN';
+            this.accessMode = jwt.accessMode || 'FULL';
             this.quickOrderColumns = COLUMN_PRESETS[this.industryVertical] || COLUMN_PRESETS.GENERAL;
+
+            var meJson = await refreshSubscriptionTokenIfNeeded();
+            if (meJson && meJson.accessMode) {
+                this.accessMode = meJson.accessMode;
+            } else {
+                jwt = parseJwtPayload();
+                if (jwt.accessMode) this.accessMode = jwt.accessMode;
+            }
 
             if (window.wrappedFetch) {
                 try {
@@ -107,6 +141,14 @@
 
         showShortagePanel: function () {
             return roleAllowsShortageDispatch(this.roleType);
+        },
+
+        canCreateOrders: function () {
+            return !isWriteBlockedBySubscription(this.accessMode);
+        },
+
+        canMutate: function () {
+            return !isWriteBlockedBySubscription(this.accessMode);
         },
 
         defaultFulfillmentWarehouseId: function () {

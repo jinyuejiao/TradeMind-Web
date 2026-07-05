@@ -277,6 +277,12 @@
                 if (resp.ok && body && body.success !== false && body.data) {
                     row.coverUrl = body.data.url || row.coverPreview;
                     row.imageFile = null;
+                    if (typeof PM.syncSkuCoversFromVariantDraft === 'function') {
+                        PM.syncSkuCoversFromVariantDraft();
+                    }
+                    if (typeof PM.renderMediaGrid === 'function') {
+                        PM.renderMediaGrid();
+                    }
                     if (window.TM_UI && window.TM_UI.showNotification) {
                         window.TM_UI.showNotification('SKU 图片已上传', 'success');
                     }
@@ -745,6 +751,12 @@
         PM.syncVariantStockToMainForm();
         PM._variantMatrixConfirmed = true;
         PM.updateVariantEntrySummary();
+        if (typeof PM.syncSkuCoversFromVariantDraft === 'function') {
+            PM.syncSkuCoversFromVariantDraft();
+        }
+        if (typeof PM.renderMediaGrid === 'function') {
+            PM.renderMediaGrid();
+        }
         PM.closeVariantMatrixModal();
         if (window.TM_UI && window.TM_UI.showNotification) {
             window.TM_UI.showNotification('规格属性已确认，库存已同步', 'success');
@@ -788,7 +800,16 @@
         return {
             templateId: templateId || null,
             selectedValues: filtered,
-            skuCombos: skuCombos
+            skuCombos: skuCombos,
+            customAttributePolicies: (PM._customAttrRows || []).filter(function (row) {
+                return row.name && String(row.name).trim();
+            }).map(function (row) {
+                return {
+                    name: String(row.name).trim(),
+                    values: (row.values || []).slice(),
+                    asCommon: row.asCommon !== false
+                };
+            })
         };
     };
 

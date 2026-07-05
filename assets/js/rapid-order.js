@@ -954,6 +954,12 @@
     };
 
     async function submitOrder() {
+        var profile = window.TM_WorkbenchProfile || {};
+        if (typeof profile.canCreateOrders === 'function' && !profile.canCreateOrders()) {
+            notify('当前订阅已过期或处于只读模式，无法开单，请续费后重新登录', 'error');
+            if (typeof window.openMemberModal === 'function') window.openMemberModal();
+            return;
+        }
         var custId = parseInt(document.getElementById('rop-customer').value, 10);
         if (!custId) { notify('请选择客户', 'error'); return; }
         var lines = cartLines();
@@ -968,7 +974,11 @@
         var items = [];
         for (var i = 0; i < lines.length; i++) {
             var x = lines[i];
-            var pid = x.row.legacyProductId || x.row.skuId;
+            var pid = x.row.legacyProductId;
+            if (!pid) {
+                notify('商品「' + x.row.name + '」缺少产品档案，请重新选择规格', 'error');
+                return;
+            }
             var item = {
                 productId: pid,
                 skuId: x.row.skuId,
@@ -1048,7 +1058,13 @@
                 await window.TM_PrintTriggers.offerPrintAfterCreate(orderId);
             }
         } catch (e) {
-            notify(e.message || '提交失败', 'error');
+            var msg = e.message || '提交失败';
+            if (/订阅状态不允许|只读|READ_ONLY|BILLING_ONLY/i.test(msg)) {
+                notify('当前订阅已过期或处于只读模式，无法开单，请续费后重新登录', 'error');
+                if (typeof window.openMemberModal === 'function') window.openMemberModal();
+                return;
+            }
+            notify(msg, 'error');
         }
     }
 

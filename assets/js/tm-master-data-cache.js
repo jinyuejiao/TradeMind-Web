@@ -106,15 +106,18 @@
             }
         },
 
-        getTemplateDetail: async function (templateId, force) {
+        getTemplateDetail: async function (templateId, opts) {
+            opts = opts || {};
             if (!templateId || !window.wrappedFetch) return null;
-            var key = 'tpl:' + templateId;
+            var forNew = !!opts.forNewProduct;
+            var key = 'tpl:' + templateId + (forNew ? ':new' : ':all');
             var cached = state.spu[key];
-            if (!force && cached && isFresh(cached.loadedAt, TTL.templates)) {
+            if (!opts.force && cached && isFresh(cached.loadedAt, TTL.templates)) {
                 return cached.data;
             }
             try {
-                var resp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + templateId, { method: 'GET' });
+                var qs = forNew ? '?forNewProduct=true' : '';
+                var resp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + templateId + qs, { method: 'GET' });
                 var data = await window.handleApiResponse(resp);
                 var detail = data && data.data ? data.data : data;
                 state.spu[key] = { data: detail, loadedAt: Date.now() };

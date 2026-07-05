@@ -4,8 +4,8 @@
 (function (global) {
     'use strict';
 
-    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260704refactor1';
-    var FRAGMENT_VER = '20260704refactor1';
+    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260705fix1';
+    var FRAGMENT_VER = '20260705fix1';
 
     function normalizeAiProduct(raw) {
         if (!raw || typeof raw !== 'object') raw = {};

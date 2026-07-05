@@ -28,12 +28,17 @@
         }
     }
 
+    function isMutatingMethod(method) {
+        var m = (method || 'GET').toUpperCase();
+        return m === 'POST' || m === 'PUT' || m === 'PATCH' || m === 'DELETE';
+    }
+
     // ================ wrappedFetch 函数 ================
     window.wrappedFetch = async function(url, options = {}) {
         tmApiDevLog('[API-Client] ========== 开始发送请求 ==========');
         tmApiDevLog('[API-Client] 原始请求URL:', url);
         tmApiDevLog('[API-Client] 请求选项:', options);
-        const { skipAuth = false, ...requestOptions } = options;
+        const { skipAuth = false, _subscriptionRetried = false, ...requestOptions } = options;
         
         // 核心修复：自动识别并拼接基准路径
         const finalUrl = url.startsWith('http') ? url : (window.TM_API_BASE + url);
@@ -128,6 +133,24 @@
                 throw new Error('未授权');
             }
 
+            if (response.status === 403 && !_subscriptionRetried && isMutatingMethod(requestOptions.method)) {
+                try {
+                    const errClone = response.clone();
+                    const errBody = await errClone.json();
+                    const subMsg = errBody && (errBody.message || errBody.msg) ? String(errBody.message || errBody.msg) : '';
+                    if (subMsg.indexOf('订阅') >= 0 && typeof window.TM_refreshSubscriptionToken === 'function') {
+                        tmApiDevLog('[API-Client] 403 订阅限制，尝试刷新 JWT 后重试');
+                        await window.TM_refreshSubscriptionToken();
+                        var profile = window.TM_WorkbenchProfile;
+                        if (profile && typeof profile.canMutate === 'function' && profile.canMutate()) {
+                            return window.wrappedFetch(url, { skipAuth: skipAuth, _subscriptionRetried: true, ...requestOptions });
+                        }
+                    }
+                } catch (retryErr) {
+                    tmApiDevLog('[API-Client] 订阅令牌刷新重试失败', retryErr);
+                }
+            }
+
             if (!response.ok) {
                 console.warn('[API-Client] ❌ HTTP 非成功状态:', response.status, response.statusText);
             } else {
@@ -180,7 +203,15 @@
         }
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            var errMsg = 'HTTP error! status: ' + response.status;
+            try {
+                var errClone = response.clone();
+                var errBody = await errClone.json();
+                if (errBody && (errBody.message || errBody.msg)) {
+                    errMsg = errBody.message || errBody.msg;
+                }
+            } catch (eParse) { /* ignore */ }
+            throw new Error(errMsg);
         }
 
         const data = await response.json();

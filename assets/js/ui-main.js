@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260704refactor1';
+    var url = '/modules/product-center/product-overlays.html?v=20260705fix1';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -660,7 +660,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260704refactor1', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260705fix1', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
