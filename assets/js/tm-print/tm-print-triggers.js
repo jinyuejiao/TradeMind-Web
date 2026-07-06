@@ -32,9 +32,36 @@
         return global.confirm(message || '是否立即打印？');
     }
 
+    function ensurePrintReady(showError) {
+        if (global.TM_Print && global.TM_PrintApi) return true;
+        if (showError !== false) notify('打印模块未加载，请刷新页面（Ctrl+F5）后重试', 'error');
+        return false;
+    }
+
+    global.TM_openPeripheralSettings = function () {
+        if (global.TM_Peripheral && typeof global.TM_Peripheral.open === 'function') {
+            return global.TM_Peripheral.open();
+        }
+        notify('外设设置模块未加载，请刷新页面后重试', 'error');
+        return Promise.resolve();
+    };
+
     global.TM_PrintTriggers = {
         pickSalesDocType: pickSalesDocType,
         pickPurchaseDocType: pickPurchaseDocType,
+
+        syncOrderDetailPrintBtn: function (orderId) {
+            var printBtn = document.getElementById('detail-print-btn');
+            if (!printBtn) return;
+            if (orderId) {
+                printBtn.classList.remove('hidden');
+                if (typeof global.applyRoleUI === 'function') {
+                    global.applyRoleUI({ skipTabSync: true });
+                }
+            } else {
+                printBtn.classList.add('hidden');
+            }
+        },
 
         printOrderDetail: function (docType) {
             var orderId = global.currentDetailOrderId;
@@ -42,10 +69,7 @@
                 notify('请先打开订单', 'error');
                 return Promise.resolve();
             }
-            if (!global.TM_Print) {
-                notify('打印模块未加载', 'error');
-                return Promise.resolve();
-            }
+            if (!ensurePrintReady()) return Promise.resolve();
             return global.TM_Print.print({
                 docType: docType || pickSalesDocType(),
                 docId: String(orderId)
@@ -58,6 +82,7 @@
                 notify('请先打开订单', 'error');
                 return;
             }
+            if (!ensurePrintReady()) return;
             var existing = document.getElementById('tm-print-type-menu');
             if (existing) { existing.remove(); return; }
             var menu = document.createElement('div');
@@ -80,9 +105,16 @@
                 menu.appendChild(btn);
             });
             document.body.appendChild(menu);
-            var rect = (anchorEl || document.getElementById('detail-print-btn')).getBoundingClientRect();
-            menu.style.left = Math.max(8, rect.left) + 'px';
-            menu.style.top = (rect.top - menu.offsetHeight - 6) + 'px';
+            var anchor = anchorEl || document.getElementById('detail-print-btn');
+            if (anchor) {
+                var rect = anchor.getBoundingClientRect();
+                menu.style.left = Math.max(8, rect.left) + 'px';
+                menu.style.top = (rect.top - menu.offsetHeight - 6) + 'px';
+            } else {
+                menu.style.left = '50%';
+                menu.style.top = '40%';
+                menu.style.transform = 'translateX(-50%)';
+            }
             setTimeout(function () {
                 document.addEventListener('click', function handler(e) {
                     if (!menu.contains(e.target)) {
@@ -94,7 +126,7 @@
         },
 
         printLastRapidOrder: function (orderId, docType) {
-            if (!orderId || !global.TM_Print) return Promise.resolve();
+            if (!orderId || !ensurePrintReady(false)) return Promise.resolve();
             return global.TM_Print.print({
                 docType: docType || pickSalesDocType(),
                 docId: String(orderId)
@@ -102,8 +134,8 @@
         },
 
         printPurchase: function (purchaseId, docType) {
-            if (!purchaseId || !global.TM_Print) {
-                notify('请先保存进货单', 'error');
+            if (!purchaseId || !ensurePrintReady()) {
+                if (!purchaseId) notify('请先保存进货单', 'error');
                 return Promise.resolve();
             }
             return global.TM_Print.print({
@@ -119,6 +151,7 @@
                 notify('请先保存进货单', 'error');
                 return;
             }
+            if (!ensurePrintReady()) return;
             var existing = document.getElementById('tm-print-type-menu');
             if (existing) { existing.remove(); return; }
             var menu = document.createElement('div');
@@ -148,15 +181,47 @@
         },
 
         offerPrintAfterCreate: async function (orderId, docType, message) {
-            if (!orderId || !global.TM_Print) return;
+            if (!orderId || !ensurePrintReady(false)) return;
             var ok = await confirmPrint(message || '订单已创建，是否立即打印？');
             if (ok) await global.TM_PrintTriggers.printLastRapidOrder(orderId, docType);
         },
 
+        offerPrintAfterShip: async function (orderId, message) {
+            if (!orderId || !ensurePrintReady(false)) return;
+            var ok = await confirmPrint(message || '发货成功，是否打印送货单？');
+            if (ok) {
+                return global.TM_Print.print({ docType: 'DELIVERY_NOTE', docId: String(orderId) });
+            }
+        },
+
+        offerPrintAfterPayment: async function (orderId, message) {
+            if (!orderId || !ensurePrintReady(false)) return;
+            var ok = await confirmPrint(message || '收款成功，是否打印结账单？');
+            if (ok) {
+                return global.TM_Print.print({
+                    docType: isMobile() ? 'SALES_RECEIPT' : 'PAYMENT_VOUCHER',
+                    docId: String(orderId)
+                });
+            }
+        },
+
         offerPrintPurchaseAfterSave: async function (purchaseId, message) {
-            if (!purchaseId || !global.TM_Print) return;
+            if (!purchaseId || !ensurePrintReady(false)) return;
             var ok = await confirmPrint(message || '进货单已保存，是否立即打印？');
             if (ok) await global.TM_PrintTriggers.printPurchase(purchaseId);
+        },
+
+        syncPurchasePrintBtn: function (purchaseId) {
+            var btn = document.getElementById('purchase-print-btn');
+            if (!btn) return;
+            if (purchaseId) {
+                btn.classList.remove('hidden');
+                if (typeof global.applyRoleUI === 'function') {
+                    global.applyRoleUI({ skipTabSync: true });
+                }
+            } else {
+                btn.classList.add('hidden');
+            }
         }
     };
 })(window);

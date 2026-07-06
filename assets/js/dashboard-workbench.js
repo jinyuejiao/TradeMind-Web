@@ -664,11 +664,13 @@
 
     function TM_syncAuditTableHeaders() {
         var caps = TM_getAuditCaps();
+        var iv = (window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.industryVertical) || '';
+        var showExpiry = !!caps.allowExpiry && iv !== 'CLOTHING' && iv !== 'DIGITAL_3C';
         document.querySelectorAll('.tm-audit-col-variant').forEach(function (el) {
             el.classList.toggle('hidden', !caps.allowVariants);
         });
         document.querySelectorAll('.tm-audit-col-batch').forEach(function (el) {
-            el.classList.toggle('hidden', !caps.allowExpiry);
+            el.classList.toggle('hidden', !showExpiry);
         });
         document.querySelectorAll('.tm-audit-col-serial').forEach(function (el) {
             el.classList.toggle('hidden', !caps.allowSerial);
@@ -679,6 +681,7 @@
         var list = window.skuList || window.productList || [];
         return list.map(function (sku) {
             var sid = sku.sku_id || sku.skuId || (window.getProductId && window.getProductId(sku));
+            var legacyId = sku.legacy_product_id || sku.legacyProductId || sku.productId || sku.product_id;
             var spuName = sku.spu_name || sku.spuName || (window.getProductName && window.getProductName(sku)) || '';
             var code = sku.sku_code || sku.skuCode || (window.getProductSku && window.getProductSku(sku)) || '';
             var attrs = sku.attributes_display || '';
@@ -689,7 +692,9 @@
             var label = spuName + (attrs ? ' — ' + attrs : '') + (code ? ' (' + code + ')' : '');
             var price = sku.price != null ? sku.price : '';
             var unit = sku.sales_unit || sku.salesUnit || sku.base_unit || sku.baseUnit || '件';
-            return '<option value="' + sid + '" data-name="' + escapeHtml(spuName) + '" data-sku="' + escapeHtml(code) + '" data-unit="' + escapeHtml(unit) + '"' +
+            return '<option value="' + sid + '" data-sku-id="' + sid + '"' +
+                (legacyId ? (' data-legacy-product-id="' + legacyId + '"') : '') +
+                ' data-name="' + escapeHtml(spuName) + '" data-sku="' + escapeHtml(code) + '" data-unit="' + escapeHtml(unit) + '"' +
                 (price !== '' ? (' data-price="' + escapeHtml(String(price)) + '"') : '') +
                 (attrs ? (' data-attrs="' + escapeHtml(attrs) + '"') : '') + '>' + escapeHtml(label) + '</option>';
         }).join('');
@@ -908,6 +913,54 @@
                 return;
             }
             return origConfirm();
+        };
+
+        window.collectAuditOrderItemsForSubmit = function (deliveryDate) {
+            var items = [];
+            var errors = [];
+            var rows = document.querySelectorAll('#order-items-body tr');
+            rows.forEach(function (row, rowIndex) {
+                var productSelect = row.querySelector('.product-select');
+                var qtyInput = row.querySelector('.audit-qty-input') || row.querySelector('.tm-audit-td--qty input[type="number"]');
+                var priceInput = row.querySelector('.price-input');
+                var rawPid = productSelect ? String(productSelect.value || '').trim() : '';
+                if (!rawPid || !/^\d+$/.test(rawPid)) {
+                    errors.push('第 ' + (rowIndex + 1) + ' 行：请选择有效产品');
+                    return;
+                }
+                var opt = productSelect.options[productSelect.selectedIndex];
+                var skuId = parseInt(rawPid, 10);
+                var legacyPid = opt && opt.getAttribute('data-legacy-product-id')
+                    ? parseInt(opt.getAttribute('data-legacy-product-id'), 10) : null;
+                var qty = parseInt(qtyInput && qtyInput.value ? qtyInput.value : '0', 10);
+                var unitPrice = parseFloat(priceInput && priceInput.value ? priceInput.value : '0');
+                if ((!unitPrice || unitPrice <= 0) || isNaN(unitPrice)) {
+                    unitPrice = typeof window.getProductPriceById === 'function'
+                        ? window.getProductPriceById(rawPid) : 0;
+                }
+                if (!qty || qty <= 0) {
+                    errors.push('第 ' + (rowIndex + 1) + ' 行：数量须大于 0');
+                    return;
+                }
+                if (!unitPrice || unitPrice <= 0) {
+                    errors.push('第 ' + (rowIndex + 1) + ' 行：请填写单价');
+                    return;
+                }
+                var lineTotal = Math.round(qty * unitPrice * 100) / 100;
+                var line = {
+                    skuId: skuId,
+                    quantity: qty,
+                    unitPrice: unitPrice,
+                    totalAmount: lineTotal,
+                    itemStatus: 'PENDING',
+                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null
+                };
+                if (legacyPid && !isNaN(legacyPid)) {
+                    line.productId = legacyPid;
+                }
+                items.push(line);
+            });
+            return { items: items, errors: errors };
         };
 
         document.addEventListener('visibilitychange', function () {

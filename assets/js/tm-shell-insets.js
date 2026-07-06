@@ -11,7 +11,7 @@
     function sync() {
         var root = document.documentElement;
         var tabbar = document.getElementById('tm-app-tabbar');
-        var header = document.getElementById('tm-app-header');
+        var header = document.getElementById('tm-app-header') || document.getElementById('tm-ops-app-header');
         if (!isMobile()) {
             root.style.setProperty('--tm-tabbar-h', '0px');
             root.style.setProperty('--tm-shell-bottom-reserve', '0px');

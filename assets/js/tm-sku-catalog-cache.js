@@ -145,6 +145,27 @@
             } catch (e) {
                 return false;
             }
+        },
+
+        invalidate: function () {
+            state.rows = [];
+            state.categories = [];
+            state.categoryNames = {};
+            state.loadedAt = 0;
+            state.warehouseId = null;
+            try {
+                sessionStorage.removeItem('tm_sku_catalog_cache');
+            } catch (e) { /* ignore */ }
+        }
+    };
+
+    window.TM_notifyProductCatalogChanged = function () {
+        window._tmCatalogDirty = true;
+        if (window.TM_SkuCatalogCache && typeof window.TM_SkuCatalogCache.invalidate === 'function') {
+            window.TM_SkuCatalogCache.invalidate();
+        }
+        if (window.TM_MasterDataCache && typeof window.TM_MasterDataCache.invalidateAll === 'function') {
+            window.TM_MasterDataCache.invalidateAll();
         }
     };
 })();

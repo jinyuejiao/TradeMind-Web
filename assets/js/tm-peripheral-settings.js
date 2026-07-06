@@ -253,13 +253,13 @@
     global.TM_Peripheral = {
 
         open: async function () {
-
+            if (!global.TM_PrintApi) {
+                notify('打印服务未就绪，请刷新页面后重试', 'error');
+                return;
+            }
             ensureModal();
-
             openModal(document.getElementById('peripheral-settings-modal'));
-
             await renderList();
-
         },
 
         close: function () {

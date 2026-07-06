@@ -45,6 +45,9 @@
                 window.TM_WorkbenchProfile.accessMode = meJson.accessMode;
             }
             window._tmMemberMe = meJson;
+            if (window.TM_SubscriptionNotice && typeof window.TM_SubscriptionNotice.refresh === 'function') {
+                window.TM_SubscriptionNotice.refresh({ showModal: false });
+            }
             return meJson;
         } catch (e) {
             return null;
@@ -126,6 +129,9 @@
             if (window.TM_IndustryUI) {
                 window.TM_IndustryUI.apply(document.body, this);
             }
+            if (window.TM_SubscriptionNotice && typeof window.TM_SubscriptionNotice.refresh === 'function') {
+                window.TM_SubscriptionNotice.refresh({ showModal: true });
+            }
             if (window.TM_FirstLoginWizard && typeof window.TM_FirstLoginWizard.checkAndShow === 'function') {
                 window.TM_FirstLoginWizard.checkAndShow();
             }
@@ -160,4 +166,20 @@
     window.TM_loadWorkbenchProfile = function () {
         return window.TM_WorkbenchProfile.load();
     };
+
+    function autoLoadIfAuthenticated() {
+        try {
+            var token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            var path = (window.location.pathname || '').toLowerCase();
+            if (path.indexOf('login') >= 0 || path.indexOf('register') >= 0) return;
+            window.TM_WorkbenchProfile.load();
+        } catch (e) { /* ignore */ }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoLoadIfAuthenticated);
+    } else {
+        autoLoadIfAuthenticated();
+    }
 })();

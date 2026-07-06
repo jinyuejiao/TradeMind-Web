@@ -1,14 +1,24 @@
 <div class="space-y-6 fade-in">
-    <!-- 顶栏：左行业筛选 · 右排序 + 汇总统计（与 UI 工程稿同一行） -->
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <div class="flex flex-wrap gap-2 flex-1 min-w-0" id="ops-industry-filter">
-            <button type="button" data-industry="ALL" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md">全行业</button>
-            <button type="button" data-industry="WHOLESALE" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">批发</button>
-            <button type="button" data-industry="FOREIGN" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">外贸</button>
-            <button type="button" data-industry="ECOM" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">电商</button>
-            <button type="button" data-industry="FACTORY" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">工贸一体</button>
+        <div class="w-full space-y-2">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">商户业态</p>
+            <div class="flex flex-wrap gap-2" id="ops-industry-filter">
+                <button type="button" data-industry="ALL" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md">全行业</button>
+                <button type="button" data-industry="WHOLESALE" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">批发</button>
+                <button type="button" data-industry="FOREIGN" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">外贸</button>
+                <button type="button" data-industry="ECOM" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">电商</button>
+                <button type="button" data-industry="FACTORY" class="ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300">工贸一体</button>
+            </div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-2">行业垂直</p>
+            <div class="flex flex-wrap gap-2" id="ops-vertical-filter">
+                <button type="button" data-vertical="ALL" class="ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border-2 border-emerald-600 bg-emerald-600 text-white">全部行业</button>
+                <button type="button" data-vertical="GENERAL" class="ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 bg-white/90 text-slate-600">通用</button>
+                <button type="button" data-vertical="CLOTHING" class="ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 bg-white/90 text-slate-600">服装</button>
+                <button type="button" data-vertical="FOOD" class="ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 bg-white/90 text-slate-600">食品</button>
+                <button type="button" data-vertical="DIGITAL_3C" class="ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 bg-white/90 text-slate-600">3C数码</button>
+            </div>
         </div>
-        <div class="tm-ops-tenant-toolbar flex flex-wrap items-center gap-3 sm:gap-4 shrink-0 justify-end">
+        <div class="tm-ops-tenant-toolbar flex flex-wrap items-center gap-3 sm:gap-4 shrink-0 justify-end w-full sm:w-auto">
             <div class="flex items-center gap-2">
                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">租户排序</span>
                 <select id="ops-tree-sort" class="tm-ops-tree-sort rounded-2xl border border-slate-200 bg-white px-3 sm:px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:border-ops-500 focus:ring-2 focus:ring-ops-200 min-w-[168px] sm:min-w-[220px]">
@@ -18,7 +28,6 @@
                     <option value="profitMonth">利润（月）</option>
                 </select>
             </div>
-            <div class="hidden sm:block w-px h-10 bg-indigo-200/80 shrink-0" aria-hidden="true"></div>
             <div class="tm-ops-tenant-stats flex items-center gap-4 sm:gap-5 text-center shrink-0">
                 <div class="tm-ops-stat-pill min-w-[3rem]">
                     <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">租户</span>
@@ -29,21 +38,15 @@
                     <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">用户</span>
                     <p id="ops-stat-users" class="tm-ops-stat-value">—</p>
                 </div>
-                <div class="w-px h-9 bg-indigo-200/80 shrink-0" aria-hidden="true"></div>
-                <div class="tm-ops-stat-pill min-w-[4.5rem]">
-                    <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">角色</span>
-                    <p id="ops-stat-roles" class="tm-ops-stat-value text-base sm:text-xl">—</p>
-                </div>
             </div>
         </div>
     </div>
 
     <div class="tm-ops-glass rounded-tm-3xl p-4 md:p-5 border border-indigo-100/80" id="ops-tenant-board-hint">
-        <p class="text-[10px] text-slate-500 leading-relaxed"><strong class="text-ops-700">租户看板</strong>：树状结构 租户 → 用户 → 用户 AI 使用（提取 / 对话 Tokens）。数据为聚合展示，接口 <span class="font-mono text-slate-400">GET /api/v1/ops/tenants/tree</span>。</p>
-        <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/tenants/tree?sort=…&amp;industry=… · POST /api/v1/ops/tenant/extend-subscription</p>
+        <p class="text-[10px] text-slate-500 leading-relaxed"><strong class="text-ops-700">租户看板</strong>：树状 租户 → 用户 → AI 使用。接口 <span class="font-mono text-slate-400">GET /api/v1/ops/tenants/tree?industry=&amp;vertical=</span></p>
     </div>
 
-    <div id="ops-tree-root" class="space-y-4 list-scrollbar-ops overflow-y-auto pr-1"></div>
+    <div id="ops-tree-root" class="space-y-4 list-scrollbar-ops pr-1"></div>
 </div>
 
 <div id="ops-modal-tenant" class="tm-ops-sheet-modal hidden fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4 tm-ops-modal-backdrop">
@@ -53,15 +56,15 @@
         <p id="ops-modal-tenant-sub" class="text-xs text-slate-500 mt-1 mb-5"></p>
         <input type="hidden" id="ops-modal-tenant-id" value="">
         <div class="space-y-4">
-            <div class="">
+            <div>
                 <label class="text-[10px] font-bold text-slate-500 uppercase">赠送试用（月）</label>
                 <input type="number" id="ops-input-trial-months" min="0" max="36" value="1" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
             </div>
-            <div class="">
+            <div>
                 <label class="text-[10px] font-bold text-slate-500 uppercase">活动类型 / 备注</label>
-                <input type="text" id="ops-input-trial-note" placeholder="如：春节活动、KA 拓新" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                <input type="text" id="ops-input-trial-note" placeholder="如：春节活动" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
             </div>
-            <div class="">
+            <div>
                 <label class="text-[10px] font-bold text-slate-500 uppercase">或直接调整到期日</label>
                 <input type="date" id="ops-input-expiry-date" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
             </div>

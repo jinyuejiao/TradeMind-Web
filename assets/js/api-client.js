@@ -145,6 +145,9 @@
                         if (profile && typeof profile.canMutate === 'function' && profile.canMutate()) {
                             return window.wrappedFetch(url, { skipAuth: skipAuth, _subscriptionRetried: true, ...requestOptions });
                         }
+                        if (window.TM_SubscriptionNotice && typeof window.TM_SubscriptionNotice.refresh === 'function') {
+                            window.TM_SubscriptionNotice.refresh({ showModal: false });
+                        }
                     }
                 } catch (retryErr) {
                     tmApiDevLog('[API-Client] 订阅令牌刷新重试失败', retryErr);
@@ -211,6 +214,19 @@
                     errMsg = errBody.message || errBody.msg;
                 }
             } catch (eParse) { /* ignore */ }
+            if (response.status === 403 && window.TM_SubscriptionNotice
+                    && typeof window.TM_SubscriptionNotice.isSubscriptionErrorMessage === 'function'
+                    && window.TM_SubscriptionNotice.isSubscriptionErrorMessage(errMsg)) {
+                if (typeof window.TM_SubscriptionNotice.refresh === 'function') {
+                    window.TM_SubscriptionNotice.refresh({ showModal: false });
+                }
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    var friendly = window.TM_SubscriptionNotice.getBlockedMessage
+                        ? window.TM_SubscriptionNotice.getBlockedMessage('default')
+                        : '当前订阅状态暂不支持此操作，续费后即可恢复。';
+                    window.TM_UI.showNotification(friendly, 'warning');
+                }
+            }
             throw new Error(errMsg);
         }
 

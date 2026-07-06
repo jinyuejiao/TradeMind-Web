@@ -110,13 +110,17 @@
             opts = opts || {};
             if (!templateId || !window.wrappedFetch) return null;
             var forNew = !!opts.forNewProduct;
-            var key = 'tpl:' + templateId + (forNew ? ':new' : ':all');
+            var spuId = opts.spuId != null ? opts.spuId : null;
+            var key = 'tpl:' + templateId + (forNew ? ':new' : ':all') + (spuId != null ? ':spu' + spuId : '');
             var cached = state.spu[key];
             if (!opts.force && cached && isFresh(cached.loadedAt, TTL.templates)) {
                 return cached.data;
             }
             try {
-                var qs = forNew ? '?forNewProduct=true' : '';
+                var qsParts = [];
+                if (forNew) qsParts.push('forNewProduct=true');
+                if (spuId != null) qsParts.push('spuId=' + encodeURIComponent(spuId));
+                var qs = qsParts.length ? ('?' + qsParts.join('&')) : '';
                 var resp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + templateId + qs, { method: 'GET' });
                 var data = await window.handleApiResponse(resp);
                 var detail = data && data.data ? data.data : data;

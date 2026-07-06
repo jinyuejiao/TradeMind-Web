@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
     <link rel="stylesheet" href="../../assets/css/tm-first-login-wizard.css?v=20260630">
     <link rel="stylesheet" href="../../assets/css/rapid-order.css?v=20260705fix1">
-    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260703">
+    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260706print">
 
     <style>
         body {
@@ -173,7 +173,7 @@
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css?v=20260531ordfix">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260706sub">
     <script>
         tailwind.config = {
             theme: {
@@ -282,7 +282,7 @@
                         <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, <span id="dashboard-greeting-name">用户</span>.</h1>
                         <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold"><span id="dashboard-risk-count">0</span>个风险点</span>，<span class="text-brand-600 font-bold"><span id="dashboard-pending-recognition-count">0</span>个待识别单据</span>。</p>
                     </div>
-                    <button type="button" onclick="TM_Peripheral && TM_Peripheral.open()" class="self-start md:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 shrink-0" data-action="print.order" title="打印机与外设设置">
+                    <button type="button" onclick="typeof TM_openPeripheralSettings==='function'&&TM_openPeripheralSettings()" class="self-start md:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 shrink-0" data-action="print.order" title="打印机与外设设置">
                         <i class="ph ph-printer text-base text-teal-600"></i>
                         <span>打印 · 外设</span>
                     </button>
@@ -888,7 +888,7 @@
             <div id="detail-order-return-hint" class="hidden mx-4 mb-1 md:mx-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 shrink-0" role="status"></div>
             <div class="tm-mobile-modal-footer tm-product-edit-footer p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
                 <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">返回工作台</button>
-                <button type="button" id="detail-print-btn" onclick="TM_PrintTriggers && TM_PrintTriggers.showOrderPrintMenu(this)" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px] hidden" data-action="print.order"><i class="ph ph-printer"></i> 打印</button>
+                <button type="button" id="detail-print-btn" onclick="typeof TM_PrintTriggers!=='undefined'&&TM_PrintTriggers.showOrderPrintMenu(this)" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px] hidden" data-action="print.order"><i class="ph ph-printer"></i> 打印</button>
                 <button type="button" id="detail-apply-return-btn" onclick="TM_Returns && TM_Returns.openCreateFromDetail()" class="hidden tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px] text-amber-700 border-amber-200">申请退货</button>
                 <button type="button" id="detail-order-status-save" onclick="saveOrderDetailStatus()" class="tm-btn-primary flex-[1.4] py-3 text-xs font-black min-h-[44px] shadow-lg shadow-brand-500/20 active:scale-[0.98]">保存</button>
             </div>
@@ -1964,6 +1964,9 @@
                 }
                 filterInProgressOrders();
                 showToast('收款记账成功');
+                if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.offerPrintAfterPayment === 'function') {
+                    window.TM_PrintTriggers.offerPrintAfterPayment(currentDetailOrderId);
+                }
                 if (typeof window.TM_emitOrderDataChanged === 'function' && currentDetailOrder) {
                     var emitCust = currentDetailOrder.custId != null ? currentDetailOrder.custId : currentDetailOrder.cust_id;
                     window.TM_emitOrderDataChanged({
@@ -2014,6 +2017,9 @@
                 }
                 filterInProgressOrders();
                 showToast('发货成功');
+                if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.offerPrintAfterShip === 'function') {
+                    window.TM_PrintTriggers.offerPrintAfterShip(currentDetailOrderId);
+                }
                 if (typeof window.TM_emitOrderDataChanged === 'function' && currentDetailOrder) {
                     window.TM_emitOrderDataChanged({
                         custId: currentDetailOrder.custId != null ? currentDetailOrder.custId : currentDetailOrder.cust_id,
@@ -4471,7 +4477,9 @@
                 window.TM_Returns.loadDetailReturnsSummary(orderId, order, items);
             }
             var printBtn = document.getElementById('detail-print-btn');
-            if (printBtn) {
+            if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
+                window.TM_PrintTriggers.syncOrderDetailPrintBtn(orderId);
+            } else if (printBtn) {
                 printBtn.classList.remove('hidden');
                 if (typeof window.applyRoleUI === 'function') {
                     window.applyRoleUI({ skipTabSync: true });
@@ -4488,7 +4496,9 @@
             window.currentDetailOrderId = null;
             window.currentDetailOrder = null;
             var printBtn = document.getElementById('detail-print-btn');
-            if (printBtn) printBtn.classList.add('hidden');
+            if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
+                window.TM_PrintTriggers.syncOrderDetailPrintBtn(null);
+            } else if (printBtn) printBtn.classList.add('hidden');
             var detailModal = document.getElementById('order-detail-modal');
             if (detailModal && typeof window.TM_closeUnifiedModal === 'function') {
                 window.TM_closeUnifiedModal(detailModal);
@@ -5593,28 +5603,30 @@
         }
     </script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
-    <script src="../../assets/js/tm-print/tm-print-api.js?v=20260703"></script>
-    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260703"></script>
-    <script src="../../assets/js/tm-scan-router.js?v=20260703"></script>
-    <script src="../../assets/js/tm-scan-camera.js?v=20260703"></script>
-    <script src="../../assets/js/tm-peripheral-settings.js?v=20260703"></script>
-    <script src="../../assets/js/tm-print/tm-print-triggers.js?v=20260703"></script>
+    <script src="../../assets/js/tm-print/tm-print-api.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-scan-router.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-scan-camera.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-peripheral-settings.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-print/tm-print-triggers.js?v=20260706print"></script>
     <script src="../../assets/js/tm-order-dict.js?v=20260626"></script>
     <script src="../../assets/js/ui-sales-orders.js?v=20260626"></script>
     <script src="../../assets/js/ui-returns.js?v=20260628"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
     <script src="../../assets/js/tm-product-thumb.js?v=20260630"></script>
+    <script src="../../assets/js/tm-biz-accounts.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-product-domain.js?v=20260705fix1"></script>
-    <script src="../../assets/js/tm-master-data-cache.js?v=20260705fix1"></script>
+    <script src="../../assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
-    <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260705fix1"></script>
+    <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-ui.js?v=20260630"></script>
-    <script src="../../assets/js/tm-workbench-profile.js?v=20260705fix2"></script>
+    <script src="../../assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-subscription-notice.js?v=20260706sub"></script>
     <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
-    <script src="../../assets/js/rapid-order.js?v=20260705fix2"></script>
+    <script src="../../assets/js/rapid-order.js?v=20260706fix1"></script>
     <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260703"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260706fix1"></script>
 </body>
 </html>
 

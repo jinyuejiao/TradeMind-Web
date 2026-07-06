@@ -118,6 +118,17 @@
 
     PM.comboKeyFromAttrs = comboKey;
 
+    var MAX_VARIANT_COMBOS = 200;
+    var _comboGenTimer = null;
+
+    function debouncedGenerateVariantCombos() {
+        if (_comboGenTimer) clearTimeout(_comboGenTimer);
+        _comboGenTimer = setTimeout(function () {
+            _comboGenTimer = null;
+            PM.generateVariantCombos();
+        }, 280);
+    }
+
     PM.getVariantTemplateAttrsBox = function () {
         var modalBox = document.getElementById('tm-variant-modal-template-attrs');
         if (modalBox && modalBox.querySelector('.tm-matrix-val')) return modalBox;
@@ -150,7 +161,23 @@
     PM.rebuildVariantCombosFromSelection = function () {
         PM.syncCustomAttrsToMatrix();
         PM.syncComboDraftFromDom();
-        var combos = cartesianFromSelection(PM._variantMatrixSelection);
+        var sel = PM._variantMatrixSelection || {};
+        var dimKeys = Object.keys(sel).filter(function (k) { return sel[k] && sel[k].length; });
+        var estimated = 1;
+        for (var di = 0; di < dimKeys.length; di++) {
+            estimated *= sel[dimKeys[di]].length;
+            if (estimated > MAX_VARIANT_COMBOS) break;
+        }
+        if (estimated > MAX_VARIANT_COMBOS) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification(
+                    '规格组合过多（' + estimated + '），请检查是否有重复规格名或未完成的输入',
+                    'warning'
+                );
+            }
+            return;
+        }
+        var combos = cartesianFromSelection(sel);
         var oldMap = {};
         (PM._variantComboDraft || []).forEach(function (row) {
             if (row && row.attrs) {
@@ -527,9 +554,15 @@
             var tplSel = PM.el('detail-variant-template');
             if (tplSel && tplSel.value && window.wrappedFetch) {
                 try {
-                    var tResp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + tplSel.value, { method: 'GET' });
-                    var tData = await window.handleApiResponse(tResp);
-                    var tDetail = tData && tData.data ? tData.data : tData;
+                    var tplId = tplSel.value;
+                    var tDetail;
+                    if (window.TM_MasterDataCache && window.TM_MasterDataCache.getTemplateDetail) {
+                        tDetail = await window.TM_MasterDataCache.getTemplateDetail(tplId, { spuId: spuId });
+                    } else {
+                        var tResp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + tplId + '?spuId=' + encodeURIComponent(spuId), { method: 'GET' });
+                        var tData = await window.handleApiResponse(tResp);
+                        tDetail = tData && tData.data ? tData.data : tData;
+                    }
                     (tDetail.definitions || []).forEach(function (d) {
                         if (d.name) templateAttrNames[d.name] = true;
                     });
@@ -690,19 +723,22 @@
         }
     };
 
-    PM.renderCustomAttrRowsInModal = function () {
-        var list = document.getElementById('tm-variant-modal-custom-list');
+    PM.bindCustomAttrRowEventsInModal = function (list) {
         if (!list) return;
-        if (list.querySelector('.tm-custom-attr-row')) {
-            PM.syncCustomAttrRowsFromDom(list);
-        }
-        PM.renderCustomAttrRows();
-        var srcList = PM.el('detail-custom-attrs-list');
-        if (srcList) list.innerHTML = srcList.innerHTML;
         list.querySelectorAll('.tm-custom-attr-name, .tm-custom-attr-values').forEach(function (inp) {
             inp.addEventListener('input', function () {
                 PM.syncCustomAttrsToMatrix();
-                PM.generateVariantCombos();
+                debouncedGenerateVariantCombos();
+            });
+            inp.addEventListener('compositionend', function () {
+                PM.syncCustomAttrsToMatrix();
+                debouncedGenerateVariantCombos();
+            });
+        });
+        list.querySelectorAll('.tm-custom-attr-common').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                PM.syncCustomAttrRowsFromDom(list);
+                PM.syncCustomAttrsToMatrix();
             });
         });
         list.querySelectorAll('.tm-custom-attr-del').forEach(function (btn) {
@@ -711,19 +747,32 @@
                 var i = parseInt(btn.getAttribute('data-idx'), 10);
                 if (!isNaN(i)) {
                     PM._customAttrRows.splice(i, 1);
-                    PM.renderCustomAttrRowsInModal();
+                    PM.renderCustomAttrRowsInModal({ fromMemory: true });
                     PM.syncCustomAttrsToMatrix();
                     PM.generateVariantCombos();
                 }
             });
         });
+    };
+
+    PM.renderCustomAttrRowsInModal = function (opts) {
+        opts = opts || {};
+        var list = document.getElementById('tm-variant-modal-custom-list');
+        if (!list) return;
+        if (!opts.fromMemory && list.querySelector('.tm-custom-attr-row')) {
+            PM.syncCustomAttrRowsFromDom(list);
+        }
+        PM.renderCustomAttrRows();
+        var srcList = PM.el('detail-custom-attrs-list');
+        if (srcList) list.innerHTML = srcList.innerHTML;
+        PM.bindCustomAttrRowEventsInModal(list);
         var addBtn = document.getElementById('tm-variant-modal-add-custom');
         if (addBtn && !addBtn.__tmBound) {
             addBtn.__tmBound = true;
             addBtn.addEventListener('click', function () {
                 PM.syncCustomAttrRowsFromDom(list);
-                PM._customAttrRows.push({ name: '', values: [] });
-                PM.renderCustomAttrRowsInModal();
+                PM._customAttrRows.push({ name: '', values: [], asCommon: true });
+                PM.renderCustomAttrRowsInModal({ fromMemory: true });
             });
         }
     };
@@ -741,6 +790,7 @@
 
     PM.confirmVariantMatrixModal = function () {
         PM.syncComboDraftFromDom();
+        PM.syncCustomAttrRowsFromDom();
         var active = getEnabledDraftRows();
         if (!active.length) {
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -771,6 +821,7 @@
             return _buildVariantMatrixPayload ? _buildVariantMatrixPayload.call(PM) : null;
         }
         PM.syncComboDraftFromDom();
+        PM.syncCustomAttrRowsFromDom();
         PM.syncCustomAttrsToMatrix();
         var tplSel = PM.el('detail-variant-template');
         var templateId = tplSel && tplSel.value ? parseInt(tplSel.value, 10) : null;

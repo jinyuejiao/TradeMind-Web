@@ -235,6 +235,23 @@ body.tm-ops-portal {
 
     #ops-tree-root {
         max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body.tm-ops-portal .tm-ops-mobile-header {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    body.tm-ops-portal.tm-layout-mobile {
+        height: 100dvh;
+        min-height: 100dvh;
+    }
+
+    body.tm-ops-portal.tm-layout-mobile > .flex-1 {
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 }
 

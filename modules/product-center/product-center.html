@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
     <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260525layout">
-    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260525layout">
+    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260706sub">
     <link rel="stylesheet" href="/assets/css/product-center.css?v=20260705fix1">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,6 +27,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="/assets/js/auth.js?v=20260422r13"></script>
+    <script src="/assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
+    <script src="/assets/js/tm-subscription-notice.js?v=20260706sub"></script>
     <script src="/assets/js/tm-metrics.js?v=20260528metrics"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/assets/js/main-app.js"></script>
@@ -37,11 +39,11 @@
     <script src="/assets/js/ui-ai-service.js?v=20260603jpeg"></script>
     <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
     <script src="/assets/js/tm-product-domain.js?v=20260705fix1"></script>
-    <script src="/assets/js/tm-master-data-cache.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
     <script src="/assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
     <script src="/assets/js/tm-product-registry-form.js?v=20260705fix1"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260705fix3"></script>
-    <script src="/assets/js/tm-product-variant-modal.js?v=20260705fix3"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260706fix1"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260706fix1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('[product-center] 页面加载完成');
@@ -58,6 +60,9 @@
             };
             if (window.injectCommonUI) {
                 window.injectCommonUI();
+            }
+            if (typeof window.TM_loadWorkbenchProfile === 'function') {
+                window.TM_loadWorkbenchProfile();
             }
             setTimeout(boot, 50);
         });

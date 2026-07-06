@@ -1222,6 +1222,13 @@ function getAppEntryPath(tabName) {
 /** 登录成功后：运维账号进运维门户，其余进商户主壳 */
 function getPostLoginEntryPath(user) {
     try {
+        var token = localStorage.getItem('token');
+        if (token) {
+            var payload = parseTokenPayload(token);
+            if (payload.roleType === 'ROLE_OPS_ADMIN') {
+                return resolveStaticPageUrl('ops-hub.html');
+            }
+        }
         if (user && user.roleType === 'ROLE_OPS_ADMIN') {
             return resolveStaticPageUrl('ops-hub.html');
         }
@@ -1255,7 +1262,6 @@ function logout() {
             localStorage.removeItem('user_info');
             localStorage.removeItem('username');
             localStorage.removeItem('currentUser');
-            // 清除sessionStorage作为额外保障
             if (window.sessionStorage) {
                 sessionStorage.clear();
             }
@@ -1433,6 +1439,10 @@ function checkAuth() {
         if (!isLoginPage && path.includes('/modules/') && !isEmbeddedMode && !path.includes('ops-hub.html') && !path.includes('ops-portal.html')) {
             const tab = resolveDefaultTabFromPath(path);
             tmSafeReplace(getAppEntryPath(tab));
+            return false;
+        }
+
+        if (!tmEnforceRolePageGuard(path)) {
             return false;
         }
         
@@ -1704,10 +1714,21 @@ async function tmHydrateMemberCenter(modalEl) {
         window._tmMemberMe = me;
         var dname = me.displayName || (ctx.subscriptionType === 'TRIAL' ? '试用版本' : ctx.subscriptionType === 'BASIC' ? '启航会员' : ctx.subscriptionType === 'PREMIUM' ? '优享会员' : ctx.subscriptionType);
         var endLabel = tmFmtSubEnd(me.subEndTime);
+        var accessMode = (me.accessMode || 'FULL').toUpperCase();
+        var statusHint = '';
+        if (accessMode === 'READ_ONLY') {
+            statusHint = '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">宽限期</span>';
+        } else if (accessMode === 'BILLING_ONLY') {
+            statusHint = '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black">已过期</span>';
+        }
+        var renewNudge = (accessMode === 'READ_ONLY' || accessMode === 'BILLING_ONLY')
+            ? '<p class="text-[10px] text-slate-500 mt-1 leading-relaxed">续费后无需重新配置，即可恢复开单、编辑与 AI 助手等完整功能。</p>'
+            : '';
         strip.innerHTML = '<div class="rounded-2xl border border-teal-100 bg-teal-50/80 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">' +
-            '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' +
+            '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' + statusHint +
             '<span class="text-slate-500"> · 有效期至 </span><span class="font-mono font-bold">' + tmEscapeHtml(endLabel) + '</span>' +
-            (me.pricePaidCny != null ? '<span class="text-slate-400"> · 实付 ¥' + tmEscapeHtml(tmFmtMoneyDisplay(me.pricePaidCny)) + '</span>' : '') + '</div>' +
+            (me.pricePaidCny != null ? '<span class="text-slate-400"> · 实付 ¥' + tmEscapeHtml(tmFmtMoneyDisplay(me.pricePaidCny)) + '</span>' : '') +
+            renewNudge + '</div>' +
             (me.canManageUsers === true ? '<button type="button" data-role="ADMIN" data-action="member.manage" onclick="openMemberAccountsManageModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#14B8A6] text-white text-[10px] font-black shadow-md"><i class="ph ph-users-three"></i> 账号管理</button>' : '') + '</div>';
     } else {
         strip.innerHTML = '<div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">登录后可查看当前租户订阅状态，并进行续费或升级。</div>';
@@ -2730,10 +2751,71 @@ function parseTokenPayload(token) {
     try {
         const tokenParts = String(token || '').split('.');
         if (tokenParts.length !== 3) return {};
-        return JSON.parse(atob(tokenParts[1])) || {};
+        var b64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        return JSON.parse(atob(b64)) || {};
     } catch (e) {
         return {};
     }
+}
+
+/** 以 JWT 为权威同步 user_info 中的 roleType，避免跨标签会话串扰 */
+function tmSyncUserInfoRoleFromToken(token) {
+    if (!checkLocalStorage() || !token) return;
+    try {
+        var payload = parseTokenPayload(token);
+        if (!payload.roleType) return;
+        var u = {};
+        try { u = JSON.parse(localStorage.getItem('user_info') || '{}'); } catch (e) { /* ignore */ }
+        if (String(u.roleType || '').toUpperCase() !== String(payload.roleType).toUpperCase()) {
+            u.roleType = payload.roleType;
+            if (payload.userName) u.userName = payload.userName;
+            if (payload.tenantId) u.tenantId = payload.tenantId;
+            localStorage.setItem('user_info', JSON.stringify(u));
+        }
+    } catch (e2) { /* ignore */ }
+}
+
+/** 角色与页面对齐：运维账号不得停留在商户壳层（除非显式进入工作台链） */
+function tmEnforceRolePageGuard(path) {
+    if (!checkLocalStorage()) return true;
+    var token = localStorage.getItem('token');
+    if (!token) return true;
+    tmSyncUserInfoRoleFromToken(token);
+    var payload = parseTokenPayload(token);
+    var role = String(payload.roleType || '').trim().toUpperCase();
+    var isOps = role === 'ROLE_OPS_ADMIN';
+    var isOpsHub = path.indexOf('ops-hub') >= 0 || path.indexOf('ops-portal') >= 0;
+    var isMerchantApp = path.indexOf('index-app') >= 0;
+    var isLogin = path.endsWith('login.html');
+    if (isLogin) return true;
+    if (isOps && isMerchantApp && !sessionStorage.getItem('tm_ops_merchant_preview')) {
+        console.log('运维账号在商户壳层，重定向至 ops-hub');
+        tmSafeReplace(resolveStaticPageUrl('ops-hub.html'));
+        return false;
+    }
+    if (!isOps && isOpsHub) {
+        console.log('非运维账号访问运维门户，重定向至商户入口');
+        tmSafeReplace(getAppEntryPath('dashboard'));
+        return false;
+    }
+    return true;
+}
+
+window.parseTokenPayload = parseTokenPayload;
+window.tmSyncUserInfoRoleFromToken = tmSyncUserInfoRoleFromToken;
+
+if (!window.__tmAuthStorageBound) {
+    window.__tmAuthStorageBound = true;
+    window.addEventListener('storage', function (ev) {
+        if (ev.key !== 'token') return;
+        var path = window.location.pathname || '';
+        if (path.endsWith('login.html')) return;
+        if (ev.newValue) {
+            tmSyncUserInfoRoleFromToken(ev.newValue);
+            tmEnforceRolePageGuard(path);
+        }
+    });
 }
 
 function getStoredUserInfo() {

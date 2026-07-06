@@ -136,14 +136,44 @@
 
     var ROUTES = {
         tenants: { file: './modules/ops/tenants-quota-tree.html', title: '租户看板' },
-        plans: { file: './modules/ops/plan-catalog-by-merchant.html', title: '订阅策略' },
-        referral: { file: './modules/ops/referral-settlement.html', title: '推荐与结算' },
-        promoters: { file: './modules/ops/promoters-manage.html', title: '推广员开号' },
+        publish: { file: './modules/ops/publish-center.html', title: '内容与定价' },
+        promoters: { file: './modules/ops/promoters-hub.html', title: '推广运营' },
         feedback: { file: './modules/ops/merchant-feedback.html', title: '用户问题' },
-        announce: { file: './modules/ops/announce-audit.html', title: '公告与审计' }
+        plans: { file: './modules/ops/publish-center.html', title: '内容与定价' },
+        referral: { file: './modules/ops/promoters-hub.html', title: '推广运营' },
+        announce: { file: './modules/ops/publish-center.html', title: '内容与定价' }
     };
 
     var industryLabel = { WHOLESALE: '批发', FOREIGN: '外贸', ECOM: '电商', FACTORY: '工贸一体' };
+    var verticalLabel = { GENERAL: '通用', CLOTHING: '服装', FOOD: '食品', DIGITAL_3C: '3C数码', PENDING: '待选定' };
+    var MERCHANT_UI_TO_API = { WHOLESALE: 'WHOLESALE', FOREIGN: 'FOREIGN_TRADE', ECOM: 'ECOM', FACTORY: 'FACTORY_TRADE' };
+    var MERCHANT_API_TO_UI = { WHOLESALE: 'WHOLESALE', FOREIGN_TRADE: 'FOREIGN', ECOM: 'ECOM', FACTORY_TRADE: 'FACTORY' };
+    var TIER_LABEL = { TRIAL: '试用', BASIC: '启航', PREMIUM: '优享', ENTERPRISE: '企业' };
+
+    function toMerchantApiKey(uiKey) {
+        if (!uiKey || uiKey === 'ALL') return uiKey;
+        return MERCHANT_UI_TO_API[uiKey] || uiKey;
+    }
+
+    function toMerchantUiKey(apiKey) {
+        if (!apiKey) return 'WHOLESALE';
+        return MERCHANT_API_TO_UI[apiKey] || apiKey;
+    }
+
+    function opsNotify(msg, type) {
+        if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
+            window.TM_UI.showNotification(msg, type || 'info');
+            return;
+        }
+        alert(msg);
+    }
+
+    function normalizeOpsRoute(route) {
+        if (route === 'referral' || route === 'promoters') return 'promoters';
+        if (route === 'plans' || route === 'announce' || route === 'publish') return 'publish';
+        if (route === 'quota-ai' || route === 'lifecycle' || route === 'tenants-lifecycle' || route === 'metering') return 'tenants';
+        return route;
+    }
 
     function nowIso() {
         return new Date().toISOString();
@@ -362,6 +392,7 @@
         return {
             id: id,
             name: String(p.name || '未命名套餐').trim() || '未命名套餐',
+            tierCode: p.tierCode != null ? String(p.tierCode) : '',
             priceOriginalYear: origY,
             priceCurrentYear: curY,
             discountPercentOff: off,
@@ -404,6 +435,7 @@
     }
 
     var currentIndustry = 'ALL';
+    var currentVertical = 'ALL';
 
     function el(id) {
         return document.getElementById(id);
@@ -447,11 +479,9 @@
         return fetchHtml(cfg.file + '?t=' + Date.now()).then(function (html) {
             root.innerHTML = html;
             if (route === 'tenants') initTenantsQuotaTreePage();
-            else if (route === 'plans') initPlanCatalogPage();
-            else if (route === 'referral') initReferralPage();
-            else if (route === 'promoters') initPromotersPage();
+            else if (route === 'publish' || route === 'plans' || route === 'announce') initPublishCenterPage(route);
+            else if (route === 'promoters' || route === 'referral') initPromotersHubPage(route);
             else if (route === 'feedback') initFeedbackPage();
-            else if (route === 'announce') initAnnouncePage();
         }).catch(function () {
             root.innerHTML = '<div class="tm-ops-glass rounded-tm-3xl p-8 text-center text-rose-600 text-sm">模块加载失败：' + cfg.file + '</div>';
         });
@@ -464,6 +494,10 @@
     }
 
     function initPlanCatalogPage() {
+        if (typeof window.wrappedFetch === 'function') {
+            initPlanCatalogPageLive();
+            return;
+        }
         var catalog = loadSubscriptionCatalog();
         var currentMerchant = 'WHOLESALE';
 
@@ -688,6 +722,251 @@
         refresh();
     }
 
+    function initPlanCatalogPageLive() {
+        var catalog = {};
+        var currentMerchant = 'WHOLESALE';
+
+        function apiPlansForUi() {
+            return catalog[currentMerchant] || [];
+        }
+
+        async function loadCatalogFromApi() {
+            var hint = el('ops-plan-save-hint');
+            if (hint) hint.textContent = '加载中…';
+            try {
+                var res = await opsFetch('/api/v1/ops/catalog/subscription-plans?merchantType=' + encodeURIComponent(toMerchantApiKey(currentMerchant)), { method: 'GET' });
+                var data = await res.json();
+                if (!res.ok) throw new Error((data && data.message) || '加载失败');
+                catalog[currentMerchant] = (Array.isArray(data) ? data : []).map(function (p) {
+                    return normalizePlan({
+                        id: p.planId || p.plan_id,
+                        name: p.displayName || p.name,
+                        tierCode: p.tierCode || p.tier_code,
+                        priceOriginalYear: p.priceOriginalYear != null ? p.priceOriginalYear : p.originalPriceCny,
+                        priceCurrentYear: p.priceCurrentYear != null ? p.priceCurrentYear : p.listPriceCny,
+                        discountLabel: p.discountLabel,
+                        promoNote: p.promoNote,
+                        maxUsers: p.maxUsers,
+                        maxProducts: p.maxProducts,
+                        maxSuppliers: p.maxSuppliers,
+                        maxCustomers: p.maxCustomers
+                    }, p.planId);
+                });
+                if (hint) hint.textContent = '已同步数据库 · ' + new Date().toLocaleString();
+            } catch (e) {
+                if (hint) hint.textContent = '加载失败: ' + e.message;
+                catalog[currentMerchant] = [];
+            }
+            refresh();
+        }
+
+        function renderTabs() {
+            var root = el('ops-plan-merchant-tabs');
+            if (!root) return;
+            root.querySelectorAll('.ops-plan-tab').forEach(function (btn) {
+                var m = btn.getAttribute('data-merchant');
+                var on = m === currentMerchant;
+                btn.className = on
+                    ? 'ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md'
+                    : 'ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+            });
+            var lbl = el('ops-plan-merchant-label');
+            if (lbl) lbl.textContent = industryLabel[currentMerchant] || currentMerchant;
+        }
+
+        function renderTable() {
+            var tbody = el('ops-plan-table-body');
+            if (!tbody) return;
+            var rows = apiPlansForUi();
+            tbody.innerHTML = rows.map(function (p) {
+                var orig = p.priceOriginalYear != null ? p.priceOriginalYear : 0;
+                var cur = p.priceCurrentYear != null ? p.priceCurrentYear : orig;
+                var off = computeDiscountPercentFromYearPrices(orig, cur);
+                var tier = TIER_LABEL[p.tierCode] || p.tierCode || '—';
+                var discCell = off > 0 ? ('<span class="font-black text-rose-600">−' + off + '%</span>') : '<span class="text-slate-400">无</span>';
+                return '<tr class="hover:bg-ops-50/50">' +
+                    '<td class="px-4 py-3 font-mono text-[10px] text-slate-500">' + escapeHtml(tier) + '</td>' +
+                    '<td class="px-4 py-3 font-semibold text-slate-800">' + escapeHtml(p.name) + '</td>' +
+                    '<td class="px-4 py-3 font-mono">¥' + orig + '</td>' +
+                    '<td class="px-4 py-3 font-mono text-ops-800 font-bold">¥' + cur + '</td>' +
+                    '<td class="px-4 py-3">' + discCell + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxUsers + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxProducts + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxSuppliers + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxCustomers + '</td>' +
+                    '<td class="px-4 py-3 text-right"><button type="button" class="ops-plan-edit px-3 py-1.5 rounded-xl text-[10px] font-bold bg-ops-50 text-ops-700 border border-ops-200" data-plan-id="' + escapeHtml(p.id) + '">编辑</button></td></tr>';
+            }).join('');
+        }
+
+        function refresh() {
+            renderTabs();
+            renderTable();
+        }
+
+        function openPlanModal(planId) {
+            var modal = el('ops-plan-modal');
+            var idField = el('ops-plan-modal-plan-id');
+            if (!modal || !idField) return;
+            var p = apiPlansForUi().find(function (x) { return x.id === planId; });
+            if (!p) return;
+            idField.value = planId;
+            el('ops-plan-field-name').value = p.name || '';
+            el('ops-plan-field-price-original-y').value = p.priceOriginalYear || 0;
+            el('ops-plan-field-price-current-y').value = p.priceCurrentYear || 0;
+            el('ops-plan-field-discount-label').value = p.discountLabel || '';
+            el('ops-plan-field-max-users').value = p.maxUsers || 0;
+            el('ops-plan-field-max-products').value = p.maxProducts || 0;
+            el('ops-plan-field-max-suppliers').value = p.maxSuppliers || 0;
+            el('ops-plan-field-max-customers').value = p.maxCustomers || 0;
+            updateModalPreviewLive();
+            modal.classList.remove('hidden');
+        }
+
+        function closePlanModal() {
+            var modal = el('ops-plan-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function updateModalPreviewLive() {
+            var pv = el('ops-plan-modal-discount-auto');
+            if (!pv) return;
+            var o = Math.max(0, parseInt(el('ops-plan-field-price-original-y').value, 10) || 0);
+            var c = Math.max(0, parseInt(el('ops-plan-field-price-current-y').value, 10) || 0);
+            if (o <= 0) { pv.textContent = '请填写年付原价'; return; }
+            var off = computeDiscountPercentFromYearPrices(o, c);
+            pv.textContent = '自动减免约 ' + off + '%';
+        }
+
+        async function saveFromModal() {
+            var planId = el('ops-plan-modal-plan-id').value.trim();
+            if (!planId) return;
+            var body = {
+                displayName: el('ops-plan-field-name').value,
+                priceOriginalYear: el('ops-plan-field-price-original-y').value,
+                priceCurrentYear: el('ops-plan-field-price-current-y').value,
+                discountLabel: el('ops-plan-field-discount-label').value,
+                maxUsers: el('ops-plan-field-max-users').value,
+                maxProducts: el('ops-plan-field-max-products').value,
+                maxSuppliers: el('ops-plan-field-max-suppliers').value,
+                maxCustomers: el('ops-plan-field-max-customers').value
+            };
+            try {
+                var res = await opsFetch('/api/v1/ops/catalog/subscription-plans/' + encodeURIComponent(planId), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error((data && data.message) || '保存失败');
+                appendAudit('PLAN_CATALOG_UPDATE', planId);
+                closePlanModal();
+                await loadCatalogFromApi();
+                opsNotify('套餐已保存', 'success');
+            } catch (err) {
+                opsNotify(err.message || String(err), 'error');
+            }
+        }
+
+        var tabRoot = el('ops-plan-merchant-tabs');
+        if (tabRoot) {
+            tabRoot.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-merchant]');
+                if (!b) return;
+                currentMerchant = b.getAttribute('data-merchant') || 'WHOLESALE';
+                loadCatalogFromApi();
+            });
+        }
+        var tbody = el('ops-plan-table-body');
+        if (tbody) {
+            tbody.addEventListener('click', function (e) {
+                var ed = e.target.closest('.ops-plan-edit');
+                if (ed) openPlanModal(ed.getAttribute('data-plan-id'));
+            });
+        }
+        var mclose = el('ops-plan-modal-close');
+        var modal = el('ops-plan-modal');
+        var msave = el('ops-plan-modal-save');
+        if (mclose) mclose.addEventListener('click', closePlanModal);
+        if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closePlanModal(); });
+        if (msave) msave.addEventListener('click', saveFromModal);
+        ['ops-plan-field-price-original-y', 'ops-plan-field-price-current-y'].forEach(function (fid) {
+            var node = el(fid);
+            if (node) node.addEventListener('input', updateModalPreviewLive);
+        });
+        loadCatalogFromApi();
+    }
+
+    function switchPromoterHubTab(tab) {
+        var tabs = document.querySelectorAll('#ops-promoter-hub-tabs .ops-promoter-hub-tab');
+        tabs.forEach(function (btn) {
+            var on = btn.getAttribute('data-promoter-tab') === tab;
+            btn.className = on
+                ? 'ops-promoter-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md'
+                : 'ops-promoter-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+        });
+        document.querySelectorAll('.ops-promoter-tab-panel').forEach(function (panel) {
+            panel.classList.add('hidden');
+        });
+        var target = el('ops-promoter-tab-' + tab);
+        if (target) target.classList.remove('hidden');
+    }
+
+    function initPromotersHubPage(route) {
+        var initialTab = route === 'referral' ? 'referral' : 'create';
+        if (location.hash === '#referral') initialTab = 'referral';
+        switchPromoterHubTab(initialTab);
+        var tabRoot = el('ops-promoter-hub-tabs');
+        if (tabRoot && tabRoot.dataset.bound !== '1') {
+            tabRoot.dataset.bound = '1';
+            tabRoot.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-promoter-tab]');
+                if (!btn) return;
+                switchPromoterHubTab(btn.getAttribute('data-promoter-tab'));
+            });
+        }
+        initReferralPage();
+        initPromotersPage();
+    }
+
+    function switchPublishHubTab(tab) {
+        var tabs = document.querySelectorAll('#ops-publish-hub-tabs .ops-publish-hub-tab');
+        tabs.forEach(function (btn) {
+            var on = btn.getAttribute('data-publish-tab') === tab;
+            btn.className = on
+                ? 'ops-publish-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md'
+                : 'ops-publish-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+        });
+        document.querySelectorAll('.ops-publish-tab-panel').forEach(function (panel) {
+            panel.classList.add('hidden');
+        });
+        var target = el('ops-publish-tab-' + tab);
+        if (target) target.classList.remove('hidden');
+        if (tab === 'audit') renderAudit();
+    }
+
+    function initPublishCenterPage(route) {
+        var initialTab = 'plans';
+        if (route === 'announce') initialTab = 'announce';
+        if (location.hash === '#announce') initialTab = 'announce';
+        switchPublishHubTab(initialTab);
+        var tabRoot = el('ops-publish-hub-tabs');
+        if (tabRoot && tabRoot.dataset.bound !== '1') {
+            tabRoot.dataset.bound = '1';
+            tabRoot.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-publish-tab]');
+                if (!btn) return;
+                switchPublishHubTab(btn.getAttribute('data-publish-tab'));
+            });
+        }
+        initPlanCatalogPage();
+        if (typeof window.wrappedFetch === 'function') {
+            initAnnouncePageLive();
+        } else {
+            initAnnouncePage();
+        }
+        renderAudit();
+    }
+
     function updateTenantStats(list, filter) {
         var rows = filter === 'ALL' ? list : list.filter(function (t) {
             return t.industry === filter;
@@ -868,7 +1147,9 @@
         var raw = {
             id: node.tenant_id,
             name: node.tenant_name || node.tenant_id,
-            industry: node.merchant_type || 'WHOLESALE',
+            industry: toMerchantUiKey(node.merchant_type || 'WHOLESALE'),
+            industryVertical: node.industry_vertical || 'GENERAL',
+            industryVerticalLabel: node.industry_vertical_label || verticalLabel[node.industry_vertical] || node.industry_vertical || '—',
             frozen: frozen,
             expiry: parseSubEnd(node.sub_end_time) === '—' ? '' : parseSubEnd(node.sub_end_time),
             users: Number(node.user_count) || 0,
@@ -937,6 +1218,8 @@
                     ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
                     : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>';
                 var ind = industryLabel[t.industry] || t.industry;
+                var vert = t.industryVerticalLabel || verticalLabel[t.industryVertical] || '';
+                var vertBadge = vert ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">' + escapeHtml(vert) + '</span>' : '';
                 var orig = p.priceOriginalYear || 0;
                 var cur = p.priceCurrentYear || 0;
                 var off = computeDiscountPercentFromYearPrices(orig, cur);
@@ -990,7 +1273,7 @@
                     '<span class="text-sm font-black text-slate-800">' + escapeHtml(t.name) + '</span>' +
                     '<span class="text-[10px] font-mono text-slate-400">' + escapeHtml(t.id) + '</span>' +
                     frozen +
-                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span></div>' +
+                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span>' + vertBadge + '</div>' +
                     '<p class="text-[10px] font-mono text-slate-500 mt-0.5">到期 ' + escapeHtml(t.expiry || '—') + '</p></div>' +
                     '<div class="flex flex-wrap gap-2 text-[10px] font-mono font-bold text-ops-800 w-full sm:w-auto sm:text-right sm:ml-auto">' + metricsHtml + '</div>' +
                     '<div class="flex gap-1 w-full sm:w-auto justify-end">' + actionHtml + '</div></div>' +
@@ -1067,6 +1350,8 @@
                     ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
                     : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>';
                 var ind = industryLabel[t.industry] || t.industry;
+                var vert = t.industryVerticalLabel || verticalLabel[t.industryVertical] || '';
+                var vertBadge = vert ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">' + escapeHtml(vert) + '</span>' : '';
                 var orig = p.priceOriginalYear || 0;
                 var cur = p.priceCurrentYear || 0;
                 var off = computeDiscountPercentFromYearPrices(orig, cur);
@@ -1105,7 +1390,7 @@
                     '<span class="text-sm font-black text-slate-800">' + escapeHtml(t.name) + '</span>' +
                     '<span class="text-[10px] font-mono text-slate-400">' + escapeHtml(t.id) + '</span>' +
                     frozen +
-                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span></div>' +
+                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span>' + vertBadge + '</div>' +
                     '<p class="text-[10px] font-mono text-slate-500 mt-0.5">到期 ' + escapeHtml(t.expiry || '—') + '</p></div>' +
                     '<div class="flex flex-wrap gap-2 text-[10px] font-mono font-bold text-ops-800 w-full sm:w-auto sm:text-right sm:ml-auto">' +
                     '<span class="px-2 py-1 rounded-lg bg-ops-50 border border-ops-100">AI月 ' + formatTokens(row.aiTokensMonth) + '</span>' +
@@ -1516,6 +1801,7 @@
         var expanded = new Set();
         var sortKey = 'aiTokensMonth';
         currentIndustry = 'ALL';
+        currentVertical = 'ALL';
 
         function sortRows(rows) {
             rows.sort(function (a, b) {
@@ -1532,7 +1818,9 @@
 
         function refresh() {
             var rows = mergedRows.filter(function (r) {
-                return currentIndustry === 'ALL' || r.raw.industry === currentIndustry;
+                var okIndustry = currentIndustry === 'ALL' || r.raw.industry === currentIndustry;
+                var okVertical = currentVertical === 'ALL' || r.raw.industryVertical === currentVertical;
+                return okIndustry && okVertical;
             });
             sortRows(rows);
             renderTenantTreeMergedRows(rows, expanded, { live: true });
@@ -1543,7 +1831,9 @@
             var root = el('ops-tree-root');
             if (root) root.innerHTML = '<p class="text-slate-500 text-sm py-8 text-center">加载租户数据…</p>';
             try {
-                var q = 'industry=' + encodeURIComponent(currentIndustry) + '&sort=' + encodeURIComponent(sortKey) + '&size=200';
+                var q = 'industry=' + encodeURIComponent(toMerchantApiKey(currentIndustry)) +
+                    '&vertical=' + encodeURIComponent(currentVertical) +
+                    '&sort=' + encodeURIComponent(sortKey) + '&size=200';
                 var res = await opsFetch('/api/v1/ops/tenants/tree?' + q, { method: 'GET' });
                 var data = null;
                 try { data = await res.json(); } catch (e) { data = null; }
@@ -1636,6 +1926,19 @@
                 filterRoot.querySelectorAll('.ops-filter-chip').forEach(function (b) {
                     var on = b.getAttribute('data-industry') === currentIndustry;
                     b.className = on ? 'ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md' : 'ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+                });
+                loadData();
+            });
+        }
+        var verticalRoot = el('ops-vertical-filter');
+        if (verticalRoot) {
+            verticalRoot.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-vertical]');
+                if (!btn) return;
+                currentVertical = btn.getAttribute('data-vertical') || 'ALL';
+                verticalRoot.querySelectorAll('.ops-vertical-chip').forEach(function (b) {
+                    var on = b.getAttribute('data-vertical') === currentVertical;
+                    b.className = on ? 'ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border-2 border-emerald-600 bg-emerald-600 text-white' : 'ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 bg-white/90 text-slate-600';
                 });
                 loadData();
             });
@@ -2254,12 +2557,17 @@
             var realName = (el('ops-promoter-realname').value || '').trim();
             var phone = (el('ops-promoter-phone').value || '').trim();
             var email = (el('ops-promoter-email').value || '').trim();
+            var commission = parseFloat(el('ops-promoter-commission') && el('ops-promoter-commission').value);
             if (!userName || !password || !realName || !phone) {
-                alert('请填写必填项');
+                opsNotify('请填写必填项', 'error');
                 return;
             }
             if (!/^1\d{10}$/.test(phone)) {
-                alert('手机号须为 11 位且以 1 开头');
+                opsNotify('手机号须为 11 位且以 1 开头', 'error');
+                return;
+            }
+            if (!isFinite(commission) || commission <= 0) {
+                opsNotify('请填写有效的单笔返佣金额', 'error');
                 return;
             }
             var submitBtn = el('ops-promoter-submit');
@@ -2280,7 +2588,8 @@
                         password: hash,
                         realName: realName,
                         phone: phone,
-                        email: email || null
+                        email: email || null,
+                        commissionPerReferral: commission
                     })
                 });
                 var data = await res.json();
@@ -2293,12 +2602,17 @@
                 if (el('ops-promoter-res-name')) el('ops-promoter-res-name').textContent = data.realName || realName;
                 if (el('ops-promoter-res-phone')) el('ops-promoter-res-phone').textContent = data.phone || phone;
                 if (el('ops-promoter-res-code')) el('ops-promoter-res-code').textContent = lastCode || '—';
+                if (el('ops-promoter-res-commission')) {
+                    el('ops-promoter-res-commission').textContent = data.commissionPerReferral != null ? ('¥' + data.commissionPerReferral) : ('¥' + commission);
+                }
                 if (resultBox) resultBox.classList.remove('hidden');
                 if (placeholder) placeholder.classList.add('hidden');
                 appendAudit('PROMOTER_CREATE', (data.userName || userName) + ' ' + (lastCode || ''));
                 form.reset();
+                if (el('ops-promoter-commission')) el('ops-promoter-commission').value = '150';
+                opsNotify('推广员开号成功', 'success');
             } catch (err) {
-                alert(err.message || String(err));
+                opsNotify(err.message || String(err), 'error');
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -2350,19 +2664,22 @@
     }
 
     function bindNav() {
-        document.querySelectorAll('[data-ops-route]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var route = btn.getAttribute('data-ops-route');
-                if (!route) {
-                    return;
-                }
-                if (typeof window.TM_switchOpsRoute === 'function') {
-                    window.TM_switchOpsRoute(route);
-                    return;
-                }
-                location.hash = route;
-                loadModule(route);
-            });
+        if (document.body.dataset.opsNavDelegated === '1') {
+            return;
+        }
+        document.body.dataset.opsNavDelegated = '1';
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-ops-route]');
+            if (!btn) return;
+            var route = normalizeOpsRoute(btn.getAttribute('data-ops-route'));
+            if (!route || !ROUTES[route]) return;
+            e.preventDefault();
+            if (typeof window.TM_switchOpsRoute === 'function') {
+                window.TM_switchOpsRoute(route);
+                return;
+            }
+            location.hash = route;
+            loadModule(route);
         });
     }
 
@@ -2371,23 +2688,21 @@
         if (shouldDeferOpsAutoBoot()) {
             return;
         }
-        var raw = (location.hash || '').replace(/^#/, '');
-        if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
-            try {
-                history.replaceState(null, '', '#tenants');
-            } catch (e1) { /* ignore */ }
-            raw = 'tenants';
+        var raw = normalizeOpsRoute((location.hash || '').replace(/^#/, ''));
+        if (!ROUTES[raw]) raw = 'tenants';
+        if (raw !== ((location.hash || '').replace(/^#/, ''))) {
+            try { history.replaceState(null, '', '#' + raw); } catch (e1) { location.hash = raw; }
         }
-        var route = ROUTES[raw] ? raw : 'tenants';
-        if (route !== ((location.hash || '').replace(/^#/, ''))) location.hash = route;
-        loadModule(route);
+        loadModule(raw);
     }
 
     window.TM_OPS = {
         loadModule: loadModule,
         appendAudit: appendAudit,
-        loadAudit: loadAudit
+        loadAudit: loadAudit,
+        normalizeRoute: normalizeOpsRoute
     };
+    window.TM_OPS_normalizeRoute = normalizeOpsRoute;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', boot);
@@ -2398,13 +2713,7 @@
         if (!mayHandleOpsHashChange()) {
             return;
         }
-        var hash = (location.hash || '').replace(/^#/, '');
-        if (hash === 'quota-ai' || hash === 'lifecycle' || hash === 'tenants-lifecycle' || hash === 'metering') {
-            try {
-                history.replaceState(null, '', '#tenants');
-            } catch (e2) { /* ignore */ }
-            hash = 'tenants';
-        }
+        var hash = normalizeOpsRoute((location.hash || '').replace(/^#/, ''));
         if (!ROUTES[hash]) {
             return;
         }

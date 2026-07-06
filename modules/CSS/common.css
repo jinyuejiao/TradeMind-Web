@@ -245,6 +245,133 @@ body {
     margin-top: 0;
 }
 
+/* 订阅过期 / 宽限期顶栏提示 */
+.tm-subscription-notice {
+    flex-shrink: 0;
+    border-bottom: 1px solid transparent;
+    animation: tm-sub-notice-in 0.35s ease-out;
+}
+
+@keyframes tm-sub-notice-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tm-subscription-notice__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.75rem 1rem;
+    padding: 0.75rem 1rem;
+}
+
+@media (min-width: 768px) {
+    .tm-subscription-notice__inner {
+        padding: 0.875rem 2rem;
+        align-items: center;
+    }
+}
+
+.tm-subscription-notice--grace {
+    background: linear-gradient(90deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.55) 100%);
+    border-bottom-color: #fde68a;
+}
+
+.tm-subscription-notice--expired {
+    background: linear-gradient(90deg, rgba(255, 241, 242, 0.95) 0%, rgba(254, 226, 226, 0.55) 100%);
+    border-bottom-color: #fecaca;
+}
+
+.tm-subscription-notice__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.125rem;
+}
+
+.tm-subscription-notice--grace .tm-subscription-notice__icon {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+.tm-subscription-notice--expired .tm-subscription-notice__icon {
+    background: #fff1f2;
+    color: #e11d48;
+    border: 1px solid #fecaca;
+}
+
+.tm-subscription-notice__text {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.tm-subscription-notice__title {
+    font-size: 0.8125rem;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.35;
+}
+
+.tm-subscription-notice__desc {
+    margin-top: 0.2rem;
+    font-size: 0.6875rem;
+    line-height: 1.55;
+    color: #64748b;
+}
+
+.tm-subscription-notice__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.tm-subscription-notice__cta {
+    padding: 0.5rem 0.875rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 800;
+    color: #fff;
+    background: #14B8A6;
+    box-shadow: 0 4px 14px rgba(20, 184, 166, 0.28);
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.tm-subscription-notice__cta:hover {
+    background: #0D9488;
+}
+
+.tm-subscription-notice__cta:active {
+    transform: scale(0.98);
+}
+
+.tm-subscription-notice__dismiss {
+    padding: 0.5rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    transition: background 0.15s ease;
+}
+
+.tm-subscription-notice__dismiss:hover {
+    background: #fff;
+}
+
 /* 主壳顶栏：手机端固定展示「商贸智脑」品牌（不依赖 Tailwind md:hidden） */
 @media (max-width: 767px) {
     #tm-app-header,

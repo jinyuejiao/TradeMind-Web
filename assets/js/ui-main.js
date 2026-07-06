@@ -187,7 +187,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|tm-order-dict\.js|ui-sales-orders\.js|ui-returns\.js/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|tm-order-dict\.js|ui-sales-orders\.js|ui-returns\.js|tm-print\/|tm-peripheral-settings|tm-scan-router|tm-scan-camera|workbench-order-shipment/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -598,7 +598,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260628', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260706print', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -735,28 +735,14 @@ const TM_NAV_CONFIG = [
 
 const TM_OPS_NAV_CONFIG = [
     { route: 'tenants', label: '看板', title: '租户看板', icon: 'ph-squares-four' },
-    { route: 'plans', label: '订阅', title: '订阅策略', icon: 'ph-currency-circle-dollar' },
-    { route: 'referral', label: '推荐', title: '推荐与结算', icon: 'ph-gift' },
-    { route: 'promoters', label: '推广', title: '推广员开号', icon: 'ph-user-plus' },
-    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' },
-    { route: 'announce', label: '公告', title: '公告与审计', icon: 'ph-scroll' }
+    { route: 'publish', label: '定价', title: '内容与定价', icon: 'ph-currency-circle-dollar' },
+    { route: 'promoters', label: '推广', title: '推广运营', icon: 'ph-user-plus' },
+    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' }
 ];
 
 const TM_OPS_ROUTE_IDS = TM_OPS_NAV_CONFIG.map(function (item) { return item.route; });
 
 function TM_getCurrentRoleType() {
-    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
-        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
-    }
-    try {
-        var raw = localStorage.getItem('user_info');
-        if (raw) {
-            var u = JSON.parse(raw);
-            if (u && u.roleType) {
-                return String(u.roleType).trim().toUpperCase();
-            }
-        }
-    } catch (e) { /* ignore */ }
     try {
         var token = localStorage.getItem('token');
         if (token && token !== 'mock-token') {
@@ -772,7 +758,19 @@ function TM_getCurrentRoleType() {
                 }
             }
         }
-    } catch (e2) { /* ignore */ }
+    } catch (eJwt) { /* ignore */ }
+    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
+        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
+    }
+    try {
+        var raw = localStorage.getItem('user_info');
+        if (raw) {
+            var u = JSON.parse(raw);
+            if (u && u.roleType) {
+                return String(u.roleType).trim().toUpperCase();
+            }
+        }
+    } catch (e) { /* ignore */ }
     return '';
 }
 
@@ -874,6 +872,9 @@ function TM_scrollOpsContentTop() {
 }
 
 function TM_switchOpsRoute(route) {
+    if (typeof window.TM_OPS_normalizeRoute === 'function') {
+        route = window.TM_OPS_normalizeRoute(route);
+    }
     if (TM_OPS_ROUTE_IDS.indexOf(route) < 0) {
         route = 'tenants';
     }
@@ -935,8 +936,8 @@ function TM_bootOpsHubShell() {
         TM_syncAppShellMetrics();
     }
     var raw = (location.hash || '').replace(/^#/, '');
-    if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
-        raw = 'tenants';
+    if (typeof window.TM_OPS_normalizeRoute === 'function') {
+        raw = window.TM_OPS_normalizeRoute(raw);
     }
     var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
     TM_switchOpsRoute(route);
@@ -971,6 +972,9 @@ function TM_bootOpsIndexShell() {
     var raw = (location.hash || '').replace(/^#(?:tab=)?/, '').split('&')[0];
     if (raw.indexOf('tab=') === 0) {
         raw = raw.slice(4);
+    }
+    if (typeof window.TM_OPS_normalizeRoute === 'function') {
+        raw = window.TM_OPS_normalizeRoute(raw);
     }
     var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
     if (window.TM_OPS && typeof window.TM_OPS.loadModule === 'function') {
@@ -1937,6 +1941,10 @@ function openOrderDetail(orderId) {
     if (typeof window.__TM_dashboardOpenOrderDetail === 'function') {
         return window.__TM_dashboardOpenOrderDetail(orderId);
     }
+    if (typeof window.openOrderDetailModal === 'function') {
+        return window.openOrderDetailModal(orderId, {});
+    }
+    window.currentDetailOrderId = orderId;
     var idEl = document.getElementById('detail-order-id');
     if (idEl) idEl.innerText = orderId || '';
     var modal = document.getElementById('order-detail-modal');
@@ -1948,6 +1956,11 @@ function openOrderDetail(orderId) {
         if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
         else if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
         else document.body.style.overflow = 'hidden';
+    }
+    if (typeof window.loadOrderDetailContent === 'function') {
+        window.loadOrderDetailContent(orderId, { orderId: orderId, id: orderId });
+    } else if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
+        window.TM_PrintTriggers.syncOrderDetailPrintBtn(orderId);
     }
 }
 

@@ -279,9 +279,13 @@ window.SupplierModule = {
     },
 
     syncPurchasePrintBtn: function () {
+        var pid = this.currentPurchase && this.currentPurchase.purchaseId;
+        if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncPurchasePrintBtn === 'function') {
+            window.TM_PrintTriggers.syncPurchasePrintBtn(pid);
+            return;
+        }
         var btn = document.getElementById('purchase-print-btn');
         if (!btn) return;
-        var pid = this.currentPurchase && this.currentPurchase.purchaseId;
         btn.classList.toggle('hidden', !pid);
     },
 

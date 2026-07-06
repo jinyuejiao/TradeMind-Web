@@ -271,6 +271,11 @@
             '<option value="DELIVERY_ADDRESS">送指定地点</option>' +
             '<option value="DELIVERY_VEHICLE">送车</option></select></div>' +
             '<div id="rop-logistics-panel" class="rop-fulfillment-panel rop-field-full hidden space-y-2 p-2 rounded-lg bg-slate-50 border border-slate-100">' +
+            '<p class="text-[10px] font-bold text-slate-500">收件信息</p>' +
+            '<input id="rop-log-contact" class="form-input form-input--compact w-full text-xs" placeholder="收货人" />' +
+            '<input id="rop-log-phone" class="form-input form-input--compact w-full text-xs" placeholder="联系电话" />' +
+            '<input id="rop-log-address" class="form-input form-input--compact w-full text-xs" placeholder="收货地址" />' +
+            '<p class="text-[10px] font-bold text-slate-500 pt-1">物流信息</p>' +
             '<select id="rop-logistics-provider" class="form-input form-input--compact w-full text-xs">' +
             '<option value="">选择物流商</option>' +
             '<option value="SF">顺丰</option><option value="YTO">圆通</option><option value="ZTO">中通</option>' +
@@ -320,9 +325,15 @@
                 });
             });
         }
-        modal.querySelector('#rop-warehouse').addEventListener('change', function () {
+        modal.querySelector('#rop-warehouse').addEventListener('change', async function () {
             batchCache.clear();
             renderOrderLines();
+            var whId = modal.querySelector('#rop-warehouse').value;
+            if (window.TM_SkuCatalogCache) {
+                await window.TM_SkuCatalogCache.load(whId ? parseInt(whId, 10) : null, true);
+                renderCategories();
+                renderProductList();
+            }
         });
         applyIndustryUi(modal);
     }
@@ -372,6 +383,14 @@
     async function fetchAccountsForRop() {
         if (typeof window.loadBizAccounts === 'function') {
             await window.loadBizAccounts();
+        } else if (window.wrappedFetch) {
+            try {
+                var resp = await window.wrappedFetch('/api/v1/im/accounts', { method: 'GET' });
+                var json = await resp.json().catch(function () { return {}; });
+                window.bizAccountsList = (json && json.success && Array.isArray(json.data)) ? json.data : [];
+            } catch (e) {
+                window.bizAccountsList = [];
+            }
         }
         return window.bizAccountsList || [];
     }
@@ -853,7 +872,8 @@
         ensurePickerDom();
         var wh = document.getElementById('rop-warehouse');
         var whId = wh && wh.value ? parseInt(wh.value, 10) : null;
-        if (window.TM_SkuCatalogCache) await window.TM_SkuCatalogCache.load(whId, false);
+        if (window.TM_SkuCatalogCache) await window.TM_SkuCatalogCache.load(whId, !!window._tmCatalogDirty);
+        window._tmCatalogDirty = false;
         activeCategory = 0;
         renderCategories();
         renderProductList();
@@ -918,8 +938,13 @@
                 o.textContent = a.accountName || a.account_name || ('账户#' + o.value);
                 accSel.appendChild(o);
             });
-            var ui = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.uiProfile;
-            var defAcc = ui && (ui.defaultAccountId || ui.default_account_id);
+            var defAcc = typeof window.TM_resolveDefaultReceiveAccountId === 'function'
+                ? window.TM_resolveDefaultReceiveAccountId()
+                : null;
+            if (!defAcc) {
+                var ui = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.uiProfile;
+                defAcc = ui && (ui.defaultAccountId || ui.default_account_id);
+            }
             if (!defAcc) {
                 var defItem = accList.find(function (a) {
                     return a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't';
@@ -942,7 +967,8 @@
             window.TM_SkuCatalogCache.warmFromSession();
             var wh = document.getElementById('rop-warehouse');
             var whId = wh && wh.value ? parseInt(wh.value, 10) : null;
-            await window.TM_SkuCatalogCache.load(whId, false);
+            await window.TM_SkuCatalogCache.load(whId, !!window._tmCatalogDirty);
+            window._tmCatalogDirty = false;
         }
         await renderOrderLines();
         syncFulfillmentPanel();
@@ -956,8 +982,12 @@
     async function submitOrder() {
         var profile = window.TM_WorkbenchProfile || {};
         if (typeof profile.canCreateOrders === 'function' && !profile.canCreateOrders()) {
-            notify('当前订阅已过期或处于只读模式，无法开单，请续费后重新登录', 'error');
-            if (typeof window.openMemberModal === 'function') window.openMemberModal();
+            if (window.TM_SubscriptionNotice && typeof window.TM_SubscriptionNotice.promptBlocked === 'function') {
+                window.TM_SubscriptionNotice.promptBlocked('create_order');
+            } else {
+                notify('当前订阅已过期，无法开单，请续费后重试', 'warning');
+                if (typeof window.openMemberModal === 'function') window.openMemberModal();
+            }
             return;
         }
         var custId = parseInt(document.getElementById('rop-customer').value, 10);
@@ -1003,7 +1033,13 @@
         if (ft === 'LOGISTICS') {
             logisticsProvider = (document.getElementById('rop-logistics-provider').value || '').trim();
             logisticsTrackingNo = (document.getElementById('rop-tracking-no').value || '').trim();
-            addrSnap = { provider: logisticsProvider, trackingNo: logisticsTrackingNo };
+            addrSnap = {
+                contactName: (document.getElementById('rop-log-contact') && document.getElementById('rop-log-contact').value.trim()) || '',
+                contactPhone: (document.getElementById('rop-log-phone') && document.getElementById('rop-log-phone').value.trim()) || '',
+                detail: (document.getElementById('rop-log-address') && document.getElementById('rop-log-address').value.trim()) || '',
+                provider: logisticsProvider,
+                trackingNo: logisticsTrackingNo
+            };
         } else if (ft === 'DELIVERY_ADDRESS') {
             addrSnap = {
                 contactName: document.getElementById('rop-addr-contact').value.trim(),
@@ -1060,8 +1096,12 @@
         } catch (e) {
             var msg = e.message || '提交失败';
             if (/订阅状态不允许|只读|READ_ONLY|BILLING_ONLY/i.test(msg)) {
-                notify('当前订阅已过期或处于只读模式，无法开单，请续费后重新登录', 'error');
-                if (typeof window.openMemberModal === 'function') window.openMemberModal();
+                if (window.TM_SubscriptionNotice && typeof window.TM_SubscriptionNotice.promptBlocked === 'function') {
+                    window.TM_SubscriptionNotice.promptBlocked('create_order', { openRenew: true, delayModalMs: 400 });
+                } else {
+                    notify('当前订阅已过期，无法开单，请续费后重试', 'warning');
+                    if (typeof window.openMemberModal === 'function') window.openMemberModal();
+                }
                 return;
             }
             notify(msg, 'error');
