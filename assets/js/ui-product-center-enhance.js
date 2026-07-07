@@ -1491,6 +1491,9 @@
 
     var _openProductDetail = PM.openProductDetail;
     PM.openProductDetail = async function (productId) {
+        if (typeof PM.resetProductMediaDraft === 'function') {
+            PM.resetProductMediaDraft();
+        }
         await PM.ensureProductFormMounted();
         var unitsPromise = PM.loadTenantUnitNames();
         await _openProductDetail.call(PM, productId);
@@ -2208,8 +2211,6 @@
         }
     });
 
-    console.log('[ProductEnhance] 产品中心增强已应用');
-
     var _origInit = PM.init;
     PM.init = async function () {
         await Promise.all([
@@ -2353,7 +2354,8 @@
     };
 
     PM.renderMediaGrid = function () {
-        if (typeof PM.syncSkuCoversFromVariantDraft === 'function') {
+        var hasVariantDraft = PM._variantComboDraft && PM._variantComboDraft.length;
+        if (hasVariantDraft && typeof PM.syncSkuCoversFromVariantDraft === 'function') {
             PM.syncSkuCoversFromVariantDraft();
         }
         var box = PM.el('detail-product-media-grid');
@@ -2363,6 +2365,10 @@
         var pendingIdx = 0;
         var skuCovers = PM._skuCoverCandidates || [];
         var shownKeys = {};
+        var hasSpuMedia = !!(PM._coverMedia && PM._coverMedia.url) ||
+            (PM._galleryMedia && PM._galleryMedia.length) ||
+            pending.length;
+        var showSkuThumbs = hasVariantDraft && !hasSpuMedia;
 
         function markShown(item) {
             var k = PM.normalizeMediaKey(item);
@@ -2384,7 +2390,7 @@
         } else if (pending.length) {
             html += thumbWrap('<img src="' + URL.createObjectURL(pending[0]) + '" class="w-full h-full object-cover opacity-90" alt="" />', '主图', 'pending', null, 0);
             pendingIdx = 1;
-        } else if (skuCovers.length) {
+        } else if (showSkuThumbs && skuCovers.length) {
             var firstSku = skuCovers[0];
             html += thumbWrap('<img src="' + PM.escHtmlAttr(firstSku.url) + '" class="w-full h-full object-cover" alt="" />', 'SKU', 'sku', firstSku.mediaId, null, true);
             markShown(firstSku);
@@ -2401,7 +2407,7 @@
         }
 
         skuCovers.forEach(function (item) {
-            if (!item.url || shownKeys[PM.normalizeMediaKey(item)]) return;
+            if (!showSkuThumbs || !item.url || shownKeys[PM.normalizeMediaKey(item)]) return;
             if (item.mediaId) {
                 html += thumbWrap(
                     '<img src="' + PM.escHtmlAttr(item.url) + '" class="w-full h-full object-cover" alt="" />',
@@ -2475,23 +2481,26 @@
         }
         try {
             var skuMediaItems = results[1] && results[1].data ? results[1].data : [];
-            var seenKeys = {};
-            (Array.isArray(skuMediaItems) ? skuMediaItems : []).forEach(function (m) {
-                var url = m.url;
-                var sid = m.sku_id || m.skuId;
-                var mid = m.media_id != null ? m.media_id : m.mediaId;
-                if (!url || !sid) return;
-                var row = {
-                    skuId: sid,
-                    mediaId: mid,
-                    url: url,
-                    label: (m.attributes_display || m.attributesDisplay || '') || ('SKU#' + sid)
-                };
-                var k = PM.normalizeMediaKey(row);
-                if (seenKeys[k]) return;
-                seenKeys[k] = true;
-                PM._skuCoverCandidates.push(row);
-            });
+            var hasSpuLevel = PM._coverMedia || (PM._galleryMedia && PM._galleryMedia.length);
+            if (!hasSpuLevel) {
+                var seenKeys = {};
+                (Array.isArray(skuMediaItems) ? skuMediaItems : []).forEach(function (m) {
+                    var url = m.url;
+                    var sid = m.sku_id || m.skuId;
+                    var mid = m.media_id != null ? m.media_id : m.mediaId;
+                    if (!url || !sid) return;
+                    var row = {
+                        skuId: sid,
+                        mediaId: mid,
+                        url: url,
+                        label: (m.attributes_display || m.attributesDisplay || '') || ('SKU#' + sid)
+                    };
+                    var k = PM.normalizeMediaKey(row);
+                    if (seenKeys[k]) return;
+                    seenKeys[k] = true;
+                    PM._skuCoverCandidates.push(row);
+                });
+            }
         } catch (e) {
             console.warn('[ProductEnhance] SKU 媒体列表加载失败', e);
         }
@@ -2500,28 +2509,30 @@
             if (!detail && window.TM_MasterDataCache) {
                 detail = await window.TM_MasterDataCache.getSpuDetail(spuId, null);
             }
-            var skus = detail && detail.skus ? detail.skus : [];
-            var seen = {};
-            PM._skuCoverCandidates.forEach(function (item) {
-                var k = PM.normalizeMediaKey(item);
-                if (k) seen[k] = true;
-            });
-            skus.forEach(function (sku) {
-                var url = sku.coverUrl || sku.cover_url;
-                if (!url) return;
-                var draft = { url: url, skuId: sku.skuId || sku.sku_id };
-                if (seen[PM.normalizeMediaKey(draft)]) return;
-                seen[PM.normalizeMediaKey(draft)] = true;
-                var label = sku.attributesDisplay || sku.attributes_display || '';
-                if (!label && sku.attributes && typeof sku.attributes === 'object') {
-                    label = Object.keys(sku.attributes).map(function (k) { return sku.attributes[k]; }).join(' / ');
-                }
-                PM._skuCoverCandidates.push({
-                    skuId: sku.skuId || sku.sku_id,
-                    url: url,
-                    label: label || ('SKU#' + (sku.skuId || sku.sku_id))
+            if (!PM._coverMedia && !(PM._galleryMedia && PM._galleryMedia.length)) {
+                var skus = detail && detail.skus ? detail.skus : [];
+                var seen = {};
+                PM._skuCoverCandidates.forEach(function (item) {
+                    var k = PM.normalizeMediaKey(item);
+                    if (k) seen[k] = true;
                 });
-            });
+                skus.forEach(function (sku) {
+                    var url = sku.coverUrl || sku.cover_url;
+                    if (!url) return;
+                    var draft = { url: url, skuId: sku.skuId || sku.sku_id };
+                    if (seen[PM.normalizeMediaKey(draft)]) return;
+                    seen[PM.normalizeMediaKey(draft)] = true;
+                    var label = sku.attributesDisplay || sku.attributes_display || '';
+                    if (!label && sku.attributes && typeof sku.attributes === 'object') {
+                        label = Object.keys(sku.attributes).map(function (k) { return sku.attributes[k]; }).join(' / ');
+                    }
+                    PM._skuCoverCandidates.push({
+                        skuId: sku.skuId || sku.sku_id,
+                        url: url,
+                        label: label || ('SKU#' + (sku.skuId || sku.sku_id))
+                    });
+                });
+            }
         } catch (e) {
             console.warn('[ProductEnhance] SKU 图片加载失败', e);
         }

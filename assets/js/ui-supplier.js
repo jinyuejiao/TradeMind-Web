@@ -84,7 +84,6 @@ window.SupplierModule = {
     purchaseTotalPages: 1,
 
     init: async function() {
-        console.log('SupplierModule initialized');
         await Promise.all([
             this.loadStatuses(),
             this.loadSuppliers(),

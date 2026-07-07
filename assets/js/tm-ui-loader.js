@@ -171,5 +171,4 @@
         setTimeout(dispatchRoleUiReady, 600);
     });
 
-    console.log('[TM_UI_Loader] 商户类型 UI 加载器就绪');
-})();
+    })();

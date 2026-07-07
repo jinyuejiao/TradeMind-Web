@@ -993,7 +993,8 @@ textarea {
         justify-content: stretch !important;
         height: 100% !important;
         max-height: 100% !important;
-        padding: 0 !important;
+        padding: max(2.75rem, calc(env(safe-area-inset-top, 0px) + var(--tm-header-h, 4rem))) 0 0 0 !important;
+        box-sizing: border-box !important;
     }
 
     html.tm-embed-modal-open #purchase-modal.tm-purchase-modal .tm-dialog-panel,

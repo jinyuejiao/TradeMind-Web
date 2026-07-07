@@ -133,5 +133,4 @@
         bootLayoutMode();
     }
 
-    console.log('[TM_Responsive] 移动端适配模块已加载');
-})();
+    })();

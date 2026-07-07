@@ -594,7 +594,6 @@ function TM_refreshDashboardPendingOrders() {
 
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
-    console.log('[TM] 加载 dashboard 内容片段');
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
@@ -633,7 +632,6 @@ function loadDashboard() {
 }
 
 function loadSmartOps() {
-    console.log('[TM] 以 iframe(embed) 加载 SmartOps');
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
@@ -644,7 +642,6 @@ function loadSmartOps() {
 }
 
 function loadCRM() {
-    console.log('[TM] 以 iframe(embed) 加载 CRM');
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
@@ -655,7 +652,6 @@ function loadCRM() {
 }
 
 function loadProductCenter() {
-    console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
     var overlayPromise = typeof TM_syncProductCenterOverlays === 'function'
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
@@ -696,7 +692,6 @@ function loadProductCenter() {
             }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
-                    console.log('[ui-main] 初始化 ProductModule');
                     window.ProductModule.init();
                 }
                 if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
@@ -710,7 +705,6 @@ function loadProductCenter() {
 }
 
 function loadSupplier() {
-    console.log('[TM] 以 iframe(embed) 加载供应链/供应商');
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
@@ -2776,8 +2770,6 @@ function saveSupplierEdit() {
     const rating = ratingEl ? ratingEl.value : '';
     
     // 模拟保存操作
-    console.log('保存供应商信息:', { name, contact, phone, rating });
-    
     // 关闭弹窗并显示提示
     closeSupplierEditModal();
     showToast('供应商信息已保存');

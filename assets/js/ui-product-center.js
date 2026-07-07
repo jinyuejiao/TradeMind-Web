@@ -1,5 +1,3 @@
-console.log('[ProductModule] 产品中心模块加载中...');
-
 function formatPurchasePriceDisplay(value) {
     if (window.TM_METRICS && window.TM_METRICS.formatPurchasePrice) {
         var n = window.TM_METRICS.formatPurchasePrice(value);
@@ -199,7 +197,6 @@ window.ProductModule = {
     },
 
     loadSuppliers: async function() {
-        console.log('[ProductModule] loadSuppliers 被调用 ===');
         try {
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
@@ -213,14 +210,12 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 供应商数据:', data);
             const supplierRaw = data.data || data;
             const supplierList = Array.isArray(supplierRaw) ? supplierRaw : (supplierRaw.records || []);
             
             if (Array.isArray(supplierList)) {
                 this.suppliers = supplierList;
-                console.log('[ProductModule] 供应商数据加载完成，数量:', this.suppliers.length);
-            }
+                }
             
             return this.suppliers;
         } catch (error) {
@@ -253,7 +248,6 @@ window.ProductModule = {
     },
 
     loadWarehouses: async function() {
-        console.log('[ProductModule] loadWarehouses 被调用 ===');
         try {
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
@@ -271,13 +265,11 @@ window.ProductModule = {
                 return [];
             }
 
-            console.log('[ProductModule] 仓库数据:', data);
             const warehouseList = data.data || data;
             const mappedWarehouses = Array.isArray(warehouseList) 
                 ? warehouseList.map(warehouse => this.mapWarehouseFromApi(warehouse))
                 : [];
             
-            console.log('[ProductModule] 仓库数据映射完成，数量:', mappedWarehouses.length);
             this.warehouses = mappedWarehouses;
             return mappedWarehouses;
         } catch (error) {
@@ -308,6 +300,7 @@ window.ProductModule = {
         searchText: ''
     },
     listViewMode: 'product',
+    _spuMobileExpanded: {},
     _warehouseStockFilter: null,
 
     // 供应商列表
@@ -338,7 +331,6 @@ window.ProductModule = {
 
     // ==================== 初始化函数 ====================
     init: async function() {
-        console.log('[ProductModule] 初始化... 时间:', new Date().toISOString());
         await Promise.all([
             this.loadCategories(),
             this.loadSuppliers(),
@@ -347,8 +339,7 @@ window.ProductModule = {
         ]);
         this.initFilterOptions();
         await this.loadProducts();
-        console.log('[ProductModule] 初始化完成');
-    },
+        },
 
     loadTenantUnitNames: async function() {
         try {
@@ -411,7 +402,6 @@ window.ProductModule = {
 
     // ==================== 下拉菜单功能 ====================
     toggleDropdown: function(dropdownId, evt) {
-        console.log('[ProductModule] toggleDropdown 被调用，参数:', dropdownId);
         if (evt && evt.preventDefault) {
             evt.preventDefault();
         }
@@ -452,11 +442,9 @@ window.ProductModule = {
             const caretIcon = filterEl.querySelector('.filter-caret-icon');
             if (caretIcon) {
                 if (isHidden) {
-                    console.log('[ProductModule] 打开下拉框，更新箭头');
                     caretIcon.classList.remove('ph-caret-down');
                     caretIcon.classList.add('ph-caret-up', 'rotate-180', 'text-teal-500');
                 } else {
-                    console.log('[ProductModule] 关闭下拉框，重置箭头');
                     caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
                     caretIcon.classList.add('ph-caret-down');
                 }
@@ -584,6 +572,61 @@ window.ProductModule = {
         }
     },
 
+    toggleSpuMobileExpand: async function (spuId, ev) {
+        if (ev && ev.stopPropagation) ev.stopPropagation();
+        if (!spuId) return;
+        var self = this;
+        var key = String(spuId);
+        var next = !self._spuMobileExpanded[key];
+        self._spuMobileExpanded[key] = next;
+        var group = document.querySelector('[data-spu-mobile-group="' + key + '"]');
+        if (!group) return;
+        var child = group.querySelector('.spu-mobile-skus');
+        var caret = group.querySelector('.spu-mobile-caret');
+        if (!child) return;
+        if (next) {
+            child.classList.remove('hidden');
+            if (caret) caret.classList.add('rotate-90');
+            if (child.getAttribute('data-loaded') === '1') return;
+            child.innerHTML = '<p class="text-[10px] text-slate-400 py-2 pl-12">加载 SKU…</p>';
+            try {
+                var response = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId, { method: 'GET' });
+                var data = await window.handleApiResponse(response);
+                if (!data) return;
+                var detail = data.data || data;
+                var skus = detail.skus || [];
+                if (!skus.length) {
+                    child.innerHTML = '<p class="text-[10px] text-slate-400 py-2 pl-12">暂无 SKU</p>';
+                } else {
+                    child.innerHTML = skus.map(function (sku) {
+                        var legacyId = sku.legacyProductId || sku.legacy_product_id;
+                        var spec = sku.attributesDisplay || sku.attributes_display || sku.specDisplay || sku.spec_display || '';
+                        if (!spec && sku.attributes && typeof sku.attributes === 'object') {
+                            spec = Object.keys(sku.attributes).map(function (k) { return sku.attributes[k]; }).join(' / ');
+                        }
+                        var stock = sku.stock != null ? sku.stock : (sku.stockQty != null ? sku.stockQty : 0);
+                        var skuCode = sku.skuCode || sku.sku_code || ('SKU#' + (sku.skuId || sku.sku_id || ''));
+                        var click = legacyId
+                            ? (' onclick="window.ProductModule.openProductDetail(' + legacyId + ')"')
+                            : '';
+                        return '<div class="spu-mobile-sku-row flex items-center gap-2 py-2 pl-10 pr-3 border-t border-slate-100 bg-slate-50/80 cursor-pointer hover:bg-slate-50"' + click + '>'
+                            + '<div class="flex-1 min-w-0"><p class="text-[11px] font-bold text-slate-700 truncate">' + (spec || skuCode) + '</p>'
+                            + '<p class="text-[10px] text-slate-400 font-mono truncate">' + skuCode + '</p></div>'
+                            + '<span class="text-[10px] font-mono text-slate-500 shrink-0">' + stock + '</span>'
+                            + (legacyId ? '<i class="ph ph-pencil-simple text-slate-300 text-sm shrink-0"></i>' : '')
+                            + '</div>';
+                    }).join('');
+                }
+                child.setAttribute('data-loaded', '1');
+            } catch (e) {
+                child.innerHTML = '<p class="text-[10px] text-red-400 py-2 pl-12">加载失败</p>';
+            }
+        } else {
+            child.classList.add('hidden');
+            if (caret) caret.classList.remove('rotate-90');
+        }
+    },
+
     toggleSpuListView: async function() {
         this.listViewMode = this.listViewMode === 'spu' ? 'product' : 'spu';
         var btn = document.getElementById('product-view-spu-btn');
@@ -678,14 +721,26 @@ window.ProductModule = {
             var skuCount = spu.sku_count != null ? spu.sku_count : (spu.skuCount || 0);
             var stock = spu.total_stock != null ? spu.total_stock : (spu.totalStock || 0);
             var stockLabel = Number(stock) < 0 ? ('欠货 ' + Math.abs(Number(stock))) : (stock + ' 库存');
-            return '<div class="mobile-product-row flex items-stretch gap-2 px-3 py-2 cursor-pointer hover:bg-slate-50 active:bg-slate-50" onclick="window.ProductModule.openSpuDetail(' + spuId + ')">'
+            var expanded = this._spuMobileExpanded && this._spuMobileExpanded[String(spuId)];
+            return '<div class="spu-mobile-group border-b border-slate-100" data-spu-mobile-group="' + spuId + '">'
+                + '<div class="mobile-product-row flex items-stretch gap-2 px-3 py-2 hover:bg-slate-50 active:bg-slate-50">'
                 + '<div class="w-9 h-9 rounded-lg bg-teal-50 flex items-center justify-center text-teal-500 shrink-0"><i class="ph ph-tree-structure text-lg"></i></div>'
-                + '<div class="flex-1 min-w-0">'
+                + '<div class="flex-1 min-w-0" role="button" tabindex="0" onclick="window.ProductModule.toggleSpuMobileExpand(' + spuId + ', event)">'
                 + '<p class="font-bold text-slate-800 text-[12px] leading-tight line-clamp-2">' + name + '</p>'
                 + '<p class="text-[10px] text-slate-400 mt-0.5">' + skuCount + ' SKU · ' + stockLabel + '</p>'
                 + '</div>'
-                + '<i class="ph ph-caret-right text-slate-300 self-center shrink-0"></i></div>';
+                + '<button type="button" class="spu-mobile-caret p-2 -mr-1 text-slate-400 shrink-0 self-center' + (expanded ? ' rotate-90' : '') + '" onclick="window.ProductModule.toggleSpuMobileExpand(' + spuId + ', event)" aria-label="展开 SKU 列表">'
+                + '<i class="ph ph-caret-right text-lg"></i></button></div>'
+                + '<div class="spu-mobile-skus' + (expanded ? '' : ' hidden') + '" data-loaded="0"></div>'
+                + '</div>';
         }).join('');
+        var self = this;
+        spuList.forEach(function (spu) {
+            var spuId = spu.spu_id || spu.spuId;
+            if (self._spuMobileExpanded && self._spuMobileExpanded[String(spuId)]) {
+                self.toggleSpuMobileExpand(spuId);
+            }
+        });
     },
 
     openSpuDetail: async function(spuId) {
@@ -764,7 +819,6 @@ window.ProductModule = {
     },
 
     selectStockStatus: function(status) {
-        console.log('[ProductModule] selectStockStatus 被调用，参数:', status);
         this.filterState.stockStatus = status;
         
         const label = document.getElementById('stock-label');
@@ -793,7 +847,6 @@ window.ProductModule = {
     },
 
     updateResetButton: function() {
-        console.log('[ProductModule] updateResetButton 被调用 ===');
         const resetBtn = document.getElementById('reset-filter-btn');
         if (!resetBtn) return;
         
@@ -812,7 +865,6 @@ window.ProductModule = {
     },
 
     resetFilters: function() {
-        console.log('[ProductModule] resetFilters 被调用 ===');
         this.filterState = {
             categoryId: null,
             supplierId: null,
@@ -843,7 +895,6 @@ window.ProductModule = {
     },
 
     filterInventoryTable: function() {
-        console.log('[ProductModule] filterInventoryTable 被调用 ===');
         const searchInput = document.getElementById('inventorySearch');
         if (searchInput) {
             this.filterState.searchText = searchInput.value;
@@ -852,7 +903,6 @@ window.ProductModule = {
     },
 
     filterProducts: function() {
-        console.log('[ProductModule] filterProducts 被调用 ===');
         let filtered = [...this.products];
         
         if (this.filterState.searchText) {
@@ -889,7 +939,6 @@ window.ProductModule = {
             });
         }
         
-        console.log('[ProductModule] 筛选后产品数量:', filtered.length, '时间:', new Date().toISOString());
         this.renderProducts(filtered, { resetPage: true });
     },
 
@@ -966,13 +1015,11 @@ window.ProductModule = {
     // ==================== 渲染功能 ====================
     renderProducts: function(productList, options) {
         const opts = options || {};
-        console.log('[ProductModule] renderProducts 被调用，产品数量:', productList ? productList.length : 'null/undefined', '时间:', new Date().toISOString());
         if (!productList) {
             console.error('[ProductModule] productList为null或undefined');
             return;
         }
         
-        console.log('[ProductModule] 产品列表内容:', productList);
         const self = this;
         const sortedProducts = [...productList].sort(function (a, b) {
             var tb = self._productSortKey(b);
@@ -980,7 +1027,6 @@ window.ProductModule = {
             if (tb !== ta) return tb - ta;
             return (Number(b.salesVolume) || 0) - (Number(a.salesVolume) || 0);
         });
-        console.log('[ProductModule] 排序后的产品列表:', sortedProducts);
         this.filteredProducts = sortedProducts;
         this.productTotal = sortedProducts.length;
         this.productTotalPages = Math.max(1, Math.ceil(this.productTotal / this.PAGE_SIZE));
@@ -993,9 +1039,7 @@ window.ProductModule = {
         const paged = this.paginateData(sortedProducts, this.productCurrentPage, this.PAGE_SIZE);
         const pageProducts = paged.records;
 
-        console.log('[ProductModule] 准备调用renderDesktopTable');
         this.renderDesktopTable(pageProducts);
-        console.log('[ProductModule] 准备调用renderMobileCards');
         this.renderMobileCards(pageProducts);
         this.renderPaginationBar({
             containerId: 'product-pagination',
@@ -1009,8 +1053,7 @@ window.ProductModule = {
         if (typeof window.applyRoleUI === 'function') {
             window.applyRoleUI({ skipTabSync: true });
         }
-        console.log('[ProductModule] renderProducts完成，当前页:', this.productCurrentPage, '总页数:', this.productTotalPages, '本页条数:', pageProducts.length);
-    },
+        },
 
     ensurePaginationContainer: function(containerId) {
         var container = document.getElementById(containerId);
@@ -1126,17 +1169,13 @@ window.ProductModule = {
     },
 
     renderDesktopTable: function(productList) {
-        console.log('[ProductModule] renderDesktopTable 被调用 ===');
         const tbody = document.querySelector('#existingProdTable tbody');
-        console.log('[ProductModule] Desktop table tbody:', tbody);
         if (!tbody) {
             console.error('[ProductModule] 未找到existingProdTable tbody');
             return;
         }
         
-        console.log('[ProductModule] 准备渲染产品数量:', productList.length);
         if (productList.length === 0) {
-            console.log('[ProductModule] 产品列表为空，显示空状态');
             tbody.innerHTML = `
                 <tr class="hidden md:table-row">
                     <td colspan="5" class="px-6 py-12 text-center">
@@ -1150,9 +1189,7 @@ window.ProductModule = {
             return;
         }
         
-        console.log('[ProductModule] 开始渲染产品行');
         tbody.innerHTML = productList.map(product => {
-            console.log('[ProductModule] 渲染产品:', product);
             return `
             <tr data-product-id="${product.id}" onclick="window.ProductModule.openProductDetail(${product.id})" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
                 <td class="px-6 py-4">
@@ -1191,13 +1228,10 @@ window.ProductModule = {
             </tr>
         `;
         }).join('');
-        console.log('[ProductModule] renderDesktopTable完成');
-    },
+        },
 
     renderMobileCards: function(productList) {
-        console.log('[ProductModule] renderMobileCards 被调用 ===');
         const container = document.getElementById('mobile-product-cards');
-        console.log('[ProductModule] Mobile cards container:', container);
         if (!container) {
             console.error('[ProductModule] 未找到mobile-product-cards容器');
             return;
@@ -1277,7 +1311,6 @@ window.ProductModule = {
 
     // ==================== 初始化选项 ====================
     initCategoryOptions: function() {
-        console.log('[ProductModule] initCategoryOptions 被调用 ===');
         const container = document.getElementById('category-options');
         if (!container) return;
 
@@ -1299,7 +1332,6 @@ window.ProductModule = {
     },
 
     initSupplierOptions: function() {
-        console.log('[ProductModule] initSupplierOptions 被调用 ===');
         const container = document.getElementById('supplier-options');
         if (!container) return;
 
@@ -1321,7 +1353,6 @@ window.ProductModule = {
     },
 
     initStockOptions: function() {
-        console.log('[ProductModule] initStockOptions 被调用 ===');
         const container = document.getElementById('stock-options');
         if (!container) return;
 
@@ -1362,7 +1393,6 @@ window.ProductModule = {
     },
 
     initFilterOptions: function() {
-        console.log('[ProductModule] initFilterOptions 被调用 ===');
         this.bindFilterDropdownDelegates();
         this.initCategoryOptions();
         this.initSupplierOptions();
@@ -1373,7 +1403,6 @@ window.ProductModule = {
     },
 
     initProductList: function() {
-        console.log('[ProductModule] initProductList 被调用，产品数量:', this.products.length);
         this.renderProducts(this.products);
     },
 
@@ -1428,7 +1457,6 @@ window.ProductModule = {
     },
 
     openCreateProductModal: async function() {
-        console.log('[ProductModule] openCreateProductModal 被调用 ===');
         try {
             await Promise.all([
                 this.loadCategories(),
@@ -1512,7 +1540,6 @@ window.ProductModule = {
     },
 
     closeProductDetail: function() {
-        console.log('[ProductModule] closeProductDetail 被调用 ===');
         const modal = document.getElementById('product-detail-modal');
         if (modal) {
             if (typeof window.TM_closeUnifiedModal === 'function') {
@@ -1525,7 +1552,6 @@ window.ProductModule = {
     },
 
     confirmDeleteProduct: function(productId, productName) {
-        console.log('[ProductModule] confirmDeleteProduct 被调用，产品ID:', productId, '产品名:', productName);
         var self = this;
         var msg = '确定要删除产品「' + (productName || '') + '」吗？此操作无法撤销。';
         var runDelete = async function () {
@@ -1542,7 +1568,6 @@ window.ProductModule = {
                 const data = await window.handleApiResponse(response);
                 if (!data) return;
 
-                console.log('[ProductModule] 产品删除成功');
                 if (window.TM_UI && window.TM_UI.showNotification) {
                     window.TM_UI.showNotification('产品删除成功！', 'success');
                 }
@@ -1954,7 +1979,6 @@ window.ProductModule = {
                 return;
             }
 
-            console.log('[ProductModule] 保存单位换算（写入 unitConversion 表）:', built.body);
             const response = await window.wrappedFetch('/api/v1/rd/products/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1987,7 +2011,6 @@ window.ProductModule = {
     },
 
     openUnitModal: async function() {
-        console.log('[ProductModule] openUnitModal 被调用 ===');
         var pid = this.currentProduct && (this.currentProduct.id || this.currentProduct.productId);
         if (pid) {
             await this.refreshUnitConversionDraftFromApi(pid);
@@ -2019,14 +2042,12 @@ window.ProductModule = {
     },
 
     closeUnitModal: function() {
-        console.log('[ProductModule] closeUnitModal 被调用 ===');
         document.querySelectorAll('#unit-modal').forEach(function (modal) {
             modal.classList.add('hidden');
         });
     },
 
     openWarehouseDrawer: async function() {
-        console.log('[ProductModule] openWarehouseDrawer 被调用 ===');
         const drawer = document.getElementById('warehouse-drawer');
         if (drawer) {
             if (typeof window.TM_openUnifiedModal === 'function') {
@@ -2040,7 +2061,6 @@ window.ProductModule = {
     },
 
     loadWarehousesAndRender: async function() {
-        console.log('[ProductModule] loadWarehousesAndRender 被调用 ===');
         const warehouses = await this.loadWarehouses();
         if (warehouses) {
             this.warehouses = warehouses;
@@ -2049,7 +2069,6 @@ window.ProductModule = {
     },
 
     renderWarehouseList: function() {
-        console.log('[ProductModule] renderWarehouseList 被调用 ===');
         const container = document.getElementById('warehouse-list-container');
         if (!container) {
             console.error('[ProductModule] 未找到warehouse-list-container');
@@ -2090,7 +2109,6 @@ window.ProductModule = {
     },
 
     closeWarehouseDrawer: function() {
-        console.log('[ProductModule] closeWarehouseDrawer 被调用 ===');
         const drawer = document.getElementById('warehouse-drawer');
         if (drawer) {
             if (typeof window.TM_closeUnifiedModal === 'function') {
@@ -2103,7 +2121,6 @@ window.ProductModule = {
     },
 
     saveWarehouse: async function() {
-        console.log('[ProductModule] saveWarehouse 被调用 ===');
         try {
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
@@ -2139,8 +2156,6 @@ window.ProductModule = {
                 warehouseData.warehouseId = this.editingWarehouseId;
             }
             
-            console.log('[ProductModule] 发送仓库数据:', warehouseData);
-
             const response = await window.wrappedFetch('/api/v1/rd/products/warehouses/save', {
                 method: 'POST',
                 headers: {
@@ -2152,7 +2167,6 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 仓库保存成功:', data);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 const actionText = this.editingWarehouseId ? '更新' : '保存';
                 window.TM_UI.showNotification('仓库 "' + nameInput.value + '" 已' + actionText + '！', 'success');
@@ -2180,7 +2194,6 @@ window.ProductModule = {
     },
     
     editWarehouse: function(warehouseId) {
-        console.log('[ProductModule] editWarehouse 被调用, warehouseId:', warehouseId);
         const warehouse = this.warehouses.find(w => String(w.id) === String(warehouseId));
         if (!warehouse) {
             console.error('[ProductModule] 未找到仓库:', warehouseId);
@@ -2194,11 +2207,9 @@ window.ProductModule = {
         if (locationInput) locationInput.value = warehouse.location || '';
         
         this.editingWarehouseId = warehouse.id;
-        console.log('[ProductModule] 仓库信息已填充到表单');
-    },
+        },
     
     openDeleteWarehouseConfirm: function(warehouseId) {
-        console.log('[ProductModule] openDeleteWarehouseConfirm 被调用, warehouseId:', warehouseId);
         this.warehouseToDelete = warehouseId;
         
         // 复用删除确认弹窗，修改提示文字
@@ -2215,7 +2226,6 @@ window.ProductModule = {
     },
     
     deleteWarehouse: async function() {
-        console.log('[ProductModule] deleteWarehouse 被调用, warehouseId:', this.warehouseToDelete);
         if (!this.warehouseToDelete) {
             console.error('[ProductModule] 没有要删除的仓库');
             return;
@@ -2234,7 +2244,6 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 仓库删除成功');
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('仓库已删除！', 'success');
             }
@@ -2561,7 +2570,6 @@ window.ProductModule = {
     },
 
     closeCostAnalysis: function() {
-        console.log('[ProductModule] closeCostAnalysis 被调用 ===');
         const modal = document.getElementById('cost-analysis-modal');
         if (modal) {
             modal.classList.add('hidden');
@@ -2569,7 +2577,6 @@ window.ProductModule = {
     },
 
     closeWorkshopModal: function() {
-        console.log('[ProductModule] closeWorkshopModal 被调用 ===');
         const modal = document.getElementById('workshop-modal');
         if (modal) {
             modal.classList.add('hidden');
@@ -2577,7 +2584,6 @@ window.ProductModule = {
     },
 
     closeClearanceModal: function() {
-        console.log('[ProductModule] closeClearanceModal 被调用 ===');
         const modal = document.getElementById('clearance-modal');
         if (modal) {
             modal.classList.add('hidden');
@@ -2585,7 +2591,6 @@ window.ProductModule = {
     },
 
     openCategoryManager: async function() {
-        console.log('[ProductModule] openCategoryManager 被调用 ===');
         const modal = document.getElementById('category-modal-root');
         if (modal) {
             if (typeof window.TM_openUnifiedModal === 'function') {
@@ -2600,7 +2605,6 @@ window.ProductModule = {
     },
 
     closeCategoryManager: function() {
-        console.log('[ProductModule] closeCategoryManager 被调用 ===');
         const modal = document.getElementById('category-modal-root');
         if (modal) {
             if (typeof window.TM_closeUnifiedModal === 'function') {
@@ -2615,7 +2619,6 @@ window.ProductModule = {
     editingCategory: null,
 
     renderCategoryList: function() {
-        console.log('[ProductModule] renderCategoryList 被调用 ===');
         const container = document.getElementById('category-edit-list');
         if (!container) return;
 
@@ -2677,7 +2680,6 @@ window.ProductModule = {
     },
 
     startCategoryEdit: function(idx) {
-        console.log('[ProductModule] startCategoryEdit 被调用, idx:', idx);
         this.editingCategory = idx;
         this.renderCategoryList();
         setTimeout(() => {
@@ -2687,13 +2689,11 @@ window.ProductModule = {
     },
 
     cancelCategoryEdit: function() {
-        console.log('[ProductModule] cancelCategoryEdit 被调用');
         this.editingCategory = null;
         this.renderCategoryList();
     },
 
     saveCategoryEdit: async function(idx) {
-        console.log('[ProductModule] saveCategoryEdit 被调用, idx:', idx);
         try {
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
@@ -2720,8 +2720,6 @@ window.ProductModule = {
                 subCategories: this.categories[idx].subcategories || []
             };
 
-            console.log('[ProductModule] 发送分类编辑数据:', categoryData);
-
             const response = await window.wrappedFetch('/api/v1/rd/products/categories/save', {
                 method: 'POST',
                 headers: {
@@ -2733,7 +2731,6 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 类别更新成功:', data);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('类别已更新为 "' + newName + '"！', 'success');
             }
@@ -2750,7 +2747,6 @@ window.ProductModule = {
     },
 
     addCategory: async function() {
-        console.log('[ProductModule] addCategory 被调用 ===');
         try {
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
@@ -2775,8 +2771,6 @@ window.ProductModule = {
                 name: categoryName,
                 subCategories: []
             };
-            console.log('[ProductModule] 发送分类数据:', categoryData);
-
             const response = await window.wrappedFetch('/api/v1/rd/products/categories/save', {
                 method: 'POST',
                 headers: {
@@ -2788,7 +2782,6 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 类别保存成功:', data);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('类别 "' + categoryName + '" 已保存！', 'success');
             }
@@ -2813,7 +2806,6 @@ window.ProductModule = {
             return;
         }
 
-        console.log('[ProductModule] showDeleteConfirm 被调用，类别:', category.name);
         this.currentDeleteCategory = {
             index: categoryIndex,
             categoryId: category.categoryId,
@@ -2830,7 +2822,6 @@ window.ProductModule = {
     },
 
     hideDeleteConfirm: function() {
-        console.log('[ProductModule] hideDeleteConfirm 被调用 ===');
         this.currentDeleteCategory = null;
         const modal = document.getElementById('category-delete-confirm');
         if (modal) {
@@ -2839,11 +2830,9 @@ window.ProductModule = {
     },
 
     confirmDelete: async function() {
-        console.log('[ProductModule] confirmDelete 被调用');
         if (this.warehouseToDelete) {
             await this.deleteWarehouse();
         } else if (this.currentDeleteCategory) {
-            console.log('[ProductModule] confirmDelete 删除类别:', this.currentDeleteCategory);
             try {
                 if (window.checkAuth && !window.checkAuth()) {
                     console.error('[ProductModule] checkAuth failed');
@@ -2890,7 +2879,6 @@ window.ProductModule = {
     warehouses: [],
 
     openTransferModal: async function(warehouseId) {
-        console.log('[ProductModule] openTransferModal 被调用，仓库ID:', warehouseId);
         try {
             this.transferState.sourceWarehouseId = warehouseId;
             
@@ -2944,7 +2932,6 @@ window.ProductModule = {
     switchTransferType: function () { },
 
     addProductRow: function() {
-        console.log('[ProductModule] addProductRow 被调用');
         const rowId = Date.now();
         this.transferState.productRows.push({
             id: rowId,
@@ -2960,7 +2947,6 @@ window.ProductModule = {
     },
 
     renderTransferProductList: function() {
-        console.log('[ProductModule] renderTransferProductList 被调用');
         const tbody = document.getElementById('transfer-product-list');
         if (!tbody) return;
 
@@ -2999,7 +2985,6 @@ window.ProductModule = {
     },
 
     handleProductSelect: function(rowId, productId) {
-        console.log('[ProductModule] handleProductSelect 被调用，行ID:', rowId, '产品ID:', productId);
         const rowIndex = this.transferState.productRows.findIndex(r => r.id === rowId);
         if (rowIndex === -1) return;
 
@@ -3032,7 +3017,6 @@ window.ProductModule = {
     },
 
     calculateRowTotal: function(rowId) {
-        console.log('[ProductModule] calculateRowTotal 被调用，行ID:', rowId);
         const tbody = document.getElementById('transfer-product-list');
         if (!tbody) return;
 
@@ -3060,7 +3044,6 @@ window.ProductModule = {
     },
 
     calculateGrandTotal: function() {
-        console.log('[ProductModule] calculateGrandTotal 被调用');
         const totalValueEl = document.getElementById('transfer-total-value');
         if (!totalValueEl) return;
 
@@ -3069,7 +3052,6 @@ window.ProductModule = {
     },
 
     confirmTransfer: async function() {
-        console.log('[ProductModule] confirmTransfer 被调用');
         try {
             const targetSelect = document.getElementById('target-warehouse-select');
             if (!targetSelect || !targetSelect.value) {
@@ -3098,8 +3080,6 @@ window.ProductModule = {
                 }))
             };
 
-            console.log('[ProductModule] 调拨数据:', transferData);
-
             if (window.checkAuth && !window.checkAuth()) {
                 console.error('[ProductModule] checkAuth failed');
                 return;
@@ -3116,7 +3096,6 @@ window.ProductModule = {
             const data = await window.handleApiResponse(response);
             if (!data) return;
 
-            console.log('[ProductModule] 调拨成功:', data);
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('调拨成功！', 'success');
             }
@@ -3132,7 +3111,6 @@ window.ProductModule = {
     },
 
     closeTransferModal: function() {
-        console.log('[ProductModule] closeTransferModal 被调用 ===');
         const modal = document.getElementById('warehouse-transfer-modal');
         if (modal) {
             modal.classList.add('hidden');
@@ -3279,4 +3257,3 @@ document.addEventListener('click', function(e) {
     });
 });
 
-console.log('[ProductModule] 产品中心模块加载完成');

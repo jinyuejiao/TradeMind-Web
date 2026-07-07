@@ -250,8 +250,7 @@
         // 使用 auth.js 中定义的全局函数
         // function openSubscriptionModal() {
         //     // 这里可以添加弹窗逻辑
-        //     console.log('打开会员订阅弹窗');
-        // }
+        //     // }
     </script>
     <script>
         // 全局认证状态变量
@@ -260,25 +259,20 @@
         
         // 预检查认证状态
         function preCheckAuth() {
-            console.log('开始预检查认证状态');
             try {
                 // 检查 auth.js 是否已加载
                 if (typeof window.checkAuth === 'function') {
-                    console.log('auth.js 已加载，开始检查认证状态');
                     authStatus = window.checkAuth();
                     authChecked = true;
-                    console.log('预检查认证状态完成，结果:', authStatus);
-                } else {
+                    } else {
                     console.error('auth.js 未加载，checkAuth 函数不可用');
                     // 尝试直接检查 localStorage
                     try {
                         const token = localStorage.getItem('token');
                         const loginTimestamp = localStorage.getItem('login_timestamp');
                         if (token && loginTimestamp) {
-                            console.log('通过直接检查 localStorage，发现认证信息存在');
                             authStatus = true;
                         } else {
-                            console.log('通过直接检查 localStorage，未发现认证信息');
                             authStatus = false;
                         }
                     } catch (error) {

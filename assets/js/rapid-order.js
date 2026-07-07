@@ -381,18 +381,24 @@
     }
 
     async function fetchAccountsForRop() {
+        var list = [];
         if (typeof window.loadBizAccounts === 'function') {
-            await window.loadBizAccounts();
+            list = await window.loadBizAccounts();
         } else if (window.wrappedFetch) {
             try {
                 var resp = await window.wrappedFetch('/api/v1/im/accounts', { method: 'GET' });
-                var json = await resp.json().catch(function () { return {}; });
-                window.bizAccountsList = (json && json.success && Array.isArray(json.data)) ? json.data : [];
+                var json = window.handleApiResponse
+                    ? await window.handleApiResponse(resp)
+                    : await resp.json().catch(function () { return {}; });
+                list = (json && json.data && Array.isArray(json.data)) ? json.data
+                    : (Array.isArray(json) ? json : []);
+                window.bizAccountsList = list;
             } catch (e) {
+                console.warn('[RapidOrder] load accounts failed', e);
                 window.bizAccountsList = [];
             }
         }
-        return window.bizAccountsList || [];
+        return list.length ? list : (window.bizAccountsList || []);
     }
 
     async function confirmShortageIfNeeded(lines) {
@@ -934,8 +940,13 @@
             accSel.innerHTML = '<option value="">默认收款账户</option>';
             accList.forEach(function (a) {
                 var o = document.createElement('option');
-                o.value = a.accountId || a.account_id;
-                o.textContent = a.accountName || a.account_name || ('账户#' + o.value);
+                var id = a.accountId != null ? a.accountId : a.account_id;
+                o.value = id;
+                var name = a.accountName || a.account_name || ('账户#' + id);
+                if (typeof window.TM_isDefaultReceiveAccount === 'function' && window.TM_isDefaultReceiveAccount(a)) {
+                    name += '（默认）';
+                }
+                o.textContent = name;
                 accSel.appendChild(o);
             });
             var defAcc = typeof window.TM_resolveDefaultReceiveAccountId === 'function'
@@ -947,9 +958,11 @@
             }
             if (!defAcc) {
                 var defItem = accList.find(function (a) {
-                    return a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't';
+                    return typeof window.TM_isDefaultReceiveAccount === 'function'
+                        ? window.TM_isDefaultReceiveAccount(a)
+                        : (a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't');
                 });
-                if (defItem) defAcc = defItem.accountId || defItem.account_id;
+                if (defItem) defAcc = defItem.accountId != null ? defItem.accountId : defItem.account_id;
             }
             if (defAcc) accSel.value = String(defAcc);
         }

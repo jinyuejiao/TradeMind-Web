@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <script src="./assets/js/env-config.js"></script>
+    <script src="./assets/js/auth.js?v=20260707promoter"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>推广中心 — 商贸智脑</title>
@@ -426,16 +427,24 @@
         });
     }
 
+    function hashPasswordForLogin(password) {
+        if (typeof md5Hash === 'function') {
+            return Promise.resolve(md5Hash(password));
+        }
+        return Promise.resolve(md5(password));
+    }
+
     function passwordLogin() {
         var userName = document.getElementById('pp-user').value.trim();
         var password = document.getElementById('pp-pwd').value;
         if (!userName || !password) { toast('请输入账号和密码'); return Promise.reject(); }
         var btn = document.getElementById('pp-login-btn');
         btn.disabled = true;
-        var hash = md5(password);
-        return apiFetch('/api/v1/tenant/login', {
-            method: 'POST', skipAuth: true,
-            body: { userName: userName, password: hash }
+        return hashPasswordForLogin(password).then(function (hash) {
+            return apiFetch('/api/v1/tenant/login', {
+                method: 'POST', skipAuth: true,
+                body: { userName: userName, password: hash }
+            });
         }).then(function (res) {
             if (!res.success) throw new Error(res.message || '登录失败');
             assertPromoterUser(res.user);
@@ -461,9 +470,11 @@
         if (!userName || !password) { toast('请输入账号和密码'); return; }
         var btn = document.getElementById('pp-login-btn');
         btn.disabled = true;
-        apiFetch('/api/v1/promoter/wechat/bind', {
-            method: 'POST', skipAuth: true,
-            body: { bindToken: bindToken, userName: userName, password: md5(password) }
+        hashPasswordForLogin(password).then(function (hash) {
+            return apiFetch('/api/v1/promoter/wechat/bind', {
+                method: 'POST', skipAuth: true,
+                body: { bindToken: bindToken, userName: userName, password: hash }
+            });
         }).then(function (res) {
             saveSession(res.token);
             sessionStorage.removeItem(BIND_TOKEN_KEY);

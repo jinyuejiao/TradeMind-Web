@@ -909,6 +909,9 @@
         });
         var target = el('ops-promoter-tab-' + tab);
         if (target) target.classList.remove('hidden');
+        if (tab === 'create') {
+            loadPromoterList();
+        }
     }
 
     function initPromotersHubPage(route) {
@@ -1150,6 +1153,7 @@
             industry: toMerchantUiKey(node.merchant_type || 'WHOLESALE'),
             industryVertical: node.industry_vertical || 'GENERAL',
             industryVerticalLabel: node.industry_vertical_label || verticalLabel[node.industry_vertical] || node.industry_vertical || '—',
+            tenantStatus: node.tenant_status || 'ACTIVE',
             frozen: frozen,
             expiry: parseSubEnd(node.sub_end_time) === '—' ? '' : parseSubEnd(node.sub_end_time),
             users: Number(node.user_count) || 0,
@@ -1214,9 +1218,11 @@
                 var p = row.plan;
                 var open = expanded.has(t.id);
                 var caret = open ? 'ph-caret-down' : 'ph-caret-right';
-                var frozen = t.frozen
-                    ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
-                    : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>';
+                var frozen = t.tenantStatus === 'TERMINATED'
+                    ? '<span class="text-slate-500 font-bold text-[10px]">已注销</span>'
+                    : (t.frozen
+                        ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
+                        : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>');
                 var ind = industryLabel[t.industry] || t.industry;
                 var vert = t.industryVerticalLabel || verticalLabel[t.industryVertical] || '';
                 var vertBadge = vert ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">' + escapeHtml(vert) + '</span>' : '';
@@ -1259,7 +1265,11 @@
                       '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">利润 ¥' + (row.profitMonth / 10000).toFixed(1) + '万</span>';
 
                 var actionHtml = opts.live
-                    ? '<button type="button" class="ops-act-edit px-2 py-1.5 rounded-xl text-[10px] font-bold bg-ops-600 text-white hover:bg-ops-700" data-id="' + escapeHtml(t.id) + '">权益/到期</button>'
+                    ? (t.tenantStatus === 'TERMINATED'
+                        ? '<span class="text-[10px] text-slate-400 px-2 py-1.5">已注销</span>'
+                        : '<button type="button" class="ops-act-edit px-2 py-1.5 rounded-xl text-[10px] font-bold bg-ops-600 text-white hover:bg-ops-700" data-id="' + escapeHtml(t.id) + '">权益/到期</button>' +
+                          '<button type="button" class="ops-act-retype px-2 py-1.5 rounded-xl text-[10px] font-bold border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100" data-id="' + escapeHtml(t.id) + '">改类型</button>' +
+                          '<button type="button" class="ops-act-terminate px-2 py-1.5 rounded-xl text-[10px] font-bold border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100" data-id="' + escapeHtml(t.id) + '">注销</button>')
                     : '<button type="button" class="ops-act-freeze px-2 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 hover:bg-slate-50" data-id="' + escapeHtml(t.id) + '">' + (t.frozen ? '解冻' : '冻结') + '</button>' +
                       '<button type="button" class="ops-act-edit px-2 py-1.5 rounded-xl text-[10px] font-bold bg-ops-600 text-white hover:bg-ops-700" data-id="' + escapeHtml(t.id) + '">权益/到期</button>';
 
@@ -1276,7 +1286,7 @@
                     '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span>' + vertBadge + '</div>' +
                     '<p class="text-[10px] font-mono text-slate-500 mt-0.5">到期 ' + escapeHtml(t.expiry || '—') + '</p></div>' +
                     '<div class="flex flex-wrap gap-2 text-[10px] font-mono font-bold text-ops-800 w-full sm:w-auto sm:text-right sm:ml-auto">' + metricsHtml + '</div>' +
-                    '<div class="flex gap-1 w-full sm:w-auto justify-end">' + actionHtml + '</div></div>' +
+                    '<div class="flex flex-wrap gap-1 w-full sm:w-auto justify-end">' + actionHtml + '</div></div>' +
                     '<div class="ops-tree-body border-t border-indigo-100/80 bg-slate-50/40 p-4 ' + subHidden + '">' +
                     '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">' +
                     '<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-inner">' +
@@ -1872,8 +1882,87 @@
                     el('ops-input-trial-note').value = '';
                     el('ops-input-expiry-date').value = row.raw.expiry || '';
                     el('ops-modal-tenant').classList.remove('hidden');
+                    return;
+                }
+                var rt = e.target.closest('.ops-act-retype');
+                if (rt) {
+                    var rowR = mergedRows.find(function (x) { return x.raw.id === rt.getAttribute('data-id'); });
+                    if (!rowR) return;
+                    el('ops-modal-retype-id').value = rowR.raw.id;
+                    el('ops-modal-retype-title').textContent = '切换类型：' + (rowR.raw.name || rowR.raw.id);
+                    el('ops-retype-merchant').value = '';
+                    el('ops-retype-vertical').value = '';
+                    el('ops-retype-reason').value = '';
+                    el('ops-modal-retype').classList.remove('hidden');
+                    return;
+                }
+                var term = e.target.closest('.ops-act-terminate');
+                if (term) {
+                    var rowT = mergedRows.find(function (x) { return x.raw.id === term.getAttribute('data-id'); });
+                    if (!rowT) return;
+                    var tid = rowT.raw.id;
+                    var msg = '确定注销租户「' + (rowT.raw.name || tid) + '」？\n\n将清空全部账户、产品、订单、供应商、SKU、仓库、进货单据等业务数据，且不可恢复。';
+                    if (!confirm(msg)) return;
+                    var reason = prompt('请输入注销原因（审计记录）：', '运维注销') || '运维注销';
+                    (async function () {
+                        try {
+                            var res = await opsFetch('/api/v1/ops/tenants/' + encodeURIComponent(tid) + '/terminate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reason: reason })
+                            });
+                            var data = await res.json().catch(function () { return {}; });
+                            if (!res.ok) throw new Error(data.message || '注销失败');
+                            opsNotify(data.message || '已注销', 'success');
+                            await loadData();
+                        } catch (err) {
+                            opsNotify(err.message || String(err), 'error');
+                        }
+                    })();
                 }
             });
+        }
+
+        function closeRetypeModal() {
+            var modal = el('ops-modal-retype');
+            if (modal) modal.classList.add('hidden');
+        }
+        var retypeModal = el('ops-modal-retype');
+        var retypeClose = el('ops-modal-retype-close');
+        if (retypeModal && retypeClose) {
+            retypeClose.addEventListener('click', closeRetypeModal);
+            retypeModal.addEventListener('click', function (e) { if (e.target === retypeModal) closeRetypeModal(); });
+        }
+        var retypeSave = el('ops-btn-save-retype');
+        if (retypeSave) {
+            retypeSave.onclick = async function () {
+                var tid = el('ops-modal-retype-id').value;
+                var merchant = el('ops-retype-merchant').value;
+                var vertical = el('ops-retype-vertical').value;
+                var reason = (el('ops-retype-reason').value || '').trim();
+                if (!merchant && !vertical) {
+                    opsNotify('请至少选择一项要修改的业态或行业', 'warning');
+                    return;
+                }
+                if (!confirm('切换后将清空该租户全部业务数据（账户保留）。确定继续？')) return;
+                try {
+                    var body = { reason: reason || '运维切换业态/行业' };
+                    if (merchant) body.merchantType = toMerchantApiKey(merchant);
+                    if (vertical) body.industryVertical = vertical;
+                    var res = await opsFetch('/api/v1/ops/tenants/' + encodeURIComponent(tid) + '/retype', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    var data = await res.json().catch(function () { return {}; });
+                    if (!res.ok) throw new Error(data.message || '切换失败');
+                    closeRetypeModal();
+                    opsNotify(data.message || '已切换', 'success');
+                    await loadData();
+                } catch (err) {
+                    opsNotify(err.message || String(err), 'error');
+                }
+            };
         }
 
         function closeModal() { var modal = el('ops-modal-tenant'); if (modal) modal.classList.add('hidden'); }
@@ -2540,15 +2629,87 @@
         loadAnnouncements();
     }
 
+    function maskPromoterPhone(phone) {
+        if (!phone) return '—';
+        var s = String(phone).trim();
+        if (s.length === 11) return s.slice(0, 3) + '****' + s.slice(7);
+        return s;
+    }
+
+    function formatPromoterTime(val) {
+        if (val == null || val === '') return '—';
+        var s = String(val);
+        return s.length >= 10 ? s.slice(0, 10) : s;
+    }
+
+    function renderPromoterList(items, total) {
+        var body = el('ops-promoter-list-body');
+        var countEl = el('ops-promoter-list-count');
+        if (!body) return;
+        if (countEl) countEl.textContent = total != null ? ('(' + total + ')') : '';
+        if (!items || !items.length) {
+            body.innerHTML = '<p class="text-center py-8 text-slate-400">暂无推广员，请在左侧创建</p>';
+            body.className = 'flex-1 overflow-y-auto list-scrollbar-ops text-xs text-slate-400 text-center py-8';
+            return;
+        }
+        body.className = 'flex-1 overflow-y-auto list-scrollbar-ops';
+        var rows = items.map(function (p) {
+            var commission = p.commissionPerReferral != null ? ('¥' + p.commissionPerReferral) : '—';
+            var pending = p.pendingSettlement != null ? ('¥' + p.pendingSettlement) : '—';
+            var status = p.userStatus === 'NORMAL'
+                ? '<span class="text-emerald-600 font-bold text-[10px]">正常</span>'
+                : '<span class="text-slate-400 font-bold text-[10px]">' + escapeHtml(p.userStatus || '—') + '</span>';
+            return (
+                '<div class="rounded-2xl border border-indigo-100/80 bg-white/70 p-3 mb-2 last:mb-0">' +
+                '<div class="flex flex-wrap items-start justify-between gap-2">' +
+                '<div class="min-w-0">' +
+                '<p class="text-xs font-bold text-slate-800">' + escapeHtml(p.realName || p.userName || '—') +
+                ' <span class="text-[10px] font-normal text-slate-400 font-mono">#' + escapeHtml(p.userId) + '</span></p>' +
+                '<p class="text-[10px] text-slate-500 mt-0.5 font-mono">' + escapeHtml(p.userName || '') + ' · ' + escapeHtml(maskPromoterPhone(p.phone)) + '</p></div>' +
+                status + '</div>' +
+                '<div class="mt-2 flex flex-wrap gap-2 text-[10px]">' +
+                '<span class="px-2 py-1 rounded-lg bg-ops-50 text-ops-700 font-mono font-bold border border-ops-100">' + escapeHtml(p.referralCode || '—') + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">返佣 ' + commission + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">有效推荐 ' + (p.validReferralCount != null ? p.validReferralCount : 0) + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">待结 ' + pending + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-slate-400">开号 ' + escapeHtml(formatPromoterTime(p.createTime)) + '</span>' +
+                '</div></div>'
+            );
+        }).join('');
+        body.innerHTML = rows;
+    }
+
+    async function loadPromoterList() {
+        var body = el('ops-promoter-list-body');
+        if (!body || typeof window.wrappedFetch !== 'function') return;
+        body.innerHTML = '<p class="text-center py-8 text-slate-400">加载推广员列表…</p>';
+        body.className = 'flex-1 overflow-y-auto list-scrollbar-ops text-xs text-slate-400 text-center py-8';
+        try {
+            var res = await opsFetch('/api/v1/ops/promoters?page=0&size=200', { method: 'GET' });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error((data && data.message) || '加载失败');
+            var items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+            renderPromoterList(items, data.total != null ? data.total : items.length);
+        } catch (err) {
+            body.innerHTML = '<p class="text-center py-8 text-rose-500">' + escapeHtml(err.message || String(err)) + '</p>';
+        }
+    }
+
     function initPromotersPage() {
+        loadPromoterList();
         var form = el('ops-promoter-form');
         if (!form || form.dataset.bound === '1') {
             return;
         }
         form.dataset.bound = '1';
         var resultBox = el('ops-promoter-result');
-        var placeholder = el('ops-promoter-result-placeholder');
         var lastCode = '';
+
+        var refreshBtn = el('ops-promoter-list-refresh');
+        if (refreshBtn && refreshBtn.dataset.bound !== '1') {
+            refreshBtn.dataset.bound = '1';
+            refreshBtn.addEventListener('click', function () { loadPromoterList(); });
+        }
 
         form.addEventListener('submit', async function (ev) {
             ev.preventDefault();
@@ -2576,16 +2737,12 @@
                 submitBtn.textContent = '提交中…';
             }
             try {
-                var hash = password;
-                if (typeof md5Hash === 'function') {
-                    hash = await md5Hash(password);
-                }
                 var res = await opsFetch('/api/v1/ops/promoters', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         userName: userName,
-                        password: hash,
+                        password: password,
                         realName: realName,
                         phone: phone,
                         email: email || null,
@@ -2606,10 +2763,10 @@
                     el('ops-promoter-res-commission').textContent = data.commissionPerReferral != null ? ('¥' + data.commissionPerReferral) : ('¥' + commission);
                 }
                 if (resultBox) resultBox.classList.remove('hidden');
-                if (placeholder) placeholder.classList.add('hidden');
                 appendAudit('PROMOTER_CREATE', (data.userName || userName) + ' ' + (lastCode || ''));
                 form.reset();
                 if (el('ops-promoter-commission')) el('ops-promoter-commission').value = '150';
+                await loadPromoterList();
                 opsNotify('推广员开号成功', 'success');
             } catch (err) {
                 opsNotify(err.message || String(err), 'error');

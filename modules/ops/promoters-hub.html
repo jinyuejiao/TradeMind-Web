@@ -43,7 +43,7 @@
             <p class="text-[10px] text-slate-500 leading-relaxed">
                 创建 <strong class="text-ops-700">ROLE_PROMOTER</strong> 账号，自动生成 <strong>JY</strong> 推广码；可为每位推广员设置<strong class="text-ops-700">不同单笔返佣金额</strong>。
             </p>
-            <p class="text-[10px] text-slate-400 mt-2 font-mono">POST /api/v1/ops/promoters</p>
+            <p class="text-[10px] text-slate-400 mt-2 font-mono">GET /api/v1/ops/promoters · POST /api/v1/ops/promoters</p>
         </div>
         <div class="grid md:grid-cols-2 gap-4">
             <form id="ops-promoter-form" class="tm-ops-glass rounded-tm-3xl p-5 md:p-6 space-y-4">
@@ -75,25 +75,34 @@
                 </div>
                 <button type="submit" id="ops-promoter-submit" class="w-full py-3 rounded-2xl bg-ops-600 hover:bg-ops-700 text-white text-sm font-bold shadow-md transition-colors">创建推广员</button>
             </form>
-            <div id="ops-promoter-result" class="tm-ops-glass rounded-tm-3xl p-5 md:p-6 hidden">
-                <h3 class="text-xs font-bold text-emerald-700 flex items-center gap-2 mb-3"><i class="ph ph-check-circle"></i> 开号成功</h3>
-                <dl class="text-xs space-y-2 text-slate-700">
-                    <div class="flex justify-between gap-2"><dt class="text-slate-500">用户 ID</dt><dd id="ops-promoter-res-uid" class="font-mono font-bold"></dd></div>
-                    <div class="flex justify-between gap-2"><dt class="text-slate-500">登录名</dt><dd id="ops-promoter-res-user" class="font-bold"></dd></div>
-                    <div class="flex justify-between gap-2"><dt class="text-slate-500">姓名</dt><dd id="ops-promoter-res-name"></dd></div>
-                    <div class="flex justify-between gap-2"><dt class="text-slate-500">手机号</dt><dd id="ops-promoter-res-phone" class="font-mono"></dd></div>
-                    <div class="flex justify-between gap-2"><dt class="text-slate-500">单笔返佣</dt><dd id="ops-promoter-res-commission" class="font-mono font-bold text-ops-700"></dd></div>
-                    <div class="flex justify-between gap-2 border-t border-emerald-100 pt-2 mt-2">
-                        <dt class="text-slate-500">推广码</dt><dd id="ops-promoter-res-code" class="font-mono font-black text-ops-700 text-sm"></dd>
+            <div id="ops-promoter-list-panel" class="tm-ops-glass rounded-tm-3xl p-5 md:p-6 flex flex-col min-h-[280px]">
+                <div id="ops-promoter-result" class="hidden mb-4 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
+                    <h3 class="text-xs font-bold text-emerald-700 flex items-center gap-2 mb-3"><i class="ph ph-check-circle"></i> 开号成功</h3>
+                    <dl class="text-xs space-y-2 text-slate-700">
+                        <div class="flex justify-between gap-2"><dt class="text-slate-500">用户 ID</dt><dd id="ops-promoter-res-uid" class="font-mono font-bold"></dd></div>
+                        <div class="flex justify-between gap-2"><dt class="text-slate-500">登录名</dt><dd id="ops-promoter-res-user" class="font-bold"></dd></div>
+                        <div class="flex justify-between gap-2"><dt class="text-slate-500">姓名</dt><dd id="ops-promoter-res-name"></dd></div>
+                        <div class="flex justify-between gap-2"><dt class="text-slate-500">手机号</dt><dd id="ops-promoter-res-phone" class="font-mono"></dd></div>
+                        <div class="flex justify-between gap-2"><dt class="text-slate-500">单笔返佣</dt><dd id="ops-promoter-res-commission" class="font-mono font-bold text-ops-700"></dd></div>
+                        <div class="flex justify-between gap-2 border-t border-emerald-100 pt-2 mt-2">
+                            <dt class="text-slate-500">推广码</dt><dd id="ops-promoter-res-code" class="font-mono font-black text-ops-700 text-sm"></dd>
+                        </div>
+                    </dl>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" id="ops-promoter-copy-code" class="px-3 py-2 rounded-xl bg-white text-ops-700 text-[10px] font-bold border border-ops-200">复制推广码</button>
+                        <a id="ops-promoter-portal-link" href="../../promoter-portal.html" target="_blank" rel="noopener" class="px-3 py-2 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-white/80">打开推广中心</a>
                     </div>
-                </dl>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <button type="button" id="ops-promoter-copy-code" class="px-3 py-2 rounded-xl bg-ops-50 text-ops-700 text-[10px] font-bold border border-ops-200">复制推广码</button>
-                    <a id="ops-promoter-portal-link" href="../../promoter-portal.html" target="_blank" rel="noopener" class="px-3 py-2 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50">打开推广中心</a>
                 </div>
-            </div>
-            <div id="ops-promoter-result-placeholder" class="tm-ops-glass rounded-tm-3xl p-5 md:p-6 flex items-center justify-center text-center text-slate-400 text-xs min-h-[200px]">
-                填写表单并提交后，此处显示开号结果
+                <div class="flex items-center justify-between gap-2 mb-3 shrink-0">
+                    <h3 class="text-xs font-bold text-slate-800 flex items-center gap-2">
+                        <i class="ph ph-users-three text-ops-600"></i> 推广员列表
+                        <span id="ops-promoter-list-count" class="text-[10px] font-mono text-slate-400 font-normal"></span>
+                    </h3>
+                    <button type="button" id="ops-promoter-list-refresh" class="px-3 py-1.5 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-white/80 transition-colors">刷新</button>
+                </div>
+                <div id="ops-promoter-list-body" class="flex-1 overflow-y-auto list-scrollbar-ops text-xs text-slate-500 text-center py-8">
+                    加载推广员列表…
+                </div>
             </div>
         </div>
     </div>

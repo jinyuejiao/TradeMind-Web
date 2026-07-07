@@ -173,7 +173,7 @@
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css?v=20260706sub">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260707fix1">
     <script>
         tailwind.config = {
             theme: {
@@ -1152,7 +1152,6 @@
                 : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/mpeg'];
             for (var i = 0; i < candidates.length; i++) {
                 if (MediaRecorder.isTypeSupported(candidates[i])) {
-                    console.log('[Voice] 选用 MIME:', candidates[i]);
                     return candidates[i];
                 }
             }
@@ -1169,8 +1168,7 @@
                     localStream.getTracks().forEach(function (track) {
                         try {
                             track.stop();
-                            console.log('[Voice] track stopped:', track.kind, track.readyState);
-                        } catch (e) { /* ignore */ }
+                            } catch (e) { /* ignore */ }
                     });
                 }
                 localStream = null;
@@ -1263,7 +1261,6 @@
                 if (voiceStopInProgress) {
                     return;
                 }
-                console.log('[Voice] 用户触发停止, event=', e && e.type);
                 stopVoiceRecording();
             };
             btn.__tmVoiceStopHandler = fireStop;
@@ -1276,8 +1273,7 @@
             btn.addEventListener('click', fireStop);
             btn.addEventListener('pointerup', btn.__tmVoicePointerHandler);
             btn.setAttribute('data-voice-stop-bound', '1');
-            console.log('[Voice] 停止按钮已绑定 (click + pointerup + onclick)');
-        }
+            }
 
         function resolveTmOssUpload() {
             if (window.TMOssUpload) {
@@ -1750,10 +1746,7 @@
             }
             if (tbody) {
                 tbody.innerHTML = items.map(function (item, rowIdx) {
-                    var p = getProductDisplayById(item.productId || item.product_id);
-                    if (item.product_name || item.productName) {
-                        p = { name: item.product_name || item.productName, sku: p.sku, unit: p.unit };
-                    }
+                    var p = resolveOrderItemProductDisplay(item);
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
@@ -1775,7 +1768,7 @@
             }
             if (cards) {
                 cards.innerHTML = items.map(function (item, rowIdx) {
-                    var p = getProductDisplayById(item.productId);
+                    var p = resolveOrderItemProductDisplay(item);
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
@@ -2950,6 +2943,35 @@
                 sku: hit.sku || '',
                 unit: hit.unit || getProductUnitById(productId)
             };
+        }
+
+        function resolveOrderItemProductDisplay(item) {
+            if (!item) return { name: '—', sku: '', unit: '' };
+            var name = item.product_name || item.productName;
+            if (name && String(name).trim()) {
+                return {
+                    name: String(name).trim(),
+                    sku: item.sku || item.skuCode || item.sku_code || '',
+                    unit: item.unit || getProductUnitById(item.productId || item.product_id)
+                };
+            }
+            var pid = item.productId != null ? item.productId : item.product_id;
+            var p = getProductDisplayById(pid);
+            if (pid != null && p.name && p.name !== ('产品#undefined') && p.name !== ('产品#null')) {
+                return p;
+            }
+            var skuId = item.skuId != null ? item.skuId : item.sku_id;
+            if (skuId != null && window.TM_SkuCatalogCache && typeof window.TM_SkuCatalogCache.findSkuById === 'function') {
+                var row = window.TM_SkuCatalogCache.findSkuById(skuId);
+                if (row) {
+                    return {
+                        name: row.name || row.spuName || row.productName || ('SKU#' + skuId),
+                        sku: row.skuCode || row.sku || '',
+                        unit: row.unit || row.baseUnit || p.unit || ''
+                    };
+                }
+            }
+            return p;
         }
 
         function setInputValueIfExists(id, value) {
@@ -4563,8 +4585,7 @@
                         break;
                 }
 
-                console.log('切换到标签页:', tabName);
-            } catch (error) {
+                } catch (error) {
                 console.error('切换标签页失败:', error);
             }
         }
@@ -4645,13 +4666,10 @@
 
         function handleVoiceRecorderStop() {
             if (voiceOnstopHandled) {
-                console.log('[Voice] onstop 已处理，跳过重复');
                 return;
             }
             tmVoiceClearStopFallbackTimers();
             stopVoiceTimer();
-            console.log('[Voice] 开始收尾, chunks=', audioChunks.length, 'timerSec=', voiceTimerSeconds);
-
             var mime = voiceRecorderMime || (recorder && recorder.mimeType) || 'audio/webm';
             var minBytes = tmVoiceMinBlobBytes();
             var maxRetries = tmVoiceUseMobileRecorderStrategy() ? VOICE_IOS_FINALIZE_MAX_RETRIES : 3;
@@ -4665,10 +4683,6 @@
                 var totalChunkBytes = audioChunks.reduce(function (sum, c) {
                     return sum + (c && c.size ? c.size : 0);
                 }, 0);
-                console.log('[Voice] 收尾尝试 #' + retryIndex +
-                    ', blobSize=', audioBlob.size, 'chunkBytes=', totalChunkBytes,
-                    ', chunks=', audioChunks.length, ', timerSec=', voiceTimerSeconds);
-
                 if (audioBlob.size >= minBytes) {
                     voiceOnstopHandled = true;
                     recording = false;
@@ -4799,8 +4813,7 @@
                 recorder.ondataavailable = function (event) {
                     if (event.data && event.data.size > 0) {
                         audioChunks.push(event.data);
-                        console.log('[Voice] dataavailable chunk=', event.data.size);
-                    }
+                        }
                 };
                 recorder.onerror = function (ev) {
                     console.error('[Voice] MediaRecorder error:', ev);
@@ -4811,11 +4824,9 @@
 
                 if (tmVoiceUseMobileRecorderStrategy()) {
                     recorder.start(250);
-                    console.log('[Voice] 开始录音 (mobile 分片 250ms), state=', recorder.state, 'mime=', voiceRecorderMime);
-                } else {
+                    } else {
                     recorder.start(500);
-                    console.log('[Voice] 开始录音 (desktop 分片 500ms), state=', recorder.state, 'mime=', voiceRecorderMime);
-                }
+                    }
 
                 var pulseIcon = document.getElementById('voice-pulse-icon');
                 if (pulseIcon) pulseIcon.classList.add('recording-pulse');
@@ -4834,7 +4845,6 @@
         // 停止录音
         async function stopVoiceRecording() {
             if (voiceStopInProgress) {
-                console.log('[Voice] 已在停止处理中，忽略重复点击');
                 return;
             }
             try {
@@ -4860,8 +4870,6 @@
                 voiceStopInProgress = true;
                 setVoiceStopButtonLoading(true);
                 showVoiceProcessingPanel('正在结束录音…');
-                console.log('[Voice] 用户点击停止, recorder.state=', recorder.state);
-
                 await new Promise(function (resolve, reject) {
                     voiceStopResolve = resolve;
                     voiceStopReject = reject;
@@ -4913,12 +4921,10 @@
                         if (rec.state === 'recording' && typeof rec.requestData === 'function') {
                             try {
                                 rec.requestData();
-                                console.log('[Voice] requestData 已调用');
-                            } catch (rdErr) {
+                                } catch (rdErr) {
                                 console.warn('[Voice] requestData 失败:', rdErr);
                             }
                         }
-                        console.log('[Voice] 调用 mediaRecorder.stop()');
                         rec.stop();
                         tmVoiceScheduleStopFallbacks();
                     } catch (err) {
@@ -4956,7 +4962,6 @@
                 );
             }
             var ext = tmVoiceBlobExtension(audioBlob);
-            console.log('[Voice] 经服务端上传 OSS (fallback), size=', audioBlob && audioBlob.size, 'ext=', ext);
             var formData = new FormData();
             formData.append('file', audioBlob, 'voice-' + Date.now() + '.' + ext);
             var uploadResp = await window.wrappedFetch('/api/v1/ai/voice/upload', {
@@ -4980,7 +4985,6 @@
             if (!urlFromServer) {
                 throw new Error('服务端未返回音频地址');
             }
-            console.log('[Voice] 服务端上传完成:', urlFromServer);
             return urlFromServer;
         }
 
@@ -5038,7 +5042,6 @@
             voiceUploadInFlight = true;
             voiceAbortController = new AbortController();
             try {
-                console.log('[Voice] processVoiceWithAIService 开始, size=', audioBlob && audioBlob.size);
                 if (!audioBlob || audioBlob.size < tmVoiceMinBlobBytes()) {
                     voiceLastCapturedBlob = null;
                     showVoiceErrorPanel('录音过短或未采集到有效音频，请点击「重新录制」');
@@ -5049,7 +5052,6 @@
                 var audioUrl = await uploadVoiceBlobToStorage(audioBlob);
                 
                 setVoiceProcessingText('正在提交 AI 解析…');
-                console.log('[Voice] AI /execute 请求开始, url=', audioUrl);
                 const response = await window.wrappedFetch('/api/v1/ai/execute', {
                     method: 'POST',
                     headers: {
@@ -5079,7 +5081,6 @@
                 if (!execData) {
                     return;
                 }
-                console.log('[Voice] AI 受理成功');
                 tmOnboardingPrepareVoiceComplete();
                 closeVoiceModal({ reason: 'success' });
                 tmOnboardingNotifyVoiceComplete();
@@ -5248,7 +5249,6 @@
             
             // 检查视频宽度，解决华为等高清摄像头启动慢导致的黑屏问题
             function capture() {
-                console.log('Video width:', video.videoWidth);
                 if (video.videoWidth === 0) {
                     // 如果视频宽度为0，设置延时后重试
                     setTimeout(capture, 200);
@@ -5497,8 +5497,7 @@
         // 添加订单行
         function addOrderRow() {
             // 这里可以添加添加订单行的逻辑
-            console.log('添加订单行');
-        }
+            }
 
         // 显示提示信息
         function showToast(message) {
@@ -5615,7 +5614,7 @@
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
     <script src="../../assets/js/tm-product-thumb.js?v=20260630"></script>
-    <script src="../../assets/js/tm-biz-accounts.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-biz-accounts.js?v=20260707fix1"></script>
     <script src="../../assets/js/tm-product-domain.js?v=20260705fix1"></script>
     <script src="../../assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
@@ -5624,7 +5623,7 @@
     <script src="../../assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-subscription-notice.js?v=20260706sub"></script>
     <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
-    <script src="../../assets/js/rapid-order.js?v=20260706fix1"></script>
+    <script src="../../assets/js/rapid-order.js?v=20260707fix1"></script>
     <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
     <script src="../../assets/js/dashboard-workbench.js?v=20260706fix1"></script>
 </body>

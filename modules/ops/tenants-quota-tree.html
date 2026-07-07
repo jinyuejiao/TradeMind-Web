@@ -72,3 +72,39 @@
         </div>
     </div>
 </div>
+
+<div id="ops-modal-retype" class="tm-ops-sheet-modal hidden fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4 tm-ops-modal-backdrop">
+    <div class="tm-ops-sheet-panel bg-white rounded-t-[2.5rem] md:rounded-tm-3xl shadow-2xl max-w-md w-full p-6 md:p-8 relative fade-in border border-indigo-100 md:mx-4">
+        <button type="button" id="ops-modal-retype-close" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph ph-x text-xl"></i></button>
+        <h3 id="ops-modal-retype-title" class="text-lg font-bold text-slate-800 pr-8">切换业态 / 行业</h3>
+        <p id="ops-modal-retype-sub" class="text-xs text-slate-500 mt-1 mb-4">保留登录账户与资金账户，清空产品、订单、供应商、仓库、SKU 等业务数据。</p>
+        <input type="hidden" id="ops-modal-retype-id" value="">
+        <div class="space-y-4">
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">目标商户业态</label>
+                <select id="ops-retype-merchant" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                    <option value="">— 不修改 —</option>
+                    <option value="WHOLESALE">批发</option>
+                    <option value="FOREIGN">外贸</option>
+                    <option value="ECOM">电商</option>
+                    <option value="FACTORY">工贸一体</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">目标行业垂直</label>
+                <select id="ops-retype-vertical" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+                    <option value="">— 不修改 —</option>
+                    <option value="GENERAL">通用</option>
+                    <option value="CLOTHING">服装</option>
+                    <option value="FOOD">食品</option>
+                    <option value="DIGITAL_3C">3C数码</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">变更原因（审计）</label>
+                <input type="text" id="ops-retype-reason" placeholder="如：商户申请切换外贸业态" class="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-ops-500">
+            </div>
+            <button type="button" id="ops-btn-save-retype" class="w-full py-3 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold shadow-lg transition-colors">确认切换并清空业务数据</button>
+        </div>
+    </div>
+</div>

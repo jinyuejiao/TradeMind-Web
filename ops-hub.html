@@ -10,7 +10,7 @@
     <script src="./assets/js/env-config.js"></script>
     <script src="./assets/js/api-client.js?v=20260506r3"></script>
     <link rel="stylesheet" href="./assets/css/tm-layout-engine.css?v=20260601ops">
-    <link rel="stylesheet" href="./assets/css/ops-portal.css?v=tm-ops-12">
+    <link rel="stylesheet" href="./assets/css/ops-portal.css?v=tm-ops-13">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -39,7 +39,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="./assets/js/auth.js?v=20260608referral"></script>
     <script src="./modules/membership/referral-rewards.js?v=20260608"></script>
-    <script src="./assets/js/tm-shell-insets.js?v=20260530modal2"></script>
+    <script src="./assets/js/tm-shell-insets.js?v=20260707ops"></script>
 </head>
 <body class="tm-ops-portal tm-layout-mobile tm-shell-ops text-slate-700 overflow-hidden h-screen flex flex-col md:flex-row">
 
@@ -77,8 +77,8 @@
         </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 min-h-0">
-        <header id="tm-ops-app-header" class="tm-ops-glass tm-ops-mobile-header shrink-0 min-h-[var(--tm-header-h,3.5rem)] flex items-center justify-between px-4 md:px-8 border-b border-indigo-100/80">
+    <div class="flex-1 flex flex-col min-w-0 min-h-0 tm-ops-shell-main overflow-hidden">
+        <header id="tm-ops-app-header" class="tm-app-header tm-ops-glass tm-ops-mobile-header shrink-0 min-h-[var(--tm-header-h,3.5rem)] flex items-center justify-between px-4 md:px-8 border-b border-indigo-100/80">
             <div class="min-w-0 flex-1 pr-3">
                 <h1 id="tm-ops-page-title" class="text-base md:text-lg font-bold text-slate-800 tracking-tight truncate">租户看板</h1>
                 <p class="text-[10px] md:text-xs text-slate-500 mt-0.5 truncate">平台管理大脑 · 已对接网关 /api/v1/ops</p>
@@ -100,7 +100,7 @@
 
     <nav id="tm-app-tabbar" class="tm-app-tabbar md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-indigo-100 px-1 pt-2 flex justify-between items-end shadow-2xl pb-[max(0.5rem,env(safe-area-inset-bottom))]" data-tm-nav-mode="ops" aria-label="运维模块导航"></nav>
 
-    <script src="./assets/js/ui-ops.js?v=tm-ops-full-20260706"></script>
+    <script src="./assets/js/ui-ops.js?v=tm-ops-full-20260707b"></script>
     <script src="./assets/js/ui-main.js?v=20260706ops"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
