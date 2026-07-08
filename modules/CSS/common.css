@@ -424,6 +424,30 @@ body {
     background: #ffffff;
 }
 
+#poster-modal .poster-modal-action-footer {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+}
+
+@media (max-width: 767px) {
+    #poster-modal.tm-modal-wrapper {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    #poster-modal .tm-modal-container,
+    #poster-modal > div:not(.absolute) {
+        max-height: min(92dvh, 100%) !important;
+        border-radius: 2rem 2rem 0 0 !important;
+    }
+
+    #poster-modal .poster-modal-action-footer {
+        position: sticky;
+        bottom: 0;
+        box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.06);
+    }
+}
+
 .form-input,
 input[type="text"],
 input[type="password"],

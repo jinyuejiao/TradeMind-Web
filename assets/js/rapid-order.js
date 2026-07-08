@@ -93,29 +93,81 @@
         }
     }
 
+    function parseCrmListPayload(raw) {
+        if (Array.isArray(raw)) return raw;
+        if (raw && Array.isArray(raw.data)) return raw.data;
+        if (raw && raw.success && Array.isArray(raw.data)) return raw.data;
+        return [];
+    }
+
+    function readCustomerMapFromFrame(win) {
+        if (!win) return null;
+        var map = win.customerLookupById;
+        if (map && Object.keys(map).length) return map;
+        map = win.customerMapCache || win.customersCache;
+        if (map && Object.keys(map).length) return map;
+        return null;
+    }
+
     function getCustomerLookupMap() {
-        if (window.customerLookupById && Object.keys(window.customerLookupById).length) {
-            return window.customerLookupById;
-        }
+        var map = readCustomerMapFromFrame(window);
+        if (map) return map;
         try {
-            if (window.parent && window.parent !== window && window.parent.customerLookupById) {
-                return window.parent.customerLookupById;
+            if (window.parent && window.parent !== window) {
+                map = readCustomerMapFromFrame(window.parent);
+                if (map) return map;
             }
         } catch (e) { /* ignore */ }
-        return window.customerMapCache || window.customersCache || {};
+        try {
+            var frames = document.querySelectorAll('iframe.tm-module-frame');
+            for (var i = 0; i < frames.length; i++) {
+                var cw = frames[i].contentWindow;
+                map = readCustomerMapFromFrame(cw);
+                if (map) return map;
+            }
+        } catch (e2) { /* ignore */ }
+        return {};
+    }
+
+    async function invokeLoadCustomerList() {
+        var candidates = [];
+        if (typeof window.loadCustomerList === 'function') candidates.push(window.loadCustomerList);
+        try {
+            if (window.parent && window.parent !== window && typeof window.parent.loadCustomerList === 'function') {
+                candidates.push(window.parent.loadCustomerList);
+            }
+        } catch (e) { /* ignore */ }
+        try {
+            document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+                var cw = frame.contentWindow;
+                if (cw && typeof cw.loadCustomerList === 'function') {
+                    candidates.push(cw.loadCustomerList.bind(cw));
+                }
+            });
+        } catch (e2) { /* ignore */ }
+        for (var i = 0; i < candidates.length; i++) {
+            try {
+                await candidates[i]();
+                return true;
+            } catch (err) {
+                console.warn('[RapidOrder] loadCustomerList failed', err);
+            }
+        }
+        return false;
     }
 
     async function fetchCustomersForRop() {
-        if (typeof window.loadCustomerList === 'function') {
-            await window.loadCustomerList();
-        }
+        await invokeLoadCustomerList();
         var map = getCustomerLookupMap();
         if (map && Object.keys(map).length) return map;
         if (!window.wrappedFetch) return {};
         try {
             var resp = await window.wrappedFetch('/api/v1/crm/customers', { method: 'GET' });
-            var data = await window.handleApiResponse(resp);
-            var list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : []);
+            if (!resp.ok) {
+                throw new Error('HTTP ' + resp.status);
+            }
+            var raw = await resp.json();
+            var list = parseCrmListPayload(raw);
             var out = {};
             list.forEach(function (c) {
                 var cid = c.cust_id || c.custId || c.id;
@@ -383,22 +435,39 @@
     async function fetchAccountsForRop() {
         var list = [];
         if (typeof window.loadBizAccounts === 'function') {
-            list = await window.loadBizAccounts();
-        } else if (window.wrappedFetch) {
+            try {
+                var loaded = await window.loadBizAccounts();
+                if (Array.isArray(loaded)) list = loaded;
+            } catch (e) {
+                console.warn('[RapidOrder] loadBizAccounts failed', e);
+            }
+        }
+        if (!list.length && Array.isArray(window.bizAccountsList) && window.bizAccountsList.length) {
+            list = window.bizAccountsList;
+        }
+        if (!list.length) {
+            try {
+                if (window.parent && window.parent !== window && typeof window.parent.loadBizAccounts === 'function') {
+                    var parentLoaded = await window.parent.loadBizAccounts();
+                    if (Array.isArray(parentLoaded)) list = parentLoaded;
+                    else if (Array.isArray(window.parent.bizAccountsList)) list = window.parent.bizAccountsList;
+                }
+            } catch (e) { /* ignore */ }
+        }
+        if (!list.length && window.wrappedFetch) {
             try {
                 var resp = await window.wrappedFetch('/api/v1/im/accounts', { method: 'GET' });
-                var json = window.handleApiResponse
-                    ? await window.handleApiResponse(resp)
-                    : await resp.json().catch(function () { return {}; });
-                list = (json && json.data && Array.isArray(json.data)) ? json.data
-                    : (Array.isArray(json) ? json : []);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var raw = await resp.json().catch(function () { return {}; });
+                list = (raw && raw.success && Array.isArray(raw.data)) ? raw.data
+                    : (Array.isArray(raw) ? raw : (Array.isArray(raw.data) ? raw.data : []));
                 window.bizAccountsList = list;
             } catch (e) {
                 console.warn('[RapidOrder] load accounts failed', e);
                 window.bizAccountsList = [];
             }
         }
-        return list.length ? list : (window.bizAccountsList || []);
+        return Array.isArray(list) ? list : [];
     }
 
     async function confirmShortageIfNeeded(lines) {
@@ -594,6 +663,20 @@
         return best;
     }
 
+    /** SKU 有有效独立价则用 SKU 价，否则回退 SPU 最低价 */
+    function resolveSkuEffectivePrice(sku, spu, skus) {
+        var fallback = spu && spu.minPrice != null ? Number(spu.minPrice) : 0;
+        if (!sku) {
+            if (fallback > 0) return fallback;
+            var first = skus && skus[0];
+            return first && first.price != null ? Number(first.price) : 0;
+        }
+        var raw = sku.price != null ? sku.price : (sku.salePrice != null ? sku.salePrice : null);
+        var p = raw != null ? Number(raw) : NaN;
+        if (!isNaN(p) && p > 0) return p;
+        return fallback > 0 ? fallback : (isNaN(p) ? 0 : p);
+    }
+
     function renderVariantSheetBody() {
         var body = document.getElementById('rop-variant-body');
         if (!body || !variantSheetSpu) return;
@@ -603,7 +686,7 @@
         var displaySku = resolveBestDisplaySku(variantSheetSelection, skus);
         var coverUrl = getSkuCoverUrl(displaySku, spu.coverUrl);
         var thumb = window.TM_ProductThumb ? window.TM_ProductThumb.html({ coverUrl: coverUrl, size: 72, alt: spu.name }) : '';
-        var price = displaySku && (displaySku.price != null) ? displaySku.price : (spu.minPrice != null ? spu.minPrice : (skus[0] && skus[0].price));
+        var price = resolveSkuEffectivePrice(displaySku, spu, skus);
         var dims = getAllSpecDims(skus);
         var dimHtml = Object.keys(dims).map(function (dim) {
             return '<div class="rop-spec-group"><p class="rop-spec-group__label">' + dim + '</p><div class="rop-spec-chips">'
@@ -665,16 +748,8 @@
         var sid = sku.sku_id || sku.skuId;
         var rows = window.TM_SkuCatalogCache.getRows();
         var existing = rows.find(function (r) { return String(r.skuId) === String(sid); });
-        var price = Number(sku.price != null ? sku.price : (sku.salePrice != null ? sku.salePrice : 0));
+        var price = resolveSkuEffectivePrice(sku, spuGroup, spuGroup && spuGroup.skus);
         if (price <= 0 && existing && existing.price > 0) price = existing.price;
-        if (price <= 0 && spuGroup) {
-            if (spuGroup.minPrice > 0) {
-                price = spuGroup.minPrice;
-            } else if (spuGroup.skus && spuGroup.skus.length) {
-                var cached = spuGroup.skus.find(function (s) { return String(s.skuId) === String(sid); });
-                if (cached && cached.price > 0) price = cached.price;
-            }
-        }
         var spec = sku.attributes_display || sku.attributesDisplay || sku.specDisplay || '';
         if (!spec && sku.attributes && typeof sku.attributes === 'object') {
             spec = Object.keys(sku.attributes).map(function (k) { return sku.attributes[k]; }).join(' / ');
@@ -938,7 +1013,7 @@
         var accSel = document.getElementById('rop-account');
         if (accSel) {
             accSel.innerHTML = '<option value="">默认收款账户</option>';
-            accList.forEach(function (a) {
+            (accList || []).forEach(function (a) {
                 var o = document.createElement('option');
                 var id = a.accountId != null ? a.accountId : a.account_id;
                 o.value = id;

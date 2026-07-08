@@ -19,19 +19,8 @@ FROM nginx:alpine
 # 拷贝静态文件到 Nginx 目录
 COPY --from=build /app /usr/share/nginx/html
 
-# 配置 Nginx 支持单页应用路由
-COPY <<EOF /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    server_name localhost;
-
-    location / {
-        root /usr/share/nginx/html;
-        index index.html login.html;
-        try_files $uri $uri/ /index.html;
-    }
-}
-EOF
+# 同源反代 /api → gateway（ECS 若仅暴露 web 容器时必需）
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 
 # 暴露端口
 EXPOSE 80

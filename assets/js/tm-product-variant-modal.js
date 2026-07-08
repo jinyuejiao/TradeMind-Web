@@ -36,6 +36,37 @@
         return (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
     }
 
+    function getSpuDefaultPrice() {
+        var inp = PM.el('detail-product-price', 'product-price-input');
+        if (inp && String(inp.value).trim() !== '') {
+            var p = parseFloat(inp.value);
+            if (!isNaN(p) && p >= 0) return p;
+        }
+        var cp = PM.currentProduct || {};
+        if (cp.price != null && cp.price !== '') {
+            var n = Number(cp.price);
+            if (!isNaN(n) && n >= 0) return n;
+        }
+        return 0;
+    }
+
+    function normalizeComboPriceOverride(raw, spuDefault) {
+        if (raw == null || raw === '') return null;
+        var n = Number(raw);
+        if (isNaN(n) || n < 0) return null;
+        if (Math.abs(n - spuDefault) < 0.001) return null;
+        return n;
+    }
+
+    function effectiveComboPrice(row) {
+        var spuDefault = getSpuDefaultPrice();
+        if (row && row.priceOverride != null && row.priceOverride !== '') {
+            var n = Number(row.priceOverride);
+            if (!isNaN(n) && n >= 0) return n;
+        }
+        return spuDefault;
+    }
+
     function findDraftRowByComboKey(key) {
         if (!key) return null;
         var rows = getEnabledDraftRows();
@@ -55,7 +86,8 @@
             coverUrl: prev.coverUrl || null,
             coverPreview: prev.coverPreview || null,
             imageFile: prev.imageFile || null,
-            skuId: prev.skuId || null
+            skuId: prev.skuId || null,
+            priceOverride: prev.priceOverride != null ? prev.priceOverride : null
         };
     }
 
@@ -75,6 +107,13 @@
             var row = findDraftRowByComboKey(ck);
             if (!row) return;
             row.stock = Math.max(0, parseInt(inp.value, 10) || 0);
+        });
+        var spuDefault = getSpuDefaultPrice();
+        tbody.querySelectorAll('.tm-variant-row-price').forEach(function (inp) {
+            var ck = inp.getAttribute('data-combo-key');
+            var row = findDraftRowByComboKey(ck);
+            if (!row) return;
+            row.priceOverride = normalizeComboPriceOverride(inp.value, spuDefault);
         });
     };
 
@@ -200,7 +239,8 @@
                 coverUrl: null,
                 coverPreview: null,
                 imageFile: null,
-                skuId: null
+                skuId: null,
+                priceOverride: null
             };
         });
     };
@@ -214,14 +254,17 @@
         if (thead) {
             thead.innerHTML = '<th class="px-3 py-2 min-w-[8rem]">规格组合</th>'
                 + '<th class="px-2 py-2 text-center w-14">图</th>'
+                + '<th class="px-2 py-2 text-right whitespace-nowrap w-20">售价</th>'
                 + whs.map(function (w) {
                     return '<th class="px-2 py-2 text-right whitespace-nowrap">' + PM.escHtmlText(w.name || w.warehouseName || '仓') + '</th>';
                 }).join('')
                 + '<th class="px-2 py-2 text-right">合计</th><th class="px-2 py-2 w-10"></th>';
         }
+        var spuDefault = getSpuDefaultPrice();
+        var spuPh = spuDefault > 0 ? String(spuDefault) : 'SPU价';
         var rows = (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="' + (4 + whs.length) + '" class="px-3 py-8 text-center text-slate-400 text-xs">请在上方勾选规格取值，点击「生成组合」或勾选后自动生成</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="' + (5 + whs.length) + '" class="px-3 py-8 text-center text-slate-400 text-xs">请在上方勾选规格取值，点击「生成组合」或勾选后自动生成</td></tr>';
             return;
         }
         tbody.innerHTML = rows.map(function (row) {
@@ -238,6 +281,8 @@
                     : '<i class="ph ph-camera text-slate-400 text-lg"></i>')
                 + '<input type="file" accept="image/*" class="hidden tm-variant-img-input" data-combo-key="' + keyAttr + '" />'
                 + '</label></td>';
+            var priceVal = row.priceOverride != null && row.priceOverride !== '' ? String(row.priceOverride) : '';
+            var priceCell = '<td class="px-2 py-2"><input type="number" min="0" step="0.01" class="tm-variant-row-price form-input w-20 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" value="' + PM.escHtmlAttr(priceVal) + '" placeholder="' + PM.escHtmlAttr(spuPh) + '" title="留空则使用 SPU 销售价 ' + PM.escHtmlAttr(spuPh) + '" /></td>';
             var whCells = whs.map(function (w) {
                 var wid = w.id != null ? w.id : w.warehouseId;
                 var v = whStockLookup(row.warehouseStocks, wid);
@@ -246,6 +291,7 @@
             return '<tr class="tm-variant-combo-row border-b border-slate-50 hover:bg-slate-50/80" data-combo-key="' + keyAttr + '">'
                 + '<td class="px-3 py-2 text-xs text-slate-700 font-medium max-w-[10rem]">' + PM.escHtmlText(label) + '</td>'
                 + imgCell
+                + priceCell
                 + whCells
                 + '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-row-stock form-input w-16 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" value="' + (row.stock || 0) + '" /></td>'
                 + '<td class="px-2 py-2 text-center"><button type="button" class="tm-variant-row-del text-red-400 hover:text-red-600 p-1" data-combo-key="' + keyAttr + '" title="移除此组合"><i class="ph ph-trash text-sm"></i></button></td>'
@@ -265,6 +311,11 @@
         tbody.querySelectorAll('.tm-variant-row-stock').forEach(function (inp) {
             inp.addEventListener('input', function () {
                 PM.onVariantComboStockChange(inp.getAttribute('data-combo-key'), inp.value);
+            });
+        });
+        tbody.querySelectorAll('.tm-variant-row-price').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                PM.onVariantComboPriceChange(inp.getAttribute('data-combo-key'), inp.value);
             });
         });
         tbody.querySelectorAll('.tm-variant-row-del').forEach(function (btn) {
@@ -407,6 +458,12 @@
             if (whInp) whInp.value = String(qty);
         }
         PM.updateVariantComboSummary();
+    };
+
+    PM.onVariantComboPriceChange = function (comboKeyVal, val) {
+        var row = findDraftRowByComboKey(comboKeyVal);
+        if (!row) return;
+        row.priceOverride = normalizeComboPriceOverride(val, getSpuDefaultPrice());
     };
 
     PM.removeVariantComboRow = function (comboKeyVal) {
@@ -607,6 +664,14 @@
                     Object.keys(whStocks).forEach(function (k) { stock += whStocks[k] || 0; });
                 }
                 var cover = sku.coverUrl || sku.cover_url || null;
+                var skuPrice = sku.price != null ? Number(sku.price) : null;
+                var spuDefault = getSpuDefaultPrice();
+                var priceOverride = null;
+                if (skuPrice != null && !isNaN(skuPrice) && skuPrice >= 0) {
+                    if (spuDefault <= 0 || Math.abs(skuPrice - spuDefault) >= 0.001) {
+                        priceOverride = skuPrice;
+                    }
+                }
                 return {
                     key: comboKey(attrs),
                     attrs: attrs,
@@ -616,7 +681,8 @@
                     coverUrl: cover,
                     coverPreview: cover,
                     imageFile: null,
-                    skuId: sku.skuId || sku.sku_id
+                    skuId: sku.skuId || sku.sku_id,
+                    priceOverride: priceOverride
                 };
             });
             PM._variantMatrixConfirmed = PM._variantComboDraft.length > 0;
@@ -832,6 +898,7 @@
         });
         if (!Object.keys(filtered).length) return null;
         var whs = PM.warehouses || [];
+        var spuDefault = getSpuDefaultPrice();
         var skuCombos = (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; }).map(function (row) {
             var whItems = [];
             whs.forEach(function (w) {
@@ -841,17 +908,23 @@
                     whItems.push({ warehouseId: wid, quantity: q });
                 }
             });
-            return {
+            var combo = {
                 attributes: row.attrs,
                 stock: parseInt(row.stock, 10) || 0,
                 warehouseStocks: whItems,
                 enabled: true
             };
+            var price = row.priceOverride != null && row.priceOverride !== '' ? Number(row.priceOverride) : null;
+            if (price != null && !isNaN(price) && price >= 0) {
+                combo.price = price;
+            }
+            return combo;
         });
         return {
             templateId: templateId || null,
             selectedValues: filtered,
             skuCombos: skuCombos,
+            defaultPrice: spuDefault > 0 ? spuDefault : null,
             customAttributePolicies: (PM._customAttrRows || []).filter(function (row) {
                 return row.name && String(row.name).trim();
             }).map(function (row) {

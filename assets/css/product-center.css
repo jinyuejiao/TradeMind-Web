@@ -1031,8 +1031,17 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.15);
 }
 .tm-variant-combo-scroll {
-    max-height: min(16rem, 40vh);
+    max-height: min(14rem, 38vh);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#tm-variant-modal-scroll {
+    -webkit-overflow-scrolling: touch;
+}
+.tm-variant-modal--combo-expanded #tm-variant-modal-scroll {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 .tm-variant-modal--combo-expanded #tm-variant-modal-upper {
     display: none;
@@ -1042,9 +1051,12 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     padding-top: 0;
     border-top: none;
     flex: 1;
+    min-height: 0;
 }
 .tm-variant-modal--combo-expanded .tm-variant-combo-scroll {
     max-height: none;
+    flex: 1;
+    min-height: 10rem;
 }
 .tm-cap-card--flat {
     min-height: 2.75rem;

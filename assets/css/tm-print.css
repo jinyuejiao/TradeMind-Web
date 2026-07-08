@@ -1,88 +1,270 @@
 /* 打印预览与三联样式 */
 
 @media print {
-
     @page {
-
         margin: 8mm;
-
         size: auto;
-
     }
-
     @page triplicate {
-
         size: 241mm 140mm;
-
         margin: 5mm;
-
     }
-
     body.tm-print-triplicate {
-
         page: triplicate;
-
     }
-
 }
 
-
-
-.tm-print-preview-box {
-
-    max-height: 60vh;
-
-    overflow: auto;
-
-    border: 1px solid #e2e8f0;
-
-    border-radius: 0.75rem;
-
-    padding: 0.75rem;
-
-    background: #fff;
-
-    font-family: SimSun, serif;
-
-    font-size: 12px;
-
+/* —— 预览弹窗（须高于进货单 z-index:200、极速开单 220 等业务弹层） —— */
+.tm-print-preview-modal {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    z-index: 280 !important;
 }
-
-
 
 .tm-print-type-menu {
-
-    animation: tmPrintMenuIn 0.12s ease-out;
-
+    z-index: 290 !important;
 }
 
+.tm-print-preview-modal:not(.hidden) {
+    display: flex;
+}
 
+.tm-print-preview-panel {
+    width: 100%;
+    max-width: 560px;
+    max-height: min(92dvh, 100%);
+    border-radius: 1.5rem 1.5rem 0 0;
+}
+
+@media (min-width: 640px) {
+    .tm-print-preview-modal {
+        align-items: center;
+        padding: 1rem;
+    }
+    .tm-print-preview-panel {
+        border-radius: 1.5rem;
+        max-height: min(88dvh, 720px);
+    }
+}
+
+body.tm-print-preview-open {
+    overflow: hidden;
+}
+
+.tm-print-preview-box {
+    background: #fff;
+    border-radius: 0.875rem;
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+}
+
+/* —— 收据样式（预览 / 导出 / 打印） —— */
+.tm-print-receipt {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 1rem 1rem 1.25rem;
+    background: #fff;
+    color: #0f172a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.tm-print-receipt-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.tm-print-receipt-mark {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #14b8a6, #0d9488);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(20, 184, 166, 0.25);
+    flex-shrink: 0;
+}
+
+.tm-print-receipt-mark i {
+    font-size: 1.25rem;
+}
+
+.tm-print-receipt-shop {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+    margin: 0;
+}
+
+.tm-print-receipt-title {
+    margin: 0.125rem 0 0;
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    color: #0f172a;
+}
+
+.tm-print-receipt-meta {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.tm-print-receipt-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 11px;
+}
+
+.tm-print-receipt-meta-row .k {
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.tm-print-receipt-meta-row .v {
+    color: #0f172a;
+    font-weight: 600;
+    text-align: right;
+    word-break: break-all;
+}
+
+.tm-print-receipt-divider {
+    border-top: 1px dashed #cbd5e1;
+    margin: 0.65rem 0;
+}
+
+.tm-print-receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 11px;
+}
+
+.tm-print-receipt-table th,
+.tm-print-receipt-table td {
+    padding: 0.35rem 0.15rem;
+    vertical-align: top;
+    text-align: left;
+    word-break: break-word;
+}
+
+.tm-print-receipt-table th {
+    color: #64748b;
+    font-weight: 800;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.45rem;
+}
+
+.tm-print-receipt-table td.col-quantity,
+.tm-print-receipt-table td.col-unitPrice,
+.tm-print-receipt-table td.col-subtotal,
+.tm-print-receipt-table th.col-quantity,
+.tm-print-receipt-table th.col-unitPrice,
+.tm-print-receipt-table th.col-subtotal {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tm-print-receipt-table td.col-product {
+    width: 42%;
+}
+
+.tm-print-receipt-spec {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.tm-print-receipt-extra td {
+    font-size: 10px;
+    color: #64748b;
+    padding-top: 0;
+    padding-bottom: 0.35rem;
+}
+
+.tm-print-receipt-table td.empty {
+    text-align: center;
+    color: #94a3b8;
+    padding: 1rem 0;
+}
+
+.tm-print-receipt-summary {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.tm-print-receipt-sum-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 11px;
+    color: #334155;
+}
+
+.tm-print-receipt-sum-row.is-bold {
+    font-size: 13px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.tm-print-receipt-note {
+    margin: 0.75rem 0 0;
+    text-align: center;
+    font-size: 10px;
+    color: #64748b;
+}
+
+.tm-print-receipt-foot {
+    margin-top: 0.85rem;
+    padding-top: 0.65rem;
+    border-top: 1px dashed #e2e8f0;
+    text-align: center;
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+.tm-print-receipt-foot p {
+    margin: 0.15rem 0;
+}
+
+.tm-print-receipt-brand {
+    color: #0d9488 !important;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.tm-print-type-menu {
+    animation: tmPrintMenuIn 0.12s ease-out;
+}
 
 @keyframes tmPrintMenuIn {
-
     from { opacity: 0; transform: translateY(4px); }
-
     to { opacity: 1; transform: translateY(0); }
-
 }
-
-
 
 @media print {
-
-    body.tm-print-triplicate h1 {
-
+    body.tm-print-triplicate .tm-print-receipt-title {
         font-size: 18px;
-
         letter-spacing: 0.2em;
-
     }
-
-    body.tm-print-triplicate table {
-
+    body.tm-print-triplicate .tm-print-receipt-table {
         font-size: 11px;
-
     }
-
 }
 
+@media (max-width: 639px) {
+    .tm-print-preview-footer {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    }
+}

@@ -34,7 +34,7 @@
                         window.TM_UI.showNotification('操作失败: ' + error.message, 'error');
                     }
                 }
-            } else {
+            } else if (!actionElement.getAttribute('onclick')) {
                 console.warn('[TradeMindApp] 未找到对应的 action:', action);
             }
         }

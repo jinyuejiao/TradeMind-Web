@@ -61,8 +61,8 @@
             </div>
             <button type="button" onclick="closeProductVariantModal()" class="p-2 hover:bg-slate-100 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
         </header>
-        <div id="tm-variant-modal-scroll" class="flex-1 min-h-0 flex flex-col overflow-hidden px-5 py-4">
-            <div id="tm-variant-modal-upper" class="space-y-4 shrink-0 overflow-y-auto no-scrollbar">
+        <div id="tm-variant-modal-scroll" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+            <div id="tm-variant-modal-upper" class="space-y-4">
             <div>
                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">属性模板</label>
                 <select id="tm-variant-modal-template" class="form-input w-full text-sm mt-1"><option value="">选择属性模板（颜色/尺码等）</option></select>
@@ -76,7 +76,7 @@
                 <div id="tm-variant-modal-custom-list" class="space-y-2"></div>
             </div>
             </div>
-            <div id="tm-variant-combo-panel" class="flex flex-col min-h-0 flex-1 mt-2 pt-2 border-t border-slate-100">
+            <div id="tm-variant-combo-panel" class="flex flex-col min-h-[10rem] mt-2 pt-2 border-t border-slate-100">
                 <div class="flex items-center justify-between mb-2 gap-2 shrink-0">
                     <div class="flex items-center gap-1.5 min-w-0">
                         <p class="text-xs font-bold text-slate-700 shrink-0">SKU 组合与库存</p>
@@ -94,6 +94,8 @@
                         <thead class="bg-slate-50 text-[10px] text-slate-400 font-bold uppercase">
                             <tr id="tm-variant-combo-head">
                                 <th class="px-3 py-2">规格组合</th>
+                                <th class="px-2 py-2 text-center w-14">图</th>
+                                <th class="px-2 py-2 text-right w-20">售价</th>
                                 <th class="px-2 py-2 text-right" colspan="99">各仓库存 / 合计 / 操作</th>
                             </tr>
                         </thead>

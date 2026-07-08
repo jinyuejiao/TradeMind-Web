@@ -2673,6 +2673,7 @@
                 '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">有效推荐 ' + (p.validReferralCount != null ? p.validReferralCount : 0) + '</span>' +
                 '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">待结 ' + pending + '</span>' +
                 '<span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-slate-400">开号 ' + escapeHtml(formatPromoterTime(p.createTime)) + '</span>' +
+                '<button type="button" class="ops-promoter-reset-pwd px-2 py-1 rounded-lg border border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100 text-[10px] font-bold" data-id="' + escapeHtml(String(p.userId)) + '" data-name="' + escapeHtml(p.userName || '') + '">重置密码</button>' +
                 '</div></div>'
             );
         }).join('');
@@ -2709,6 +2710,35 @@
         if (refreshBtn && refreshBtn.dataset.bound !== '1') {
             refreshBtn.dataset.bound = '1';
             refreshBtn.addEventListener('click', function () { loadPromoterList(); });
+        }
+        var listBody = el('ops-promoter-list-body');
+        if (listBody && listBody.dataset.resetBound !== '1') {
+            listBody.dataset.resetBound = '1';
+            listBody.addEventListener('click', function (e) {
+                var btn = e.target.closest('.ops-promoter-reset-pwd');
+                if (!btn) return;
+                var uid = btn.getAttribute('data-id');
+                var name = btn.getAttribute('data-name') || uid;
+                var pwd = prompt('为推广员「' + name + '」设置新密码（至少 6 位）：');
+                if (!pwd || pwd.length < 6) {
+                    if (pwd !== null) opsNotify('密码至少 6 位', 'warning');
+                    return;
+                }
+                (async function () {
+                    try {
+                        var res = await opsFetch('/api/v1/ops/promoters/' + encodeURIComponent(uid) + '/reset-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: pwd })
+                        });
+                        var data = await res.json().catch(function () { return {}; });
+                        if (!res.ok) throw new Error(data.message || '重置失败');
+                        opsNotify('密码已重置，请通知推广员用新密码登录', 'success');
+                    } catch (err) {
+                        opsNotify(err.message || String(err), 'error');
+                    }
+                })();
+            });
         }
 
         form.addEventListener('submit', async function (ev) {

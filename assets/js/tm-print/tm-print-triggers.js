@@ -33,7 +33,7 @@
     }
 
     function ensurePrintReady(showError) {
-        if (global.TM_Print && global.TM_PrintApi) return true;
+        if (global.TM_Print && global.TM_PrintApi && global.TM_PrintPreview) return true;
         if (showError !== false) notify('打印模块未加载，请刷新页面（Ctrl+F5）后重试', 'error');
         return false;
     }
@@ -45,6 +45,10 @@
         notify('外设设置模块未加载，请刷新页面后重试', 'error');
         return Promise.resolve();
     };
+
+    // data-action 供角色权限引擎识别；实际交互由按钮 onclick 处理
+    if (!global.TM_Actions) global.TM_Actions = {};
+    global.TM_Actions['print.order'] = function () { /* permission marker */ };
 
     global.TM_PrintTriggers = {
         pickSalesDocType: pickSalesDocType,
@@ -70,7 +74,7 @@
                 return Promise.resolve();
             }
             if (!ensurePrintReady()) return Promise.resolve();
-            return global.TM_Print.print({
+            return global.TM_Print.openPreview({
                 docType: docType || pickSalesDocType(),
                 docId: String(orderId)
             });
@@ -87,7 +91,7 @@
             if (existing) { existing.remove(); return; }
             var menu = document.createElement('div');
             menu.id = 'tm-print-type-menu';
-            menu.className = 'tm-print-type-menu fixed z-[200] bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs min-w-[9rem]';
+            menu.className = 'tm-print-type-menu fixed bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs min-w-[9rem]';
             var items = [
                 { label: '销售单', type: 'SALES_ORDER' },
                 { label: '送货单', type: 'DELIVERY_NOTE' },
@@ -127,7 +131,7 @@
 
         printLastRapidOrder: function (orderId, docType) {
             if (!orderId || !ensurePrintReady(false)) return Promise.resolve();
-            return global.TM_Print.print({
+            return global.TM_Print.openPreview({
                 docType: docType || pickSalesDocType(),
                 docId: String(orderId)
             });
@@ -138,7 +142,7 @@
                 if (!purchaseId) notify('请先保存进货单', 'error');
                 return Promise.resolve();
             }
-            return global.TM_Print.print({
+            return global.TM_Print.openPreview({
                 docType: docType || pickPurchaseDocType(),
                 docId: String(purchaseId)
             });
@@ -156,7 +160,7 @@
             if (existing) { existing.remove(); return; }
             var menu = document.createElement('div');
             menu.id = 'tm-print-type-menu';
-            menu.className = 'tm-print-type-menu fixed z-[200] bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs min-w-[9rem]';
+            menu.className = 'tm-print-type-menu fixed bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs min-w-[9rem]';
             [
                 { label: '进货单', type: 'PURCHASE_ORDER' },
                 { label: '入库单', type: 'INBOUND_NOTE' }
@@ -190,7 +194,7 @@
             if (!orderId || !ensurePrintReady(false)) return;
             var ok = await confirmPrint(message || '发货成功，是否打印送货单？');
             if (ok) {
-                return global.TM_Print.print({ docType: 'DELIVERY_NOTE', docId: String(orderId) });
+                return global.TM_Print.openPreview({ docType: 'DELIVERY_NOTE', docId: String(orderId) });
             }
         },
 
@@ -198,8 +202,8 @@
             if (!orderId || !ensurePrintReady(false)) return;
             var ok = await confirmPrint(message || '收款成功，是否打印结账单？');
             if (ok) {
-                return global.TM_Print.print({
-                    docType: isMobile() ? 'SALES_RECEIPT' : 'PAYMENT_VOUCHER',
+                return global.TM_Print.openPreview({
+                    docType: isMobile() ? 'SALES_RECEIPT' : 'SALES_RECEIPT',
                     docId: String(orderId)
                 });
             }
