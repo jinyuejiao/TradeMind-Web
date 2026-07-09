@@ -27,6 +27,88 @@
         subtotal: '金额'
     };
 
+    var ORDER_STATUS_FALLBACK = {
+        D010001: '待配货',
+        D010002: '拣货中',
+        D010003: '全部发货',
+        D010004: '已签收',
+        D010005: '退货',
+        D010006: '部分发货'
+    };
+
+    var SALES_FIN_LABELS = {
+        UNPAID: '未收款',
+        PARTIAL_PAID: '部分收款',
+        SETTLED: '已结清',
+        BAD_DEBT: '坏账'
+    };
+
+    var PURCHASE_FIN_LABELS = {
+        UNPAID: '未付款',
+        PARTIAL_PAID: '部分付款',
+        SETTLED: '已结清'
+    };
+
+    var PURCHASE_STATUS_LABELS = {
+        DRAFT: '草稿',
+        PENDING_REVIEW: '待审核',
+        SUBMITTED: '已提交',
+        APPROVED: '审核通过',
+        PARTIAL_INBOUND: '部分入库',
+        FULL_INBOUND: '全部入库',
+        STOCKED: '全部入库',
+        REJECTED: '已驳回',
+        VOIDED: '作废',
+        CANCELLED: '已取消'
+    };
+
+    function isPurchaseDocType(docType) {
+        return docType === 'PURCHASE_ORDER' || docType === 'INBOUND_NOTE';
+    }
+
+    function normalizeCode(code) {
+        return String(code || '').trim().toUpperCase();
+    }
+
+    function labelSalesLogistics(code) {
+        if (!code) return '';
+        if (global.TM_OrderDict && typeof global.TM_OrderDict.orderStatusLabel === 'function') {
+            return global.TM_OrderDict.orderStatusLabel(code);
+        }
+        var k = normalizeCode(code);
+        var map = global.TM_ORDER_STATUS_MAP || ORDER_STATUS_FALLBACK;
+        return map[k] || ORDER_STATUS_FALLBACK[k] || String(code);
+    }
+
+    function labelPurchaseLogistics(code) {
+        if (!code) return '';
+        var k = normalizeCode(code);
+        return PURCHASE_STATUS_LABELS[k] || String(code);
+    }
+
+    function labelFinance(code, isPurchase) {
+        if (!code) return '';
+        var k = normalizeCode(code);
+        var map = isPurchase ? PURCHASE_FIN_LABELS : SALES_FIN_LABELS;
+        return map[k] || String(code);
+    }
+
+    function fmtStatus(docType, meta) {
+        if (!meta) return '';
+        var purchaseDoc = isPurchaseDocType(docType);
+        var logCode = meta.logisticsStatus || meta.order_status || meta.orderStatus
+            || meta.purchaseStatus || meta.purchase_status;
+        var finCode = meta.financeStatus || meta.fin_status || meta.finStatus;
+        var parts = [];
+        if (logCode) {
+            parts.push(purchaseDoc ? labelPurchaseLogistics(logCode) : labelSalesLogistics(logCode));
+        }
+        if (finCode) {
+            parts.push(labelFinance(finCode, purchaseDoc));
+        }
+        return parts.join(' · ');
+    }
+
     function esc(s) {
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -54,17 +136,6 @@
         if (s.length >= 19) return s.slice(0, 19);
         if (s.length >= 10) return s.slice(0, 10);
         return s;
-    }
-
-    function fmtStatus(docType, meta) {
-        if (!meta) return '';
-        if (docType.indexOf('PURCHASE') >= 0 || docType === 'INBOUND_NOTE') {
-            return meta.purchaseStatus || meta.purchase_status || '';
-        }
-        var parts = [];
-        if (meta.logisticsStatus) parts.push(String(meta.logisticsStatus));
-        if (meta.financeStatus) parts.push(String(meta.financeStatus));
-        return parts.join(' · ');
     }
 
     function counterpartyLabel(docType) {

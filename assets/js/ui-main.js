@@ -24,13 +24,19 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260705fix1';
+    var url = '/modules/product-center/product-overlays.html?v=20260709tpl';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
             var parser = new DOMParser();
             var doc = parser.parseFromString(html, 'text/html');
-            var ids = ['product-detail-modal', 'product-unit-modal', 'product-variant-modal', 'warehouse-transfer-modal'];
+            var ids = [
+                'product-detail-modal',
+                'product-unit-modal',
+                'product-variant-modal',
+                'attribute-template-modal',
+                'warehouse-transfer-modal'
+            ];
             ids.forEach(function (id) {
                 var nextNode = doc.getElementById(id);
                 if (!nextNode) return;
@@ -645,7 +651,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260625crm',
+        '/modules/crm/crm.html?embed=1&v=20260709crm',
         'CRM',
         { embedPathCheck: 'crm' }
     );
@@ -708,7 +714,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260625supply',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260709nav1',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -1214,8 +1220,11 @@ function TM_pushEmbedModalNotify() {
 function TM_popEmbedModalNotify(frame) {
     window.__TM_embedModalNotifyDepth = Math.max(0, (window.__TM_embedModalNotifyDepth || 0) - 1);
     TM_popShellOverlay();
-    if (window.__TM_embedModalNotifyDepth === 0 && frame) {
-        TM_setEmbedFrameModalExpanded(frame, false);
+    if (window.__TM_embedModalNotifyDepth === 0) {
+        if (frame) {
+            TM_setEmbedFrameModalExpanded(frame, false);
+        }
+        TM_restoreAllEmbedFramesFromModal();
     }
 }
 
@@ -1512,6 +1521,25 @@ if (!window.__tmEmbedModalListenerBound) {
             } catch (e3) { /* ignore */ }
             if (fromFrame && data.tab && typeof window.TM_shellSwitchTab === 'function') {
                 window.TM_shellSwitchTab(data.tab);
+            }
+            return;
+        }
+
+        if (data.type === 'TM_EMBED_MODAL_RECONCILE') {
+            var fromReconcile = false;
+            try {
+                document.querySelectorAll('iframe.tm-module-frame').forEach(function (f) {
+                    try {
+                        if (f.contentWindow === ev.source) fromReconcile = true;
+                    } catch (e2) { /* ignore */ }
+                });
+            } catch (e3) { /* ignore */ }
+            if (fromReconcile) {
+                if (typeof TM_resetShellOverlay === 'function') {
+                    TM_resetShellOverlay();
+                } else if (typeof TM_ensureShellOverlayVisible === 'function') {
+                    TM_ensureShellOverlayVisible();
+                }
             }
             return;
         }
@@ -2061,6 +2089,9 @@ function legacySwitchReport(type) {
 
 // --- 手动订单逻辑 ---
 function openManualOrderModal() {
+    if (typeof window.TM_openRapidOrder === 'function') {
+        return window.TM_openRapidOrder({ title: '添加订单', source: 'manual' });
+    }
     if (typeof window.TM_openManualOrderModal === 'function') {
         return window.TM_openManualOrderModal();
     }

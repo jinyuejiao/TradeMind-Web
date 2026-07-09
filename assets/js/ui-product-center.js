@@ -10,6 +10,9 @@ function formatPurchasePriceDisplay(value) {
 window.ProductModule = {
     // ==================== API数据映射函数 ====================
     mapProductFromApi: function(apiProduct) {
+        if (!apiProduct || typeof apiProduct !== 'object') {
+            return { unitConversions: [] };
+        }
         var stockVal = apiProduct.stockQuantity != null ? apiProduct.stockQuantity : apiProduct.stock;
         var stockNum = stockVal != null ? Number(stockVal) : 0;
         var ucList = apiProduct.unitConversions || apiProduct.unit_conversions;

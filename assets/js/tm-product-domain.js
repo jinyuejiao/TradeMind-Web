@@ -12,12 +12,49 @@
         }).join('|');
     }
 
+    function isPgObjectSerialization(attrs) {
+        return attrs && typeof attrs === 'object' && !Array.isArray(attrs)
+            && attrs.type === 'json' && Object.prototype.hasOwnProperty.call(attrs, 'value');
+    }
+
     function parseSkuAttributes(raw) {
         var attrs = raw || {};
         if (typeof attrs === 'string') {
             try { attrs = JSON.parse(attrs); } catch (e) { attrs = {}; }
         }
+        if (isPgObjectSerialization(attrs)) {
+            try {
+                var inner = typeof attrs.value === 'string' ? JSON.parse(attrs.value) : attrs.value;
+                attrs = (inner && typeof inner === 'object' && !Array.isArray(inner)) ? inner : {};
+            } catch (e) {
+                attrs = {};
+            }
+        }
+        if (Array.isArray(attrs)) {
+            return {};
+        }
+        if (attrs && typeof attrs === 'object') {
+            var keys = Object.keys(attrs);
+            if (keys.length && keys.every(function (k) { return k === 'type' || k === 'value' || k === 'null'; })) {
+                return {};
+            }
+        }
         return attrs && typeof attrs === 'object' ? attrs : {};
+    }
+
+    function formatSkuSpecLabel(sku) {
+        if (!sku) return '';
+        var label = sku.specDisplay || sku.spec_display || sku.attributes_display || sku.attributesDisplay || '';
+        if (label) return String(label);
+        var attrs = parseSkuAttributes(sku.attributes || sku.attrs);
+        var keys = Object.keys(attrs).filter(function (k) {
+            return k !== 'type' && k !== 'value' && k !== 'null';
+        });
+        if (!keys.length) return '';
+        return keys.map(function (k) {
+            var v = attrs[k];
+            return v == null ? '' : String(v);
+        }).filter(Boolean).join(' / ');
     }
 
     function cartesianFromSelection(sel) {
@@ -91,6 +128,7 @@
     window.TM_ProductDomain = {
         comboKey: comboKey,
         parseSkuAttributes: parseSkuAttributes,
+        formatSkuSpecLabel: formatSkuSpecLabel,
         cartesianFromSelection: cartesianFromSelection,
         whStockLookup: whStockLookup,
         getAllSpecDims: getAllSpecDims,

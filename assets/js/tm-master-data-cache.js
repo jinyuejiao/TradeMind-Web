@@ -14,6 +14,7 @@
 
     var state = {
         templates: { key: null, list: [], defaultId: null, loadedAt: 0 },
+        templateDetails: {},
         categories: { list: [], loadedAt: 0 },
         warehouses: { list: [], loadedAt: 0 },
         spu: {}
@@ -42,6 +43,7 @@
 
         invalidateAll: function () {
             state.templates = { key: null, list: [], defaultId: null, loadedAt: 0 };
+            state.templateDetails = {};
             state.categories = { list: [], loadedAt: 0 };
             state.warehouses = { list: [], loadedAt: 0 };
             state.spu = {};
@@ -81,6 +83,14 @@
             }
         },
 
+        invalidateTemplates: function () {
+            state.templates = { key: null, list: [], defaultId: null, loadedAt: 0 };
+            state.templateDetails = {};
+            Object.keys(state.spu).forEach(function (k) {
+                if (k.indexOf('tpl:') === 0) delete state.spu[k];
+            });
+        },
+
         getAttributeTemplates: async function (industryVertical, force) {
             var iv = industryVertical || 'GENERAL';
             var cacheKey = iv.toUpperCase();
@@ -112,7 +122,7 @@
             var forNew = !!opts.forNewProduct;
             var spuId = opts.spuId != null ? opts.spuId : null;
             var key = 'tpl:' + templateId + (forNew ? ':new' : ':all') + (spuId != null ? ':spu' + spuId : '');
-            var cached = state.spu[key];
+            var cached = state.templateDetails[key];
             if (!opts.force && cached && isFresh(cached.loadedAt, TTL.templates)) {
                 return cached.data;
             }
@@ -124,7 +134,7 @@
                 var resp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + templateId + qs, { method: 'GET' });
                 var data = await window.handleApiResponse(resp);
                 var detail = data && data.data ? data.data : data;
-                state.spu[key] = { data: detail, loadedAt: Date.now() };
+                state.templateDetails[key] = { data: detail, loadedAt: Date.now() };
                 return detail;
             } catch (e) {
                 return null;

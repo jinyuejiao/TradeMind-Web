@@ -36,18 +36,18 @@
         return modal;
     }
 
-    var embedOverlayPushed = false;
+    var embedOverlayPushCount = 0;
 
     function notifyEmbedModal(open) {
         if (open) {
             if (typeof window.TM_pushEmbedOverlayRef === 'function') {
                 window.TM_pushEmbedOverlayRef();
-                embedOverlayPushed = true;
+                embedOverlayPushCount += 1;
                 return;
             }
-        } else if (embedOverlayPushed && typeof window.TM_popEmbedOverlayRef === 'function') {
+        } else if (embedOverlayPushCount > 0 && typeof window.TM_popEmbedOverlayRef === 'function') {
             window.TM_popEmbedOverlayRef();
-            embedOverlayPushed = false;
+            embedOverlayPushCount = Math.max(0, embedOverlayPushCount - 1);
             return;
         }
         if (typeof window.TM_notifyEmbedModal === 'function') {
@@ -71,6 +71,7 @@
     function open(opts) {
         opts = opts || {};
         var modal = ensureModal();
+        var wasOpen = modal && !modal.classList.contains('hidden');
         var titleEl = document.getElementById('tm-confirm-title');
         var msgEl = document.getElementById('tm-confirm-message');
         var iconWrap = document.getElementById('tm-confirm-icon');
@@ -125,7 +126,9 @@
         pendingOnConfirm = typeof opts.onConfirm === 'function' ? opts.onConfirm : null;
         modal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-        notifyEmbedModal(true);
+        if (!wasOpen) {
+            notifyEmbedModal(true);
+        }
         if (okBtn) okBtn.focus();
     }
 

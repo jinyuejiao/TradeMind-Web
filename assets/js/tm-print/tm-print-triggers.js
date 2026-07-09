@@ -80,53 +80,12 @@
             });
         },
 
-        showOrderPrintMenu: function (anchorEl) {
-            var orderId = global.currentDetailOrderId;
-            if (!orderId) {
-                notify('请先打开订单', 'error');
-                return;
-            }
-            if (!ensurePrintReady()) return;
-            var existing = document.getElementById('tm-print-type-menu');
-            if (existing) { existing.remove(); return; }
-            var menu = document.createElement('div');
-            menu.id = 'tm-print-type-menu';
-            menu.className = 'tm-print-type-menu fixed bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs min-w-[9rem]';
-            var items = [
-                { label: '销售单', type: 'SALES_ORDER' },
-                { label: '送货单', type: 'DELIVERY_NOTE' },
-                { label: '结账单', type: 'SALES_RECEIPT' }
-            ];
-            items.forEach(function (it) {
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'block w-full text-left px-3 py-2 hover:bg-slate-50 font-bold text-slate-700';
-                btn.textContent = it.label;
-                btn.addEventListener('click', function () {
-                    menu.remove();
-                    global.TM_PrintTriggers.printOrderDetail(it.type);
-                });
-                menu.appendChild(btn);
-            });
-            document.body.appendChild(menu);
-            var anchor = anchorEl || document.getElementById('detail-print-btn');
-            if (anchor) {
-                var rect = anchor.getBoundingClientRect();
-                menu.style.left = Math.max(8, rect.left) + 'px';
-                menu.style.top = (rect.top - menu.offsetHeight - 6) + 'px';
-            } else {
-                menu.style.left = '50%';
-                menu.style.top = '40%';
-                menu.style.transform = 'translateX(-50%)';
-            }
-            setTimeout(function () {
-                document.addEventListener('click', function handler(e) {
-                    if (!menu.contains(e.target)) {
-                        menu.remove();
-                        document.removeEventListener('click', handler);
-                    }
-                });
-            }, 0);
+        showOrderPrintMenu: function () {
+            return global.TM_PrintTriggers.printOrderDetail();
+        },
+
+        showPurchasePrintMenu: function (anchorEl, purchaseId) {
+            return global.TM_PrintTriggers.printPurchase(purchaseId);
         },
 
         printLastRapidOrder: function (orderId, docType) {
@@ -138,50 +97,16 @@
         },
 
         printPurchase: function (purchaseId, docType) {
-            if (!purchaseId || !ensurePrintReady()) {
-                if (!purchaseId) notify('请先保存进货单', 'error');
+            var pid = purchaseId || (global.SupplierModule && global.SupplierModule.currentPurchase
+                ? global.SupplierModule.currentPurchase.purchaseId : null);
+            if (!pid || !ensurePrintReady()) {
+                if (!pid) notify('请先保存进货单', 'error');
                 return Promise.resolve();
             }
             return global.TM_Print.openPreview({
                 docType: docType || pickPurchaseDocType(),
-                docId: String(purchaseId)
+                docId: String(pid)
             });
-        },
-
-        showPurchasePrintMenu: function (anchorEl, purchaseId) {
-            var pid = purchaseId || (global.SupplierModule && global.SupplierModule.currentPurchase
-                ? global.SupplierModule.currentPurchase.purchaseId : null);
-            if (!pid) {
-                notify('请先保存进货单', 'error');
-                return;
-            }
-            if (!ensurePrintReady()) return;
-            var existing = document.getElementById('tm-print-type-menu');
-            if (existing) { existing.remove(); return; }
-            var menu = document.createElement('div');
-            menu.id = 'tm-print-type-menu';
-            menu.className = 'tm-print-type-menu fixed bg-white border border-slate-200 rounded-xl shadow-lg py-1 text-xs min-w-[9rem]';
-            [
-                { label: '进货单', type: 'PURCHASE_ORDER' },
-                { label: '入库单', type: 'INBOUND_NOTE' }
-            ].forEach(function (it) {
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'block w-full text-left px-3 py-2 hover:bg-slate-50 font-bold text-slate-700';
-                btn.textContent = it.label;
-                btn.addEventListener('click', function () {
-                    menu.remove();
-                    global.TM_PrintTriggers.printPurchase(pid, it.type);
-                });
-                menu.appendChild(btn);
-            });
-            document.body.appendChild(menu);
-            var el = anchorEl || document.getElementById('purchase-print-btn');
-            if (el) {
-                var rect = el.getBoundingClientRect();
-                menu.style.left = Math.max(8, rect.left) + 'px';
-                menu.style.top = (rect.top - menu.offsetHeight - 6) + 'px';
-            }
         },
 
         offerPrintAfterCreate: async function (orderId, docType, message) {

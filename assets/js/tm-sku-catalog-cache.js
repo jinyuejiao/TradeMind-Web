@@ -13,6 +13,10 @@
             cover = null;
         }
         var price = Number(r.price || 0);
+        var attrs = r.attributes || {};
+        if (window.TM_ProductDomain && window.TM_ProductDomain.parseSkuAttributes) {
+            attrs = window.TM_ProductDomain.parseSkuAttributes(attrs);
+        }
         return {
             skuId: r.sku_id || r.skuId,
             spuId: r.spu_id || r.spuId,
@@ -25,7 +29,7 @@
             legacyProductId: r.legacy_product_id || r.legacyProductId,
             trackExpiry: !!(r.track_expiry || r.trackExpiry),
             trackSerial: !!(r.track_serial || r.trackSerial),
-            attributes: r.attributes || {}
+            attributes: attrs
         };
     }
 
@@ -41,6 +45,14 @@
         return Object.keys(map).map(function (k) { return map[k]; });
     }
 
+    function normalizeRowAttrs(row) {
+        if (!row) return row;
+        if (window.TM_ProductDomain && window.TM_ProductDomain.parseSkuAttributes) {
+            row.attributes = window.TM_ProductDomain.parseSkuAttributes(row.attributes);
+        }
+        return row;
+    }
+
     window.TM_SkuCatalogCache = {
         getRows: function () { return state.rows; },
         getCategories: function () { return state.categories; },
@@ -54,6 +66,7 @@
 
         load: async function (warehouseId, force) {
             if (!force && window.TM_SkuCatalogCache.isFresh(warehouseId)) {
+                state.rows = state.rows.map(normalizeRowAttrs);
                 return state.rows;
             }
             if (!window.wrappedFetch) return [];
@@ -137,7 +150,7 @@
                 if (!raw) return false;
                 var o = JSON.parse(raw);
                 if (!o.rows || Date.now() - o.t > CACHE_TTL_MS) return false;
-                state.rows = o.rows;
+                state.rows = o.rows.map(normalizeRowAttrs);
                 state.loadedAt = o.t;
                 state.warehouseId = o.wh;
                 state.categories = buildCategories(state.rows);

@@ -303,7 +303,7 @@
         modal.innerHTML =
             '<div class="rop-modal-panel tm-document-modal bg-white w-full shadow-xl flex flex-col min-h-0">' +
             '<header class="rop-modal-header px-4 py-3 border-b flex justify-between items-center shrink-0">' +
-            '<h3 class="font-bold text-slate-800">⚡ 极速开单</h3>' +
+            '<h3 id="rop-modal-title" class="font-bold text-slate-800">⚡ 极速开单</h3>' +
             '<div class="flex items-center gap-1">' +
             '<button type="button" id="rop-scan-camera" class="p-2 hover:bg-slate-100 rounded-full text-teal-600" title="相机扫码加 SKU"><i class="ph ph-camera text-lg"></i></button>' +
             '<button type="button" id="rop-modal-close" class="p-2 -mr-2 hover:bg-slate-100 rounded-full" aria-label="关闭">' +
@@ -1043,9 +1043,33 @@
         }
     }
 
-    window.TM_openRapidOrder = async function () {
+    function setModalTitle(title) {
+        var titleEl = document.getElementById('rop-modal-title');
+        if (!titleEl) {
+            var modal = document.getElementById('rapid-order-modal');
+            titleEl = modal && modal.querySelector('header h3');
+        }
+        if (titleEl) titleEl.textContent = title || '⚡ 极速开单';
+    }
+
+    function notifyPostOrderCreated(custId, orderId) {
+        if (typeof window.loadInProgressOrders === 'function') window.loadInProgressOrders();
+        if (window.TM_SalesOrders && typeof window.TM_SalesOrders.load === 'function') {
+            window.TM_SalesOrders.load(1);
+        }
+        if (typeof window.TM_emitOrderDataChanged === 'function') {
+            window.TM_emitOrderDataChanged({ custId: custId, orderId: orderId });
+        }
+        if (typeof window.loadDashboardOverviewStats === 'function') {
+            window.loadDashboardOverviewStats();
+        }
+    }
+
+    window.TM_openRapidOrder = async function (opts) {
+        opts = opts || {};
         ensureOrderModal();
         ensurePickerDom();
+        setModalTitle(opts.title || '⚡ 极速开单');
         cart.clear();
         batchCache.clear();
         if (window.TM_loadWorkbenchProfile) await window.TM_loadWorkbenchProfile();
@@ -1177,7 +1201,7 @@
             closeRapidOrderModal();
             cart.clear();
             batchCache.clear();
-            if (typeof window.loadInProgressOrders === 'function') window.loadInProgressOrders();
+            notifyPostOrderCreated(custId, orderId);
             if (orderId && window.TM_PrintTriggers && window.TM_PrintTriggers.offerPrintAfterCreate) {
                 await window.TM_PrintTriggers.offerPrintAfterCreate(orderId);
             }

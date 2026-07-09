@@ -50,25 +50,29 @@
     </script>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <link rel="stylesheet" href="../CSS/common.css?v=20260707fix1">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260525supp5">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260709po1">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/tm-format.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
-    <script src="../../assets/js/tm-confirm.js?v=20260601poembed"></script>
-    <script src="../../assets/js/tm-embed-shell.js?v=20260601poembed"></script>
+    <script src="../../assets/js/tm-confirm.js?v=20260709nav1"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260709nav1"></script>
     <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526po"></script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260708print2">
-    <script src="../../assets/js/tm-print/tm-print-api.js?v=20260708print2"></script>
-    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260708print2"></script>
-    <script src="../../assets/js/tm-print/tm-print-preview.js?v=20260708print2"></script>
-    <script src="../../assets/js/tm-print/tm-print-triggers.js?v=20260708print2"></script>
+    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260709print1">
+    <script src="../../assets/js/tm-print/tm-print-api.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-print/tm-print-preview.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-print/tm-print-triggers.js?v=20260709print1"></script>
     <script src="../../assets/js/tm-order-dict.js?v=20260625"></script>
-    <script src="../../assets/js/ui-supplier.js?v=20260703"></script>
+    <script src="../../assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-industry-ui.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-product-domain.js?v=20260709po2"></script>
+    <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260709po2"></script>
+    <script src="../../assets/js/ui-supplier.js?v=20260709nav1"></script>
     <style>
         .view-toggle-btn { transition: all 0.2s ease; }
         .view-toggle-btn.active {
@@ -320,11 +324,12 @@
                         <i class="ph ph-arrows-horizontal"></i> 左右滑动查看完整明细列
                     </p>
                     <div class="tm-po-lines-wrap tm-purchase-items-scroll">
-                        <table class="tm-po-lines-table w-full text-xs min-w-[36rem]" id="purchase-items-table">
+                        <table class="tm-po-lines-table w-full text-xs min-w-[44rem]" id="purchase-items-table">
                             <thead>
                                 <tr>
                                     <th class="tm-po-th tm-po-th--check purchase-inbound-col hidden">入库</th>
                                     <th class="tm-po-th tm-po-th--product">产品</th>
+                                    <th class="tm-po-th tm-po-th--spec purchase-spec-col hidden">规格</th>
                                     <th class="tm-po-th tm-po-th--qty">数量</th>
                                     <th class="tm-po-th tm-po-th--price">单价</th>
                                     <th class="tm-po-th tm-po-th--unit">单位</th>
@@ -394,7 +399,7 @@
                 <p class="tm-purchase-footer-hint text-[10px] text-slate-400 text-center mb-2 md:hidden">保存单据；部分入库请在明细区勾选后确认；付款请展开「仓库·付款」</p>
                 <div class="flex gap-3 w-full tm-purchase-footer-actions">
                     <button type="button" onclick="closePurchaseModal()" class="tm-btn-secondary flex-1 md:flex-none md:px-8 py-3.5 text-xs font-bold min-h-[44px]">取消</button>
-                    <button type="button" id="purchase-print-btn" onclick="typeof TM_PrintTriggers!=='undefined'&&TM_PrintTriggers.showPurchasePrintMenu(this)" class="tm-btn-secondary hidden flex-1 md:flex-none md:px-6 py-3.5 text-xs font-bold min-h-[44px]" data-action="print.order"><i class="ph ph-printer"></i> 打印</button>
+                    <button type="button" id="purchase-print-btn" onclick="typeof TM_PrintTriggers!=='undefined'&&TM_PrintTriggers.printPurchase()" class="tm-btn-secondary hidden flex-1 md:flex-none md:px-6 py-3.5 text-xs font-bold min-h-[44px]" data-action="print.order"><i class="ph ph-printer"></i> 打印</button>
                     <button type="button" onclick="savePurchase()" class="tm-btn-primary flex-[1.4] md:flex-none md:px-10 py-3.5 text-xs font-black shadow-lg shadow-brand-500/25 active:scale-[0.98] min-h-[44px] flex items-center justify-center gap-2">
                         <i class="ph ph-floppy-disk-back md:hidden"></i>
                         <span class="md:hidden">保存</span>

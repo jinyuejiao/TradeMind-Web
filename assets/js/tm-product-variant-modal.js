@@ -265,6 +265,7 @@
         var rows = (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
         if (!rows.length) {
             tbody.innerHTML = '<tr><td colspan="' + (5 + whs.length) + '" class="px-3 py-8 text-center text-slate-400 text-xs">请在上方勾选规格取值，点击「生成组合」或勾选后自动生成</td></tr>';
+            PM.updateVariantComboSummary();
             return;
         }
         tbody.innerHTML = rows.map(function (row) {
@@ -552,6 +553,62 @@
         });
     };
 
+    PM.splitVariantSelectionByTemplate = function (templateNames) {
+        templateNames = templateNames || {};
+        var customRows = PM._customAttrRows || [];
+        Object.keys(PM._variantMatrixSelection || {}).forEach(function (k) {
+            if (templateNames[k]) return;
+            var vals = PM._variantMatrixSelection[k] || [];
+            if (!vals.length) {
+                delete PM._variantMatrixSelection[k];
+                return;
+            }
+            var row = customRows.find(function (r) { return r.name === k; });
+            if (!row) {
+                customRows.push({ name: k, values: vals.slice(), asCommon: false });
+            } else {
+                vals.forEach(function (v) {
+                    if (row.values.indexOf(v) < 0) row.values.push(v);
+                });
+            }
+            delete PM._variantMatrixSelection[k];
+        });
+        PM._customAttrRows = customRows;
+    };
+
+    PM.rebuildVariantSelectionFromComboDraft = function () {
+        var sel = {};
+        (PM._variantComboDraft || []).forEach(function (row) {
+            if (!row || row.enabled === false || !row.attrs) return;
+            Object.keys(row.attrs).forEach(function (k) {
+                if (!sel[k]) sel[k] = [];
+                var v = String(row.attrs[k]);
+                if (sel[k].indexOf(v) < 0) sel[k].push(v);
+            });
+        });
+        if (Object.keys(sel).length) {
+            PM._variantMatrixSelection = sel;
+        }
+    };
+
+    PM.rebuildCustomAttrRowsFromComboDraft = function () {
+        var templateNames = PM.getTemplateMatrixAttrNames ? PM.getTemplateMatrixAttrNames() : {};
+        var sel = PM._variantMatrixSelection || {};
+        var customRows = [];
+        Object.keys(sel).forEach(function (k) {
+            if (templateNames[k]) return;
+            if (sel[k] && sel[k].length) {
+                customRows.push({ name: k, values: sel[k].slice(), asCommon: false });
+            }
+        });
+        PM._customAttrRows = customRows;
+        Object.keys(sel).forEach(function (k) {
+            if (!templateNames[k]) {
+                delete PM._variantMatrixSelection[k];
+            }
+        });
+    };
+
     PM.renderVariantModalTemplateChecks = function () {
         var box = document.getElementById('tm-variant-modal-template-attrs');
         if (!box || !box.innerHTML) box = PM.el('detail-variant-matrix');
@@ -560,7 +617,7 @@
         box.querySelectorAll('.tm-matrix-val').forEach(function (cb) {
             var attr = cb.getAttribute('data-attr');
             var val = cb.value;
-            cb.checked = sel[attr] && sel[attr].indexOf(val) >= 0;
+            cb.checked = !!(sel[attr] && sel[attr].some(function (sv) { return String(sv) === String(val); }));
             if (!cb.__tmVarBound) {
                 cb.__tmVarBound = true;
                 cb.addEventListener('change', function () {
@@ -576,6 +633,13 @@
     PM.loadVariantDraftFromSpu = async function (spuId, opts) {
         opts = opts || {};
         if (!spuId) return false;
+        var session = opts.session;
+        if (PM._variantDraftSpuId != null && String(PM._variantDraftSpuId) !== String(spuId)) {
+            PM._variantComboDraft = [];
+            PM._variantMatrixConfirmed = false;
+            PM._variantMatrixSelection = {};
+            PM._customAttrRows = [];
+        }
         if (!opts.force && PM._variantDraftSpuId === spuId && PM._variantComboDraft && PM._variantComboDraft.length) {
             return true;
         }
@@ -589,7 +653,18 @@
                 var data = await window.handleApiResponse(resp);
                 detail = data && data.data ? data.data : data;
             }
-            if (!detail || !detail.skus || !detail.skus.length) return false;
+            if (!detail || !detail.skus || !detail.skus.length) {
+                if (PM.shouldApplyProductDetailLoad && !PM.shouldApplyProductDetailLoad(session, spuId)) {
+                    return false;
+                }
+                PM._variantComboDraft = [];
+                PM._variantDraftSpuId = null;
+                PM._variantMatrixConfirmed = false;
+                return false;
+            }
+            if (PM.shouldApplyProductDetailLoad && !PM.shouldApplyProductDetailLoad(session, spuId)) {
+                return false;
+            }
             var skus = detail.skus;
             var variantSkus = skus.filter(function (s) {
                 var attrs = s.attributes || {};
@@ -599,31 +674,46 @@
                 var disp = s.attributesDisplay || s.attributes_display || '';
                 return Object.keys(attrs).length > 0 || (disp && String(disp).trim().length > 0);
             });
-            if (variantSkus.length <= 1 && skus.length <= 1) return false;
+            if (variantSkus.length <= 1 && skus.length <= 1) {
+                if (PM.shouldApplyProductDetailLoad && !PM.shouldApplyProductDetailLoad(session, spuId)) {
+                    return false;
+                }
+                return false;
+            }
             if (!variantSkus.length && skus.length > 1) {
                 variantSkus = skus.slice();
             }
-            if (!variantSkus.length) return false;
+            if (!variantSkus.length) {
+                if (PM.shouldApplyProductDetailLoad && !PM.shouldApplyProductDetailLoad(session, spuId)) {
+                    return false;
+                }
+                return false;
+            }
 
             PM._variantMatrixSelection = {};
             PM._customAttrRows = [];
             var templateAttrNames = {};
             var tplSel = PM.el('detail-variant-template');
-            if (tplSel && tplSel.value && window.wrappedFetch) {
+            if (tplSel && tplSel.value) {
                 try {
                     var tplId = tplSel.value;
-                    var tDetail;
+                    var tDetail = null;
                     if (window.TM_MasterDataCache && window.TM_MasterDataCache.getTemplateDetail) {
                         tDetail = await window.TM_MasterDataCache.getTemplateDetail(tplId, { spuId: spuId });
-                    } else {
+                    } else if (!opts.skipTemplateFetch && window.wrappedFetch) {
                         var tResp = await window.wrappedFetch('/api/v1/rd/products/attribute-templates/' + tplId + '?spuId=' + encodeURIComponent(spuId), { method: 'GET' });
                         var tData = await window.handleApiResponse(tResp);
                         tDetail = tData && tData.data ? tData.data : tData;
                     }
-                    (tDetail.definitions || []).forEach(function (d) {
-                        if (d.name) templateAttrNames[d.name] = true;
-                    });
+                    if (tDetail) {
+                        (tDetail.definitions || []).forEach(function (d) {
+                            if (d.name) templateAttrNames[d.name] = true;
+                        });
+                    }
                 } catch (e) { /* ignore */ }
+            }
+            if (PM.shouldApplyProductDetailLoad && !PM.shouldApplyProductDetailLoad(session, spuId)) {
+                return false;
             }
 
             variantSkus.forEach(function (sku) {
@@ -632,20 +722,24 @@
                     try { attrs = JSON.parse(attrs); } catch (e) { attrs = {}; }
                 }
                 Object.keys(attrs).forEach(function (k) {
-                    if (!PM._variantMatrixSelection[k]) PM._variantMatrixSelection[k] = [];
                     var v = String(attrs[k]);
-                    if (PM._variantMatrixSelection[k].indexOf(v) < 0) PM._variantMatrixSelection[k].push(v);
                     if (!templateAttrNames[k]) {
                         var row = PM._customAttrRows.find(function (r) { return r.name === k; });
                         if (!row) {
-                            PM._customAttrRows.push({ name: k, values: [v] });
+                            PM._customAttrRows.push({ name: k, values: [v], asCommon: false });
                         } else if (row.values.indexOf(v) < 0) {
                             row.values.push(v);
                         }
+                        return;
                     }
+                    if (!PM._variantMatrixSelection[k]) PM._variantMatrixSelection[k] = [];
+                    if (PM._variantMatrixSelection[k].indexOf(v) < 0) PM._variantMatrixSelection[k].push(v);
                 });
             });
 
+            if (PM.shouldApplyProductDetailLoad && !PM.shouldApplyProductDetailLoad(session, spuId)) {
+                return false;
+            }
             PM._variantComboDraft = variantSkus.map(function (sku) {
                 var attrs = sku.attributes || {};
                 if (typeof attrs === 'string') {
@@ -685,6 +779,9 @@
                     priceOverride: priceOverride
                 };
             });
+            PM.rebuildVariantSelectionFromComboDraft();
+            PM.splitVariantSelectionByTemplate(templateAttrNames);
+            PM.rebuildCustomAttrRowsFromComboDraft();
             PM._variantMatrixConfirmed = PM._variantComboDraft.length > 0;
             PM._variantDraftSpuId = spuId;
             PM.renderCustomAttrRows();
@@ -719,47 +816,52 @@
         }
         var spuId = PM.currentProduct && (PM.currentProduct.spuId || PM.currentProduct.spu_id);
         var draftLoaded = false;
+        var hasConfirmedLocalDraft = spuId && PM._variantDraftSpuId === spuId
+            && PM._variantMatrixConfirmed && PM._variantComboDraft && PM._variantComboDraft.length;
         if (spuId && typeof PM.loadVariantDraftFromSpu === 'function') {
-            var hasDraft = PM._variantDraftSpuId === spuId && PM._variantComboDraft && PM._variantComboDraft.length;
-            if (!hasDraft) {
-                draftLoaded = await PM.loadVariantDraftFromSpu(spuId);
+            if (!hasConfirmedLocalDraft) {
+                draftLoaded = await PM.loadVariantDraftFromSpu(spuId, { force: true });
             } else {
                 draftLoaded = true;
             }
+        }
+        var hasComboDraft = PM._variantComboDraft && PM._variantComboDraft.length;
+        if (hasComboDraft) {
+            PM.rebuildVariantSelectionFromComboDraft();
         }
         var tplSel = PM.el('detail-variant-template');
         var modalTpl = document.getElementById('tm-variant-modal-template');
         if (tplSel && modalTpl) {
             modalTpl.innerHTML = tplSel.innerHTML;
             if (!tplSel.value && PM._defaultAttributeTemplateId) {
-                tplSel.value = String(PM._defaultAttributeTemplateId);
+                var defEffective = PM.resolveEffectiveTemplateId
+                    ? PM.resolveEffectiveTemplateId(PM._defaultAttributeTemplateId)
+                    : PM._defaultAttributeTemplateId;
+                tplSel.value = String(defEffective);
+            }
+            if (tplSel.value && PM.resolveEffectiveTemplateId) {
+                var eff = PM.resolveEffectiveTemplateId(tplSel.value);
+                if (eff) tplSel.value = String(eff);
             }
             modalTpl.value = tplSel.value;
-            if (!modalTpl.__tmBound) {
-                modalTpl.__tmBound = true;
-                modalTpl.addEventListener('change', function () {
-                    tplSel.value = modalTpl.value;
-                    PM.loadVariantMatrixFromTemplate(modalTpl.value).then(function () {
-                        PM.renderVariantModalTemplateIntoModal();
-                        PM.generateVariantCombos();
-                    });
-                });
-            }
         }
-        if (!draftLoaded) {
-            if (tplSel && tplSel.value) {
-                await PM.loadVariantMatrixFromTemplate(tplSel.value);
-            }
-            PM.renderVariantModalTemplateIntoModal();
-            PM.generateVariantCombos();
-        } else {
-            if (tplSel && tplSel.value) {
-                await PM.loadVariantMatrixFromTemplate(tplSel.value, { preserve: true });
-            }
-            PM.renderVariantModalTemplateIntoModal();
-            PM.renderVariantComboTable();
+        if (typeof PM.updateActiveTemplateNameLabel === 'function') {
+            PM.updateActiveTemplateNameLabel();
         }
+        if (tplSel && tplSel.value) {
+            await PM.loadVariantMatrixFromTemplate(tplSel.value, { preserve: hasComboDraft || draftLoaded });
+        }
+        if (hasComboDraft) {
+            PM.rebuildVariantSelectionFromComboDraft();
+            PM.rebuildCustomAttrRowsFromComboDraft();
+        }
+        PM.renderVariantModalTemplateIntoModal();
         PM.renderCustomAttrRowsInModal();
+        if (hasComboDraft || draftLoaded) {
+            PM.renderVariantComboTable();
+        } else {
+            PM.generateVariantCombos();
+        }
         PM.bindVariantComboExpandBtn();
         var genBtn = document.getElementById('tm-variant-generate-btn');
         if (genBtn && !genBtn.__tmBound) {
@@ -837,7 +939,7 @@
             addBtn.__tmBound = true;
             addBtn.addEventListener('click', function () {
                 PM.syncCustomAttrRowsFromDom(list);
-                PM._customAttrRows.push({ name: '', values: [], asCommon: true });
+                PM._customAttrRows.push({ name: '', values: [], asCommon: false });
                 PM.renderCustomAttrRowsInModal({ fromMemory: true });
             });
         }
@@ -931,7 +1033,7 @@
                 return {
                     name: String(row.name).trim(),
                     values: (row.values || []).slice(),
-                    asCommon: row.asCommon !== false
+                    asCommon: false
                 };
             })
         };

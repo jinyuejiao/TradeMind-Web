@@ -1301,70 +1301,10 @@
     }
 
     window.TM_openManualOrderModal = async function () {
-        var modal = document.getElementById('manual-order-modal');
-        if (!modal) {
-            notify('添加订单弹窗未加载', 'error');
-            return;
+        if (typeof window.TM_openRapidOrder === 'function') {
+            return window.TM_openRapidOrder({ title: '添加订单', source: 'manual' });
         }
-        tmManualOrderShowErrors([]);
-        if (typeof window.loadCustomerList === 'function') await window.loadCustomerList();
-        if (typeof window.loadProductList === 'function') await window.loadProductList();
-        if (typeof window.loadOrderStatusDict === 'function') await window.loadOrderStatusDict();
-        if (typeof window.loadBizAccounts === 'function') await window.loadBizAccounts();
-        if (window.TM_TenantOps) await window.TM_TenantOps.fetchOpsProfile().then(function (p) { window.__tmOpsProfile = p; });
-        tmBindManualOrderPanelEvents();
-        if (typeof window.populateOrderStatusSelects === 'function') {
-            window.populateOrderStatusSelects();
-        } else if (typeof window.fillManualOrderStatusSelect === 'function') {
-            window.fillManualOrderStatusSelect('D010001');
-        }
-        tmFillManualOrderCustomers();
-        var acctSel = document.getElementById('manual-order-account');
-        if (acctSel && typeof window.fillBizAccountSelect === 'function') {
-            window.fillBizAccountSelect(acctSel, null);
-        }
-        var finSel = document.getElementById('manual-fin-status');
-        if (finSel) finSel.value = 'UNPAID';
-        await tmPopulateManualWarehouseSelect();
-        var auxDetails = document.getElementById('manual-aux-details');
-        if (auxDetails) auxDetails.open = false;
-        if (window.TM_OrderModal && window.TM_OrderModal.setAuxOpen) {
-            window.TM_OrderModal.setAuxOpen('manual-aux-details', false);
-        }
-        var receiveEl = document.getElementById('manual-receive-amount');
-        if (receiveEl) receiveEl.value = '';
-        var custSel = document.getElementById('manual-order-customer');
-        if (custSel && !custSel.__tmManualCustBound) {
-            custSel.__tmManualCustBound = true;
-            custSel.addEventListener('change', function () {
-                setTimeout(tmApplyManualOrderLastPrices, 80);
-            });
-        }
-        var tbody = document.getElementById('manual-order-tbody');
-        if (tbody) {
-            tbody.innerHTML = '';
-            tmCreateManualOrderRow();
-        }
-        var dateEl = document.getElementById('manual-order-delivery-date');
-        if (dateEl && typeof window.getTodayDateInput === 'function') {
-            dateEl.value = window.getTodayDateInput();
-        }
-        if (typeof window.TM_openUnifiedModal === 'function') {
-            window.TM_openUnifiedModal(modal);
-        } else {
-            if (typeof window.TM_applyDialogShell === 'function') {
-                window.TM_applyDialogShell(modal);
-            }
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-        requestAnimationFrame(function () {
-            var scrollEl = document.querySelector('#manual-order-modal .tm-document-modal-scroll');
-            if (scrollEl) scrollEl.scrollTop = 0;
-        });
-        tmRecalcManualOrderTotal();
-        tmSyncManualOrderUI();
-        tmRefreshManualItemsLayout();
+        notify('极速开单模块未加载，请刷新后重试', 'error');
     };
 
     window.TM_closeManualOrderModal = function () {

@@ -135,6 +135,33 @@
         isEmbedded: isEmbedded,
         openModal: openUnifiedModal,
         closeModal: closeUnifiedModal,
-        applyDialogShell: applyDialogShell
+        applyDialogShell: applyDialogShell,
+        reconcileOverlay: function () {
+            var anyOpen = document.querySelector(
+                '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden), #tm-confirm-modal:not(.hidden), #tm-po-variant-sheet:not(.hidden)'
+            );
+            if (!anyOpen && overlayDepth > 0) {
+                while (overlayDepth > 0) {
+                    popLocalOverlay();
+                }
+            }
+            if (!anyOpen) {
+                document.documentElement.classList.remove('tm-embed-modal-open');
+                document.body.classList.remove('tm-embed-modal-open');
+                document.body.style.overflow = '';
+                document.documentElement.style.removeProperty('--tm-tabbar-h');
+            }
+            if (isEmbedded()) {
+                try {
+                    window.parent.postMessage({ type: 'TM_EMBED_MODAL_RECONCILE' }, '*');
+                } catch (e) { /* ignore */ }
+            }
+        }
+    };
+
+    window.TM_reconcileEmbedShellOverlay = function () {
+        if (window.TM_EmbedShell && typeof window.TM_EmbedShell.reconcileOverlay === 'function') {
+            window.TM_EmbedShell.reconcileOverlay();
+        }
     };
 })();
