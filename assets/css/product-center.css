@@ -1219,6 +1219,26 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 .tm-cap-card--flat {
     min-height: 2.75rem;
 }
+.tm-cap-card--flat .tm-expiry-config-store {
+    display: none !important;
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.tm-cap-card--flat .tm-expiry-config-store input,
+.tm-cap-card--flat .tm-expiry-config-store select {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 .tm-variant-combo-expand-btn.is-expanded i {
     transform: rotate(180deg);
 }

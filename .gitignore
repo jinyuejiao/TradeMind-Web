@@ -13,6 +13,9 @@ yarn-error.log*
 *.log
 logs/
 
+# 构建产物
+target/
+
 # IDE / OS
 .idea/
 *.iml

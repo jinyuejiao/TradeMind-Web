@@ -4,8 +4,8 @@
 (function (global) {
     'use strict';
 
-    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260711expiry2';
-    var FRAGMENT_VER = '20260711expiry2';
+    var FRAGMENT_URL = '/modules/fragments/product-registry-form.html?v=20260712expiry3';
+    var FRAGMENT_VER = '20260712expiry3';
 
     function normalizeAiProduct(raw) {
         if (!raw || typeof raw !== 'object') raw = {};

@@ -481,7 +481,9 @@
         if (iv === 'FOOD' && te) te.checked = true;
         if (iv === 'DIGITAL_3C' && ts) ts.checked = true;
         var days = PM.el('detail-shelf-life-days');
+        var policy = PM.el('detail-expiry-policy');
         if (iv === 'FOOD' && days && !days.value) days.value = '180';
+        if (iv === 'FOOD' && policy && !policy.value) policy.value = 'FEFO';
         if (iv === 'FOOD' && days && days.value) PM._expiryConfigConfirmed = true;
         PM.applyDefaultIndustryTemplate();
         if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
@@ -1029,10 +1031,12 @@
 
     PM.syncExpiryPanelVisibility = function () {
         var te = PM.el('detail-track-expiry');
-        var panel = document.getElementById('product-expiry-config-panel');
+        var root = PM.getCapabilityFormRoot();
+        var panel = root.querySelector('#product-expiry-config-panel') || document.getElementById('product-expiry-config-panel');
         var openBtn = PM.el('detail-expiry-open-btn');
         if (panel) {
             panel.classList.add('hidden');
+            panel.classList.add('tm-expiry-config-store');
             panel.setAttribute('aria-hidden', 'true');
         }
         if (openBtn && te) {
@@ -1146,6 +1150,14 @@
                 PM.updateExpiryEntrySummary();
                 if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
                 if (!te.checked) PM._expiryConfigConfirmed = false;
+            });
+        }
+        var openBtn = PM.el('detail-expiry-open-btn');
+        if (openBtn && !openBtn.dataset.tmExpiryOpenBound) {
+            openBtn.dataset.tmExpiryOpenBound = '1';
+            openBtn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                if (typeof PM.openExpiryConfigModal === 'function') PM.openExpiryConfigModal();
             });
         }
     };
@@ -1341,6 +1353,8 @@
         if (tvReset) delete tvReset.dataset.tmVarModalBound;
         var teReset = root.querySelector('[id$="detail-track-expiry"]');
         if (teReset) delete teReset.dataset.tmExpiryModalBound;
+        var expiryBtnReset = root.querySelector('[id$="detail-expiry-open-btn"]');
+        if (expiryBtnReset) delete expiryBtnReset.dataset.tmExpiryOpenBound;
         PM.bindCapabilityFormEvents();
         PM.bindCustomAttrHandlers();
         if (typeof PM.bindVariantModalTriggers === 'function') {
@@ -1359,6 +1373,8 @@
         if (typeof PM.loadAttributeTemplates === 'function') {
             await PM.loadAttributeTemplates();
         }
+        if (typeof PM.syncExpiryPanelVisibility === 'function') PM.syncExpiryPanelVisibility();
+        if (typeof PM.updateExpiryEntrySummary === 'function') PM.updateExpiryEntrySummary();
     };
 
     PM.syncCapabilitySummaries = function () {
@@ -1909,12 +1925,13 @@
         if (typeof PM.applyIndustryProductDefaults === 'function') {
             PM.applyIndustryProductDefaults();
         }
+        if (typeof PM.syncExpiryPanelVisibility === 'function') PM.syncExpiryPanelVisibility();
+        if (typeof PM.updateExpiryEntrySummary === 'function') PM.updateExpiryEntrySummary();
         PM._customAttrRows = [];
         PM._variantMatrixSelection = {};
         PM._variantComboDraft = [];
         PM._variantMatrixConfirmed = false;
         PM._variantDraftSpuId = null;
-        PM._expiryConfigConfirmed = false;
         var customList = document.getElementById('tm-variant-modal-custom-list');
         if (customList) customList.innerHTML = '';
         if (typeof window.TM_openUnifiedModal !== 'function') {
