@@ -7,8 +7,6 @@
 (function() {
     'use strict';
 
-    console.log('[TradeMindApp] 初始化全局控制中心...');
-
     // ================ 全局状态管理 ================
     const state = {
         modules: {},
@@ -28,7 +26,6 @@
         if (actionElement) {
             const action = actionElement.dataset.action;
             if (action && window.TM_Actions[action]) {
-                console.log('[TradeMindApp] 执行 action:', action);
                 try {
                     window.TM_Actions[action](actionElement, e);
                 } catch (error) {
@@ -37,7 +34,7 @@
                         window.TM_UI.showNotification('操作失败: ' + error.message, 'error');
                     }
                 }
-            } else {
+            } else if (!actionElement.getAttribute('onclick')) {
                 console.warn('[TradeMindApp] 未找到对应的 action:', action);
             }
         }
@@ -51,7 +48,6 @@
          * @param {function} initFn - 模块初始化函数
          */
         register: function(name, initFn) {
-            console.log('[TradeMindApp] 注册模块:', name);
             state.modules[name] = initFn;
         },
 
@@ -61,8 +57,6 @@
          * @param {*} options - 初始化选项
          */
         init: function(name, options) {
-            console.log('[TradeMindApp] 初始化模块:', name);
-            
             if (!state.modules[name]) {
                 console.error('[TradeMindApp] 模块未注册:', name);
                 return false;
@@ -77,7 +71,6 @@
                 state.modules[name](options);
                 state.initialized[name] = true;
                 state.currentModule = name;
-                console.log('[TradeMindApp] 模块初始化成功:', name);
                 return true;
             } catch (error) {
                 console.error('[TradeMindApp] 模块初始化失败:', name, error);
@@ -106,7 +99,6 @@
          * 登出
          */
         logout: function() {
-            console.log('[TradeMindApp] 执行登出');
             localStorage.clear();
             window.location.href = '/login.html';
         },
@@ -120,8 +112,7 @@
             if (window.TM_UI.showNotification) {
                 window.TM_UI.showNotification(message, type);
             } else {
-                console.log('[Notification]', type || 'info', ':', message);
-            }
+                }
         }
     };
 
@@ -137,27 +128,33 @@
         },
 
         showNotification: function(message, type = 'success') {
-            console.log('[TM_UI] 显示通知:', message, type);
-            
+            var host = document.getElementById('tm-global-toast-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'tm-global-toast-host';
+                host.className = 'fixed inset-x-0 top-0 z-[99999] pointer-events-none flex flex-col items-center gap-2 px-3';
+                host.style.paddingTop = 'max(0.75rem, env(safe-area-inset-top, 0px))';
+                document.body.appendChild(host);
+            }
+
             const notification = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-risk-high' : 
-                          type === 'warning' ? 'bg-amber-500' : 
+            const bgColor = type === 'error' ? 'bg-risk-high' :
+                          type === 'warning' ? 'bg-amber-500' :
                           type === 'info' ? 'bg-brand-600' : 'bg-brand-600';
-            
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-lg shadow-lg z-50 fade-in`;
+
+            notification.className = 'pointer-events-auto ' + bgColor + ' text-white px-4 py-2.5 rounded-lg shadow-lg max-w-[92vw] text-sm text-center fade-in';
             notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            // 3秒后自动移除
+
+            host.appendChild(notification);
+
             setTimeout(function() {
                 notification.classList.add('opacity-0', 'transition-opacity', 'duration-500');
                 setTimeout(function() {
-                    if (document.body.contains(notification)) {
-                        document.body.removeChild(notification);
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
                     }
                 }, 500);
-            }, 3000);
+            }, 3500);
         },
 
         /**
@@ -166,8 +163,6 @@
          * @param {object} data - 数据对象
          */
         showModal: function(templateId, data) {
-            console.log('[TM_UI] 显示模态框:', templateId, data);
-            
             let container = document.getElementById('common-modal-container');
             if (!container) {
                 container = document.createElement('div');
@@ -188,7 +183,6 @@
          * 关闭模态框
          */
         closeModal: function() {
-            console.log('[TM_UI] 关闭模态框');
             const container = document.getElementById('common-modal-container');
             if (container) {
                 container.classList.add('hidden');
@@ -200,7 +194,6 @@
          * @param {string} tab - 标签名称
          */
         switchTab: function(tab) {
-            console.log('[TM_UI] 切换标签:', tab);
             if (typeof window.switchTab === 'function') {
                 window.switchTab(tab);
                 return;
@@ -228,5 +221,4 @@
         }
     };
 
-    console.log('[TradeMindApp] 全局控制中心初始化完成！');
-})();
+    })();

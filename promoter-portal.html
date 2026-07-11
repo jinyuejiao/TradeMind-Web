@@ -5,7 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>推广中心 — 商贸智脑</title>
+    <link rel="stylesheet" href="./modules/CSS/common.css?v=20260708poster">
     <link rel="stylesheet" href="./assets/css/phosphor-icons.css?v=20260619ui3">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="./assets/js/promoter-poster.js?v=20260708"></script>
     <style>
         :root {
             --tm-teal: #14B8A6;
@@ -56,13 +60,14 @@
         .pp-list { background: var(--tm-card); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
         .pp-row {
             padding: 14px 16px; border-bottom: 1px solid #E2E8F0;
-            display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
         }
         .pp-row:last-child { border-bottom: none; }
-        .pp-row-phone { font-weight: 700; font-size: 15px; }
+        .pp-row-name { font-weight: 700; font-size: 15px; line-height: 1.35; }
         .pp-row-meta { font-size: 11px; color: var(--tm-muted); margin-top: 4px; }
         .pp-badge {
-            font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+            font-size: 15px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+            line-height: 1.35; flex-shrink: 0;
         }
         .pp-badge-reg { background: #F1F5F9; color: #475569; }
         .pp-badge-pending { background: #FEF3C7; color: #B45309; }
@@ -110,11 +115,43 @@
             font-weight: 700; font-size: 13px; cursor: pointer;
         }
         .pp-tab.active { background: var(--tm-teal); color: #fff; }
+        .pp-header-actions {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pp-poster-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,.95);
+            color: var(--tm-teal-dark);
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(15,23,42,.12);
+        }
+        .pp-poster-btn:active { transform: scale(0.98); }
+        .pp-login-poster-hint {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #F0FDFA;
+            border: 1px dashed #99F6E4;
+            font-size: 12px;
+            color: #0F766E;
+            line-height: 1.5;
+        }
+        #poster-modal { z-index: 1200 !important; }
     </style>
 </head>
 <body>
 <div class="pp-shell">
-    <div id="pp-login-view" class="pp-login pp-hidden">
+    <div id="pp-login-view" class="pp-login">
         <div class="pp-login-card">
             <h2>推广员登录</h2>
             <p id="pp-login-hint">登录后可查看推荐收益与流水</p>
@@ -128,6 +165,7 @@
             </div>
             <button type="button" class="pp-btn" id="pp-login-btn">登录</button>
             <button type="button" class="pp-btn pp-btn-secondary pp-hidden" id="pp-wechat-retry-btn">微信重新授权</button>
+            <p class="pp-login-poster-hint"><i class="ph ph-image-square"></i> 登录后可生成<strong>专属推荐海报</strong>，分享推荐码邀好友注册，立享推荐返现。</p>
         </div>
     </div>
 
@@ -135,6 +173,9 @@
         <header class="pp-header">
             <h1 id="pp-real-name">推广员</h1>
             <div class="pp-code"><i class="ph ph-ticket"></i> 推广码 <span id="pp-referral-code">—</span></div>
+            <div class="pp-header-actions">
+                <button type="button" class="pp-poster-btn" id="pp-poster-btn"><i class="ph ph-image-square-bold"></i> 生成推荐海报</button>
+            </div>
         </header>
         <div class="pp-cards">
             <div class="pp-card"><div class="pp-card-label">累计收益(元)</div><div class="pp-card-value" id="pp-total">0.00</div></div>
@@ -196,6 +237,7 @@
         clearTimeout(el._t);
         el._t = setTimeout(function () { el.classList.add('pp-hidden'); }, 2600);
     }
+    window.ppToast = toast;
 
     function show(view) {
         document.getElementById('pp-login-view').classList.toggle('pp-hidden', view !== 'login');
@@ -311,7 +353,8 @@
     }
 
     function assertPromoterUser(user) {
-        if (!user || user.roleType !== 'ROLE_PROMOTER') {
+        var role = user && (user.roleType || user.role_type || user.role || '');
+        if (role !== 'ROLE_PROMOTER') {
             throw new Error('该账号不是推广员，请使用运维开号的推广员账号');
         }
     }
@@ -344,6 +387,7 @@
             var stats = arr[0], records = arr[1], payout = arr[2];
             document.getElementById('pp-real-name').textContent = stats.realName || '推广员';
             document.getElementById('pp-referral-code').textContent = stats.referralCode || '—';
+            window._ppCachedReferralCode = stats.referralCode || '';
             document.getElementById('pp-total').textContent = fmtMoney(stats.totalEarnings);
             document.getElementById('pp-pending').textContent = fmtMoney(stats.pendingSettlement);
             document.getElementById('pp-valid').textContent = String(stats.validReferralCount != null ? stats.validReferralCount : 0);
@@ -364,7 +408,8 @@
         empty.classList.add('pp-hidden');
         list.innerHTML = rows.map(function (r) {
             var amt = r.rewardAmount != null ? (' · ¥' + fmtMoney(r.rewardAmount)) : '';
-            return '<div class="pp-row"><div><div class="pp-row-phone">' + (r.refereePhoneMasked || '****') +
+            var name = r.refereeTenantName || r.refereePhoneMasked || '—';
+            return '<div class="pp-row"><div><div class="pp-row-name">' + name +
                 '</div><div class="pp-row-meta">注册 ' + fmtDate(r.registeredAt) + amt + '</div></div>' +
                 '<span class="pp-badge ' + badgeClass(r.status) + '">' + (r.statusLabel || '') + '</span></div>';
         }).join('');
@@ -432,10 +477,9 @@
         if (!userName || !password) { toast('请输入账号和密码'); return Promise.reject(); }
         var btn = document.getElementById('pp-login-btn');
         btn.disabled = true;
-        var hash = md5(password);
         return apiFetch('/api/v1/tenant/login', {
             method: 'POST', skipAuth: true,
-            body: { userName: userName, password: hash }
+            body: { userName: userName, password: password }
         }).then(function (res) {
             if (!res.success) throw new Error(res.message || '登录失败');
             assertPromoterUser(res.user);
@@ -449,8 +493,11 @@
                     toast('微信绑定成功');
                 }).catch(function () { /* 绑定失败不阻断登录 */ });
             }
-        }).then(function () { return loadDashboard(); })
-          .finally(function () { btn.disabled = false; });
+        }).then(function () {
+            return loadDashboard().catch(function (e) {
+                throw new Error('登录成功，但加载推广数据失败：' + (e.message || '请稍后重试'));
+            });
+        }).finally(function () { btn.disabled = false; });
     }
 
     function bindWechatWithPassword() {
@@ -463,7 +510,7 @@
         btn.disabled = true;
         apiFetch('/api/v1/promoter/wechat/bind', {
             method: 'POST', skipAuth: true,
-            body: { bindToken: bindToken, userName: userName, password: md5(password) }
+            body: { bindToken: bindToken, userName: userName, password: password }
         }).then(function (res) {
             saveSession(res.token);
             sessionStorage.removeItem(BIND_TOKEN_KEY);
@@ -512,6 +559,15 @@
         apiFetch('/api/v1/promoter/payout-profile', { method: 'POST', body: body })
             .then(function (res) { renderPayee(res); toast('收款信息已保存'); })
             .catch(function (e) { toast(e.message || '保存失败'); });
+    });
+
+    document.getElementById('pp-poster-btn').addEventListener('click', function () {
+        var code = window._ppCachedReferralCode || document.getElementById('pp-referral-code').textContent;
+        if (typeof showPoster === 'function') {
+            showPoster(code, 'WHOLESALE');
+        } else {
+            toast('海报功能未加载');
+        }
     });
 
     function boot() {

@@ -11,7 +11,7 @@
     function sync() {
         var root = document.documentElement;
         var tabbar = document.getElementById('tm-app-tabbar');
-        var header = document.getElementById('tm-app-header');
+        var header = document.getElementById('tm-app-header') || document.getElementById('tm-ops-app-header');
         if (!isMobile()) {
             root.style.setProperty('--tm-tabbar-h', '0px');
             root.style.setProperty('--tm-shell-bottom-reserve', '0px');
@@ -31,6 +31,13 @@
                 root.style.setProperty('--tm-header-h', headerH + 'px');
                 root.style.setProperty('--tm-mobile-header-h', headerH + 'px');
             }
+        }
+
+        if (document.body.classList.contains('tm-ops-portal')) {
+            root.style.setProperty(
+                '--tm-content-pad-b',
+                'calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.75rem)'
+            );
         }
 
         /* 导览 FAB 为悬浮层，不占用主内容区底部留白（备案与布局与工作台一致） */

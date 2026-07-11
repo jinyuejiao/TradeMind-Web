@@ -10,7 +10,7 @@
     <script src="./assets/js/env-config.js"></script>
     <script src="./assets/js/api-client.js?v=20260506r3"></script>
     <link rel="stylesheet" href="./assets/css/tm-layout-engine.css?v=20260601ops">
-    <link rel="stylesheet" href="./assets/css/ops-portal.css?v=tm-ops-11">
+    <link rel="stylesheet" href="./assets/css/ops-portal.css?v=tm-ops-13">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -39,7 +39,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="./assets/js/auth.js?v=20260608referral"></script>
     <script src="./modules/membership/referral-rewards.js?v=20260608"></script>
-    <script src="./assets/js/tm-shell-insets.js?v=20260530modal2"></script>
+    <script src="./assets/js/tm-shell-insets.js?v=20260707ops"></script>
 </head>
 <body class="tm-ops-portal tm-layout-mobile tm-shell-ops text-slate-700 overflow-hidden h-screen flex flex-col md:flex-row">
 
@@ -57,24 +57,18 @@
             <button type="button" data-ops-route="tenants" class="tm-ops-nav-btn tm-ops-nav-active w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
                 <i class="ph ph-squares-four text-lg"></i> 租户看板
             </button>
-            <button type="button" data-ops-route="plans" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
-                <i class="ph ph-currency-circle-dollar text-lg"></i> 订阅策略
-            </button>
-            <button type="button" data-ops-route="referral" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
-                <i class="ph ph-gift text-lg"></i> 推荐与结算
+            <button type="button" data-ops-route="publish" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
+                <i class="ph ph-currency-circle-dollar text-lg"></i> 内容与定价
             </button>
             <button type="button" data-ops-route="promoters" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
-                <i class="ph ph-user-plus text-lg"></i> 推广员开号
+                <i class="ph ph-user-plus text-lg"></i> 推广运营
             </button>
             <button type="button" data-ops-route="feedback" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
                 <i class="ph ph-chats-circle text-lg"></i> 用户问题
             </button>
-            <button type="button" data-ops-route="announce" class="tm-ops-nav-btn w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-left text-sm font-semibold text-indigo-200 hover:bg-white/10 transition-all">
-                <i class="ph ph-scroll text-lg"></i> 公告与审计
-            </button>
         </nav>
         <div class="p-4 border-t border-indigo-500/20 space-y-2">
-            <a href="./index-app.html" class="flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold bg-white/10 text-indigo-100 hover:bg-white/15 border border-indigo-400/20 transition-all">
+            <a href="./index-app.html" onclick="try{sessionStorage.setItem('tm_ops_merchant_preview','1')}catch(e){}" class="flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold bg-white/10 text-indigo-100 hover:bg-white/15 border border-indigo-400/20 transition-all">
                 <i class="ph ph-arrow-square-out"></i> 进入租户工作台
             </a>
             <button type="button" id="opsLogoutBtn" class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] text-indigo-300 hover:text-white hover:bg-white/10 transition-colors border border-transparent">
@@ -83,8 +77,8 @@
         </div>
     </aside>
 
-    <div class="flex-1 flex flex-col min-w-0 min-h-0">
-        <header class="tm-ops-glass tm-ops-mobile-header shrink-0 min-h-[var(--tm-header-h,3.5rem)] flex items-center justify-between px-4 md:px-8 border-b border-indigo-100/80">
+    <div class="flex-1 flex flex-col min-w-0 min-h-0 tm-ops-shell-main overflow-hidden">
+        <header id="tm-ops-app-header" class="tm-app-header tm-ops-glass tm-ops-mobile-header shrink-0 min-h-[var(--tm-header-h,3.5rem)] flex items-center justify-between px-4 md:px-8 border-b border-indigo-100/80">
             <div class="min-w-0 flex-1 pr-3">
                 <h1 id="tm-ops-page-title" class="text-base md:text-lg font-bold text-slate-800 tracking-tight truncate">租户看板</h1>
                 <p class="text-[10px] md:text-xs text-slate-500 mt-0.5 truncate">平台管理大脑 · 已对接网关 /api/v1/ops</p>
@@ -93,6 +87,9 @@
                 <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-ops-50 text-ops-700 border border-ops-200">
                     <span class="w-1.5 h-1.5 rounded-full bg-ops-500 animate-pulse"></span> 运维会话
                 </span>
+                <button type="button" class="tm-header-icon-btn tm-header-icon-btn--logout md:hidden text-slate-400 hover:text-ops-600 transition" onclick="typeof tmLogout==='function'?tmLogout():(typeof logout==='function'&&logout())" title="退出登录" aria-label="退出登录">
+                    <i class="ph ph-sign-out text-xl"></i>
+                </button>
                 <div class="w-9 h-9 rounded-2xl bg-ops-600 text-white flex items-center justify-center text-xs font-black font-mono shadow-md">OP</div>
             </div>
         </header>
@@ -103,8 +100,8 @@
 
     <nav id="tm-app-tabbar" class="tm-app-tabbar md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-indigo-100 px-1 pt-2 flex justify-between items-end shadow-2xl pb-[max(0.5rem,env(safe-area-inset-bottom))]" data-tm-nav-mode="ops" aria-label="运维模块导航"></nav>
 
-    <script src="./assets/js/ui-ops.js?v=tm-ops-merchant-fix-20260601"></script>
-    <script src="./assets/js/ui-main.js?v=20260601ops"></script>
+    <script src="./assets/js/ui-ops.js?v=tm-ops-full-20260707b"></script>
+    <script src="./assets/js/ui-main.js?v=20260706ops"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             if (typeof checkAuth === 'function' && !checkAuth()) return;

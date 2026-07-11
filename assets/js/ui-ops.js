@@ -136,14 +136,52 @@
 
     var ROUTES = {
         tenants: { file: './modules/ops/tenants-quota-tree.html', title: '租户看板' },
-        plans: { file: './modules/ops/plan-catalog-by-merchant.html', title: '订阅策略' },
-        referral: { file: './modules/ops/referral-settlement.html', title: '推荐与结算' },
-        promoters: { file: './modules/ops/promoters-manage.html', title: '推广员开号' },
+        publish: { file: './modules/ops/publish-center.html', title: '内容与定价' },
+        promoters: { file: './modules/ops/promoters-hub.html', title: '推广运营' },
         feedback: { file: './modules/ops/merchant-feedback.html', title: '用户问题' },
-        announce: { file: './modules/ops/announce-audit.html', title: '公告与审计' }
+        plans: { file: './modules/ops/publish-center.html', title: '内容与定价' },
+        referral: { file: './modules/ops/promoters-hub.html', title: '推广运营' },
+        announce: { file: './modules/ops/publish-center.html', title: '内容与定价' }
     };
 
     var industryLabel = { WHOLESALE: '批发', FOREIGN: '外贸', ECOM: '电商', FACTORY: '工贸一体' };
+    var verticalLabel = { GENERAL: '通用', CLOTHING: '服装', FOOD: '食品', DIGITAL_3C: '3C数码', PENDING: '待选定' };
+    var MERCHANT_UI_TO_API = { WHOLESALE: 'WHOLESALE', FOREIGN: 'FOREIGN_TRADE', ECOM: 'ECOM', FACTORY: 'FACTORY_TRADE' };
+    var MERCHANT_API_TO_UI = { WHOLESALE: 'WHOLESALE', FOREIGN_TRADE: 'FOREIGN', ECOM: 'ECOM', FACTORY_TRADE: 'FACTORY' };
+    var TIER_LABEL = { TRIAL: '试用', BASIC: '启航', PREMIUM: '优享', ENTERPRISE: '企业' };
+
+    function toMerchantApiKey(uiKey) {
+        if (!uiKey || uiKey === 'ALL') return uiKey;
+        return MERCHANT_UI_TO_API[uiKey] || uiKey;
+    }
+
+    function toMerchantUiKey(apiKey) {
+        if (!apiKey) return 'WHOLESALE';
+        return MERCHANT_API_TO_UI[apiKey] || apiKey;
+    }
+
+    function setRetypeSelectValue(selectEl, value, fallback) {
+        if (!selectEl) return '';
+        var v = value || fallback || '';
+        var matched = Array.prototype.some.call(selectEl.options, function (o) { return o.value === v; });
+        selectEl.value = matched ? v : (fallback || selectEl.options[0].value);
+        return selectEl.value;
+    }
+
+    function opsNotify(msg, type) {
+        if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
+            window.TM_UI.showNotification(msg, type || 'info');
+            return;
+        }
+        alert(msg);
+    }
+
+    function normalizeOpsRoute(route) {
+        if (route === 'referral' || route === 'promoters') return 'promoters';
+        if (route === 'plans' || route === 'announce' || route === 'publish') return 'publish';
+        if (route === 'quota-ai' || route === 'lifecycle' || route === 'tenants-lifecycle' || route === 'metering') return 'tenants';
+        return route;
+    }
 
     function nowIso() {
         return new Date().toISOString();
@@ -362,6 +400,7 @@
         return {
             id: id,
             name: String(p.name || '未命名套餐').trim() || '未命名套餐',
+            tierCode: p.tierCode != null ? String(p.tierCode) : '',
             priceOriginalYear: origY,
             priceCurrentYear: curY,
             discountPercentOff: off,
@@ -404,6 +443,7 @@
     }
 
     var currentIndustry = 'ALL';
+    var currentVertical = 'ALL';
 
     function el(id) {
         return document.getElementById(id);
@@ -447,11 +487,9 @@
         return fetchHtml(cfg.file + '?t=' + Date.now()).then(function (html) {
             root.innerHTML = html;
             if (route === 'tenants') initTenantsQuotaTreePage();
-            else if (route === 'plans') initPlanCatalogPage();
-            else if (route === 'referral') initReferralPage();
-            else if (route === 'promoters') initPromotersPage();
+            else if (route === 'publish' || route === 'plans' || route === 'announce') initPublishCenterPage(route);
+            else if (route === 'promoters' || route === 'referral') initPromotersHubPage(route);
             else if (route === 'feedback') initFeedbackPage();
-            else if (route === 'announce') initAnnouncePage();
         }).catch(function () {
             root.innerHTML = '<div class="tm-ops-glass rounded-tm-3xl p-8 text-center text-rose-600 text-sm">模块加载失败：' + cfg.file + '</div>';
         });
@@ -464,6 +502,10 @@
     }
 
     function initPlanCatalogPage() {
+        if (typeof window.wrappedFetch === 'function') {
+            initPlanCatalogPageLive();
+            return;
+        }
         var catalog = loadSubscriptionCatalog();
         var currentMerchant = 'WHOLESALE';
 
@@ -688,6 +730,254 @@
         refresh();
     }
 
+    function initPlanCatalogPageLive() {
+        var catalog = {};
+        var currentMerchant = 'WHOLESALE';
+
+        function apiPlansForUi() {
+            return catalog[currentMerchant] || [];
+        }
+
+        async function loadCatalogFromApi() {
+            var hint = el('ops-plan-save-hint');
+            if (hint) hint.textContent = '加载中…';
+            try {
+                var res = await opsFetch('/api/v1/ops/catalog/subscription-plans?merchantType=' + encodeURIComponent(toMerchantApiKey(currentMerchant)), { method: 'GET' });
+                var data = await res.json();
+                if (!res.ok) throw new Error((data && data.message) || '加载失败');
+                catalog[currentMerchant] = (Array.isArray(data) ? data : []).map(function (p) {
+                    return normalizePlan({
+                        id: p.planId || p.plan_id,
+                        name: p.displayName || p.name,
+                        tierCode: p.tierCode || p.tier_code,
+                        priceOriginalYear: p.priceOriginalYear != null ? p.priceOriginalYear : p.originalPriceCny,
+                        priceCurrentYear: p.priceCurrentYear != null ? p.priceCurrentYear : p.listPriceCny,
+                        discountLabel: p.discountLabel,
+                        promoNote: p.promoNote,
+                        maxUsers: p.maxUsers,
+                        maxProducts: p.maxProducts,
+                        maxSuppliers: p.maxSuppliers,
+                        maxCustomers: p.maxCustomers
+                    }, p.planId);
+                });
+                if (hint) hint.textContent = '已同步数据库 · ' + new Date().toLocaleString();
+            } catch (e) {
+                if (hint) hint.textContent = '加载失败: ' + e.message;
+                catalog[currentMerchant] = [];
+            }
+            refresh();
+        }
+
+        function renderTabs() {
+            var root = el('ops-plan-merchant-tabs');
+            if (!root) return;
+            root.querySelectorAll('.ops-plan-tab').forEach(function (btn) {
+                var m = btn.getAttribute('data-merchant');
+                var on = m === currentMerchant;
+                btn.className = on
+                    ? 'ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md'
+                    : 'ops-plan-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+            });
+            var lbl = el('ops-plan-merchant-label');
+            if (lbl) lbl.textContent = industryLabel[currentMerchant] || currentMerchant;
+        }
+
+        function renderTable() {
+            var tbody = el('ops-plan-table-body');
+            if (!tbody) return;
+            var rows = apiPlansForUi();
+            tbody.innerHTML = rows.map(function (p) {
+                var orig = p.priceOriginalYear != null ? p.priceOriginalYear : 0;
+                var cur = p.priceCurrentYear != null ? p.priceCurrentYear : orig;
+                var off = computeDiscountPercentFromYearPrices(orig, cur);
+                var tier = TIER_LABEL[p.tierCode] || p.tierCode || '—';
+                var discCell = off > 0 ? ('<span class="font-black text-rose-600">−' + off + '%</span>') : '<span class="text-slate-400">无</span>';
+                return '<tr class="hover:bg-ops-50/50">' +
+                    '<td class="px-4 py-3 font-mono text-[10px] text-slate-500">' + escapeHtml(tier) + '</td>' +
+                    '<td class="px-4 py-3 font-semibold text-slate-800">' + escapeHtml(p.name) + '</td>' +
+                    '<td class="px-4 py-3 font-mono">¥' + orig + '</td>' +
+                    '<td class="px-4 py-3 font-mono text-ops-800 font-bold">¥' + cur + '</td>' +
+                    '<td class="px-4 py-3">' + discCell + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxUsers + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxProducts + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxSuppliers + '</td>' +
+                    '<td class="px-4 py-3 text-right font-mono">' + p.maxCustomers + '</td>' +
+                    '<td class="px-4 py-3 text-right"><button type="button" class="ops-plan-edit px-3 py-1.5 rounded-xl text-[10px] font-bold bg-ops-50 text-ops-700 border border-ops-200" data-plan-id="' + escapeHtml(p.id) + '">编辑</button></td></tr>';
+            }).join('');
+        }
+
+        function refresh() {
+            renderTabs();
+            renderTable();
+        }
+
+        function openPlanModal(planId) {
+            var modal = el('ops-plan-modal');
+            var idField = el('ops-plan-modal-plan-id');
+            if (!modal || !idField) return;
+            var p = apiPlansForUi().find(function (x) { return x.id === planId; });
+            if (!p) return;
+            idField.value = planId;
+            el('ops-plan-field-name').value = p.name || '';
+            el('ops-plan-field-price-original-y').value = p.priceOriginalYear || 0;
+            el('ops-plan-field-price-current-y').value = p.priceCurrentYear || 0;
+            el('ops-plan-field-discount-label').value = p.discountLabel || '';
+            el('ops-plan-field-max-users').value = p.maxUsers || 0;
+            el('ops-plan-field-max-products').value = p.maxProducts || 0;
+            el('ops-plan-field-max-suppliers').value = p.maxSuppliers || 0;
+            el('ops-plan-field-max-customers').value = p.maxCustomers || 0;
+            updateModalPreviewLive();
+            modal.classList.remove('hidden');
+        }
+
+        function closePlanModal() {
+            var modal = el('ops-plan-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function updateModalPreviewLive() {
+            var pv = el('ops-plan-modal-discount-auto');
+            if (!pv) return;
+            var o = Math.max(0, parseInt(el('ops-plan-field-price-original-y').value, 10) || 0);
+            var c = Math.max(0, parseInt(el('ops-plan-field-price-current-y').value, 10) || 0);
+            if (o <= 0) { pv.textContent = '请填写年付原价'; return; }
+            var off = computeDiscountPercentFromYearPrices(o, c);
+            pv.textContent = '自动减免约 ' + off + '%';
+        }
+
+        async function saveFromModal() {
+            var planId = el('ops-plan-modal-plan-id').value.trim();
+            if (!planId) return;
+            var body = {
+                displayName: el('ops-plan-field-name').value,
+                priceOriginalYear: el('ops-plan-field-price-original-y').value,
+                priceCurrentYear: el('ops-plan-field-price-current-y').value,
+                discountLabel: el('ops-plan-field-discount-label').value,
+                maxUsers: el('ops-plan-field-max-users').value,
+                maxProducts: el('ops-plan-field-max-products').value,
+                maxSuppliers: el('ops-plan-field-max-suppliers').value,
+                maxCustomers: el('ops-plan-field-max-customers').value
+            };
+            try {
+                var res = await opsFetch('/api/v1/ops/catalog/subscription-plans/' + encodeURIComponent(planId), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error((data && data.message) || '保存失败');
+                appendAudit('PLAN_CATALOG_UPDATE', planId);
+                closePlanModal();
+                await loadCatalogFromApi();
+                opsNotify('套餐已保存', 'success');
+            } catch (err) {
+                opsNotify(err.message || String(err), 'error');
+            }
+        }
+
+        var tabRoot = el('ops-plan-merchant-tabs');
+        if (tabRoot) {
+            tabRoot.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-merchant]');
+                if (!b) return;
+                currentMerchant = b.getAttribute('data-merchant') || 'WHOLESALE';
+                loadCatalogFromApi();
+            });
+        }
+        var tbody = el('ops-plan-table-body');
+        if (tbody) {
+            tbody.addEventListener('click', function (e) {
+                var ed = e.target.closest('.ops-plan-edit');
+                if (ed) openPlanModal(ed.getAttribute('data-plan-id'));
+            });
+        }
+        var mclose = el('ops-plan-modal-close');
+        var modal = el('ops-plan-modal');
+        var msave = el('ops-plan-modal-save');
+        if (mclose) mclose.addEventListener('click', closePlanModal);
+        if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) closePlanModal(); });
+        if (msave) msave.addEventListener('click', saveFromModal);
+        ['ops-plan-field-price-original-y', 'ops-plan-field-price-current-y'].forEach(function (fid) {
+            var node = el(fid);
+            if (node) node.addEventListener('input', updateModalPreviewLive);
+        });
+        loadCatalogFromApi();
+    }
+
+    function switchPromoterHubTab(tab) {
+        var tabs = document.querySelectorAll('#ops-promoter-hub-tabs .ops-promoter-hub-tab');
+        tabs.forEach(function (btn) {
+            var on = btn.getAttribute('data-promoter-tab') === tab;
+            btn.className = on
+                ? 'ops-promoter-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md'
+                : 'ops-promoter-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+        });
+        document.querySelectorAll('.ops-promoter-tab-panel').forEach(function (panel) {
+            panel.classList.add('hidden');
+        });
+        var target = el('ops-promoter-tab-' + tab);
+        if (target) target.classList.remove('hidden');
+        if (tab === 'create') {
+            loadPromoterList();
+        }
+    }
+
+    function initPromotersHubPage(route) {
+        var initialTab = route === 'referral' ? 'referral' : 'create';
+        if (location.hash === '#referral') initialTab = 'referral';
+        switchPromoterHubTab(initialTab);
+        var tabRoot = el('ops-promoter-hub-tabs');
+        if (tabRoot && tabRoot.dataset.bound !== '1') {
+            tabRoot.dataset.bound = '1';
+            tabRoot.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-promoter-tab]');
+                if (!btn) return;
+                switchPromoterHubTab(btn.getAttribute('data-promoter-tab'));
+            });
+        }
+        initReferralPage();
+        initPromotersPage();
+    }
+
+    function switchPublishHubTab(tab) {
+        var tabs = document.querySelectorAll('#ops-publish-hub-tabs .ops-publish-hub-tab');
+        tabs.forEach(function (btn) {
+            var on = btn.getAttribute('data-publish-tab') === tab;
+            btn.className = on
+                ? 'ops-publish-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md'
+                : 'ops-publish-hub-tab px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+        });
+        document.querySelectorAll('.ops-publish-tab-panel').forEach(function (panel) {
+            panel.classList.add('hidden');
+        });
+        var target = el('ops-publish-tab-' + tab);
+        if (target) target.classList.remove('hidden');
+        if (tab === 'audit') renderAudit();
+    }
+
+    function initPublishCenterPage(route) {
+        var initialTab = 'plans';
+        if (route === 'announce') initialTab = 'announce';
+        if (location.hash === '#announce') initialTab = 'announce';
+        switchPublishHubTab(initialTab);
+        var tabRoot = el('ops-publish-hub-tabs');
+        if (tabRoot && tabRoot.dataset.bound !== '1') {
+            tabRoot.dataset.bound = '1';
+            tabRoot.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-publish-tab]');
+                if (!btn) return;
+                switchPublishHubTab(btn.getAttribute('data-publish-tab'));
+            });
+        }
+        initPlanCatalogPage();
+        if (typeof window.wrappedFetch === 'function') {
+            initAnnouncePageLive();
+        } else {
+            initAnnouncePage();
+        }
+        renderAudit();
+    }
+
     function updateTenantStats(list, filter) {
         var rows = filter === 'ALL' ? list : list.filter(function (t) {
             return t.industry === filter;
@@ -868,7 +1158,10 @@
         var raw = {
             id: node.tenant_id,
             name: node.tenant_name || node.tenant_id,
-            industry: node.merchant_type || 'WHOLESALE',
+            industry: toMerchantUiKey(node.merchant_type || 'WHOLESALE'),
+            industryVertical: node.industry_vertical || 'GENERAL',
+            industryVerticalLabel: node.industry_vertical_label || verticalLabel[node.industry_vertical] || node.industry_vertical || '—',
+            tenantStatus: node.tenant_status || 'ACTIVE',
             frozen: frozen,
             expiry: parseSubEnd(node.sub_end_time) === '—' ? '' : parseSubEnd(node.sub_end_time),
             users: Number(node.user_count) || 0,
@@ -933,10 +1226,14 @@
                 var p = row.plan;
                 var open = expanded.has(t.id);
                 var caret = open ? 'ph-caret-down' : 'ph-caret-right';
-                var frozen = t.frozen
-                    ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
-                    : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>';
+                var frozen = t.tenantStatus === 'TERMINATED'
+                    ? '<span class="text-slate-500 font-bold text-[10px]">已注销</span>'
+                    : (t.frozen
+                        ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
+                        : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>');
                 var ind = industryLabel[t.industry] || t.industry;
+                var vert = t.industryVerticalLabel || verticalLabel[t.industryVertical] || '';
+                var vertBadge = vert ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">' + escapeHtml(vert) + '</span>' : '';
                 var orig = p.priceOriginalYear || 0;
                 var cur = p.priceCurrentYear || 0;
                 var off = computeDiscountPercentFromYearPrices(orig, cur);
@@ -976,7 +1273,11 @@
                       '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200">利润 ¥' + (row.profitMonth / 10000).toFixed(1) + '万</span>';
 
                 var actionHtml = opts.live
-                    ? '<button type="button" class="ops-act-edit px-2 py-1.5 rounded-xl text-[10px] font-bold bg-ops-600 text-white hover:bg-ops-700" data-id="' + escapeHtml(t.id) + '">权益/到期</button>'
+                    ? (t.tenantStatus === 'TERMINATED'
+                        ? '<span class="text-[10px] text-slate-400 px-2 py-1.5">已注销</span>'
+                        : '<button type="button" class="ops-act-edit px-2 py-1.5 rounded-xl text-[10px] font-bold bg-ops-600 text-white hover:bg-ops-700" data-id="' + escapeHtml(t.id) + '">权益/到期</button>' +
+                          '<button type="button" class="ops-act-retype px-2 py-1.5 rounded-xl text-[10px] font-bold border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100" data-id="' + escapeHtml(t.id) + '">改类型</button>' +
+                          '<button type="button" class="ops-act-terminate px-2 py-1.5 rounded-xl text-[10px] font-bold border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100" data-id="' + escapeHtml(t.id) + '">注销</button>')
                     : '<button type="button" class="ops-act-freeze px-2 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 hover:bg-slate-50" data-id="' + escapeHtml(t.id) + '">' + (t.frozen ? '解冻' : '冻结') + '</button>' +
                       '<button type="button" class="ops-act-edit px-2 py-1.5 rounded-xl text-[10px] font-bold bg-ops-600 text-white hover:bg-ops-700" data-id="' + escapeHtml(t.id) + '">权益/到期</button>';
 
@@ -990,10 +1291,10 @@
                     '<span class="text-sm font-black text-slate-800">' + escapeHtml(t.name) + '</span>' +
                     '<span class="text-[10px] font-mono text-slate-400">' + escapeHtml(t.id) + '</span>' +
                     frozen +
-                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span></div>' +
+                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span>' + vertBadge + '</div>' +
                     '<p class="text-[10px] font-mono text-slate-500 mt-0.5">到期 ' + escapeHtml(t.expiry || '—') + '</p></div>' +
                     '<div class="flex flex-wrap gap-2 text-[10px] font-mono font-bold text-ops-800 w-full sm:w-auto sm:text-right sm:ml-auto">' + metricsHtml + '</div>' +
-                    '<div class="flex gap-1 w-full sm:w-auto justify-end">' + actionHtml + '</div></div>' +
+                    '<div class="flex flex-wrap gap-1 w-full sm:w-auto justify-end">' + actionHtml + '</div></div>' +
                     '<div class="ops-tree-body border-t border-indigo-100/80 bg-slate-50/40 p-4 ' + subHidden + '">' +
                     '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">' +
                     '<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-inner">' +
@@ -1067,6 +1368,8 @@
                     ? '<span class="text-rose-600 font-bold text-[10px]">已冻结</span>'
                     : '<span class="text-emerald-600 font-bold text-[10px]">正常</span>';
                 var ind = industryLabel[t.industry] || t.industry;
+                var vert = t.industryVerticalLabel || verticalLabel[t.industryVertical] || '';
+                var vertBadge = vert ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">' + escapeHtml(vert) + '</span>' : '';
                 var orig = p.priceOriginalYear || 0;
                 var cur = p.priceCurrentYear || 0;
                 var off = computeDiscountPercentFromYearPrices(orig, cur);
@@ -1105,7 +1408,7 @@
                     '<span class="text-sm font-black text-slate-800">' + escapeHtml(t.name) + '</span>' +
                     '<span class="text-[10px] font-mono text-slate-400">' + escapeHtml(t.id) + '</span>' +
                     frozen +
-                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span></div>' +
+                    '<span class="text-[10px] text-slate-500">' + escapeHtml(ind) + '</span>' + vertBadge + '</div>' +
                     '<p class="text-[10px] font-mono text-slate-500 mt-0.5">到期 ' + escapeHtml(t.expiry || '—') + '</p></div>' +
                     '<div class="flex flex-wrap gap-2 text-[10px] font-mono font-bold text-ops-800 w-full sm:w-auto sm:text-right sm:ml-auto">' +
                     '<span class="px-2 py-1 rounded-lg bg-ops-50 border border-ops-100">AI月 ' + formatTokens(row.aiTokensMonth) + '</span>' +
@@ -1516,6 +1819,7 @@
         var expanded = new Set();
         var sortKey = 'aiTokensMonth';
         currentIndustry = 'ALL';
+        currentVertical = 'ALL';
 
         function sortRows(rows) {
             rows.sort(function (a, b) {
@@ -1532,7 +1836,9 @@
 
         function refresh() {
             var rows = mergedRows.filter(function (r) {
-                return currentIndustry === 'ALL' || r.raw.industry === currentIndustry;
+                var okIndustry = currentIndustry === 'ALL' || r.raw.industry === currentIndustry;
+                var okVertical = currentVertical === 'ALL' || r.raw.industryVertical === currentVertical;
+                return okIndustry && okVertical;
             });
             sortRows(rows);
             renderTenantTreeMergedRows(rows, expanded, { live: true });
@@ -1543,7 +1849,9 @@
             var root = el('ops-tree-root');
             if (root) root.innerHTML = '<p class="text-slate-500 text-sm py-8 text-center">加载租户数据…</p>';
             try {
-                var q = 'industry=' + encodeURIComponent(currentIndustry) + '&sort=' + encodeURIComponent(sortKey) + '&size=200';
+                var q = 'industry=' + encodeURIComponent(toMerchantApiKey(currentIndustry)) +
+                    '&vertical=' + encodeURIComponent(currentVertical) +
+                    '&sort=' + encodeURIComponent(sortKey) + '&size=200';
                 var res = await opsFetch('/api/v1/ops/tenants/tree?' + q, { method: 'GET' });
                 var data = null;
                 try { data = await res.json(); } catch (e) { data = null; }
@@ -1582,8 +1890,101 @@
                     el('ops-input-trial-note').value = '';
                     el('ops-input-expiry-date').value = row.raw.expiry || '';
                     el('ops-modal-tenant').classList.remove('hidden');
+                    return;
+                }
+                var rt = e.target.closest('.ops-act-retype');
+                if (rt) {
+                    var rowR = mergedRows.find(function (x) { return x.raw.id === rt.getAttribute('data-id'); });
+                    if (!rowR) return;
+                    var tidEl = el('ops-modal-retype-id');
+                    tidEl.value = rowR.raw.id;
+                    var curMerchant = setRetypeSelectValue(el('ops-retype-merchant'), rowR.raw.industry, 'WHOLESALE');
+                    var curVertical = setRetypeSelectValue(el('ops-retype-vertical'), rowR.raw.industryVertical, 'GENERAL');
+                    tidEl.dataset.merchantOrig = curMerchant;
+                    tidEl.dataset.verticalOrig = curVertical;
+                    el('ops-modal-retype-title').textContent = '切换类型：' + (rowR.raw.name || rowR.raw.id);
+                    el('ops-modal-retype-sub').textContent =
+                        '当前业态：' + (industryLabel[curMerchant] || curMerchant) +
+                        '；当前行业：' + (verticalLabel[curVertical] || rowR.raw.industryVerticalLabel || curVertical) +
+                        '。修改后将保留登录与资金账户，清空产品、订单、供应商、仓库、SKU 等业务数据。';
+                    el('ops-retype-reason').value = '';
+                    el('ops-modal-retype').classList.remove('hidden');
+                    return;
+                }
+                var term = e.target.closest('.ops-act-terminate');
+                if (term) {
+                    var rowT = mergedRows.find(function (x) { return x.raw.id === term.getAttribute('data-id'); });
+                    if (!rowT) return;
+                    var tid = rowT.raw.id;
+                    var msg = '确定注销租户「' + (rowT.raw.name || tid) + '」？\n\n将清空全部账户、产品、订单、供应商、SKU、仓库、进货单据等业务数据，且不可恢复。';
+                    if (!confirm(msg)) return;
+                    var reason = prompt('请输入注销原因（审计记录）：', '运维注销') || '运维注销';
+                    (async function () {
+                        try {
+                            var res = await opsFetch('/api/v1/ops/tenants/' + encodeURIComponent(tid) + '/terminate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reason: reason })
+                            });
+                            var data = await res.json().catch(function () { return {}; });
+                            if (!res.ok) throw new Error(data.message || '注销失败');
+                            opsNotify(data.message || '已注销', 'success');
+                            await loadData();
+                        } catch (err) {
+                            opsNotify(err.message || String(err), 'error');
+                        }
+                    })();
                 }
             });
+        }
+
+        function closeRetypeModal() {
+            var modal = el('ops-modal-retype');
+            if (modal) modal.classList.add('hidden');
+        }
+        var retypeModal = el('ops-modal-retype');
+        var retypeClose = el('ops-modal-retype-close');
+        if (retypeModal && retypeClose) {
+            retypeClose.addEventListener('click', closeRetypeModal);
+            retypeModal.addEventListener('click', function (e) { if (e.target === retypeModal) closeRetypeModal(); });
+        }
+        var retypeSave = el('ops-btn-save-retype');
+        if (retypeSave) {
+            retypeSave.onclick = async function () {
+                var tidEl = el('ops-modal-retype-id');
+                var tid = tidEl.value;
+                var merchant = el('ops-retype-merchant').value;
+                var vertical = el('ops-retype-vertical').value;
+                var merchantOrig = tidEl.dataset.merchantOrig || '';
+                var verticalOrig = tidEl.dataset.verticalOrig || '';
+                var reason = (el('ops-retype-reason').value || '').trim();
+                if (!merchant || !vertical) {
+                    opsNotify('请选择目标业态与行业', 'warning');
+                    return;
+                }
+                if (merchant === merchantOrig && vertical === verticalOrig) {
+                    opsNotify('请至少修改一项业态或行业后再提交', 'warning');
+                    return;
+                }
+                if (!confirm('切换后将清空该租户全部业务数据（账户保留）。确定继续？')) return;
+                try {
+                    var body = { reason: reason || '运维切换业态/行业' };
+                    body.merchantType = toMerchantApiKey(merchant);
+                    body.industryVertical = vertical;
+                    var res = await opsFetch('/api/v1/ops/tenants/' + encodeURIComponent(tid) + '/retype', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    var data = await res.json().catch(function () { return {}; });
+                    if (!res.ok) throw new Error(data.message || '切换失败');
+                    closeRetypeModal();
+                    opsNotify(data.message || '已切换', 'success');
+                    await loadData();
+                } catch (err) {
+                    opsNotify(err.message || String(err), 'error');
+                }
+            };
         }
 
         function closeModal() { var modal = el('ops-modal-tenant'); if (modal) modal.classList.add('hidden'); }
@@ -1636,6 +2037,19 @@
                 filterRoot.querySelectorAll('.ops-filter-chip').forEach(function (b) {
                     var on = b.getAttribute('data-industry') === currentIndustry;
                     b.className = on ? 'ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border-2 border-ops-600 bg-ops-600 text-white shadow-md' : 'ops-filter-chip px-4 py-2 rounded-2xl text-xs font-bold border border-slate-200 bg-white/90 text-slate-600 hover:border-ops-300';
+                });
+                loadData();
+            });
+        }
+        var verticalRoot = el('ops-vertical-filter');
+        if (verticalRoot) {
+            verticalRoot.addEventListener('click', function (e) {
+                var btn = e.target.closest('[data-vertical]');
+                if (!btn) return;
+                currentVertical = btn.getAttribute('data-vertical') || 'ALL';
+                verticalRoot.querySelectorAll('.ops-vertical-chip').forEach(function (b) {
+                    var on = b.getAttribute('data-vertical') === currentVertical;
+                    b.className = on ? 'ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border-2 border-emerald-600 bg-emerald-600 text-white' : 'ops-vertical-chip px-3 py-1.5 rounded-xl text-[11px] font-bold border border-slate-200 bg-white/90 text-slate-600';
                 });
                 loadData();
             });
@@ -2237,15 +2651,117 @@
         loadAnnouncements();
     }
 
+    function maskPromoterPhone(phone) {
+        if (!phone) return '—';
+        var s = String(phone).trim();
+        if (s.length === 11) return s.slice(0, 3) + '****' + s.slice(7);
+        return s;
+    }
+
+    function formatPromoterTime(val) {
+        if (val == null || val === '') return '—';
+        var s = String(val);
+        return s.length >= 10 ? s.slice(0, 10) : s;
+    }
+
+    function renderPromoterList(items, total) {
+        var body = el('ops-promoter-list-body');
+        var countEl = el('ops-promoter-list-count');
+        if (!body) return;
+        if (countEl) countEl.textContent = total != null ? ('(' + total + ')') : '';
+        if (!items || !items.length) {
+            body.innerHTML = '<p class="text-center py-8 text-slate-400">暂无推广员，请在左侧创建</p>';
+            body.className = 'flex-1 overflow-y-auto list-scrollbar-ops text-xs text-slate-400 text-center py-8';
+            return;
+        }
+        body.className = 'flex-1 overflow-y-auto list-scrollbar-ops';
+        var rows = items.map(function (p) {
+            var commission = p.commissionPerReferral != null ? ('¥' + p.commissionPerReferral) : '—';
+            var pending = p.pendingSettlement != null ? ('¥' + p.pendingSettlement) : '—';
+            var status = p.userStatus === 'NORMAL'
+                ? '<span class="text-emerald-600 font-bold text-[10px]">正常</span>'
+                : '<span class="text-slate-400 font-bold text-[10px]">' + escapeHtml(p.userStatus || '—') + '</span>';
+            return (
+                '<div class="rounded-2xl border border-indigo-100/80 bg-white/70 p-3 mb-2 last:mb-0">' +
+                '<div class="flex flex-wrap items-start justify-between gap-2">' +
+                '<div class="min-w-0">' +
+                '<p class="text-xs font-bold text-slate-800">' + escapeHtml(p.realName || p.userName || '—') +
+                ' <span class="text-[10px] font-normal text-slate-400 font-mono">#' + escapeHtml(p.userId) + '</span></p>' +
+                '<p class="text-[10px] text-slate-500 mt-0.5 font-mono">' + escapeHtml(p.userName || '') + ' · ' + escapeHtml(maskPromoterPhone(p.phone)) + '</p></div>' +
+                status + '</div>' +
+                '<div class="mt-2 flex flex-wrap gap-2 text-[10px]">' +
+                '<span class="px-2 py-1 rounded-lg bg-ops-50 text-ops-700 font-mono font-bold border border-ops-100">' + escapeHtml(p.referralCode || '—') + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">返佣 ' + commission + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">有效推荐 ' + (p.validReferralCount != null ? p.validReferralCount : 0) + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">待结 ' + pending + '</span>' +
+                '<span class="px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-slate-400">开号 ' + escapeHtml(formatPromoterTime(p.createTime)) + '</span>' +
+                '<button type="button" class="ops-promoter-reset-pwd px-2 py-1 rounded-lg border border-amber-200 text-amber-800 bg-amber-50 hover:bg-amber-100 text-[10px] font-bold" data-id="' + escapeHtml(String(p.userId)) + '" data-name="' + escapeHtml(p.userName || '') + '">重置密码</button>' +
+                '</div></div>'
+            );
+        }).join('');
+        body.innerHTML = rows;
+    }
+
+    async function loadPromoterList() {
+        var body = el('ops-promoter-list-body');
+        if (!body || typeof window.wrappedFetch !== 'function') return;
+        body.innerHTML = '<p class="text-center py-8 text-slate-400">加载推广员列表…</p>';
+        body.className = 'flex-1 overflow-y-auto list-scrollbar-ops text-xs text-slate-400 text-center py-8';
+        try {
+            var res = await opsFetch('/api/v1/ops/promoters?page=0&size=200', { method: 'GET' });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error((data && data.message) || '加载失败');
+            var items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : []);
+            renderPromoterList(items, data.total != null ? data.total : items.length);
+        } catch (err) {
+            body.innerHTML = '<p class="text-center py-8 text-rose-500">' + escapeHtml(err.message || String(err)) + '</p>';
+        }
+    }
+
     function initPromotersPage() {
+        loadPromoterList();
         var form = el('ops-promoter-form');
         if (!form || form.dataset.bound === '1') {
             return;
         }
         form.dataset.bound = '1';
         var resultBox = el('ops-promoter-result');
-        var placeholder = el('ops-promoter-result-placeholder');
         var lastCode = '';
+
+        var refreshBtn = el('ops-promoter-list-refresh');
+        if (refreshBtn && refreshBtn.dataset.bound !== '1') {
+            refreshBtn.dataset.bound = '1';
+            refreshBtn.addEventListener('click', function () { loadPromoterList(); });
+        }
+        var listBody = el('ops-promoter-list-body');
+        if (listBody && listBody.dataset.resetBound !== '1') {
+            listBody.dataset.resetBound = '1';
+            listBody.addEventListener('click', function (e) {
+                var btn = e.target.closest('.ops-promoter-reset-pwd');
+                if (!btn) return;
+                var uid = btn.getAttribute('data-id');
+                var name = btn.getAttribute('data-name') || uid;
+                var pwd = prompt('为推广员「' + name + '」设置新密码（至少 6 位）：');
+                if (!pwd || pwd.length < 6) {
+                    if (pwd !== null) opsNotify('密码至少 6 位', 'warning');
+                    return;
+                }
+                (async function () {
+                    try {
+                        var res = await opsFetch('/api/v1/ops/promoters/' + encodeURIComponent(uid) + '/reset-password', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ password: pwd })
+                        });
+                        var data = await res.json().catch(function () { return {}; });
+                        if (!res.ok) throw new Error(data.message || '重置失败');
+                        opsNotify('密码已重置，请通知推广员用新密码登录', 'success');
+                    } catch (err) {
+                        opsNotify(err.message || String(err), 'error');
+                    }
+                })();
+            });
+        }
 
         form.addEventListener('submit', async function (ev) {
             ev.preventDefault();
@@ -2254,12 +2770,17 @@
             var realName = (el('ops-promoter-realname').value || '').trim();
             var phone = (el('ops-promoter-phone').value || '').trim();
             var email = (el('ops-promoter-email').value || '').trim();
+            var commission = parseFloat(el('ops-promoter-commission') && el('ops-promoter-commission').value);
             if (!userName || !password || !realName || !phone) {
-                alert('请填写必填项');
+                opsNotify('请填写必填项', 'error');
                 return;
             }
             if (!/^1\d{10}$/.test(phone)) {
-                alert('手机号须为 11 位且以 1 开头');
+                opsNotify('手机号须为 11 位且以 1 开头', 'error');
+                return;
+            }
+            if (!isFinite(commission) || commission <= 0) {
+                opsNotify('请填写有效的单笔返佣金额', 'error');
                 return;
             }
             var submitBtn = el('ops-promoter-submit');
@@ -2268,19 +2789,16 @@
                 submitBtn.textContent = '提交中…';
             }
             try {
-                var hash = password;
-                if (typeof md5Hash === 'function') {
-                    hash = await md5Hash(password);
-                }
                 var res = await opsFetch('/api/v1/ops/promoters', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         userName: userName,
-                        password: hash,
+                        password: password,
                         realName: realName,
                         phone: phone,
-                        email: email || null
+                        email: email || null,
+                        commissionPerReferral: commission
                     })
                 });
                 var data = await res.json();
@@ -2293,12 +2811,17 @@
                 if (el('ops-promoter-res-name')) el('ops-promoter-res-name').textContent = data.realName || realName;
                 if (el('ops-promoter-res-phone')) el('ops-promoter-res-phone').textContent = data.phone || phone;
                 if (el('ops-promoter-res-code')) el('ops-promoter-res-code').textContent = lastCode || '—';
+                if (el('ops-promoter-res-commission')) {
+                    el('ops-promoter-res-commission').textContent = data.commissionPerReferral != null ? ('¥' + data.commissionPerReferral) : ('¥' + commission);
+                }
                 if (resultBox) resultBox.classList.remove('hidden');
-                if (placeholder) placeholder.classList.add('hidden');
                 appendAudit('PROMOTER_CREATE', (data.userName || userName) + ' ' + (lastCode || ''));
                 form.reset();
+                if (el('ops-promoter-commission')) el('ops-promoter-commission').value = '150';
+                await loadPromoterList();
+                opsNotify('推广员开号成功', 'success');
             } catch (err) {
-                alert(err.message || String(err));
+                opsNotify(err.message || String(err), 'error');
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -2350,19 +2873,22 @@
     }
 
     function bindNav() {
-        document.querySelectorAll('[data-ops-route]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var route = btn.getAttribute('data-ops-route');
-                if (!route) {
-                    return;
-                }
-                if (typeof window.TM_switchOpsRoute === 'function') {
-                    window.TM_switchOpsRoute(route);
-                    return;
-                }
-                location.hash = route;
-                loadModule(route);
-            });
+        if (document.body.dataset.opsNavDelegated === '1') {
+            return;
+        }
+        document.body.dataset.opsNavDelegated = '1';
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-ops-route]');
+            if (!btn) return;
+            var route = normalizeOpsRoute(btn.getAttribute('data-ops-route'));
+            if (!route || !ROUTES[route]) return;
+            e.preventDefault();
+            if (typeof window.TM_switchOpsRoute === 'function') {
+                window.TM_switchOpsRoute(route);
+                return;
+            }
+            location.hash = route;
+            loadModule(route);
         });
     }
 
@@ -2371,23 +2897,21 @@
         if (shouldDeferOpsAutoBoot()) {
             return;
         }
-        var raw = (location.hash || '').replace(/^#/, '');
-        if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
-            try {
-                history.replaceState(null, '', '#tenants');
-            } catch (e1) { /* ignore */ }
-            raw = 'tenants';
+        var raw = normalizeOpsRoute((location.hash || '').replace(/^#/, ''));
+        if (!ROUTES[raw]) raw = 'tenants';
+        if (raw !== ((location.hash || '').replace(/^#/, ''))) {
+            try { history.replaceState(null, '', '#' + raw); } catch (e1) { location.hash = raw; }
         }
-        var route = ROUTES[raw] ? raw : 'tenants';
-        if (route !== ((location.hash || '').replace(/^#/, ''))) location.hash = route;
-        loadModule(route);
+        loadModule(raw);
     }
 
     window.TM_OPS = {
         loadModule: loadModule,
         appendAudit: appendAudit,
-        loadAudit: loadAudit
+        loadAudit: loadAudit,
+        normalizeRoute: normalizeOpsRoute
     };
+    window.TM_OPS_normalizeRoute = normalizeOpsRoute;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', boot);
@@ -2398,13 +2922,7 @@
         if (!mayHandleOpsHashChange()) {
             return;
         }
-        var hash = (location.hash || '').replace(/^#/, '');
-        if (hash === 'quota-ai' || hash === 'lifecycle' || hash === 'tenants-lifecycle' || hash === 'metering') {
-            try {
-                history.replaceState(null, '', '#tenants');
-            } catch (e2) { /* ignore */ }
-            hash = 'tenants';
-        }
+        var hash = normalizeOpsRoute((location.hash || '').replace(/^#/, ''));
         if (!ROUTES[hash]) {
             return;
         }

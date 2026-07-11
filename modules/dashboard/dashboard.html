@@ -11,7 +11,7 @@
     <script src="../../assets/js/tm-oss-upload.js?v=20260603img2"></script>
     <script src="../../assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="../../assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
-    <script src="../../assets/js/tm-product-registry-form.js?v=20260531unit"></script>
+    <script src="../../assets/js/tm-product-registry-form.js?v=20260711expiry2"></script>
     <script src="../../assets/js/ai-order-extract-parse.js?v=20260601audit"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260531unit">
     <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260531ordfix">
     <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
+    <link rel="stylesheet" href="../../assets/css/tm-first-login-wizard.css?v=20260630">
+    <link rel="stylesheet" href="../../assets/css/rapid-order.css?v=20260711aux">
+    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260709print1">
 
     <style>
         body {
@@ -170,7 +173,7 @@
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../CSS/common.css?v=20260531ordfix">
+    <link rel="stylesheet" href="../CSS/common.css?v=20260707fix1">
     <script>
         tailwind.config = {
             theme: {
@@ -203,12 +206,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script src="../../assets/js/auth.js?v=20260422r13"></script>
     <script src="../../assets/js/app.js"></script>
     <script>
         // 页面加载时注入公共 UI 组件
         document.addEventListener('DOMContentLoaded', function() {
-            if (window.injectCommonUI) {
+            var embedded = (window.self !== window.top)
+                || (new URLSearchParams(window.location.search).get('embed') === '1');
+            if (!embedded && window.injectCommonUI) {
                 window.injectCommonUI();
             }
         });
@@ -239,7 +245,7 @@
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供货管理</span>
             </button>
         </nav>
         <!-- 用户信息区域 -->
@@ -272,13 +278,24 @@
             <!-- ================= [1] 工作台 DASHBOARD ================= -->
             <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
                 <div data-tm-fragment-scope="dashboard" data-tm-slot="workspace-banner" class="tm-merchant-slot"></div>
-                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
                     <div>
                         <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, <span id="dashboard-greeting-name">用户</span>.</h1>
                         <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold"><span id="dashboard-risk-count">0</span>个风险点</span>，<span class="text-brand-600 font-bold"><span id="dashboard-pending-recognition-count">0</span>个待识别单据</span>。</p>
                     </div>
+                    <button type="button" onclick="typeof TM_openPeripheralSettings==='function'&&TM_openPeripheralSettings()" class="self-start md:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 shrink-0" data-action="print.order" title="打印机与外设设置">
+                        <i class="ph ph-printer text-base text-teal-600"></i>
+                        <span>打印 · 外设</span>
+                    </button>
                 </div>
 
+                <!-- 工作台视图切换 -->
+                <div id="workbench-view-toggle" class="flex gap-2 mb-4 flex-wrap">
+                    <button type="button" data-view="overview" class="view-toggle-btn active px-4 py-2 rounded-xl text-xs font-bold border border-brand-200 bg-brand-50 text-brand-600">工作台概览</button>
+                    <button type="button" data-view="sales-orders" class="view-toggle-btn px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50">销售订单</button>
+                    <button type="button" data-view="returns" class="view-toggle-btn px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50">退货单</button>
+                </div>
+                <div id="workbench-overview-panel">
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">今日营收</p><div id="dashboard-today-revenue" class="mt-2 font-mono font-bold text-slate-800">¥0.00</div></div>
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-500"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">单据提取</p><div id="dashboard-extracted-count" class="mt-2 font-mono font-bold text-slate-800">0</div></div>
@@ -286,8 +303,20 @@
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div id="dashboard-turnover-rate" class="mt-2 font-mono font-bold text-slate-800">0.00</div></div>
                 </div>
 
-                <section id="dashboard-ai-extract" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-magic-wand text-brand-600 mr-2 text-lg"></i> AI 订单快速提取</div>
+                <div class="mt-6">
+                    <button type="button" onclick="TM_openRapidOrder()" class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold text-base shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-transform">
+                        <i class="ph ph-lightning text-2xl"></i>
+                        <span>⚡ 极速开单</span>
+                    </button>
+                    <p class="text-center text-[10px] text-slate-400 mt-2">移动点单式选品 · 支持欠货开单</p>
+                </div>
+
+                <details id="workbench-ai-supplement" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in mt-6 group">
+                    <summary class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center cursor-pointer list-none text-sm font-bold text-slate-800">
+                        <i class="ph ph-magic-wand text-brand-600 mr-2 text-lg"></i> AI 订单补录（语音/拍照/文本）
+                        <i class="ph ph-caret-down ml-auto text-slate-400 group-open:rotate-180 transition-transform"></i>
+                    </summary>
+                <section id="dashboard-ai-extract" class="overflow-hidden">
                     <div class="flex flex-col md:flex-row md:divide-x divide-slate-100">
                         <div class="p-8 md:w-1/3 flex items-center justify-around md:justify-center md:gap-16 bg-slate-50/30">
                             <button onclick="openVoiceModal()" class="btn-click-effect flex flex-col items-center group">
@@ -307,9 +336,10 @@
                         </div>
                     </div>
                 </section>
+                </details>
 
                 <!-- 待确认单据和进行中业务单据 -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                     <!-- 待核对单据 (Pending) -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-[240px] h-[42vh] max-h-[450px] md:h-[450px] md:max-h-none overflow-hidden">
                         <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-white shrink-0 z-10">
@@ -360,6 +390,55 @@
                         <div class="tm-dashboard-doc-list flex-1 min-h-0 overflow-y-auto p-4 space-y-3 no-scrollbar" id="inprogress-list"></div>
                     </div>
                 </div>
+                </div>
+                <div id="workbench-sales-orders-panel" class="hidden space-y-4">
+                    <p class="text-[10px] text-slate-400 leading-relaxed">默认展示近 90 天订单；标有「进行中」的订单与工作台概览待办重叠，完整待办请见概览卡片。</p>
+                    <div class="flex flex-wrap gap-2 items-end">
+                        <div class="min-w-[7rem]">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sales-orders-date-range">时间范围</label>
+                            <select id="sales-orders-date-range" class="form-input text-xs py-2">
+                                <option value="90d" selected>近 90 天</option>
+                                <option value="30d">近 30 天</option>
+                                <option value="all">全部时间</option>
+                            </select>
+                        </div>
+                        <div class="min-w-[7rem]">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sales-orders-logistics">物流状态</label>
+                            <select id="sales-orders-logistics" class="form-input text-xs py-2">
+                                <option value="">全部</option>
+                                <option value="D010001">待配货</option>
+                                <option value="D010002">拣货中</option>
+                                <option value="D010006">部分发货</option>
+                                <option value="D010003">全部发货</option>
+                                <option value="D010004">已签收</option>
+                                <option value="D010005">退货</option>
+                            </select>
+                        </div>
+                        <div class="min-w-[7rem]">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sales-orders-fin-status">收款状态</label>
+                            <select id="sales-orders-fin-status" class="form-input text-xs py-2">
+                                <option value="">全部</option>
+                                <option value="UNPAID">未收款</option>
+                                <option value="PARTIAL_PAID">部分收款</option>
+                                <option value="SETTLED">已结清</option>
+                                <option value="BAD_DEBT">坏账</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center justify-between">
+                        <div class="flex gap-2 flex-1 min-w-[200px]">
+                            <input type="search" id="sales-orders-keyword" class="form-input text-sm flex-1" placeholder="单号 / 客户名" />
+                            <button type="button" id="sales-orders-search-btn" class="btn-secondary text-sm px-4">搜索</button>
+                        </div>
+                        <button type="button" onclick="openManualOrderModal()" class="btn-brand text-sm px-4 py-2 rounded-xl font-bold">添加订单</button>
+                    </div>
+                    <div id="sales-orders-list"></div>
+                    <div id="sales-orders-pagination" class="flex items-center justify-center gap-4 py-2"></div>
+                </div>
+                <div id="workbench-returns-panel" class="hidden space-y-4">
+                    <div id="returns-list" class="space-y-3"></div>
+                    <div id="returns-pagination" class="flex items-center justify-center gap-4 py-2"></div>
+                </div>
             </div>
 
             <!-- ================= [2] 智能经营 ================= -->
@@ -401,16 +480,16 @@
                 </div>
             </div>
 
-            <!-- ================= [5] 供应商管理 ================= -->
+            <!-- ================= [5] 供货管理 ================= -->
             <div id="view-supplier" class="view-section w-full p-4 md:p-8 space-y-6 fade-in hidden">
                 <div class="flex flex-col md:flex-row md:items-end justify-between">
                     <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">供应商管理</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">供货管理</h1>
                         <p class="text-xs md:text-sm text-slate-500 mt-1">供应商信息与采购管理</p>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <p class="text-slate-500">供应商管理模块内容</p>
+                    <p class="text-slate-500">供货管理模块内容</p>
                 </div>
             </div>
         </div>
@@ -466,8 +545,11 @@
                                 <thead>
                                     <tr>
                                         <th class="tm-audit-th tm-audit-th--product">产品名称</th>
+                                        <th class="tm-audit-th tm-audit-col-variant hidden">规格</th>
                                         <th class="tm-audit-th tm-audit-th--qty">数量</th>
                                         <th class="tm-audit-th tm-audit-th--unit">单位</th>
+                                        <th class="tm-audit-th tm-audit-col-batch hidden">批次</th>
+                                        <th class="tm-audit-th tm-audit-col-serial hidden">序列号</th>
                                         <th class="tm-audit-th tm-audit-th--price">单价</th>
                                         <th class="tm-audit-th tm-audit-th--sub">小计</th>
                                         <th class="tm-audit-th tm-audit-th--action" aria-label="操作"></th>
@@ -576,7 +658,7 @@
                 <p data-tm-device-wait-text class="text-sm font-bold text-brand-600">正在等待设备响应...</p>
             </div>
             <div id="voice-ready-ui">
-                <div id="voice-onboarding-tips" class="hidden">
+                <div id="voice-tips" class="mb-4">
                     <p class="voice-tip-title">推荐说法格式</p>
                     <p class="voice-tip-formula">客户名 + 产品 + 数量 + 总价</p>
                     <p id="voice-tip-example-text" class="voice-tip-example">示例：华强北李总批发矿泉水 200 箱，总价 8600 元</p>
@@ -724,12 +806,14 @@
                             <span class="text-[11px] text-slate-500">应收 <strong class="font-mono text-slate-800" id="detail-order-total">¥0.00</strong></span>
                         </div>
                     </div>
+                    <div id="detail-amount-breakdown" class="hidden mt-2 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2 text-[11px] text-slate-600 space-y-1"></div>
                     <div id="detail-order-items-cards" class="md:hidden space-y-2"></div>
                     <div class="tm-order-items-scroll hidden md:block overflow-x-auto bg-slate-50 rounded-xl border border-slate-100">
                         <table class="tm-order-detail-table text-xs">
                             <thead class="bg-slate-100/80 text-slate-400 font-bold uppercase sticky top-0 z-[1]">
                                 <tr>
                                     <th class="detail-ship-col hidden tm-col-ship px-2 py-2 text-center">发货</th>
+                                    <th class="detail-return-col hidden tm-col-return px-2 py-2 text-center">退货</th>
                                     <th class="tm-col-product px-3 py-2 text-left">产品</th>
                                     <th class="tm-col-qty px-3 py-2 text-center">数量</th>
                                     <th class="tm-col-unit px-3 py-2 text-center">单位</th>
@@ -740,6 +824,17 @@
                             <tbody class="divide-y divide-slate-100 bg-white" id="detail-order-items-body"></tbody>
                         </table>
                     </div>
+                </section>
+                <section id="detail-order-returns-section" class="mt-3 shrink-0 hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div>
+                            <h3 class="text-xs font-black text-slate-700">销售退货</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">仅支持退货入库与退款冲账，不含换货</p>
+                        </div>
+                        <button type="button" id="detail-view-all-returns-btn" onclick="TM_SalesOrders && TM_SalesOrders.switchView('returns')" class="hidden text-[10px] font-bold text-brand-600">全部退货单</button>
+                    </div>
+                    <div id="detail-order-returns-summary" class="hidden rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 mb-2 text-[11px]"></div>
+                    <div id="detail-order-returns-list" class="space-y-2"></div>
                 </section>
             </div>
             </div>
@@ -759,6 +854,7 @@
                             </div>
                             <div id="detail-remaining-hint" class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">
                                 应收 <span id="detail-pay-total" class="font-mono font-bold">¥0.00</span>
+                                <span class="hidden text-amber-700" id="detail-returned-wrap"> · 退货扣减 <span id="detail-returned-sum" class="font-mono">¥0.00</span></span>
                                 <span class="hidden" id="detail-received-wrap"> · 已收 <span id="detail-received-sum" class="font-mono">¥0.00</span></span>
                                 <span class="hidden text-teal-700 font-bold" id="detail-remaining-wrap"> · 剩 <span id="detail-remaining-sum" class="font-mono">¥0.00</span></span>
                             </div>
@@ -790,8 +886,11 @@
                     </div>
                 </details>
             </div>
+            <div id="detail-order-return-hint" class="hidden mx-4 mb-1 md:mx-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-700 shrink-0" role="status"></div>
             <div class="tm-mobile-modal-footer tm-product-edit-footer p-4 md:p-5 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
                 <button type="button" onclick="closeOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px]">返回工作台</button>
+                <button type="button" id="detail-print-btn" onclick="typeof TM_PrintTriggers!=='undefined'&&TM_PrintTriggers.printOrderDetail()" class="tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px] hidden" data-action="print.order"><i class="ph ph-printer"></i> 打印</button>
+                <button type="button" id="detail-apply-return-btn" onclick="TM_Returns && TM_Returns.openCreateFromDetail()" class="hidden tm-btn-secondary flex-1 py-3 text-xs font-bold min-h-[44px] text-amber-700 border-amber-200">申请退货</button>
                 <button type="button" id="detail-order-status-save" onclick="saveOrderDetailStatus()" class="tm-btn-primary flex-[1.4] py-3 text-xs font-black min-h-[44px] shadow-lg shadow-brand-500/20 active:scale-[0.98]">保存</button>
             </div>
         </div>
@@ -965,21 +1064,9 @@
             return false;
         }
 
-        function tmOnboardingPrepareVoiceComplete() {
-            try {
-                if (window.TmOnboarding && typeof window.TmOnboarding.prepareVoiceComplete === 'function') {
-                    window.TmOnboarding.prepareVoiceComplete();
-                }
-            } catch (e) { /* ignore */ }
-        }
+        function tmOnboardingPrepareVoiceComplete() { /* removed legacy onboarding */ }
 
-        function tmOnboardingNotifyVoiceComplete() {
-            try {
-                if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceComplete === 'function') {
-                    window.TmOnboarding.onVoiceComplete();
-                }
-            } catch (e) { /* ignore */ }
-        }
+        function tmOnboardingNotifyVoiceComplete() { /* removed legacy onboarding */ }
 
         function tmVoiceIsDashboardReady() {
             var impl = window.__TM_dashboardVoice;
@@ -1066,7 +1153,6 @@
                 : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/mpeg'];
             for (var i = 0; i < candidates.length; i++) {
                 if (MediaRecorder.isTypeSupported(candidates[i])) {
-                    console.log('[Voice] 选用 MIME:', candidates[i]);
                     return candidates[i];
                 }
             }
@@ -1083,8 +1169,7 @@
                     localStream.getTracks().forEach(function (track) {
                         try {
                             track.stop();
-                            console.log('[Voice] track stopped:', track.kind, track.readyState);
-                        } catch (e) { /* ignore */ }
+                            } catch (e) { /* ignore */ }
                     });
                 }
                 localStream = null;
@@ -1177,7 +1262,6 @@
                 if (voiceStopInProgress) {
                     return;
                 }
-                console.log('[Voice] 用户触发停止, event=', e && e.type);
                 stopVoiceRecording();
             };
             btn.__tmVoiceStopHandler = fireStop;
@@ -1190,8 +1274,7 @@
             btn.addEventListener('click', fireStop);
             btn.addEventListener('pointerup', btn.__tmVoicePointerHandler);
             btn.setAttribute('data-voice-stop-bound', '1');
-            console.log('[Voice] 停止按钮已绑定 (click + pointerup + onclick)');
-        }
+            }
 
         function resolveTmOssUpload() {
             if (window.TMOssUpload) {
@@ -1449,22 +1532,48 @@
         function updateDetailRemainingHint(order) {
             order = order || currentDetailOrder;
             if (!order) return { total: 0, received: 0, remaining: 0 };
-            var total = Number(order.totalAmount || 0);
+            var detailModal = document.getElementById('order-detail-modal');
+            function q(sel) {
+                return detailModal ? detailModal.querySelector(sel) : document.getElementById(sel.replace('#', ''));
+            }
+            var total = Number(order.totalAmount || order.total_amount || 0);
+            var returned = Number(order.returnedAmount || order.returned_amount || 0);
+            var netTotal = Math.max(0, total - returned);
             var received = getOrderReceivedAmount(order);
-            var remaining = getOrderRemainingAmount(order);
+            var remaining = Math.max(0, netTotal - received);
             var fmt = function (v) { return '¥' + (Number(v) || 0).toFixed(2); };
-            var payTotal = document.getElementById('detail-pay-total');
-            var totalEl = document.getElementById('detail-order-total');
-            var recSum = document.getElementById('detail-received-sum');
-            var recWrap = document.getElementById('detail-received-wrap');
-            var remWrap = document.getElementById('detail-remaining-wrap');
-            var remSum = document.getElementById('detail-remaining-sum');
-            if (payTotal) payTotal.textContent = fmt(total);
-            if (totalEl) totalEl.textContent = fmt(total);
-            if (recSum) recSum.textContent = fmt(received);
+            var payTotal = q('#detail-pay-total');
+            var totalEl = q('#detail-order-total');
+            var recSum = q('#detail-received-sum');
+            var recWrap = q('#detail-received-wrap');
+            var remWrap = q('#detail-remaining-wrap');
+            var remSum = q('#detail-remaining-sum');
+            var returnedWrap = q('#detail-returned-wrap');
+            var returnedSum = q('#detail-returned-sum');
+            if (payTotal) payTotal.textContent = fmt(netTotal);
+            if (totalEl) totalEl.textContent = fmt(netTotal);
+            if (returnedWrap && returnedSum) {
+                returnedWrap.classList.toggle('hidden', returned <= 0);
+                if (returned > 0) returnedSum.textContent = fmt(returned);
+            }
+            var breakdown = q('#detail-amount-breakdown');
+            if (breakdown) {
+                if (returned > 0) {
+                    breakdown.classList.remove('hidden');
+                    breakdown.innerHTML = ''
+                        + '<div class="flex justify-between gap-2"><span class="text-slate-500">订单原价</span><span class="font-mono">' + fmt(total) + '</span></div>'
+                        + '<div class="flex justify-between gap-2 text-amber-700"><span>退货扣减（商品退回）</span><span class="font-mono">-' + fmt(returned) + '</span></div>'
+                        + '<div class="flex justify-between gap-2 font-bold text-slate-800 border-t border-amber-100/80 pt-1 mt-1"><span>当前应收</span><span class="font-mono">' + fmt(netTotal) + '</span></div>'
+                        + '<p class="text-[10px] text-slate-400 pt-0.5">说明：退货验收完成后，可在下方「仓库·收款」冲减已收或标记退款。</p>';
+                } else {
+                    breakdown.classList.add('hidden');
+                    breakdown.innerHTML = '';
+                }
+            }
             if (recWrap) recWrap.classList.toggle('hidden', received <= 0);
             if (remWrap) remWrap.classList.toggle('hidden', remaining <= 0.001);
             if (remSum) remSum.textContent = fmt(remaining);
+            if (recSum) recSum.textContent = fmt(received);
             updateDetailAuxSummary(order, remaining);
             return { total: total, received: received, remaining: remaining };
         }
@@ -1619,8 +1728,14 @@
 
         function renderDetailOrderItems(items) {
             detailOrderItemsCache = items || [];
-            var tbody = document.getElementById('detail-order-items-body');
-            var cards = document.getElementById('detail-order-items-cards');
+            window.detailOrderItemsCache = detailOrderItemsCache;
+            var detailModal = document.getElementById('order-detail-modal');
+            var tbody = detailModal
+                ? detailModal.querySelector('#detail-order-items-body')
+                : document.getElementById('detail-order-items-body');
+            var cards = detailModal
+                ? detailModal.querySelector('#detail-order-items-cards')
+                : document.getElementById('detail-order-items-cards');
             var st = resolveDetailOrderStatusForShip();
             var showShip = !!(currentDetailOrderId && orderStatusAllowsShipSelect(st));
             if (!items || !items.length) {
@@ -1632,26 +1747,29 @@
             }
             if (tbody) {
                 tbody.innerHTML = items.map(function (item, rowIdx) {
-                    var p = getProductDisplayById(item.productId);
+                    var p = resolveOrderItemProductDisplay(item);
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
+                    var returnedHint = line.returnedQty > 0
+                        ? ('<p class="text-[10px] text-amber-600 mt-0.5">已退 ' + line.returnedQty + ' · 可退 ' + line.returnableQty + '</p>')
+                        : '';
                     var chk = showShip
                         ? ('<td class="detail-ship-col px-2 py-2 text-center' + (showShip ? '' : ' hidden') + '">' +
                             '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '" data-row-index="' + rowIdx + '"' +
                             (proc ? ' checked disabled' : '') + ' aria-label="本次发货"></td>')
                         : '<td class="detail-ship-col hidden px-2 py-2"></td>';
                     return '<tr class="order-item-row">' + chk +
-                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p></td>' +
+                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p>' + returnedHint + '</td>' +
                         '<td class="tm-col-qty px-3 py-2 text-center font-mono">' + line.qty + '</td>' +
                         '<td class="tm-col-unit px-3 py-2 text-center text-slate-600">' + line.unit + '</td>' +
                         '<td class="tm-col-price px-3 py-2 text-center font-mono text-slate-700">' + formatCurrency(line.unitPrice) + '</td>' +
-                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(line.total) + '</td></tr>';
+                        '<td class="tm-col-sub px-3 py-2 text-right font-mono font-bold">' + formatCurrency(line.returnedQty > 0 ? line.netTotal : line.total) + '</td></tr>';
                 }).join('');
             }
             if (cards) {
                 cards.innerHTML = items.map(function (item, rowIdx) {
-                    var p = getProductDisplayById(item.productId);
+                    var p = resolveOrderItemProductDisplay(item);
                     var line = resolveOrderItemLine(item);
                     var proc = item.isProcessed === true || item.is_processed === true;
                     var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : '');
@@ -1677,6 +1795,17 @@
             }
             tmRefreshDetailItemsLayout();
             syncDetailShipUi(currentDetailOrder);
+        }
+        window.__TM_renderDetailOrderItems = renderDetailOrderItems;
+        window.renderDetailOrderItems = renderDetailOrderItems;
+
+        function invokeDetailOrderItemsRender(items) {
+            if (window.TM_Returns && typeof window.TM_Returns.patchDetailItemsRender === 'function') {
+                window.TM_Returns.patchDetailItemsRender();
+            }
+            if (typeof window.renderDetailOrderItems === 'function') {
+                window.renderDetailOrderItems(items);
+            }
         }
 
         function collectDetailShipItemIds() {
@@ -1725,7 +1854,7 @@
                 statusSel.setAttribute('data-tm-status-bound', '1');
                 statusSel.addEventListener('change', function () {
                     updateDetailBadges(currentDetailOrder);
-                    renderDetailOrderItems(detailOrderItemsCache);
+                    invokeDetailOrderItemsRender(detailOrderItemsCache);
                 });
             }
             window._detailFinBound = true;
@@ -1829,6 +1958,9 @@
                 }
                 filterInProgressOrders();
                 showToast('收款记账成功');
+                if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.offerPrintAfterPayment === 'function') {
+                    window.TM_PrintTriggers.offerPrintAfterPayment(currentDetailOrderId);
+                }
                 if (typeof window.TM_emitOrderDataChanged === 'function' && currentDetailOrder) {
                     var emitCust = currentDetailOrder.custId != null ? currentDetailOrder.custId : currentDetailOrder.cust_id;
                     window.TM_emitOrderDataChanged({
@@ -1868,7 +2000,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
                         var items = res && res.success && Array.isArray(res.data) ? res.data : [];
-                        renderDetailOrderItems(items);
+                        invokeDetailOrderItemsRender(items);
                         updateDetailRemainingHint(result.data);
                     });
                 if (isClosedWorkbenchOrder(result.data)) {
@@ -1879,6 +2011,9 @@
                 }
                 filterInProgressOrders();
                 showToast('发货成功');
+                if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.offerPrintAfterShip === 'function') {
+                    window.TM_PrintTriggers.offerPrintAfterShip(currentDetailOrderId);
+                }
                 if (typeof window.TM_emitOrderDataChanged === 'function' && currentDetailOrder) {
                     window.TM_emitOrderDataChanged({
                         custId: currentDetailOrder.custId != null ? currentDetailOrder.custId : currentDetailOrder.cust_id,
@@ -2387,7 +2522,9 @@
 
         function normalizeAuditOrderItem(item) {
             if (!item || typeof item !== 'object') return item;
-            if (typeof window.TM_normalizeOrderItemUnit === 'function') {
+            if (typeof window.TM_normalizeOrderItemV2 === 'function') {
+                item = window.TM_normalizeOrderItemV2(item);
+            } else if (typeof window.TM_normalizeOrderItemUnit === 'function') {
                 window.TM_normalizeOrderItemUnit(item);
             } else {
                 var u = item.unit || item.unit_name || item.unitName || item.sales_unit || item.salesUnit || item.base_unit || item.baseUnit;
@@ -2644,7 +2781,10 @@
 
         function resolveOrderItemLine(item) {
             item = item || {};
+            var returned = Number(item.returnedQty != null ? item.returnedQty : (item.returned_qty != null ? item.returned_qty : 0)) || 0;
             var qty = Number(item.quantity != null ? item.quantity : 0) || 0;
+            var returnable = item.returnableQty != null ? Number(item.returnableQty)
+                : (item.returnable_qty != null ? Number(item.returnable_qty) : Math.max(0, qty - returned));
             var unitPrice = item.unitPrice != null ? Number(item.unitPrice)
                 : (item.unit_price != null ? Number(item.unit_price) : 0);
             var total = item.totalAmount != null ? Number(item.totalAmount)
@@ -2655,9 +2795,10 @@
             if ((!total || total <= 0) && qty > 0 && unitPrice > 0) {
                 total = Math.round(qty * unitPrice * 100) / 100;
             }
+            var netTotal = returned > 0 ? Math.round(Math.max(0, qty - returned) * unitPrice * 100) / 100 : total;
             var unit = item.unit || item.unitName || item.sales_unit || item.salesUnit
-                || getProductUnitById(item.productId) || '件';
-            return { qty: qty, unitPrice: unitPrice, total: total, unit: unit };
+                || getProductUnitById(item.productId || item.product_id) || '件';
+            return { qty: qty, returnableQty: returnable, returnedQty: returned, unitPrice: unitPrice, total: total, netTotal: netTotal, unit: unit };
         }
 
         function sumOrderItemsTotal(items) {
@@ -2715,6 +2856,8 @@
                 : Promise.resolve(null);
             return Promise.all([accP, prP]).then(function (arr) {
                 window.__tmOpsProfile = arr[1];
+                window.bizAccountsList = bizAccountsList || [];
+                return window.bizAccountsList;
             });
         }
 
@@ -2803,6 +2946,35 @@
                 sku: hit.sku || '',
                 unit: hit.unit || getProductUnitById(productId)
             };
+        }
+
+        function resolveOrderItemProductDisplay(item) {
+            if (!item) return { name: '—', sku: '', unit: '' };
+            var name = item.product_name || item.productName;
+            if (name && String(name).trim()) {
+                return {
+                    name: String(name).trim(),
+                    sku: item.sku || item.skuCode || item.sku_code || '',
+                    unit: item.unit || getProductUnitById(item.productId || item.product_id)
+                };
+            }
+            var pid = item.productId != null ? item.productId : item.product_id;
+            var p = getProductDisplayById(pid);
+            if (pid != null && p.name && p.name !== ('产品#undefined') && p.name !== ('产品#null')) {
+                return p;
+            }
+            var skuId = item.skuId != null ? item.skuId : item.sku_id;
+            if (skuId != null && window.TM_SkuCatalogCache && typeof window.TM_SkuCatalogCache.findSkuById === 'function') {
+                var row = window.TM_SkuCatalogCache.findSkuById(skuId);
+                if (row) {
+                    return {
+                        name: row.name || row.spuName || row.productName || ('SKU#' + skuId),
+                        sku: row.skuCode || row.sku || '',
+                        unit: row.unit || row.baseUnit || p.unit || ''
+                    };
+                }
+            }
+            return p;
         }
 
         function setInputValueIfExists(id, value) {
@@ -2900,41 +3072,81 @@
 
         // 加载产品列表
         function loadProductList() {
-            window.wrappedFetch('/api/v1/rd/products', {
+            var mapSkuToProductList = function (skuRows) {
+                if (!Array.isArray(skuRows)) return;
+                window.skuList = skuRows;
+                window.productList = skuRows.map(function (s) {
+                    return {
+                        productId: s.legacy_product_id || s.product_id || s.sku_id,
+                        skuId: s.sku_id,
+                        spuId: s.spu_id,
+                        name: s.spu_name || s.name,
+                        sku: s.sku_code,
+                        price: s.price,
+                        baseUnit: s.base_unit,
+                        salesUnit: s.sales_unit,
+                        attributes: s.attributes,
+                        attributes_display: s.attributes_display,
+                        track_expiry: s.track_expiry,
+                        track_serial: s.track_serial
+                    };
+                });
+                productLookupByName = {};
+                productLookupById = {};
+                window.productList.forEach(function (product) {
+                    const pid = getProductId(product);
+                    const pname = (getProductName(product) || '').trim();
+                    const psku = (getProductSku(product) || '').trim();
+                    if (!pid || !pname) return;
+                    productLookupByName[pname] = { id: Number(pid), skuId: product.skuId, name: pname, sku: psku, unit: getProductUnit(product) };
+                    productLookupById[String(pid)] = { id: Number(pid), skuId: product.skuId, name: pname, sku: psku, unit: getProductUnit(product) };
+                });
+            };
+            window.wrappedFetch('/api/v1/rd/products/skus/options', {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             })
-            .then(async response => {
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") === -1) {
-                    const text = await response.text();
-                    throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
-                }
-                return response.json();
-            })
-            .then(data => {
+            .then(async function (response) {
+                const data = await response.json().catch(function () { return {}; });
                 if (data && data.success && Array.isArray(data.data)) {
-                    window.productList = data.data;
-                    productLookupByName = {};
-                    productLookupById = {};
-                    window.productList.forEach(product => {
-                        const pid = getProductId(product);
-                        const pname = (getProductName(product) || '').trim();
-                        const psku = (getProductSku(product) || '').trim();
-                        if (!pid || !pname) return;
-                        productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
-                        productLookupById[String(pid)] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
-                    });
+                    mapSkuToProductList(data.data);
+                    return;
                 }
+                throw new Error('sku options empty');
+            })
+            .catch(function () {
+                return window.wrappedFetch('/api/v1/rd/products', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(async function (response) {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") === -1) {
+                        const text = await response.text();
+                        throw new Error("服务器返回了非 JSON 数据，可能是 404 页面");
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (data && data.success && Array.isArray(data.data)) {
+                        window.productList = data.data;
+                        productLookupByName = {};
+                        productLookupById = {};
+                        window.productList.forEach(product => {
+                            const pid = getProductId(product);
+                            const pname = (getProductName(product) || '').trim();
+                            const psku = (getProductSku(product) || '').trim();
+                            if (!pid || !pname) return;
+                            productLookupByName[pname] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
+                            productLookupById[String(pid)] = { id: Number(pid), name: pname, sku: psku, unit: getProductUnit(product) };
+                        });
+                    }
+                });
             })
             .catch(error => {
                 console.error('加载产品列表失败:', error);
-                // 检查是否为 401 错误
                 if (error.status === 401 && !loginExpiredShown) {
                     loginExpiredShown = true;
-                    // 引导至登录页
                     window.location.href = '../../login.html';
                 }
             });
@@ -3028,12 +3240,22 @@
                 normalized.sort(function (a, b) { return a.sort - b.sort; });
                 orderStatusDictMap = map;
                 orderStatusDictList = normalized;
+                if (window.TM_OrderDict && typeof window.TM_OrderDict.publishOrderMap === 'function') {
+                    window.TM_OrderDict.publishOrderMap(map);
+                } else {
+                    window.TM_ORDER_STATUS_MAP = Object.assign({}, TM_ORDER_STATUS_FALLBACK, map);
+                }
                 populateOrderStatusSelects();
             })
             .catch(error => {
                 console.warn('加载订单状态字典失败，使用状态码显示:', error);
                 orderStatusDictMap = Object.assign({}, TM_ORDER_STATUS_FALLBACK);
                 orderStatusDictList = getAllOrderStatusOptions();
+                if (window.TM_OrderDict && typeof window.TM_OrderDict.publishOrderMap === 'function') {
+                    window.TM_OrderDict.publishOrderMap(orderStatusDictMap);
+                } else {
+                    window.TM_ORDER_STATUS_MAP = Object.assign({}, orderStatusDictMap);
+                }
                 populateOrderStatusSelects();
             });
         }
@@ -3202,10 +3424,13 @@
                     ? 'font-black text-sm text-slate-400 font-mono'
                     : 'font-black text-sm text-brand-600 font-mono';
                 var subLine = received > 0 ? ('应收 ¥' + total.toFixed(0) + ' · 已收 ¥' + received.toFixed(0)) : ('应收 ¥' + total.toFixed(0));
+                var shortageBadge = (order.hasShortage === true || order.has_shortage === true)
+                    ? '<span class="text-[9px] px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-600 font-bold">含欠货</span>' : '';
                 return '<div onclick="openOrderDetail(\'' + orderId + '\')" class="p-3 border border-slate-50 rounded-xl bg-white hover:border-brand-500 transition-all cursor-pointer flex justify-between items-center gap-2 group">' +
                     '<div class="min-w-0 flex-1"><p class="text-xs font-bold text-slate-800 truncate">' + custName + '</p>' +
                     '<div class="flex flex-wrap items-center gap-1.5 mt-1">' +
                     '<span class="text-[9px] text-teal-600 font-bold">' + statusLabel + '</span>' +
+                    shortageBadge +
                     '<span class="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold">' + finLabel + '</span></div>' +
                     '<p class="text-[9px] text-slate-400 mt-0.5">' + subLine + '</p></div>' +
                     '<div class="text-right shrink-0"><p class="' + remainClass + '">' + remainPrimary + '</p></div></div>';
@@ -3248,7 +3473,13 @@
             if (!auditProductRegistryReady || root.dataset.tmProductMounted !== '1') {
                 auditProductRegistryReady = window.TmProductRegistry.mount(root);
             }
-            return auditProductRegistryReady;
+            return auditProductRegistryReady.then(function () {
+                var PM = window.ProductModule;
+                if (PM && typeof PM.loadProductCapabilities === 'function') {
+                    return PM.loadProductCapabilities();
+                }
+                return null;
+            });
         }
 
         function showAuditOrderError(message, opts) {
@@ -3491,6 +3722,7 @@
             if (!item) return;
             const selectedValue = selectEl.value || '';
             item.matched_product_id = /^\d+$/.test(selectedValue) ? Number(selectedValue) : 0;
+            item.matched_sku_id = item.matched_product_id;
             const selectedOption = selectEl.options[selectEl.selectedIndex];
             const selectedName = selectedOption ? ((selectedOption.getAttribute('data-name') || selectedOption.textContent || '').trim()) : '';
             const selectedSku = selectedOption ? ((selectedOption.getAttribute('data-sku') || '').trim()) : '';
@@ -4157,114 +4389,141 @@
 
         // 打开订单详情模态框
         async function openOrderDetail(orderId) {
-            const order = inProgressOrdersCache.find(item => String(item.orderId || item.id) === String(orderId));
-            if (!order) {
-                showToast('订单不存在或已不在进行中列表');
-                loadInProgressOrders();
-                return;
+            await openOrderDetailModal(orderId, { requireInProgress: true });
+        }
+
+        async function openOrderDetailModal(orderId, opts) {
+            opts = opts || {};
+            var order = null;
+            if (opts.requireInProgress) {
+                order = inProgressOrdersCache.find(function (item) {
+                    return String(item.orderId || item.id) === String(orderId);
+                });
+                if (!order) {
+                    showToast('订单不存在或已不在进行中列表');
+                    loadInProgressOrders();
+                    return;
+                }
             }
-            if (!orderStatusDictList.length) {
-                await loadOrderStatusDict();
-            }
-            if (!bizAccountsList.length) {
-                await loadBizAccounts();
-            }
-            if (!orderWarehousesList.length) {
-                await loadOrderWarehouses();
-            } else {
-                populateOrderWarehouseSelect(order.warehouseId != null ? order.warehouseId : order.warehouse_id);
-            }
-            currentDetailOrderId = order.orderId || order.id;
-            currentDetailOrder = order;
+            if (!orderStatusDictList.length) await loadOrderStatusDict();
+            if (!bizAccountsList.length) await loadBizAccounts();
+            if (!orderWarehousesList.length) await loadOrderWarehouses();
+
+            currentDetailOrderId = orderId;
+            currentDetailOrder = order || { orderId: orderId, id: orderId };
+            window.currentDetailOrderId = currentDetailOrderId;
+            window.currentDetailOrder = currentDetailOrder;
+            openOrderDetailShell();
+            await loadOrderDetailContent(orderId, currentDetailOrder);
+        }
+
+        function openOrderDetailShell() {
             var detailModal = document.getElementById('order-detail-modal');
             bindDetailFinEvents();
             if (detailModal) {
                 if (typeof window.TM_openUnifiedModal === 'function') {
                     window.TM_openUnifiedModal(detailModal);
-            } else {
-                if (typeof window.TM_applyDialogShell === 'function') {
-                    window.TM_applyDialogShell(detailModal);
-                }
-                detailModal.classList.remove('hidden');
-                if (typeof window.TM_pushShellOverlay === 'function') {
-                    window.TM_pushShellOverlay();
-                } else if (typeof window.TM_setShellChromeHidden === 'function') {
-                    window.TM_setShellChromeHidden(true);
                 } else {
-                    document.body.style.overflow = 'hidden';
+                    if (typeof window.TM_applyDialogShell === 'function') window.TM_applyDialogShell(detailModal);
+                    detailModal.classList.remove('hidden');
+                    if (typeof window.TM_pushShellOverlay === 'function') window.TM_pushShellOverlay();
+                    else document.body.style.overflow = 'hidden';
                 }
-            }
             }
             requestAnimationFrame(function () {
                 var scrollEl = document.querySelector('#order-detail-modal .tm-document-modal-scroll');
                 if (scrollEl) scrollEl.scrollTop = 0;
-                syncDetailFinStatusUI(order, { applyOrderFin: true });
             });
-            var hintEl = document.getElementById('detail-order-status-hint');
-            if (hintEl) {
-                hintEl.classList.add('hidden');
-                hintEl.textContent = '';
-            }
             var auxDetails = document.getElementById('detail-aux-details');
             if (auxDetails) auxDetails.open = false;
-            if (window.TM_OrderModal && window.TM_OrderModal.setAuxOpen) {
-                window.TM_OrderModal.setAuxOpen('detail-aux-details', false);
+        }
+
+        async function loadOrderDetailContent(orderId, order) {
+            order = order || {};
+            if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                window.TM_Returns.init();
             }
+            var detailModal = document.getElementById('order-detail-modal');
+            var hintEl = detailModal
+                ? detailModal.querySelector('#detail-order-status-hint')
+                : document.getElementById('detail-order-status-hint');
+            if (hintEl) { hintEl.classList.add('hidden'); hintEl.textContent = ''; }
+
+            var orderRes = await window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
+            }).then(function (r) { return r.json(); }).catch(function () { return null; });
+
+            if (orderRes && orderRes.success && orderRes.data) {
+                Object.assign(order, orderRes.data);
+                currentDetailOrder = order;
+                window.currentDetailOrder = currentDetailOrder;
+            }
+
             var custName = resolveOrderCustomerName(order);
-            var orderCode = order.orderCode || ('ORD-' + orderId);
+            var orderCode = order.orderCode || order.order_code || ('ORD-' + orderId);
             var codeEl = document.getElementById('detail-order-code');
             if (codeEl) codeEl.textContent = orderCode;
-            const dateLabel = order.createTime ? normalizeDateInput(order.createTime) : '--';
-            const sub = document.getElementById('detail-order-meta');
+            var dateLabel = order.createTime || order.create_time ? normalizeDateInput(order.createTime || order.create_time) : '--';
+            var sub = document.getElementById('detail-order-meta');
             if (sub) sub.textContent = custName + ' · 创建 ' + dateLabel;
             setInputValueIfExists('detail-customer-name', custName);
-            setInputValueIfExists('detail-delivery-date', normalizeDateInput(order.deliveryDate));
-            fillDetailOrderStatusSelect(order.orderStatus);
+            setInputValueIfExists('detail-delivery-date', normalizeDateInput(order.deliveryDate || order.delivery_date));
+            fillDetailOrderStatusSelect(order.orderStatus || order.order_status);
             fillDetailReceiptAccountSelect(order);
             var finSel = document.getElementById('detail-fin-status');
-            if (finSel) finSel.value = normalizeFinStatus(order.finStatus);
+            if (finSel) finSel.value = normalizeFinStatus(order.finStatus || order.fin_status);
             populateOrderWarehouseSelect(order.warehouseId != null ? order.warehouseId : order.warehouse_id);
             syncDetailFinStatusUI(order, { applyOrderFin: true });
 
-            window.wrappedFetch('/api/v1/rd/orders/' + encodeURIComponent(orderId), {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(function (response) { return response.json(); })
-            .then(function (result) {
-                if (result && result.success && result.data) {
-                    Object.assign(order, result.data);
-                    currentDetailOrder = order;
-                    fillDetailOrderStatusSelect(order.orderStatus);
-                    fillDetailReceiptAccountSelect(order);
-                    if (finSel) finSel.value = normalizeFinStatus(order.finStatus);
-                    populateOrderWarehouseSelect(order.warehouseId != null ? order.warehouseId : order.warehouse_id);
-                    syncDetailFinStatusUI(order, { applyOrderFin: true });
-                }
-            })
-            .catch(function () { /* 列表数据已展示 */ });
-
-            window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/items', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(response => response.json())
-            .then(result => {
-                const items = result && result.success && Array.isArray(result.data) ? result.data : [];
-                syncOrderHeaderTotalFromItems(order, items);
-                currentDetailOrder = order;
-                renderDetailOrderItems(items);
-                updateDetailRemainingHint(order);
-            })
-            .catch(error => {
-                console.error('加载订单详情失败:', error);
+            var itemsRes = await window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/items', {
+                method: 'GET', headers: { 'Content-Type': 'application/json' }
+            }).then(function (r) { return r.json(); }).catch(function (err) {
+                return { success: false, message: err && err.message ? err.message : '网络错误' };
             });
+
+            var items = itemsRes && itemsRes.success && Array.isArray(itemsRes.data) ? itemsRes.data : [];
+            if (itemsRes && !itemsRes.success) {
+                if (hintEl) {
+                    hintEl.classList.remove('hidden');
+                    hintEl.textContent = '加载订单明细失败：' + (itemsRes.message || '请检查服务与数据库迁移（returned_qty 字段）');
+                }
+            }
+            syncOrderHeaderTotalFromItems(order, items);
+            currentDetailOrder = order;
+            if (window.TM_Returns && window.TM_Returns.patchDetailItemsRender) {
+                window.TM_Returns.patchDetailItemsRender();
+            }
+            invokeDetailOrderItemsRender(items);
+            updateDetailRemainingHint(order);
+            if (window.TM_Returns && window.TM_Returns.syncDetailReturnUi) {
+                window.TM_Returns.syncDetailReturnUi(order);
+            }
+            if (window.TM_Returns && window.TM_Returns.loadDetailReturnsSummary) {
+                window.TM_Returns.loadDetailReturnsSummary(orderId, order, items);
+            }
+            var printBtn = document.getElementById('detail-print-btn');
+            if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
+                window.TM_PrintTriggers.syncOrderDetailPrintBtn(orderId);
+            } else if (printBtn) {
+                printBtn.classList.remove('hidden');
+                if (typeof window.applyRoleUI === 'function') {
+                    window.applyRoleUI({ skipTabSync: true });
+                }
+            }
         }
+        window.openOrderDetailModal = openOrderDetailModal;
+        window.loadOrderDetailContent = loadOrderDetailContent;
 
         // 关闭订单详情模态框
         function closeOrderDetail() {
             currentDetailOrderId = null;
             currentDetailOrder = null;
+            window.currentDetailOrderId = null;
+            window.currentDetailOrder = null;
+            var printBtn = document.getElementById('detail-print-btn');
+            if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
+                window.TM_PrintTriggers.syncOrderDetailPrintBtn(null);
+            } else if (printBtn) printBtn.classList.add('hidden');
             var detailModal = document.getElementById('order-detail-modal');
             if (detailModal && typeof window.TM_closeUnifiedModal === 'function') {
                 window.TM_closeUnifiedModal(detailModal);
@@ -4280,12 +4539,18 @@
                     window.TM_reconcileShellOverlay();
                 }
             }
+            if (typeof window.TM_ensureShellOverlayVisible === 'function') {
+                window.TM_ensureShellOverlayVisible();
+            }
         }
 
         window.__TM_dashboardOpenOrderDetail = openOrderDetail;
         window.__TM_dashboardCloseOrderDetail = closeOrderDetail;
 
         window.openManualOrderModal = function () {
+            if (typeof window.TM_openRapidOrder === 'function') {
+                return window.TM_openRapidOrder({ title: '添加订单', source: 'manual' });
+            }
             if (typeof window.TM_openManualOrderModal === 'function') {
                 window.TM_openManualOrderModal();
             } else {
@@ -4295,6 +4560,14 @@
 
         // 切换主标签页
         function switchTab(tabName) {
+            try {
+                var embedded = (window.self !== window.top)
+                    || (new URLSearchParams(window.location.search).get('embed') === '1');
+                if (embedded && tabName !== 'dashboard') {
+                    window.parent.postMessage({ type: 'TM_SHELL_SWITCH_TAB', tab: tabName }, '*');
+                    return;
+                }
+            } catch (e) { /* ignore */ }
             try {
                 // 根据 tabName 跳转到对应的物理路径
                 switch (tabName) {
@@ -4318,8 +4591,7 @@
                         break;
                 }
 
-                console.log('切换到标签页:', tabName);
-            } catch (error) {
+                } catch (error) {
                 console.error('切换标签页失败:', error);
             }
         }
@@ -4373,9 +4645,6 @@
         function closeVoiceModal(opts) {
             opts = opts || {};
             var reason = opts.reason || 'user_cancel';
-            if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalClosing === 'function') {
-                window.TmOnboarding.notifyVoiceModalClosing(reason);
-            }
             if (voiceAbortController) {
                 try { voiceAbortController.abort(); } catch (abortErr) { /* ignore */ }
                 voiceAbortController = null;
@@ -4403,13 +4672,10 @@
 
         function handleVoiceRecorderStop() {
             if (voiceOnstopHandled) {
-                console.log('[Voice] onstop 已处理，跳过重复');
                 return;
             }
             tmVoiceClearStopFallbackTimers();
             stopVoiceTimer();
-            console.log('[Voice] 开始收尾, chunks=', audioChunks.length, 'timerSec=', voiceTimerSeconds);
-
             var mime = voiceRecorderMime || (recorder && recorder.mimeType) || 'audio/webm';
             var minBytes = tmVoiceMinBlobBytes();
             var maxRetries = tmVoiceUseMobileRecorderStrategy() ? VOICE_IOS_FINALIZE_MAX_RETRIES : 3;
@@ -4423,10 +4689,6 @@
                 var totalChunkBytes = audioChunks.reduce(function (sum, c) {
                     return sum + (c && c.size ? c.size : 0);
                 }, 0);
-                console.log('[Voice] 收尾尝试 #' + retryIndex +
-                    ', blobSize=', audioBlob.size, 'chunkBytes=', totalChunkBytes,
-                    ', chunks=', audioChunks.length, ', timerSec=', voiceTimerSeconds);
-
                 if (audioBlob.size >= minBytes) {
                     voiceOnstopHandled = true;
                     recording = false;
@@ -4554,15 +4816,10 @@
                 recording = true;
                 voiceStopInProgress = false;
                 voiceOnstopHandled = false;
-                if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceRecordingStarted === 'function') {
-                    window.TmOnboarding.onVoiceRecordingStarted();
-                }
-
                 recorder.ondataavailable = function (event) {
                     if (event.data && event.data.size > 0) {
                         audioChunks.push(event.data);
-                        console.log('[Voice] dataavailable chunk=', event.data.size);
-                    }
+                        }
                 };
                 recorder.onerror = function (ev) {
                     console.error('[Voice] MediaRecorder error:', ev);
@@ -4573,11 +4830,9 @@
 
                 if (tmVoiceUseMobileRecorderStrategy()) {
                     recorder.start(250);
-                    console.log('[Voice] 开始录音 (mobile 分片 250ms), state=', recorder.state, 'mime=', voiceRecorderMime);
-                } else {
+                    } else {
                     recorder.start(500);
-                    console.log('[Voice] 开始录音 (desktop 分片 500ms), state=', recorder.state, 'mime=', voiceRecorderMime);
-                }
+                    }
 
                 var pulseIcon = document.getElementById('voice-pulse-icon');
                 if (pulseIcon) pulseIcon.classList.add('recording-pulse');
@@ -4589,23 +4844,13 @@
                 }
                 stopAllVoiceTracks();
                 recording = false;
-                var inOnbVoice = window.TmOnboarding && typeof window.TmOnboarding.isVoiceModalPhase === 'function'
-                    && window.TmOnboarding.isVoiceModalPhase();
-                if (inOnbVoice) {
-                    showVoiceReadyPanel();
-                    if (window.TmOnboarding && typeof window.TmOnboarding.onVoiceRecordingEnded === 'function') {
-                        window.TmOnboarding.onVoiceRecordingEnded();
-                    }
-                } else {
-                    closeVoiceModal({ reason: 'error' });
-                }
+                closeVoiceModal({ reason: 'error' });
             }
         }
 
         // 停止录音
         async function stopVoiceRecording() {
             if (voiceStopInProgress) {
-                console.log('[Voice] 已在停止处理中，忽略重复点击');
                 return;
             }
             try {
@@ -4631,8 +4876,6 @@
                 voiceStopInProgress = true;
                 setVoiceStopButtonLoading(true);
                 showVoiceProcessingPanel('正在结束录音…');
-                console.log('[Voice] 用户点击停止, recorder.state=', recorder.state);
-
                 await new Promise(function (resolve, reject) {
                     voiceStopResolve = resolve;
                     voiceStopReject = reject;
@@ -4684,12 +4927,10 @@
                         if (rec.state === 'recording' && typeof rec.requestData === 'function') {
                             try {
                                 rec.requestData();
-                                console.log('[Voice] requestData 已调用');
-                            } catch (rdErr) {
+                                } catch (rdErr) {
                                 console.warn('[Voice] requestData 失败:', rdErr);
                             }
                         }
-                        console.log('[Voice] 调用 mediaRecorder.stop()');
                         rec.stop();
                         tmVoiceScheduleStopFallbacks();
                     } catch (err) {
@@ -4727,7 +4968,6 @@
                 );
             }
             var ext = tmVoiceBlobExtension(audioBlob);
-            console.log('[Voice] 经服务端上传 OSS (fallback), size=', audioBlob && audioBlob.size, 'ext=', ext);
             var formData = new FormData();
             formData.append('file', audioBlob, 'voice-' + Date.now() + '.' + ext);
             var uploadResp = await window.wrappedFetch('/api/v1/ai/voice/upload', {
@@ -4751,7 +4991,6 @@
             if (!urlFromServer) {
                 throw new Error('服务端未返回音频地址');
             }
-            console.log('[Voice] 服务端上传完成:', urlFromServer);
             return urlFromServer;
         }
 
@@ -4809,7 +5048,6 @@
             voiceUploadInFlight = true;
             voiceAbortController = new AbortController();
             try {
-                console.log('[Voice] processVoiceWithAIService 开始, size=', audioBlob && audioBlob.size);
                 if (!audioBlob || audioBlob.size < tmVoiceMinBlobBytes()) {
                     voiceLastCapturedBlob = null;
                     showVoiceErrorPanel('录音过短或未采集到有效音频，请点击「重新录制」');
@@ -4820,7 +5058,6 @@
                 var audioUrl = await uploadVoiceBlobToStorage(audioBlob);
                 
                 setVoiceProcessingText('正在提交 AI 解析…');
-                console.log('[Voice] AI /execute 请求开始, url=', audioUrl);
                 const response = await window.wrappedFetch('/api/v1/ai/execute', {
                     method: 'POST',
                     headers: {
@@ -4850,7 +5087,6 @@
                 if (!execData) {
                     return;
                 }
-                console.log('[Voice] AI 受理成功');
                 tmOnboardingPrepareVoiceComplete();
                 closeVoiceModal({ reason: 'success' });
                 tmOnboardingNotifyVoiceComplete();
@@ -5019,7 +5255,6 @@
             
             // 检查视频宽度，解决华为等高清摄像头启动慢导致的黑屏问题
             function capture() {
-                console.log('Video width:', video.videoWidth);
                 if (video.videoWidth === 0) {
                     // 如果视频宽度为0，设置延时后重试
                     setTimeout(capture, 200);
@@ -5268,8 +5503,7 @@
         // 添加订单行
         function addOrderRow() {
             // 这里可以添加添加订单行的逻辑
-            console.log('添加订单行');
-        }
+            }
 
         // 显示提示信息
         function showToast(message) {
@@ -5373,9 +5607,32 @@
             window.TM_DashboardPhoto.processImageWithAIService = processImageWithAIService;
         }
     </script>
+    <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
+    <script src="../../assets/js/tm-print/tm-print-api.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-print/tm-print-preview.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-scan-router.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-scan-camera.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-peripheral-settings.js?v=20260706print"></script>
+    <script src="../../assets/js/tm-print/tm-print-triggers.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-order-dict.js?v=20260626"></script>
+    <script src="../../assets/js/ui-sales-orders.js?v=20260626"></script>
+    <script src="../../assets/js/ui-returns.js?v=20260628"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260601audit"></script>
+    <script src="../../assets/js/tm-product-thumb.js?v=20260630"></script>
+    <script src="../../assets/js/tm-biz-accounts.js?v=20260707fix1"></script>
+    <script src="../../assets/js/tm-product-domain.js?v=20260705fix1"></script>
+    <script src="../../assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
+    <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-industry-ui.js?v=20260630"></script>
+    <script src="../../assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
+    <script src="../../assets/js/tm-subscription-notice.js?v=20260706sub"></script>
+    <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
+    <script src="../../assets/js/rapid-order.js?v=20260711pickup2"></script>
+    <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260709order"></script>
 </body>
 </html>
 

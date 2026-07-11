@@ -96,6 +96,7 @@
         }
     </style>
 
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -112,7 +113,6 @@
             }
         };
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../CSS/common.css?v=20260530modal2">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -124,8 +124,7 @@
         // 使用 auth.js 中定义的全局函数
         // function openSubscriptionModal() {
         //     // 这里可以添加弹窗逻辑
-        //     console.log('打开会员订阅弹窗');
-        // }
+        //     // }
 
         // 页面加载时加载用户信息
         document.addEventListener('DOMContentLoaded', function() {
@@ -167,7 +166,7 @@
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供货管理</span>
             </button>
         </nav>
         <!-- 用户信息区域 -->

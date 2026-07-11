@@ -19,19 +19,15 @@ FROM nginx:alpine
 # 拷贝静态文件到 Nginx 目录
 COPY --from=build /app /usr/share/nginx/html
 
-# 配置 Nginx 支持单页应用路由
-COPY <<EOF /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    server_name localhost;
-
-    location / {
-        root /usr/share/nginx/html;
-        index index.html login.html;
-        try_files $uri $uri/ /index.html;
-    }
-}
-EOF
+# 内层 Nginx：/api 反代网关（正式默认 gateway:8080；测试 build-arg / environment 覆盖）
+ARG TM_GATEWAY_HOST=gateway
+ARG TM_GATEWAY_PORT=8080
+ENV TM_GATEWAY_HOST=${TM_GATEWAY_HOST}
+ENV TM_GATEWAY_PORT=${TM_GATEWAY_PORT}
+COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY deploy/docker-entrypoint.d/40-tm-nginx-render.sh /docker-entrypoint.d/40-tm-nginx-render.sh
+RUN chmod +x /docker-entrypoint.d/40-tm-nginx-render.sh \
+    && rm -f /etc/nginx/conf.d/default.conf
 
 # 暴露端口
 EXPOSE 80

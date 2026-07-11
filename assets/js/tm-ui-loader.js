@@ -54,6 +54,7 @@
             var payload = tmJwtPayload(token);
             if (!payload) return;
             var mt = payload.merchantType || 'WHOLESALE';
+            var iv = payload.industryVertical || 'GENERAL';
             var role = payload.roleType || null;
             if (role) {
                 role = window.TM_ROLE_SCHEMA
@@ -61,7 +62,9 @@
                     : String(role).trim().toUpperCase();
             }
             applyMerchantDomAttrs(mt);
+            document.documentElement.setAttribute('data-industry-vertical', iv);
             window.TM_UI_CONTEXT.role = role;
+            window.TM_UI_CONTEXT.industryVertical = iv;
         },
 
         /**
@@ -168,5 +171,4 @@
         setTimeout(dispatchRoleUiReady, 600);
     });
 
-    console.log('[TM_UI_Loader] 商户类型 UI 加载器就绪');
-})();
+    })();

@@ -1,7 +1,5 @@
 // ============== 移动端适配模块开始 ==============
 (function() {
-    console.log('TradeMind: 移动端适配模块初始化');
-
     /** 主壳页（index-app）已由 HTML 底栏 + common.css 接管；仅补充弹窗与横向溢出，不做双导航、不固定顶栏 */
     function injectAppShellAssistStyles() {
         if (document.getElementById('tm-app-shell-assist-css')) return;
@@ -75,13 +73,11 @@
             }
         `;
         document.head.appendChild(styles);
-        console.log('TradeMind: 移动端CSS样式注入成功');
-    }
+        }
 
     // 2. 注入移动端底部导航栏
     function injectMobileNav() {
         if (document.getElementById('mobile-nav')) {
-            console.log('TradeMind: 移动端导航栏已存在，跳过注入');
             return;
         }
 
@@ -115,8 +111,7 @@
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = mobileNavHTML;
         body.appendChild(tempDiv.firstElementChild);
-        console.log('TradeMind: 移动端导航栏注入成功');
-    }
+        }
 
     // 3. 检测是否为移动端
     function isMobile() {
@@ -152,24 +147,18 @@
     function handleResize() {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-            console.log('TradeMind: 窗口大小变化，重新适配');
-            
             if (isMobile()) {
                 document.body.classList.add('tm-mobile-active');
-                console.log('TradeMind: 已切换到移动端模式');
-            } else {
+                } else {
                 document.body.classList.remove('tm-mobile-active');
-                console.log('TradeMind: 已切换到PC端模式');
-            }
+                }
         }, 150);
     }
 
     // 6. 初始化
     function init() {
-        console.log('TradeMind: 开始初始化移动端适配');
         const hasBuiltInMobileNav = !!document.querySelector('.mobile-nav-btn');
         if (hasBuiltInMobileNav) {
-            console.log('TradeMind: 内置底栏（方案 A）：不注入第二套 #mobile-nav');
             injectAppShellAssistStyles();
             if (typeof window.TM_syncAppShellMetrics === 'function') {
                 window.TM_syncAppShellMetrics();
@@ -196,8 +185,7 @@
             window.updateMobileNavActive('dashboard');
         }
 
-        console.log('TradeMind: 移动端适配初始化完成');
-    }
+        }
 
     window.TradeMindMobile = {
         init,
@@ -280,7 +268,7 @@ function updatePageTitle(tabName) {
         supply: '产研供应链',
         marketing: '营销中心',
         intelligent: '智能经营',
-        supplier: '供应商管理'
+        supplier: '供货管理'
     };
     
     const pageTitle = document.getElementById('page-title');
@@ -363,8 +351,6 @@ function confirmOrder() {
     extractedData = orderData;
     
     // 这里可以添加订单确认的逻辑，比如保存到数据库
-    console.log('确认的订单数据:', JSON.stringify(orderData, null, 2));
-    
     // 关闭模态框并显示成功信息
     closeOrderModal();
     showErrorModal('订单确认', '订单已成功确认，相关信息已保存\n\n订单编号: ' + orderData.order.orderId);
@@ -541,7 +527,6 @@ function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
                         const compressedReader = new FileReader();
                         compressedReader.readAsDataURL(blob);
                         compressedReader.onload = (e) => {
-                            console.log(`图片压缩完成: ${file.size} bytes → ${blob.size} bytes (${Math.round((blob.size / file.size) * 100)}%)`);
                             resolve(e.target.result);
                         };
                     } else {
@@ -564,8 +549,6 @@ async function handleFileList(files) {
     for (let i = 0; i < files.length; i++) {
         if (files[i].type.startsWith('image/')) {
             try {
-                console.log(`开始处理图片: ${files[i].name}, 原始大小: ${files[i].size} bytes`);
-                
                 // 压缩图片
                 const compressedData = await compressImage(files[i]);
                 
@@ -670,15 +653,8 @@ async function extractData() {
     
     try {
         // 读取配置文件
-        console.log('正在读取配置文件...');
-        console.log('当前页面URL:', window.location.href);
-        console.log('配置文件相对路径:', 'config/model-config.json');
-        console.log('配置文件绝对路径:', `${window.location.origin}/config/model-config.json`);
-        
         // 使用绝对路径读取配置文件
         const configUrl = `${window.location.origin}/config/model-config.json`;
-        console.log('尝试使用绝对路径:', configUrl);
-        
         // 创建AbortController，添加请求超时处理
         const configController = new AbortController();
         const configTimeoutId = setTimeout(() => {
@@ -697,26 +673,19 @@ async function extractData() {
         // 清除超时定时器
         clearTimeout(configTimeoutId);
     
-        console.log('配置文件请求状态:', configResponse.status, configResponse.statusText);
-        
         if (!configResponse.ok) {
             throw new Error(`读取配置文件失败: ${configResponse.status} ${configResponse.statusText}`);
         }
         
         // 检查响应内容类型
         const contentType = configResponse.headers.get('content-type');
-        console.log('配置文件响应内容类型:', contentType);
-        
         // 读取响应文本
         const configText = await configResponse.text();
-        console.log('配置文件原始内容:', configText);
-        
         // 解析JSON，添加错误处理
         let config;
         try {
             config = JSON.parse(configText);
-            console.log('配置文件读取成功:', config);
-        } catch (error) {
+            } catch (error) {
             console.error('JSON解析失败:', error.message);
             console.error('错误位置:', error.stack);
             
@@ -731,8 +700,7 @@ async function extractData() {
             
             try {
                 config = JSON.parse(fixedConfigText);
-                console.log('配置文件修复后读取成功:', config);
-            } catch (fixedError) {
+                } catch (fixedError) {
                 console.error('配置文件修复后仍解析失败:', fixedError.message);
                 throw new Error(`配置文件JSON格式错误: ${error.message}\n\n问题原因: 配置文件中可能包含无效的控制字符（如实际的换行符）\n\n建议解决方法: 1. 确保配置文件中的所有换行符都使用\\n转义\n2. 检查配置文件中是否有其他无效字符\n3. 重新生成配置文件`);
             }
@@ -746,13 +714,7 @@ async function extractData() {
         
         // 准备请求数据
         const chatContent = chatInput ? chatInput.value.trim() : '';
-        console.log('聊天内容:', chatContent);
-        console.log('上传的图片数量:', uploadedImages.length);
-        
         // 准备消息内容
-        console.log('=== 准备消息内容 ===');
-        console.log('系统提示词:', appConfig.prompt.substring(0, 100), '...');
-        
         let messages = [{
             role: 'system',
             content: appConfig.prompt
@@ -762,21 +724,13 @@ async function extractData() {
         if (chatContent || uploadedImages.length > 0) {
             let userContent;
             
-            console.log('聊天内容:', chatContent || '无');
-            console.log('上传图片数量:', uploadedImages.length);
-            
             if (chatContent && uploadedImages.length > 0) {
                 // 同时有文本和图片
-                console.log('=== 处理文本+图片内容 ===');
                 let imageData = uploadedImages[0].data;
                 const imageSize = imageData.length;
                 
-                console.log('图片大小:', imageSize, 'bytes');
-                console.log('图片类型:', imageData.substring(0, 30), '...');
-                
                 // 对于大图片，考虑压缩或调整大小
                 if (imageSize > 5 * 1024 * 1024) { // 超过5MB
-                    console.log('图片过大，正在压缩...');
                     // 这里可以添加图片压缩逻辑
                 }
                 
@@ -792,29 +746,20 @@ async function extractData() {
                 ];
             } else if (uploadedImages.length > 0) {
                 // 只有图片
-                console.log('=== 处理纯图片内容 ===');
                 let imageData = uploadedImages[0].data;
                 const imageSize = imageData.length;
                 
-                console.log('=== 图片数据详情 ===');
-                console.log('图片数据大小:', imageSize, 'bytes');
-                console.log('图片数据前缀:', imageData.substring(0, 50), '...');
-                console.log('图片数据后缀:', imageData.substring(imageSize - 50, imageSize), '...');
-                
                 // 检查图片数据格式
                 if (imageData.startsWith('data:image')) {
-                    console.log('图片数据格式正确，包含data:image前缀');
                     const mimeType = imageData.match(/data:(image\/[^;]+);base64,/);
                     if (mimeType) {
-                        console.log('图片MIME类型:', mimeType[1]);
-                    }
+                        }
                 } else {
                     console.warn('图片数据缺少data:image前缀，可能导致API错误');
                 }
                 
                 // 对于大图片，考虑压缩或调整大小
                 if (imageSize > 5 * 1024 * 1024) { // 超过5MB
-                    console.log('图片过大，正在压缩...');
                     // 这里可以添加图片压缩逻辑
                 }
                 
@@ -828,12 +773,8 @@ async function extractData() {
                     }
                 ];
                 
-                console.log('=== 构建的用户内容 ===');
-                console.log('内容类型:', Array.isArray(userContent) ? '数组' : '字符串');
-                console.log('内容项数量:', Array.isArray(userContent) ? userContent.length : 'N/A');
-            } else {
+                } else {
                 // 只有文本
-                console.log('=== 处理纯文本内容 ===');
                 userContent = chatContent;
             }
             
@@ -843,11 +784,7 @@ async function extractData() {
                 content: userContent
             };
             messages.push(userMessage);
-            console.log('=== 用户消息构建完成 ===');
-            console.log('用户消息:', JSON.stringify(userMessage, null, 2));
-        }
-        
-        console.log('准备调用API，消息内容:', JSON.stringify(messages, null, 2));
+            }
         
         // 调用大模型API
         const requestBody = {
@@ -871,27 +808,13 @@ async function extractData() {
         if (appConfig.use_cors_proxy && appConfig.cors_proxy) {
             // 使用CORS代理
             apiUrl = `${appConfig.cors_proxy}/${apiUrl}`;
-            console.log('使用CORS代理，最终API URL:', apiUrl);
-        }
-        
-        console.log('=== API请求准备完成 ===');
-        console.log('API请求URL:', apiUrl);
-        console.log('配置信息:', JSON.stringify({ 
-            base_url: appConfig.base_url, 
-            model: appConfig.model, 
-            api_key: appConfig.api_key.substring(0, 10) + '...',
-            prompt: appConfig.prompt.substring(0, 50) + '...' 
-        }, null, 2));
-        console.log('API请求方法:', 'POST');
-        console.log('API请求体:', JSON.stringify(requestBody, null, 2));
+            }
         
         // 设置请求头，包括Authorization
         const headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${appConfig.api_key}`
         };
-        
-        console.log('API请求头:', JSON.stringify(headers, null, 2));
         
         // 创建带超时的fetch请求（300秒）
         const apiController = new AbortController();
@@ -906,10 +829,8 @@ async function extractData() {
                 if (Array.isArray(msg.content)) {
                     msg.content.forEach((content, contentIndex) => {
                         if (content.type === 'image_url' && content.image_url) {
-                            console.log(`消息 ${index + 1} 中的图片 ${contentIndex + 1} 数据大小: ${content.image_url.url.length} 字符`);
                             // 只显示前100个字符，避免控制台日志过大
-                            console.log(`图片URL前100字符: ${content.image_url.url.substring(0, 100)}...`);
-                        }
+                            }
                     });
                 }
             });
@@ -919,12 +840,8 @@ async function extractData() {
         let responseText;
         
         // 直接使用配置的API URL，不使用本地代理
-        console.log('直接使用API URL:', apiUrl);
-        
         // 尝试使用XMLHttpRequest作为fetch的替代方案，提高跨域请求可靠性
         try {
-            console.log('尝试使用XMLHttpRequest发起请求...');
-                
             // 创建XMLHttpRequest对象
             const xhr = new XMLHttpRequest();
             
@@ -961,7 +878,6 @@ async function extractData() {
                 
                 // 监听load事件
                 xhr.onload = () => {
-                    console.log('XMLHttpRequest请求完成，响应状态:', xhr.status, xhr.statusText);
                     resolve();
                 };
                 
@@ -975,9 +891,7 @@ async function extractData() {
                 // 监听状态变化
                 xhr.onreadystatechange = () => {
                     if (xhr.readyState === 4) {
-                        console.log('XMLHttpRequest请求完成，状态:', xhr.readyState, '响应状态:', xhr.status);
-                        console.log('响应内容:', xhr.response);
-                    }
+                        }
                 };
             });
             
@@ -996,15 +910,6 @@ async function extractData() {
             
             // 检查请求体大小
             const requestBodySize = new Blob([JSON.stringify(requestBody)]).size;
-            console.log('=== XMLHttpRequest 发送请求 ===');
-            console.log('请求URL:', apiUrl);
-            console.log('请求头:', JSON.stringify({ 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${appConfig.api_key}`
-            }, null, 2));
-            console.log('请求体大小:', requestBodySize, 'bytes');
-            console.log('请求体预览:', JSON.stringify(requestBody).substring(0, 500), '...');
-            
             xhr.send(JSON.stringify(requestBody));
             
             // 等待请求完成
@@ -1014,9 +919,6 @@ async function extractData() {
             clearTimeout(apiTimeoutId);
             
             // 检查响应状态
-            console.log('=== XMLHttpRequest 响应 ===');
-            console.log('响应状态:', xhr.status, xhr.statusText);
-            
             // 解析响应头字符串为键值对对象
             const parseResponseHeaders = (headersStr) => {
                 const headers = {};
@@ -1034,9 +936,6 @@ async function extractData() {
             };
             
             const responseHeaders = parseResponseHeaders(xhr.getAllResponseHeaders());
-            console.log('响应头:', JSON.stringify(responseHeaders, null, 2));
-            console.log('响应内容:', xhr.response);
-            
             // 检查响应状态，处理400错误
             if (xhr.status >= 400) {
                 // 对于400错误，提供更详细的信息
@@ -1049,14 +948,11 @@ async function extractData() {
             
             // 处理响应
             responseText = xhr.response;
-            console.log('API原始响应:', responseText);
-            
             // 解析响应JSON
             let result;
             try {
                 result = JSON.parse(responseText);
-                console.log('API响应结果:', JSON.stringify(result, null, 2));
-            } catch (e) {
+                } catch (e) {
                 throw new Error(`API返回格式错误: ${e.message}\n原始响应: ${responseText}`);
             }
             
@@ -1070,14 +966,11 @@ async function extractData() {
             }
             
             const aiResponse = result.choices[0].message.content;
-            console.log('AI响应内容:', aiResponse);
-            
             // 解析AI响应
             let extractedResult;
             try {
                 extractedResult = JSON.parse(aiResponse);
-                console.log('解析后的AI结果:', JSON.stringify(extractedResult, null, 2));
-            } catch (e) {
+                } catch (e) {
                 console.error('AI返回非JSON格式，尝试容错处理:', e.message);
                 console.error('AI原始响应:', aiResponse);
                 
@@ -1171,27 +1064,9 @@ async function extractData() {
             }
             
             // 网络错误，尝试使用fetch
-            console.log('网络错误，尝试使用fetch发起请求...');
-        }
+            }
         
         // 使用fetch作为备选方案
-        console.log('=== Fetch API 请求开始 ===');
-        console.log('API URL:', apiUrl);
-        console.log('请求方法:', 'POST');
-        console.log('请求头:', JSON.stringify({ 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${appConfig.api_key}`
-        }, null, 2));
-        console.log('请求体:', JSON.stringify(requestBody, null, 2));
-        console.log('请求选项:', JSON.stringify({ 
-            signal: 'AbortController.signal',
-            credentials: 'omit',
-            mode: 'cors',
-            cache: 'no-cache',
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer'
-        }, null, 2));
-        
         try {
             response = await fetch(apiUrl, { 
                 method: 'POST',
@@ -1208,10 +1083,6 @@ async function extractData() {
                 referrerPolicy: 'no-referrer'
             });
             
-            console.log('=== Fetch API 响应 ===');
-            console.log('响应状态:', response.status, response.statusText);
-            console.log('响应头:', JSON.stringify(Object.fromEntries(response.headers), null, 2));
-            
             // 清除超时定时器
             clearTimeout(apiTimeoutId);
         
@@ -1220,11 +1091,9 @@ async function extractData() {
                 let errorText;
                 try {
                     errorText = await response.text();
-                    console.log('错误响应内容:', errorText);
-                } catch (e) {
+                    } catch (e) {
                     errorText = '无法获取详细错误信息';
-                    console.log('获取错误响应内容失败:', e.message);
-                }
+                    }
                 throw new Error(`API请求失败: ${response.status} ${response.statusText}\n详细信息: ${errorText}`);
             }
         } catch (fetchError) {
@@ -1265,16 +1134,9 @@ async function extractData() {
         try {
             // 先获取原始响应文本，便于调试
             fetchResponseText = await response.text();
-            console.log('=== API原始响应开始 ===');
-            console.log(fetchResponseText);
-            console.log('=== API原始响应结束 ===');
-            
             // 尝试解析为JSON
             result = JSON.parse(fetchResponseText);
-            console.log('=== API解析后响应 ===');
-            console.log(JSON.stringify(result, null, 2));
-            console.log('=== API解析后响应结束 ===');
-        } catch (e) {
+            } catch (e) {
             console.error('=== JSON解析失败 ===');
             console.error('原始响应:', fetchResponseText);
             console.error('解析错误:', e.message);
@@ -1291,14 +1153,11 @@ async function extractData() {
         }
         
         const aiResponse = result.choices[0].message.content;
-        console.log('AI响应内容:', aiResponse);
-        
         // 解析AI响应
         let extractedResult;
         try {
             extractedResult = JSON.parse(aiResponse);
-            console.log('解析后的AI结果:', JSON.stringify(extractedResult, null, 2));
-        } catch (e) {
+            } catch (e) {
             console.error('AI返回非JSON格式，尝试容错处理:', e.message);
             console.error('AI原始响应:', aiResponse);
             
@@ -1348,15 +1207,11 @@ async function extractData() {
             }
         };
         
-        console.log('转换后的数据:', JSON.stringify(extractedData, null, 2));
-        
         // 恢复提取按钮状态
         extractBtn.innerHTML = originalText;
         extractBtn.disabled = false;
         
         // 显示订单确认模态框
-        console.log('=== 显示订单确认模态框 ===');
-        console.log('提取的数据:', JSON.stringify(extractedData, null, 2));
         showOrderModal();
     } catch (error) {
         // 清除超时定时器

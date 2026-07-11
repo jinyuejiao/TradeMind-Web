@@ -1,3 +1,10 @@
+/* 运维门户覆盖商户壳 flex-direction: row，手机端使用 column 三段式 */
+@media (max-width: 767px) {
+    body.tm-ops-portal.tm-layout-mobile {
+        flex-direction: column !important;
+    }
+}
+
 /* TradeMind 运维中心门户 — 与租户端物理隔离的样式域 */
 body.tm-ops-portal {
     margin: 0;
@@ -235,6 +242,47 @@ body.tm-ops-portal {
 
     #ops-tree-root {
         max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body.tm-ops-portal .tm-ops-mobile-header {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    body.tm-ops-portal.tm-layout-mobile {
+        height: 100dvh;
+        min-height: 100dvh;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+
+    body.tm-ops-portal.tm-layout-mobile > .tm-ops-shell-main {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.tm-ops-portal .tm-ops-mobile-header,
+    body.tm-ops-portal .tm-app-header.tm-ops-mobile-header {
+        padding-top: env(safe-area-inset-top, 0px);
+        flex-shrink: 0;
+    }
+
+    body.tm-ops-portal #tm-ops-view-root,
+    body.tm-ops-portal .tm-ops-view-root {
+        flex: 1 1 auto;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+        padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+    }
+
+    body.tm-ops-portal #tm-app-tabbar {
+        flex-shrink: 0;
     }
 }
 

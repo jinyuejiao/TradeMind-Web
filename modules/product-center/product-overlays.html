@@ -14,81 +14,8 @@
             <button type="button" onclick="closeProductDetail()" class="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
         </div>
         <div id="product-form-errors" class="hidden mx-4 mt-3 md:mx-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 leading-relaxed shrink-0" role="alert"></div>
-        <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar space-y-4">
-            <section class="tm-product-edit-section">
-                <h3 class="tm-product-edit-section__title">基本信息 <span class="text-slate-300 font-normal normal-case tracking-normal">（必填）</span></h3>
-                <div class="tm-product-edit-grid">
-                    <div class="tm-product-field tm-product-field--full">
-                        <label class="tm-product-label" for="detail-product-name">产品名称<span class="tm-product-required">*</span></label>
-                        <input id="detail-product-name" type="text" class="form-input" placeholder="如：东北大板原味" autocomplete="off" />
-                    </div>
-                    <div class="tm-product-field">
-                        <label class="tm-product-label" for="detail-product-category">商品类别 <span class="text-[10px] text-slate-400 font-normal">选填</span></label>
-                        <select id="detail-product-category" class="form-input w-full" aria-label="商品类别"></select>
-                    </div>
-                    <div class="tm-product-field">
-                        <label class="tm-product-label" for="detail-product-price">预设销售价<span class="tm-product-required">*</span></label>
-                        <div class="tm-product-input-suffix">
-                            <input id="detail-product-price" type="number" min="0" step="0.01" class="form-input font-mono font-bold text-brand-600" placeholder="0.00" />
-                            <span class="tm-product-suffix">元</span>
-                        </div>
-                    </div>
-                    <div class="tm-product-field">
-                        <label class="tm-product-label" for="detail-product-base-unit">基本单位<span class="tm-product-required">*</span></label>
-                        <div class="flex gap-2">
-                            <input type="text" id="detail-product-base-unit" class="form-input flex-1 min-w-0" placeholder="件、箱、吨" autocomplete="off" oninput="window.ProductModule.onBaseUnitChanged()" />
-                            <button type="button" onclick="openProductUnitModal()" class="tm-product-unit-btn shrink-0" title="配置包装单位换算">换算</button>
-                        </div>
-                    </div>
-                    <div class="tm-product-field">
-                        <label class="tm-product-label" for="detail-product-stock">当前库存总量</label>
-                        <input id="detail-product-stock" type="number" min="0" step="1" class="form-input font-mono" placeholder="留空视为 0" />
-                        <p class="tm-product-hint">按基本单位统计；分仓填写将自动汇总</p>
-                    </div>
-                </div>
-            </section>
-            <section class="tm-product-edit-section tm-product-edit-section--advanced">
-                <button type="button" onclick="toggleProductDetailAdvanced()" class="tm-product-advanced-toggle w-full" aria-expanded="false" aria-controls="product-advanced-drawer">
-                    <span class="flex items-center gap-2">
-                        <i class="ph ph-sliders-horizontal text-brand-500"></i>
-                        <span class="font-bold text-slate-700">高级配置</span>
-                        <span class="text-[10px] text-slate-400 font-normal">选填</span>
-                    </span>
-                    <i id="product-detail-advanced-icon" class="ph ph-caret-down text-slate-400 transition-transform"></i>
-                </button>
-                <div id="product-advanced-drawer" class="tm-product-advanced-drawer" aria-hidden="true">
-                    <div class="tm-product-edit-grid tm-product-edit-grid--advanced">
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-sku-input">产品 SKU</label>
-                            <input id="detail-product-sku-input" type="text" class="form-input font-mono text-sm" placeholder="留空将自动生成" autocomplete="off" />
-                        </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-supplier">关联供应商</label>
-                            <select id="detail-product-supplier" class="form-input"></select>
-                        </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-purchase-unit">默认入库单位</label>
-                            <select id="detail-product-purchase-unit" class="form-input"></select>
-                        </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-sales-unit">默认出库单位</label>
-                            <select id="detail-product-sales-unit" class="form-input"></select>
-                        </div>
-                        <div class="tm-product-field">
-                            <label class="tm-product-label" for="detail-product-warning-stock">预警库存下限</label>
-                            <input id="detail-product-warning-stock" type="number" min="0" step="1" class="form-input border-red-100 font-mono" placeholder="基本单位" />
-                        </div>
-                        <div class="tm-product-field tm-product-field--full">
-                            <label class="tm-product-label">各仓库库存</label>
-                            <div id="detail-product-warehouse-stock" class="tm-product-warehouse-panel"></div>
-                        </div>
-                        <div class="tm-product-field tm-product-field--full">
-                            <label class="tm-product-label" for="detail-product-description">产品详情描述</label>
-                            <textarea id="detail-product-description" class="form-input tm-product-textarea no-scrollbar" rows="3" placeholder="规格、卖点、存储说明等"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </section>
+        <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 no-scrollbar">
+            <div id="product-detail-form-root"></div>
         </div>
         <div class="tm-product-edit-footer tm-mobile-modal-footer px-4 py-3 md:px-6 md:py-4 border-t border-slate-100 shrink-0 mt-auto">
             <p class="text-[10px] text-slate-400 text-center mb-3 md:hidden">保存后同步库存与开单识别</p>
@@ -121,6 +48,148 @@
         <div id="unit-conversion-rows" class="space-y-3"></div>
         <button type="button" onclick="window.ProductModule.saveUnitConversionModal()" class="w-full mt-4 bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold shadow-lg active:scale-[0.98] transition-transform">确定</button>
         <button type="button" onclick="closeProductUnitModal()" class="w-full mt-2 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors">取消</button>
+    </div>
+</div>
+
+<div id="product-variant-modal" class="tm-variant-modal tm-dialog-root hidden fixed inset-0 z-[140] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet" aria-hidden="true">
+    <div class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" onclick="closeProductVariantModal()"></div>
+    <div class="relative bg-white w-full max-w-2xl max-h-[min(92dvh,100%)] md:max-h-[88vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden fade-in tm-variant-modal__panel">
+        <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div>
+                <h3 class="font-black text-slate-800 text-sm">规格属性配置</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">勾选模板规格与产品专属规格，确认 SKU 组合与分仓库存</p>
+            </div>
+            <button type="button" onclick="closeProductVariantModal()" class="p-2 hover:bg-slate-100 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+        </header>
+        <div id="tm-variant-modal-scroll" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4">
+            <div id="tm-variant-modal-upper" class="space-y-4">
+            <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">通用规格模板</p>
+                        <p id="tm-variant-active-template-name" class="text-xs font-bold text-slate-700 mt-0.5 truncate">加载中…</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5 leading-snug">勾选下方属性取值；模板可在「管理模板」中编辑，对本店所有产品生效</p>
+                    </div>
+                    <button type="button" onclick="openAttributeTemplateModal()" class="shrink-0 text-[10px] font-bold text-brand-600 border border-brand-200 rounded-lg px-2.5 py-1.5 hover:bg-brand-50 whitespace-nowrap">管理模板</button>
+                </div>
+                <select id="tm-variant-modal-template" class="hidden" aria-hidden="true"><option value="">选择属性模板</option></select>
+                <div id="tm-variant-modal-template-attrs" class="text-xs space-y-2"></div>
+            </div>
+            <div class="rounded-xl border border-dashed border-slate-200 p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-500">产品专属规格</p>
+                        <p class="text-[10px] text-slate-400">仅当前产品有效，不写入通用模板</p>
+                    </div>
+                    <button type="button" id="tm-variant-modal-add-custom" class="text-[10px] text-brand-600 font-bold">+ 添加</button>
+                </div>
+                <div id="tm-variant-modal-custom-list" class="space-y-2"></div>
+            </div>
+            </div>
+            <div id="tm-variant-combo-panel" class="flex flex-col min-h-[10rem] mt-2 pt-2 border-t border-slate-100">
+                <div class="flex items-center justify-between mb-2 gap-2 shrink-0">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <p class="text-xs font-bold text-slate-700 shrink-0">SKU 组合与库存</p>
+                        <button type="button" id="tm-variant-combo-expand-btn" class="tm-variant-combo-expand-btn inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-brand-600 shrink-0" title="展开编辑区域" aria-label="展开 SKU 编辑区域">
+                            <i class="ph ph-caret-up text-sm"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" id="tm-variant-generate-btn" class="text-[10px] font-bold text-brand-600 border border-brand-200 rounded-lg px-2.5 py-1 hover:bg-brand-50">生成组合</button>
+                        <p id="tm-variant-combo-summary" class="text-[10px] text-brand-600 font-mono"></p>
+                    </div>
+                </div>
+                <div class="tm-variant-combo-scroll rounded-xl border border-slate-100 overflow-auto flex-1 min-h-0">
+                    <table class="w-full text-left text-xs min-w-[28rem]">
+                        <thead class="bg-slate-50 text-[10px] text-slate-400 font-bold uppercase">
+                            <tr id="tm-variant-combo-head">
+                                <th class="px-3 py-2">规格组合</th>
+                                <th class="px-2 py-2 text-center w-14">图</th>
+                                <th class="px-2 py-2 text-right w-20">售价</th>
+                                <th class="px-2 py-2 text-right" colspan="99">各仓库存 / 合计 / 操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tm-variant-combo-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <footer class="px-5 py-4 border-t border-slate-100 shrink-0 flex gap-3">
+            <button type="button" onclick="closeProductVariantModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">取消</button>
+            <button type="button" onclick="confirmProductVariantModal()" class="flex-[1.4] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/20 active:scale-[0.98]">确认规格与库存</button>
+        </footer>
+    </div>
+</div>
+
+<div id="product-expiry-modal" class="tm-expiry-modal tm-dialog-root hidden fixed inset-0 z-[142] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet" aria-hidden="true">
+    <div class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" onclick="closeProductExpiryModal()"></div>
+    <div class="relative bg-white w-full max-w-md max-h-[min(92dvh,100%)] md:max-h-[88vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden fade-in">
+        <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div>
+                <h3 class="font-black text-slate-800 text-sm">保质期配置</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">按批次管理保质期，入库需填写生产日期</p>
+            </div>
+            <button type="button" onclick="closeProductExpiryModal()" class="p-2 hover:bg-slate-100 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+        </header>
+        <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
+            <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="tm-expiry-modal-days">默认保质期</label>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <input type="number" id="tm-expiry-modal-days" min="1" step="1" class="form-input flex-1 font-mono text-sm" placeholder="180" />
+                        <span class="text-xs text-slate-400 shrink-0">天</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1.5">新建批次时默认填入的保质期天数</p>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="tm-expiry-modal-policy">出库策略</label>
+                    <select id="tm-expiry-modal-policy" class="form-input w-full text-sm mt-1.5">
+                        <option value="FEFO">先到期先出 (FEFO)</option>
+                        <option value="FIFO">先进先出 (FIFO)</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1.5">出库时优先扣减哪一批库存</p>
+                </div>
+            </div>
+        </div>
+        <footer class="px-5 py-4 border-t border-slate-100 shrink-0 flex gap-3">
+            <button type="button" onclick="closeProductExpiryModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">取消</button>
+            <button type="button" onclick="confirmProductExpiryModal()" class="flex-[1.4] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/20 active:scale-[0.98]">确认保质期</button>
+        </footer>
+    </div>
+</div>
+
+<div id="attribute-template-modal" class="tm-attr-tpl-modal tm-dialog-root hidden fixed inset-0 z-[145] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet" aria-hidden="true">
+    <div class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm" onclick="closeAttributeTemplateModal()"></div>
+    <div class="relative bg-white w-full max-w-3xl max-h-[min(92dvh,100%)] md:max-h-[88vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden fade-in">
+        <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div>
+                <h3 class="font-black text-slate-800 text-sm">规格属性模板</h3>
+                <p class="text-[10px] text-slate-400 mt-0.5">管理系统内置模板或创建商户通用规格，保存后全店产品可用</p>
+            </div>
+            <button type="button" onclick="closeAttributeTemplateModal()" class="p-2 hover:bg-slate-100 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+        </header>
+        <div class="flex flex-1 min-h-0 flex-col md:flex-row">
+            <aside class="md:w-44 shrink-0 border-b md:border-b-0 md:border-r border-slate-100 p-3 overflow-y-auto max-h-[28vh] md:max-h-none">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <span class="text-[10px] font-bold text-slate-400">模板列表</span>
+                    <button type="button" id="tm-attr-tpl-new-btn" class="text-[10px] text-brand-600 font-bold">+ 新建</button>
+                </div>
+                <div id="tm-attr-tpl-list" class="space-y-1"></div>
+            </aside>
+            <div class="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
+                <p id="tm-attr-tpl-editor-title" class="text-sm font-black text-slate-800 mb-3 shrink-0">选择左侧模板</p>
+                <div id="tm-attr-tpl-defs" class="flex-1 min-h-0 overflow-y-auto space-y-2"></div>
+                <div id="tm-attr-tpl-new-panel" class="hidden mt-3 p-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/30 space-y-2 shrink-0">
+                    <label class="text-[10px] font-bold text-slate-500">新模板名称</label>
+                    <input type="text" id="tm-attr-tpl-new-name" class="form-input w-full text-xs" placeholder="如：夏季服装" />
+                    <button type="button" onclick="saveNewAttributeTemplate()" class="w-full py-2 rounded-xl bg-brand-600 text-white text-xs font-bold">创建模板</button>
+                </div>
+            </div>
+        </div>
+        <footer class="px-5 py-4 border-t border-slate-100 shrink-0 flex gap-3">
+            <button type="button" onclick="closeAttributeTemplateModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">取消</button>
+            <button type="button" onclick="saveAttributeTemplateModal()" class="flex-[1.4] py-3 rounded-2xl bg-brand-600 text-white text-xs font-black shadow-lg shadow-brand-500/20">保存模板</button>
+        </footer>
     </div>
 </div>
 

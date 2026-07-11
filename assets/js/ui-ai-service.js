@@ -266,7 +266,6 @@
             attempts++;
         }
 
-        console.log('[TM_AIService] 图片压缩', blob.size, '->', compressed.size, 'rev=', REV);
         return compressed;
     }
 
@@ -315,7 +314,6 @@
                         reject(new Error('图片压缩失败'));
                         return;
                     }
-                    console.log('[TM_AIService] 订单识图 JPEG', blob.size, '->', out.size, 'rev=', REV);
                     resolve(out);
                 }, 'image/jpeg', IMAGE_QUALITY);
             };

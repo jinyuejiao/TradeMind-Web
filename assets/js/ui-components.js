@@ -7,8 +7,6 @@
 (function() {
     'use strict';
 
-    console.log('[UI-Components] 初始化 UI 组件化系统...');
-
     // ================ 组件模板库 ================
     window.TradeMindApp.components = {
         /**
@@ -141,8 +139,6 @@
          * 初始化响应式布局
          */
         init: function() {
-            console.log('[UI-Components] 初始化响应式布局...');
-
             if (window.TM_Responsive && typeof window.TM_Responsive.init === 'function') {
                 window.TM_Responsive.init();
             }
@@ -166,7 +162,6 @@
             const newMode = isMobile ? 'mobile' : 'desktop';
             
             if (newMode !== this.currentMode) {
-                console.log('[UI-Components] 切换布局模式:', newMode);
                 this.currentMode = newMode;
                 this.applyLayoutMode();
             }
@@ -232,12 +227,11 @@
             } else if (currentPath.includes('/product-center/')) {
                 pageTitle = '产品中心';
             } else if (currentPath.includes('/supply-chain/')) {
-                pageTitle = '供应商管理';
+                pageTitle = '供货管理';
             }
             
             // 注入移动端顶部导航
             if (!document.querySelector('.tm-mobile-header')) {
-                console.log('[UI-Components] 注入移动端顶部导航');
                 document.body.insertAdjacentHTML(
                     'afterbegin',
                     window.TradeMindApp.components.mobileHeader({ pageTitle: pageTitle })
@@ -246,7 +240,6 @@
             
             // 注入移动端底部导航
             if (!document.querySelector('.tm-mobile-nav')) {
-                console.log('[UI-Components] 注入移动端底部导航');
                 document.body.insertAdjacentHTML(
                     'beforeend',
                     window.TradeMindApp.components.mobileNav({ currentPath: currentPath })
@@ -264,8 +257,6 @@
          * @param {object} data - 数据对象
          */
         window.TM_UI.showModal = function(templateId, data) {
-            console.log('[UI-Components] 显示模态框:', templateId, data);
-            
             // 确保容器存在
             let container = document.getElementById('common-modal-container');
             if (!container) {
@@ -273,16 +264,14 @@
                 container.id = 'common-modal-container';
                 container.className = 'hidden fixed inset-0 z-[110] flex items-center justify-center p-0 md:p-8 modal-blur';
                 document.body.appendChild(container);
-                console.log('[UI-Components] 创建公共模态框容器');
-            }
+                }
             
             // 查找模板
             const template = document.getElementById(templateId);
             if (template) {
                 container.innerHTML = template.innerHTML;
                 container.classList.remove('hidden');
-                console.log('[UI-Components] 模态框已显示');
-            } else {
+                } else {
                 console.error('[UI-Components] 未找到模板:', templateId);
                 if (window.TM_UI.showNotification) {
                     window.TM_UI.showNotification('模板未找到', 'error');
@@ -294,7 +283,6 @@
          * 关闭模态框（增强版）
          */
         window.TM_UI.closeModal = function() {
-            console.log('[UI-Components] 关闭模态框');
             const container = document.getElementById('common-modal-container');
             if (container) {
                 container.classList.add('hidden');
@@ -305,8 +293,6 @@
          * 注入公共 UI 组件
          */
         window.TM_UI.injectCommonUI = function() {
-            console.log('[UI-Components] 注入公共 UI 组件');
-            
             // 设置页面标题
             document.title = '杭州巨猿科技有限公司 - TradeMind商贸智脑';
             
@@ -332,5 +318,4 @@
         window.TradeMindApp.layout.init();
     }
 
-    console.log('[UI-Components] UI 组件化系统初始化完成！');
-})();
+    })();

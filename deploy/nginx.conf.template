@@ -1,0 +1,27 @@
+server {
+    listen 80;
+    server_name localhost;
+
+    client_max_body_size 32m;
+
+    # Docker 内置 DNS，避免网关容器未就绪时 Nginx 启动失败
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    # 正式：gateway:8080；测试：test-gateway:7080（compose environment 注入）
+    location /api/ {
+        set $tm_gw_host ${TM_GATEWAY_HOST};
+        set $tm_gw_port ${TM_GATEWAY_PORT};
+        proxy_pass http://$tm_gw_host:$tm_gw_port;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html login.html ops-hub.html promoter-portal.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

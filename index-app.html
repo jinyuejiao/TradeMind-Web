@@ -6,14 +6,14 @@
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
 
     <script src="/assets/js/env-config.js"></script>
-    <script src="/assets/js/api-client.js?v=20260506r3"></script>
+    <script src="/assets/js/api-client.js?v=20260711log"></script>
     <script src="/assets/js/dashboard-voice-upload.js?v=20260524"></script>
     <script src="/assets/js/ui-ai-service.js?v=20260603jpeg"></script>
     <script src="/assets/js/ai-order-extract-parse.js?v=20260601audit"></script>
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
     <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260525layout">
-    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260531ordfix">
+    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260708poster">
     <link rel="stylesheet" href="/assets/css/ui-ai-service.css?v=20260601">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -25,37 +25,58 @@
     <script src="/assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/assets/js/tm-embed-shell.js?v=20260530modal"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="/assets/js/tm-embed-shell.js?v=20260709nav1"></script>
     <script src="/assets/js/tm-format.js?v=20260524ui"></script>
     <script src="/assets/js/tm-shell-insets.js?v=20260530modal2"></script>
     <script src="/assets/js/tm-compliance.js?v=20260524compliance4"></script>
     <script src="/assets/js/tm-order-total.js?v=20260524ui"></script>
     <script src="/assets/js/tm-ui-feedback.js?v=20260524ui"></script>
-    <script src="/assets/js/tm-confirm.js?v=20260524crm"></script>
-    <link rel="stylesheet" href="/assets/css/tm-onboarding.css?v=20260524shell">
+    <script src="/assets/js/tm-confirm.js?v=20260709nav1"></script>
     <link rel="stylesheet" href="/assets/css/tm-merchant-feedback.css?v=20260526fb">
+    <link rel="stylesheet" href="/assets/css/tm-first-login-wizard.css?v=20260630">
+    <link rel="stylesheet" href="/assets/css/rapid-order.css?v=20260711aux">
     <script src="/assets/js/tm-oss-path.js?v=20260527"></script>
     <script src="/assets/js/tm-oss-upload.js?v=20260603img2"></script>
     <script src="/assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="/assets/js/tm-merchant-feedback.js?v=20260526fb3"></script>
-    <script src="/assets/js/auth.js?v=20260615embedfix"></script>
+    <script src="/assets/js/auth.js?v=20260711pay"></script>
     <script src="/modules/membership/referral-rewards.js?v=20260521ref"></script>
-    <script src="/assets/js/main-app.js"></script>
+    <script src="/assets/js/main-app.js?v=20260707fix1"></script>
     <script src="/assets/js/ui-permissions.js?v=20260527rbac"></script>
     <script src="/assets/js/ui-role-engine.js?v=20260527rbac"></script>
     <script src="/MobileAdapt/TM_Responsive.js"></script>
     <script src="/assets/js/ui-components.js"></script>
     <script src="/assets/js/tm-ui-loader.js"></script>
     <link rel="stylesheet" href="/assets/css/ops-portal.css?v=tm-ops-11">
-    <script src="/assets/js/ui-ops.js?v=tm-ops-merchant-fix-20260601"></script>
-    <script src="/assets/js/ui-main.js?v=20260601ops"></script>
-    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260531ordfix">
+    <script src="/assets/js/ui-ops.js?v=tm-ops-full-20260706"></script>
+    <script src="/assets/js/ui-main.js?v=20260711smartops"></script>
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260709tpl">
     <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260531unit">
-    <script src="/assets/js/ui-product-center.js?v=20260531modal-fix"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260531unit"></script>
-    <script src="/assets/js/tm-onboarding-registry.js?v=20260524onb2"></script>
-    <script src="/assets/js/tm-onboarding-sync.js?v=20260524onb2"></script>
-    <script src="/assets/js/tm-onboarding.js?v=20260612voice"></script>
+    <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260709print1">
+    <script src="/assets/js/tm-product-domain.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-biz-accounts.js?v=20260707fix1"></script>
+    <script src="/assets/js/tm-master-data-cache.js?v=20260709fix3"></script>
+    <script src="/assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260709fix1"></script>
+    <script src="/assets/js/tm-product-registry-form.js?v=20260711expiry2"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260711expiry2"></script>
+    <script src="/assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260709fix3"></script>
+    <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-sku-catalog-cache.js?v=20260706fix1"></script>
+    <script src="/assets/js/tm-industry-ui.js?v=20260630"></script>
+    <script src="/assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
+    <script src="/assets/js/tm-subscription-notice.js?v=20260706sub"></script>
+    <script src="/assets/js/tm-print/tm-print-api.js?v=20260709print1"></script>
+    <script src="/assets/js/tm-print/tm-print-core.js?v=20260709print1"></script>
+    <script src="/assets/js/tm-print/tm-print-preview.js?v=20260709print1"></script>
+    <script src="/assets/js/tm-scan-router.js?v=20260706print"></script>
+    <script src="/assets/js/tm-scan-camera.js?v=20260706print"></script>
+    <script src="/assets/js/tm-peripheral-settings.js?v=20260706print"></script>
+    <script src="/assets/js/tm-print/tm-print-triggers.js?v=20260709print1"></script>
+    <script src="/assets/js/tm-first-login-wizard.js?v=20260630"></script>
+    <script src="/assets/js/rapid-order.js?v=20260711pickup2"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans w-full flex overflow-hidden">
 
@@ -81,7 +102,7 @@
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="switchTab('supplier')" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供货管理</span>
             </button>
         </nav>
 
@@ -557,13 +578,13 @@
 
             <!-- 产品编辑/单位换算/调拨弹窗由 TM_syncProductCenterOverlays 注入 body -->
 
-            <!-- ================= [5] 供应商管理 ================= -->
+            <!-- ================= [5] 供货管理 ================= -->
             <div id="view-supplier" class="view-section hidden w-full p-4 md:p-8 space-y-6 fade-in">
-                <!-- 供应商管理内容将通过 JavaScript 动态加载 -->
+                <!-- 供货管理内容将通过 JavaScript 动态加载 -->
                 <div class="flex justify-center items-center h-64">
                     <div class="text-center">
                         <div class="w-16 h-16 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p class="text-sm font-bold text-brand-600 tracking-widest uppercase">加载供应商管理内容...</p>
+                        <p class="text-sm font-bold text-brand-600 tracking-widest uppercase">加载供货管理内容...</p>
                     </div>
                 </div>
             </div>

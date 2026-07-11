@@ -12,8 +12,8 @@
     <link rel="stylesheet" href="/assets/css/theme.css">
     <link rel="stylesheet" href="/assets/css/ui-main.css">
     <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260525layout">
-    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260525layout">
-    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260519pc">
+    <link rel="stylesheet" href="/modules/CSS/common.css?v=20260707fix1">
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260709tpl">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -27,17 +27,26 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="/assets/js/auth.js?v=20260422r13"></script>
+    <script src="/assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
+    <script src="/assets/js/tm-subscription-notice.js?v=20260706sub"></script>
     <script src="/assets/js/tm-metrics.js?v=20260528metrics"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/assets/js/main-app.js"></script>
+    <script src="/assets/js/main-app.js?v=20260707fix1"></script>
     <script src="/assets/js/ui-components.js"></script>
-    <script src="/assets/js/ui-main.js?v=20260519pc"></script>
+    <script src="/assets/js/ui-main.js?v=20260711expiry"></script>
     <script src="/assets/js/tenant-ops.js?v=20260526ops"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260531modal-fix"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260531modal-fix"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260711cat"></script>
+    <script src="/assets/js/ui-ai-service.js?v=20260603jpeg"></script>
+    <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-product-domain.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-master-data-cache.js?v=20260711cat"></script>
+    <script src="/assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-product-registry-form.js?v=20260711expiry2"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260711expiry2"></script>
+    <script src="/assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260709fix3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('[product-center] 页面加载完成');
             var boot = function() {
                 if (typeof TM_syncProductCenterOverlays === 'function') {
                     TM_syncProductCenterOverlays().finally(function() {
@@ -51,6 +60,9 @@
             };
             if (window.injectCommonUI) {
                 window.injectCommonUI();
+            }
+            if (typeof window.TM_loadWorkbenchProfile === 'function') {
+                window.TM_loadWorkbenchProfile();
             }
             setTimeout(boot, 50);
         });
@@ -79,7 +91,7 @@
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
             <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供货管理</span>
             </button>
         </nav>
         <div class="border-t border-slate-800 bg-slate-900 mt-auto">
@@ -180,6 +192,24 @@
                                 </div>
                             </div>
 
+                            <div class="relative shrink-0" id="warehouse-filter">
+                                <button type="button" onclick="window.ProductModule.toggleDropdown('warehouse-dropdown', event)" class="product-filter-chip flex items-center gap-0.5 md:gap-2 px-1.5 py-1 md:px-5 md:py-2.5 bg-slate-50 rounded-lg md:rounded-2xl text-[9px] md:text-sm font-bold text-slate-600 hover:bg-white hover:shadow-md transition-all whitespace-nowrap max-w-[3.75rem] md:max-w-none">
+                                    <i class="ph ph-warehouse text-teal-500 text-xs md:text-base shrink-0"></i>
+                                    <span id="warehouse-label" class="truncate min-w-0">仓库</span>
+                                    <i class="ph ph-caret-down text-[8px] md:text-xs filter-caret-icon shrink-0"></i>
+                                </button>
+                                <div id="warehouse-dropdown" class="hidden absolute top-full left-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                                    <div class="p-2">
+                                        <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest">选择仓库</div>
+                                        <div id="warehouse-options"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" id="product-view-spu-btn" onclick="window.ProductModule.toggleSpuListView()" class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 shrink-0" title="切换 SPU 树形列表">
+                                <i class="ph ph-tree-structure"></i> SPU 视图
+                            </button>
+
                             <button type="button" onclick="window.ProductModule.resetFilters()" id="reset-filter-btn" class="hidden px-1.5 py-1 md:px-4 md:py-2.5 text-teal-600 text-[9px] md:text-sm font-bold hover:bg-teal-50 rounded-lg md:rounded-2xl transition-all items-center gap-0.5 md:gap-1 shrink-0 whitespace-nowrap">
                                 <i class="ph ph-x-circle text-xs md:text-sm"></i><span class="md:hidden">清</span><span class="hidden md:inline">重置</span>
                             </button>
@@ -189,7 +219,7 @@
                         </button>
                     </div>
 
-                    <div class="overflow-x-auto no-scrollbar hidden md:block">
+                    <div id="product-library-scroll" class="tm-product-list-scroll hidden md:block">
                         <table class="w-full text-left border-collapse" id="existingProdTable">
                             <thead class="bg-slate-50/50 text-[10px] text-slate-400 font-black uppercase tracking-tighter border-b border-slate-100">
                                 <tr>
@@ -207,8 +237,8 @@
                     <div id="product-pagination" class="hidden md:block"></div>
                 </div>
 
-                <div class="md:hidden mt-3 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden" id="mobile-product-shell">
-                    <div id="mobile-product-cards" class="divide-y divide-slate-100"></div>
+                <div class="md:hidden mt-3 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col max-h-[min(70vh,32rem)]" id="mobile-product-shell">
+                    <div id="mobile-product-cards" class="divide-y divide-slate-100 overflow-y-auto tm-product-list-scroll flex-1 min-h-0"></div>
                     <div id="mobile-product-pagination" class="border-t border-slate-100 bg-slate-50/70 px-3 py-2"></div>
                 </div>
             </div>
@@ -324,7 +354,7 @@
                         </div>
                     </div>
                     <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 md:p-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3 shrink-0 mt-auto">
-                        <p class="text-[10px] text-slate-400 italic max-md:text-center">按供应商分组；单组可「生成进货单」或「删除本组」。生成后单据进入供应商管理，状态为待审核。</p>
+                        <p class="text-[10px] text-slate-400 italic max-md:text-center">按供应商分组；单组可「生成进货单」或「删除本组」。生成后单据进入供货管理，状态为待审核。</p>
                         <div class="flex gap-3 w-full md:w-auto">
                             <button type="button" onclick="closePurchaseSuggestionModal()" class="flex-1 md:flex-none px-10 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-lg hover:bg-slate-800 transition">
                                 完成

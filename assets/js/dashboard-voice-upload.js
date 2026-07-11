@@ -22,7 +22,6 @@
             throw new Error('录音数据为空');
         }
         var ext = tmVoiceBlobExtension(audioBlob);
-        console.log('[Voice] 经服务端上传 OSS, size=', audioBlob.size, 'ext=', ext, 'rev=', REV);
         var formData = new FormData();
         formData.append('file', audioBlob, 'voice-' + Date.now() + '.' + ext);
         var fetchFn = window.wrappedFetch || window.fetch;
@@ -50,7 +49,6 @@
         if (!urlFromServer) {
             throw new Error('服务端未返回音频地址');
         }
-        console.log('[Voice] 服务端上传完成:', urlFromServer);
         return urlFromServer;
     }
 
@@ -100,8 +98,7 @@
             return;
         }
         window.OSS = wrapOssConstructor(window.OSS);
-        console.log('[Voice] OSS 语音直传拦截已启用, rev=', REV);
-    }
+        }
 
     var ossDescriptor = Object.getOwnPropertyDescriptor(window, 'OSS');
     if (!ossDescriptor || ossDescriptor.configurable) {

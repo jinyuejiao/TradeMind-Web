@@ -24,13 +24,20 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260524adv';
+    var url = '/modules/product-center/product-overlays.html?v=20260711expiry';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
             var parser = new DOMParser();
             var doc = parser.parseFromString(html, 'text/html');
-            var ids = ['product-detail-modal', 'product-unit-modal', 'warehouse-transfer-modal'];
+            var ids = [
+                'product-detail-modal',
+                'product-unit-modal',
+                'product-variant-modal',
+                'product-expiry-modal',
+                'attribute-template-modal',
+                'warehouse-transfer-modal'
+            ];
             ids.forEach(function (id) {
                 var nextNode = doc.getElementById(id);
                 if (!nextNode) return;
@@ -81,13 +88,7 @@ function TM_syncDashboardOverlays(htmlString) {
             const current = document.getElementById(id);
             var preserveVoiceOpen = false;
             if (id === 'voice-modal') {
-                var wasDomOpen = current && !current.classList.contains('hidden');
-                var inVoiceTour = window.TmOnboarding && typeof window.TmOnboarding.isVoiceModalPhase === 'function'
-                    && window.TmOnboarding.isVoiceModalPhase();
-                preserveVoiceOpen = !!(wasDomOpen || inVoiceTour);
-                if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
-                    window.TmOnboarding.setVoiceOverlaySyncLock(true);
-                }
+                preserveVoiceOpen = !!(current && !current.classList.contains('hidden'));
             }
             const cloned = nextNode.cloneNode(true);
             if (current && current.parentNode) {
@@ -108,13 +109,6 @@ function TM_syncDashboardOverlays(htmlString) {
             if (id === 'voice-modal' && preserveVoiceOpen) {
                 cloned.classList.remove('hidden');
                 cloned.style.zIndex = '210';
-            }
-            if (id === 'voice-modal') {
-                if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalReplaced === 'function') {
-                    window.TmOnboarding.notifyVoiceModalReplaced(preserveVoiceOpen);
-                } else if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
-                    window.TmOnboarding.setVoiceOverlaySyncLock(false);
-                }
             }
         });
         TM_rebindVoiceStopAfterOverlaySync();
@@ -156,6 +150,12 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (typeof window.loadDashboardOverviewStats === 'function') {
                     window.loadDashboardOverviewStats();
                 }
+                if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
+                    window.TM_SalesOrders.init();
+                }
+                if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                    window.TM_Returns.init();
+                }
             } catch (e0) { /* ignore */ }
             if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
                 window.__TM_VOICE_RELOAD_HINT_SHOWN = true;
@@ -194,7 +194,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|tm-order-dict\.js|ui-sales-orders\.js|ui-returns\.js|tm-print\/|tm-peripheral-settings|tm-scan-router|tm-scan-camera|workbench-order-shipment/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -233,6 +233,12 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 }
                 if (typeof window.loadDashboardOverviewStats === 'function') {
                     window.loadDashboardOverviewStats();
+                }
+                if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
+                    window.TM_SalesOrders.init();
+                }
+                if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                    window.TM_Returns.init();
                 }
                 if (typeof TM_scheduleShellOverlayRecovery === 'function') {
                     TM_scheduleShellOverlayRecovery();
@@ -595,11 +601,10 @@ function TM_refreshDashboardPendingOrders() {
 
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
-    console.log('[TM] 加载 dashboard 内容片段');
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601audit', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260706print', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -634,34 +639,31 @@ function loadDashboard() {
 }
 
 function loadSmartOps() {
-    console.log('[TM] 以 iframe(embed) 加载 SmartOps');
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r24',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260711smartops',
         '智能经营',
         { embedPathCheck: 'SmartOps' }
     );
 }
 
 function loadCRM() {
-    console.log('[TM] 以 iframe(embed) 加载 CRM');
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260601crm',
+        '/modules/crm/crm.html?embed=1&v=20260709crm',
         'CRM',
         { embedPathCheck: 'crm' }
     );
 }
 
 function loadProductCenter() {
-    console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
     var overlayPromise = typeof TM_syncProductCenterOverlays === 'function'
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260527pc', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260705fix1', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
@@ -697,7 +699,6 @@ function loadProductCenter() {
             }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
-                    console.log('[ui-main] 初始化 ProductModule');
                     window.ProductModule.init();
                 }
                 if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
@@ -711,11 +712,10 @@ function loadProductCenter() {
 }
 
 function loadSupplier() {
-    console.log('[TM] 以 iframe(embed) 加载供应链/供应商');
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260601poembed',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260709nav1',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -731,33 +731,19 @@ const TM_NAV_CONFIG = [
     { tab: 'biz', label: '智能经营', mobileLabel: '经营', icon: 'ph-chart-line-up' },
     { tab: 'crm', label: '客户 CRM', mobileLabel: '客户', icon: 'ph-users' },
     { tab: 'supply', label: '产品中心', mobileLabel: '产研', icon: 'ph-flask' },
-    { tab: 'supplier', label: '供应商管理', mobileLabel: '供应', icon: 'ph-warehouse' }
+    { tab: 'supplier', label: '供货管理', mobileLabel: '供货', icon: 'ph-warehouse' }
 ];
 
 const TM_OPS_NAV_CONFIG = [
     { route: 'tenants', label: '看板', title: '租户看板', icon: 'ph-squares-four' },
-    { route: 'plans', label: '订阅', title: '订阅策略', icon: 'ph-currency-circle-dollar' },
-    { route: 'referral', label: '推荐', title: '推荐与结算', icon: 'ph-gift' },
-    { route: 'promoters', label: '推广', title: '推广员开号', icon: 'ph-user-plus' },
-    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' },
-    { route: 'announce', label: '公告', title: '公告与审计', icon: 'ph-scroll' }
+    { route: 'publish', label: '定价', title: '内容与定价', icon: 'ph-currency-circle-dollar' },
+    { route: 'promoters', label: '推广', title: '推广运营', icon: 'ph-user-plus' },
+    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' }
 ];
 
 const TM_OPS_ROUTE_IDS = TM_OPS_NAV_CONFIG.map(function (item) { return item.route; });
 
 function TM_getCurrentRoleType() {
-    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
-        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
-    }
-    try {
-        var raw = localStorage.getItem('user_info');
-        if (raw) {
-            var u = JSON.parse(raw);
-            if (u && u.roleType) {
-                return String(u.roleType).trim().toUpperCase();
-            }
-        }
-    } catch (e) { /* ignore */ }
     try {
         var token = localStorage.getItem('token');
         if (token && token !== 'mock-token') {
@@ -773,7 +759,19 @@ function TM_getCurrentRoleType() {
                 }
             }
         }
-    } catch (e2) { /* ignore */ }
+    } catch (eJwt) { /* ignore */ }
+    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
+        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
+    }
+    try {
+        var raw = localStorage.getItem('user_info');
+        if (raw) {
+            var u = JSON.parse(raw);
+            if (u && u.roleType) {
+                return String(u.roleType).trim().toUpperCase();
+            }
+        }
+    } catch (e) { /* ignore */ }
     return '';
 }
 
@@ -875,6 +873,9 @@ function TM_scrollOpsContentTop() {
 }
 
 function TM_switchOpsRoute(route) {
+    if (typeof window.TM_OPS_normalizeRoute === 'function') {
+        route = window.TM_OPS_normalizeRoute(route);
+    }
     if (TM_OPS_ROUTE_IDS.indexOf(route) < 0) {
         route = 'tenants';
     }
@@ -936,8 +937,8 @@ function TM_bootOpsHubShell() {
         TM_syncAppShellMetrics();
     }
     var raw = (location.hash || '').replace(/^#/, '');
-    if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
-        raw = 'tenants';
+    if (typeof window.TM_OPS_normalizeRoute === 'function') {
+        raw = window.TM_OPS_normalizeRoute(raw);
     }
     var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
     TM_switchOpsRoute(route);
@@ -972,6 +973,9 @@ function TM_bootOpsIndexShell() {
     var raw = (location.hash || '').replace(/^#(?:tab=)?/, '').split('&')[0];
     if (raw.indexOf('tab=') === 0) {
         raw = raw.slice(4);
+    }
+    if (typeof window.TM_OPS_normalizeRoute === 'function') {
+        raw = window.TM_OPS_normalizeRoute(raw);
     }
     var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
     if (window.TM_OPS && typeof window.TM_OPS.loadModule === 'function') {
@@ -1217,8 +1221,11 @@ function TM_pushEmbedModalNotify() {
 function TM_popEmbedModalNotify(frame) {
     window.__TM_embedModalNotifyDepth = Math.max(0, (window.__TM_embedModalNotifyDepth || 0) - 1);
     TM_popShellOverlay();
-    if (window.__TM_embedModalNotifyDepth === 0 && frame) {
-        TM_setEmbedFrameModalExpanded(frame, false);
+    if (window.__TM_embedModalNotifyDepth === 0) {
+        if (frame) {
+            TM_setEmbedFrameModalExpanded(frame, false);
+        }
+        TM_restoreAllEmbedFramesFromModal();
     }
 }
 
@@ -1487,7 +1494,58 @@ if (!window.__tmEmbedModalListenerBound) {
     window.__tmEmbedModalListenerBound = true;
     window.addEventListener('message', function (ev) {
         var data = ev.data;
-        if (!data || data.type !== 'TM_EMBED_MODAL') return;
+        if (!data || !data.type) return;
+
+        if (data.type === 'TM_OPEN_ORDER_DETAIL') {
+            var fromModuleFrame = false;
+            try {
+                document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+                    try {
+                        if (frame.contentWindow === ev.source) fromModuleFrame = true;
+                    } catch (e0) { /* ignore */ }
+                });
+            } catch (e1) { /* ignore */ }
+            if (fromModuleFrame && data.orderId != null && typeof TM_openOrderDetailFromShell === 'function') {
+                TM_openOrderDetailFromShell(data.orderId);
+            }
+            return;
+        }
+
+        if (data.type === 'TM_SHELL_SWITCH_TAB') {
+            var fromFrame = false;
+            try {
+                document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+                    try {
+                        if (frame.contentWindow === ev.source) fromFrame = true;
+                    } catch (e2) { /* ignore */ }
+                });
+            } catch (e3) { /* ignore */ }
+            if (fromFrame && data.tab && typeof window.TM_shellSwitchTab === 'function') {
+                window.TM_shellSwitchTab(data.tab);
+            }
+            return;
+        }
+
+        if (data.type === 'TM_EMBED_MODAL_RECONCILE') {
+            var fromReconcile = false;
+            try {
+                document.querySelectorAll('iframe.tm-module-frame').forEach(function (f) {
+                    try {
+                        if (f.contentWindow === ev.source) fromReconcile = true;
+                    } catch (e2) { /* ignore */ }
+                });
+            } catch (e3) { /* ignore */ }
+            if (fromReconcile) {
+                if (typeof TM_resetShellOverlay === 'function') {
+                    TM_resetShellOverlay();
+                } else if (typeof TM_ensureShellOverlayVisible === 'function') {
+                    TM_ensureShellOverlayVisible();
+                }
+            }
+            return;
+        }
+
+        if (data.type !== 'TM_EMBED_MODAL') return;
         var fromModuleFrame = false;
         try {
             document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
@@ -1660,7 +1718,7 @@ function switchTab(tabId) {
         window.TM_Responsive.syncMobileNav(tabId);
     }
 
-    const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供应商管理' };
+    const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供货管理' };
     if (document.getElementById('page-title')) document.getElementById('page-title').innerText = titles[tabId];
     document.getElementById('content-area').scrollTop = 0;
     try {
@@ -1699,6 +1757,29 @@ function switchTab(tabId) {
 }
 
 window.TM_shellSwitchTab = switchTab;
+
+function TM_openOrderDetailFromShell(orderId) {
+    if (orderId == null) return;
+    switchTab('dashboard');
+    var attempts = 0;
+    function tryOpen() {
+        attempts += 1;
+        if (typeof window.openOrderDetailModal === 'function') {
+            window.openOrderDetailModal(orderId, {});
+            return;
+        }
+        if (attempts < 40) {
+            setTimeout(tryOpen, 200);
+        }
+    }
+    var dashPromise = typeof window.loadDashboard === 'function' ? window.loadDashboard() : Promise.resolve();
+    dashPromise.then(function () {
+        setTimeout(tryOpen, 300);
+    }).catch(function () {
+        setTimeout(tryOpen, 500);
+    });
+}
+window.TM_openOrderDetailFromShell = TM_openOrderDetailFromShell;
 
 const TM_SHELL_NAV_FN_NAMES = ['switchTab', 'loadDashboard', 'loadSmartOps', 'loadCRM', 'loadProductCenter', 'loadSupplier'];
 const TM_SHELL_NAV_FN_SNAPSHOT = {};
@@ -1819,10 +1900,6 @@ async function downloadPoster() {
         if (impl && typeof impl.closeVoiceModal === 'function') {
             return impl.closeVoiceModal(opts);
         }
-        if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalClosing === 'function') {
-            var reason = (opts && opts.reason) ? opts.reason : 'user_cancel';
-            window.TmOnboarding.notifyVoiceModalClosing(reason);
-        }
         var m = document.getElementById('voice-modal');
         if (m) m.classList.add('hidden');
     };
@@ -1887,6 +1964,10 @@ function openOrderDetail(orderId) {
     if (typeof window.__TM_dashboardOpenOrderDetail === 'function') {
         return window.__TM_dashboardOpenOrderDetail(orderId);
     }
+    if (typeof window.openOrderDetailModal === 'function') {
+        return window.openOrderDetailModal(orderId, {});
+    }
+    window.currentDetailOrderId = orderId;
     var idEl = document.getElementById('detail-order-id');
     if (idEl) idEl.innerText = orderId || '';
     var modal = document.getElementById('order-detail-modal');
@@ -1898,6 +1979,11 @@ function openOrderDetail(orderId) {
         if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
         else if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
         else document.body.style.overflow = 'hidden';
+    }
+    if (typeof window.loadOrderDetailContent === 'function') {
+        window.loadOrderDetailContent(orderId, { orderId: orderId, id: orderId });
+    } else if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
+        window.TM_PrintTriggers.syncOrderDetailPrintBtn(orderId);
     }
 }
 
@@ -2004,6 +2090,9 @@ function legacySwitchReport(type) {
 
 // --- 手动订单逻辑 ---
 function openManualOrderModal() {
+    if (typeof window.TM_openRapidOrder === 'function') {
+        return window.TM_openRapidOrder({ title: '添加订单', source: 'manual' });
+    }
     if (typeof window.TM_openManualOrderModal === 'function') {
         return window.TM_openManualOrderModal();
     }
@@ -2713,8 +2802,6 @@ function saveSupplierEdit() {
     const rating = ratingEl ? ratingEl.value : '';
     
     // 模拟保存操作
-    console.log('保存供应商信息:', { name, contact, phone, rating });
-    
     // 关闭弹窗并显示提示
     closeSupplierEditModal();
     showToast('供应商信息已保存');
@@ -2952,7 +3039,7 @@ function closeNewProductReport() {
 }
 
 // 产品中心由 ui-product-center.js（ProductModule）提供；主壳不再内嵌模拟数据或重复 window.* 绑定。
-// --- 供应商管理交互逻辑 ---
+// --- 供货管理交互逻辑 ---
 
 
 // --- 供应商视图切换 ---
