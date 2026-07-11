@@ -160,6 +160,14 @@
         return MERCHANT_API_TO_UI[apiKey] || apiKey;
     }
 
+    function setRetypeSelectValue(selectEl, value, fallback) {
+        if (!selectEl) return '';
+        var v = value || fallback || '';
+        var matched = Array.prototype.some.call(selectEl.options, function (o) { return o.value === v; });
+        selectEl.value = matched ? v : (fallback || selectEl.options[0].value);
+        return selectEl.value;
+    }
+
     function opsNotify(msg, type) {
         if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
             window.TM_UI.showNotification(msg, type || 'info');
@@ -1888,10 +1896,17 @@
                 if (rt) {
                     var rowR = mergedRows.find(function (x) { return x.raw.id === rt.getAttribute('data-id'); });
                     if (!rowR) return;
-                    el('ops-modal-retype-id').value = rowR.raw.id;
+                    var tidEl = el('ops-modal-retype-id');
+                    tidEl.value = rowR.raw.id;
+                    var curMerchant = setRetypeSelectValue(el('ops-retype-merchant'), rowR.raw.industry, 'WHOLESALE');
+                    var curVertical = setRetypeSelectValue(el('ops-retype-vertical'), rowR.raw.industryVertical, 'GENERAL');
+                    tidEl.dataset.merchantOrig = curMerchant;
+                    tidEl.dataset.verticalOrig = curVertical;
                     el('ops-modal-retype-title').textContent = '切换类型：' + (rowR.raw.name || rowR.raw.id);
-                    el('ops-retype-merchant').value = '';
-                    el('ops-retype-vertical').value = '';
+                    el('ops-modal-retype-sub').textContent =
+                        '当前业态：' + (industryLabel[curMerchant] || curMerchant) +
+                        '；当前行业：' + (verticalLabel[curVertical] || rowR.raw.industryVerticalLabel || curVertical) +
+                        '。修改后将保留登录与资金账户，清空产品、订单、供应商、仓库、SKU 等业务数据。';
                     el('ops-retype-reason').value = '';
                     el('ops-modal-retype').classList.remove('hidden');
                     return;
@@ -1936,19 +1951,26 @@
         var retypeSave = el('ops-btn-save-retype');
         if (retypeSave) {
             retypeSave.onclick = async function () {
-                var tid = el('ops-modal-retype-id').value;
+                var tidEl = el('ops-modal-retype-id');
+                var tid = tidEl.value;
                 var merchant = el('ops-retype-merchant').value;
                 var vertical = el('ops-retype-vertical').value;
+                var merchantOrig = tidEl.dataset.merchantOrig || '';
+                var verticalOrig = tidEl.dataset.verticalOrig || '';
                 var reason = (el('ops-retype-reason').value || '').trim();
-                if (!merchant && !vertical) {
-                    opsNotify('请至少选择一项要修改的业态或行业', 'warning');
+                if (!merchant || !vertical) {
+                    opsNotify('请选择目标业态与行业', 'warning');
+                    return;
+                }
+                if (merchant === merchantOrig && vertical === verticalOrig) {
+                    opsNotify('请至少修改一项业态或行业后再提交', 'warning');
                     return;
                 }
                 if (!confirm('切换后将清空该租户全部业务数据（账户保留）。确定继续？')) return;
                 try {
                     var body = { reason: reason || '运维切换业态/行业' };
-                    if (merchant) body.merchantType = toMerchantApiKey(merchant);
-                    if (vertical) body.industryVertical = vertical;
+                    body.merchantType = toMerchantApiKey(merchant);
+                    body.industryVertical = vertical;
                     var res = await opsFetch('/api/v1/ops/tenants/' + encodeURIComponent(tid) + '/retype', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

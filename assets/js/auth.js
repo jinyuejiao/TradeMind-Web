@@ -1649,7 +1649,8 @@ async function tmHydrateMemberCenter(modalEl) {
             subscriptionType: me.subscriptionType || 'TRIAL',
             paidActive: me.paidSubscriptionActive === true,
             merchantType: me.merchantType || merchantType,
-            canManageUsers: me.canManageUsers === true
+            canManageUsers: me.canManageUsers === true,
+            paymentCashierEnabled: me.paymentCashierEnabled === true
         };
         window._tmMemberMe = me;
         var dname = me.displayName || (ctx.subscriptionType === 'TRIAL' ? '试用版本' : ctx.subscriptionType === 'BASIC' ? '启航会员' : ctx.subscriptionType === 'PREMIUM' ? '优享会员' : ctx.subscriptionType);
@@ -1893,7 +1894,7 @@ async function tmMemberPayFallback(action, targetTierCode, legacyPrice) {
                 return;
             }
             if (data2.newToken) localStorage.setItem('token', data2.newToken);
-            showNotification('升级成功');
+            showNotification(action === 'NEW' ? '订阅成功' : '升级成功');
         }
         var m = document.getElementById('member-modal') || document.getElementById('subscription-modal');
         if (m) await tmHydrateMemberCenter(m);
@@ -1905,6 +1906,11 @@ async function tmMemberPayFallback(action, targetTierCode, legacyPrice) {
 
 window.tmMemberPay = async function (action, targetTierCode, legacyPrice) {
     try {
+        var me = window._tmMemberMe || {};
+        if (me.paymentCashierEnabled === false) {
+            await tmMemberPayFallback(action, targetTierCode, legacyPrice);
+            return;
+        }
         var url = tmMemberApiUrl('/api/v1/tenant/subscription/payment/create');
         var res = await wrappedFetch(url, {
             method: 'POST',

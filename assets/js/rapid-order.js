@@ -290,16 +290,155 @@
         if (vConfirm) vConfirm.addEventListener('click', confirmVariantSheet);
     }
 
+    var ROP_FIN_LABELS = {
+        UNPAID: '未收款',
+        PARTIAL_PAID: '部分收款',
+        SETTLED: '已结清',
+        BAD_DEBT: '坏账'
+    };
+
+    function ropFinLabel(code) {
+        var c = String(code || 'UNPAID').trim().toUpperCase();
+        return ROP_FIN_LABELS[c] || c;
+    }
+
+    function ropRoundMoney(v) {
+        return window.TM_OrderModal && window.TM_OrderModal.roundMoney
+            ? window.TM_OrderModal.roundMoney(v)
+            : Math.round((Number(v) || 0) * 100) / 100;
+    }
+
+    function ropGetOrderTotal() {
+        var payEl = document.getElementById('rop-pay-total');
+        if (payEl) {
+            var txt = String(payEl.textContent || '').replace(/[¥$,]/g, '').trim();
+            return ropRoundMoney(parseFloat(txt) || 0);
+        }
+        var lines = cartLines();
+        var sum = 0;
+        lines.forEach(function (x) { sum += x.row.price * x.qty; });
+        return ropRoundMoney(sum);
+    }
+
+    function syncRopTotals(sum) {
+        var grand = ropRoundMoney(sum != null ? sum : 0);
+        var payEl = document.getElementById('rop-pay-total');
+        var remEl = document.getElementById('rop-remaining-sum');
+        var totalEl = document.getElementById('rop-total');
+        if (payEl) payEl.textContent = '¥' + grand.toFixed(2);
+        if (remEl) remEl.textContent = '¥' + grand.toFixed(2);
+        if (totalEl) totalEl.textContent = '¥' + grand.toFixed(2);
+        syncRopFinStatusUI();
+        syncRopAuxSummary();
+    }
+
+    function syncRopFinStatusUI() {
+        var finSel = document.getElementById('rop-fin-status');
+        var amountEl = document.getElementById('rop-receive-amount');
+        var hintEl = document.getElementById('rop-fin-disabled-hint');
+        var finVal = finSel ? finSel.value : 'UNPAID';
+        var remaining = ropGetOrderTotal();
+        var remEl = document.getElementById('rop-remaining-sum');
+        if (remEl) remEl.textContent = '¥' + remaining.toFixed(2);
+        if (amountEl) {
+            if (finVal === 'UNPAID' || finVal === 'BAD_DEBT') {
+                amountEl.value = '';
+                amountEl.disabled = true;
+                amountEl.readOnly = false;
+                amountEl.placeholder = '';
+            } else {
+                amountEl.disabled = false;
+                amountEl.readOnly = (finVal === 'SETTLED');
+                amountEl.removeAttribute('disabled');
+                if (finVal === 'SETTLED' && remaining > 0) {
+                    amountEl.value = remaining.toFixed(2);
+                } else if (finVal === 'PARTIAL_PAID' && remaining > 0) {
+                    amountEl.placeholder = '请输入本次收款（最多 ¥' + remaining.toFixed(2) + '）';
+                } else {
+                    amountEl.placeholder = '';
+                }
+            }
+        }
+        var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+        var accSel = document.getElementById('rop-account');
+        var hasAccounts = window.TM_TenantOps && window.TM_TenantOps.hasSelectableAccounts
+            ? window.TM_TenantOps.hasSelectableAccounts(accSel)
+            : !!(accSel && accSel.options && accSel.options.length > 1);
+        var accId = accSel && accSel.value ? parseInt(accSel.value, 10) : null;
+        var canPay = (finVal === 'PARTIAL_PAID' || finVal === 'SETTLED') && remaining > 0.001;
+        var payAmount = amountEl && amountEl.value ? ropRoundMoney(amountEl.value) : 0;
+        if (finVal === 'PARTIAL_PAID') canPay = canPay && payAmount > 0;
+        var needsAccount = canPay && !virtualFin && hasAccounts && (!accId || isNaN(accId));
+        if (hintEl) {
+            if (canPay && !needsAccount) {
+                hintEl.textContent = virtualFin || !hasAccounts
+                    ? '提交时将记录收款（无账户则先挂账）'
+                    : '提交时将一并记账';
+            } else if (needsAccount) {
+                hintEl.textContent = '请先设置或选择收款账户';
+            } else {
+                hintEl.textContent = '选择「部分收款」或「已结清」后提交时将一并记账；无账户可先挂账';
+            }
+        }
+    }
+
+    function syncRopAuxSummary() {
+        var finSel = document.getElementById('rop-fin-status');
+        var whSel = document.getElementById('rop-warehouse');
+        var auxEl = document.getElementById('rop-aux-summary');
+        if (!auxEl) return;
+        var finVal = finSel ? finSel.value : 'UNPAID';
+        var whLabel = window.TM_TenantOps
+            ? window.TM_TenantOps.warehouseLabelFromSelect(whSel, null, window.__tmOpsProfile)
+            : (whSel && whSel.selectedIndex >= 0 ? whSel.options[whSel.selectedIndex].textContent : '暂无仓库');
+        var remEl = document.getElementById('rop-remaining-sum');
+        var remText = remEl ? remEl.textContent.replace('¥', '') : '0.00';
+        auxEl.textContent = whLabel + ' · ' + ropFinLabel(finVal) + ' · 剩 ' + remText;
+    }
+
+    function bindRopAuxPanelEvents() {
+        if (window._ropAuxPanelBound) return;
+        window._ropAuxPanelBound = true;
+        var finSel = document.getElementById('rop-fin-status');
+        var accSel = document.getElementById('rop-account');
+        if (finSel) {
+            finSel.addEventListener('change', function () {
+                syncRopFinStatusUI();
+                syncRopAuxSummary();
+            });
+        }
+        if (accSel) accSel.addEventListener('change', syncRopFinStatusUI);
+        var amountEl = document.getElementById('rop-receive-amount');
+        if (amountEl && !amountEl.__ropAmtBound) {
+            amountEl.__ropAmtBound = true;
+            amountEl.addEventListener('input', function () {
+                var finSel2 = document.getElementById('rop-fin-status');
+                if (finSel2 && finSel2.value === 'SETTLED') {
+                    var rem = ropGetOrderTotal();
+                    var val = ropRoundMoney(amountEl.value);
+                    if (rem > 0 && Math.abs(val - rem) > 0.009) {
+                        finSel2.value = 'PARTIAL_PAID';
+                        syncRopFinStatusUI();
+                        syncRopAuxSummary();
+                    }
+                } else {
+                    syncRopFinStatusUI();
+                }
+            });
+        }
+    }
+
     function ensureOrderModal() {
         var existing = document.getElementById('rapid-order-modal');
-        if (existing && !existing.querySelector('.rop-modal-form-grid')) {
+        if (existing && !existing.querySelector('#rop-aux-details')) {
             existing.remove();
+            window._ropAuxPanelBound = false;
             existing = null;
         }
         if (existing) return;
         var modal = document.createElement('div');
         modal.id = 'rapid-order-modal';
-        modal.className = 'tm-unified-mobile-modal rop-modal-shell hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8';
+        modal.className = 'tm-unified-mobile-modal tm-document-modal tm-order-detail-modal rop-modal-shell hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8';
         modal.innerHTML =
             '<div class="rop-modal-panel tm-document-modal bg-white w-full shadow-xl flex flex-col min-h-0">' +
             '<header class="rop-modal-header px-4 py-3 border-b flex justify-between items-center shrink-0">' +
@@ -308,14 +447,10 @@
             '<button type="button" id="rop-scan-camera" class="p-2 hover:bg-slate-100 rounded-full text-teal-600" title="相机扫码加 SKU"><i class="ph ph-camera text-lg"></i></button>' +
             '<button type="button" id="rop-modal-close" class="p-2 -mr-2 hover:bg-slate-100 rounded-full" aria-label="关闭">' +
             '<i class="ph ph-x text-lg text-slate-400"></i></button></div></header>' +
-            '<main class="rop-modal-body p-4 space-y-3 flex-1 min-h-0 overflow-y-auto">' +
+            '<main class="rop-modal-body tm-document-modal-scroll p-4 space-y-3 flex-1 min-h-0 overflow-y-auto">' +
             '<div class="rop-modal-form-grid">' +
             '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">客户</label>' +
             '<select id="rop-customer" class="form-input form-input--compact w-full text-xs font-bold mt-0.5"></select></div>' +
-            '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">开单仓</label>' +
-            '<select id="rop-warehouse" class="form-input form-input--compact w-full text-xs mt-0.5"></select></div>' +
-            '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">收款账户</label>' +
-            '<select id="rop-account" class="form-input form-input--compact w-full text-xs mt-0.5"></select></div>' +
             '<div class="rop-field"><label class="text-[10px] font-bold text-slate-400">发货方式</label>' +
             '<select id="rop-fulfillment-type" class="form-input form-input--compact w-full text-xs mt-0.5">' +
             '<option value="SELF_PICKUP">自提（默认）</option>' +
@@ -349,8 +484,39 @@
             '<button type="button" id="rop-open-picker" class="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-200 text-teal-600 text-xs font-bold">' +
             '+ 选择产品</button>' +
             '<div id="rop-lines" class="text-xs space-y-2 min-h-[2rem]"></div>' +
-            '<div class="text-right font-mono font-bold text-slate-800 sticky bottom-0 bg-white pt-2">合计 <span id="rop-total">¥0.00</span></div>' +
+            '<div class="text-right font-mono font-bold text-slate-800 pt-2">合计 <span id="rop-total">¥0.00</span></div>' +
             '</main>' +
+            '<div id="rop-bottom-panel" class="tm-document-aux-dock shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">' +
+            '<details id="rop-aux-details" class="tm-aux-details-up group">' +
+            '<summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">' +
+            '<span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>' +
+            '<span id="rop-aux-summary" class="text-slate-400 truncate flex-1 min-w-0">默认仓库 · 未收款</span>' +
+            '<span class="text-[10px] text-brand-600 shrink-0 group-open:hidden">展开</span>' +
+            '<span class="text-[10px] text-brand-600 shrink-0 hidden group-open:inline">收起</span>' +
+            '</summary>' +
+            '<div class="pt-2 pb-1 space-y-2 border-t border-slate-200/60 mt-1">' +
+            '<div class="flex flex-wrap items-end gap-2">' +
+            '<div class="w-36">' +
+            '<label class="text-[10px] text-slate-400" for="rop-warehouse">发出仓库</label>' +
+            '<select id="rop-warehouse" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="发出仓库"></select>' +
+            '</div>' +
+            '<div class="flex-1 text-[11px] text-slate-600 py-1 min-w-[8rem]">' +
+            '应收 <span id="rop-pay-total" class="font-mono font-bold">¥0.00</span>' +
+            '<span class="text-teal-700 font-bold"> · 剩 <span id="rop-remaining-sum" class="font-mono">¥0.00</span></span>' +
+            '</div></div>' +
+            '<div class="grid grid-cols-2 md:grid-cols-4 gap-2">' +
+            '<div><label class="text-[10px] text-slate-400" for="rop-fin-status">收款状态</label>' +
+            '<select id="rop-fin-status" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white">' +
+            '<option value="UNPAID">未收款</option><option value="PARTIAL_PAID">部分收款</option>' +
+            '<option value="SETTLED">已结清</option><option value="BAD_DEBT">坏账</option></select></div>' +
+            '<div><label class="text-[10px] text-slate-400" for="rop-receive-amount">本次收款</label>' +
+            '<input type="number" id="rop-receive-amount" min="0" step="0.01" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs font-mono bg-white" placeholder="0" disabled /></div>' +
+            '<div class="col-span-2"><label class="text-[10px] text-slate-400" for="rop-account">收款账户</label>' +
+            '<select id="rop-account" class="w-full mt-0.5 rounded-lg border border-slate-200 px-2 py-1 text-xs bg-white" aria-label="收款账户"></select></div>' +
+            '</div>' +
+            '<div class="flex flex-wrap gap-2 items-center">' +
+            '<span id="rop-fin-disabled-hint" class="text-[10px] text-slate-400">选择「部分收款」或「已结清」后提交时将一并记账；无账户可先挂账</span>' +
+            '</div></div></details></div>' +
             '<footer class="rop-modal-footer p-4 border-t shrink-0">' +
             '<button type="button" id="rop-submit" class="w-full py-3 rounded-xl bg-teal-500 text-white font-bold text-sm">提交订单</button></footer></div>';
         document.body.appendChild(modal);
@@ -380,6 +546,7 @@
         modal.querySelector('#rop-warehouse').addEventListener('change', async function () {
             batchCache.clear();
             renderOrderLines();
+            syncRopAuxSummary();
             var whId = modal.querySelector('#rop-warehouse').value;
             if (window.TM_SkuCatalogCache) {
                 await window.TM_SkuCatalogCache.load(whId ? parseInt(whId, 10) : null, true);
@@ -387,6 +554,7 @@
                 renderProductList();
             }
         });
+        bindRopAuxPanelEvents();
         applyIndustryUi(modal);
     }
 
@@ -890,12 +1058,11 @@
 
     async function renderOrderLines() {
         var box = document.getElementById('rop-lines');
-        var totalEl = document.getElementById('rop-total');
         if (!box) return;
         var lines = cartLines();
         if (!lines.length) {
             box.innerHTML = '<p class="text-slate-400">请点击「选择产品」</p>';
-            if (totalEl) totalEl.textContent = '¥0.00';
+            syncRopTotals(0);
             return;
         }
         var sum = 0;
@@ -946,7 +1113,7 @@
                 line.serialText = inp.value;
             });
         });
-        if (totalEl) totalEl.textContent = '¥' + sum.toFixed(2);
+        syncRopTotals(sum);
     }
 
     async function openPicker() {
@@ -997,33 +1164,33 @@
         }
         var whList = await fetchWarehousesForRop();
         var whSel = document.getElementById('rop-warehouse');
+        var profile = null;
+        if (window.TM_TenantOps && typeof window.TM_TenantOps.fetchOpsProfile === 'function') {
+            try {
+                profile = await window.TM_TenantOps.fetchOpsProfile();
+                window.__tmOpsProfile = profile;
+            } catch (e) { /* ignore */ }
+        }
         if (whSel) {
-            whSel.innerHTML = '<option value="">默认仓库</option>';
-            whList.forEach(function (w) {
-                var o = document.createElement('option');
-                o.value = w.warehouseId || w.warehouse_id || w.id;
-                o.textContent = w.warehouseName || w.name || ('仓#' + o.value);
-                whSel.appendChild(o);
-            });
-            var def = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId &&
+            var defWh = window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId &&
                 window.TM_WorkbenchProfile.defaultFulfillmentWarehouseId();
-            if (def) whSel.value = String(def);
+            if (window.TM_TenantOps) {
+                whSel.innerHTML = window.TM_TenantOps.buildWarehouseOptionsHtml(whList, profile, defWh || null);
+            } else {
+                whSel.innerHTML = '<option value="">默认仓库</option>';
+                whList.forEach(function (w, idx) {
+                    var o = document.createElement('option');
+                    o.value = w.warehouseId || w.warehouse_id || w.id;
+                    o.textContent = w.warehouseName || w.name || ('仓#' + o.value);
+                    if (!defWh && idx === 0) o.selected = true;
+                    whSel.appendChild(o);
+                });
+                if (defWh) whSel.value = String(defWh);
+            }
         }
         var accList = await fetchAccountsForRop();
         var accSel = document.getElementById('rop-account');
         if (accSel) {
-            accSel.innerHTML = '<option value="">默认收款账户</option>';
-            (accList || []).forEach(function (a) {
-                var o = document.createElement('option');
-                var id = a.accountId != null ? a.accountId : a.account_id;
-                o.value = id;
-                var name = a.accountName || a.account_name || ('账户#' + id);
-                if (typeof window.TM_isDefaultReceiveAccount === 'function' && window.TM_isDefaultReceiveAccount(a)) {
-                    name += '（默认）';
-                }
-                o.textContent = name;
-                accSel.appendChild(o);
-            });
             var defAcc = typeof window.TM_resolveDefaultReceiveAccountId === 'function'
                 ? window.TM_resolveDefaultReceiveAccountId()
                 : null;
@@ -1032,15 +1199,35 @@
                 defAcc = ui && (ui.defaultAccountId || ui.default_account_id);
             }
             if (!defAcc) {
-                var defItem = accList.find(function (a) {
+                var defItem = (accList || []).find(function (a) {
                     return typeof window.TM_isDefaultReceiveAccount === 'function'
                         ? window.TM_isDefaultReceiveAccount(a)
                         : (a.isDefaultReceive === true || a.isDefaultReceive === 1 || a.isDefaultReceive === 't');
                 });
                 if (defItem) defAcc = defItem.accountId != null ? defItem.accountId : defItem.account_id;
             }
-            if (defAcc) accSel.value = String(defAcc);
+            if (typeof window.fillBizAccountSelect === 'function') {
+                window.fillBizAccountSelect(accSel, defAcc || null);
+            } else {
+                accSel.innerHTML = '<option value="">— 请选择收款账户 —</option>';
+                (accList || []).forEach(function (a) {
+                    var o = document.createElement('option');
+                    var id = a.accountId != null ? a.accountId : a.account_id;
+                    o.value = id;
+                    var name = a.accountName || a.account_name || ('账户#' + id);
+                    if (typeof window.TM_isDefaultReceiveAccount === 'function' && window.TM_isDefaultReceiveAccount(a)) {
+                        name += '（默认）';
+                    }
+                    o.textContent = name;
+                    accSel.appendChild(o);
+                });
+                if (defAcc) accSel.value = String(defAcc);
+            }
         }
+        var finSel = document.getElementById('rop-fin-status');
+        if (finSel) finSel.value = 'UNPAID';
+        syncRopFinStatusUI();
+        syncRopAuxSummary();
     }
 
     function setModalTitle(title) {
@@ -1110,8 +1297,26 @@
         if (!proceed) return;
         var whId = document.getElementById('rop-warehouse').value;
         var warehouseId = whId ? parseInt(whId, 10) : null;
-        var accVal = document.getElementById('rop-account') && document.getElementById('rop-account').value;
+        var accSel = document.getElementById('rop-account');
+        var accVal = accSel && accSel.value;
         var accountId = accVal ? parseInt(accVal, 10) : null;
+        var finSel = document.getElementById('rop-fin-status');
+        var finStatus = finSel && finSel.value ? finSel.value : 'UNPAID';
+        var receiveEl = document.getElementById('rop-receive-amount');
+        var receiveAmt = receiveEl && receiveEl.value ? ropRoundMoney(receiveEl.value) : 0;
+        var needPay = finStatus === 'PARTIAL_PAID' || finStatus === 'SETTLED';
+        var virtualFin = window.TM_TenantOps && window.TM_TenantOps.isVirtualFinance(window.__tmOpsProfile);
+        var hasAccounts = window.TM_TenantOps && window.TM_TenantOps.hasSelectableAccounts
+            ? window.TM_TenantOps.hasSelectableAccounts(accSel)
+            : !!(accSel && accSel.options && accSel.options.length > 1);
+        if (needPay && !virtualFin && hasAccounts && (!accountId || isNaN(accountId))) {
+            notify('请选择收款账户', 'error');
+            return;
+        }
+        if (needPay && finStatus === 'PARTIAL_PAID' && receiveAmt <= 0) {
+            notify('请填写本次收款金额', 'error');
+            return;
+        }
         var ft = document.getElementById('rop-fulfillment-type').value;
         var items = [];
         for (var i = 0; i < lines.length; i++) {
@@ -1139,6 +1344,9 @@
             items.push(item);
         }
         var grand = items.reduce(function (s, it) { return s + it.totalAmount; }, 0);
+        if (needPay && finStatus === 'SETTLED' && receiveAmt <= 0 && grand > 0) {
+            receiveAmt = ropRoundMoney(grand);
+        }
         var addrSnap = null;
         var logisticsProvider = null;
         var logisticsTrackingNo = null;
@@ -1169,14 +1377,12 @@
                 shipFromAddress: document.getElementById('rop-addr-ship-from').value.trim()
             };
         }
-        var payload = {
-            allowShortage: true,
-            order: {
+        var orderStatus = ft === 'SELF_PICKUP' ? 'D010003' : 'D010001';
+        var orderPayload = {
                 custId: custId,
-                accountId: accountId,
                 totalAmount: grand,
-                orderStatus: 'D010001',
-                finStatus: 'UNPAID',
+                orderStatus: orderStatus,
+                finStatus: finStatus,
                 allowShortage: true,
                 fulfillmentType: ft,
                 fulfillmentWarehouseId: warehouseId,
@@ -1184,9 +1390,20 @@
                 logisticsProvider: logisticsProvider,
                 logisticsTrackingNo: logisticsTrackingNo,
                 fulfillmentAddressSnapshot: addrSnap
-            },
+            };
+        if (ft === 'SELF_PICKUP') {
+            var today = new Date();
+            var y = today.getFullYear();
+            var m = String(today.getMonth() + 1).padStart(2, '0');
+            var d = String(today.getDate()).padStart(2, '0');
+            orderPayload.deliveryDate = y + '-' + m + '-' + d + 'T12:00:00';
+        }
+        var payload = {
+            allowShortage: true,
+            order: orderPayload,
             orderItems: items
         };
+        if (accountId != null) payload.order.accountId = accountId;
         try {
             var resp = await window.wrappedFetch('/api/v1/rd/orders', {
                 method: 'POST',
@@ -1197,6 +1414,25 @@
             if (!data) return;
             var saved = data.data || {};
             var orderId = saved.orderId || saved.order_id || saved.id;
+            if (orderId && needPay && receiveAmt > 0) {
+                var payBody = { amount: receiveAmt, bizTypeCode: 'SALES_INCOME' };
+                if (accountId != null) payBody.accountId = accountId;
+                try {
+                    var payResp = await window.wrappedFetch('/api/v1/rd/orders/' + orderId + '/record-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payBody)
+                    });
+                    await window.handleApiResponse(payResp);
+                } catch (payErr) {
+                    notify('订单已创建，但收款记账失败: ' + (payErr.message || ''), 'error');
+                    closeRapidOrderModal();
+                    cart.clear();
+                    batchCache.clear();
+                    notifyPostOrderCreated(custId, orderId);
+                    return;
+                }
+            }
             notify('订单已创建', 'success');
             closeRapidOrderModal();
             cart.clear();

@@ -155,7 +155,7 @@
             }
 
             if (!response.ok) {
-                console.warn('[API-Client] ❌ HTTP 非成功状态:', response.status, response.statusText);
+                console.warn('[API-Client] ❌ HTTP 非成功状态:', response.status, response.statusText, finalUrl);
             } else {
                 tmApiDevLog('[API-Client] ✅ 响应状态 2xx');
             }

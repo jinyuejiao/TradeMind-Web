@@ -162,15 +162,15 @@ window.ProductModule = {
         this._listCache = null;
     },
 
-    loadCategories: async function() {
+    loadCategories: async function(force) {
         try {
             if (window.TM_MasterDataCache) {
-                var cached = await window.TM_MasterDataCache.getCategories(false);
+                var cached = await window.TM_MasterDataCache.getCategories(!!force);
                 if (cached && cached.length) {
                     this.categories = cached.map(function (c) {
                         return this.mapCategoryFromApi(c);
                     }, this);
-                    return;
+                    return this.categories;
                 }
             }
             if (window.checkAuth && !window.checkAuth()) {
@@ -2602,7 +2602,7 @@ window.ProductModule = {
                 modal.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
             }
-            await this.loadCategories();
+            await this.loadCategories(true);
             this.renderCategoryList();
         }
     },
@@ -2620,6 +2620,21 @@ window.ProductModule = {
     },
 
     editingCategory: null,
+
+    syncCategoryViewsAfterChange: async function() {
+        await this.loadCategories(true);
+        this.renderCategoryList();
+        this.initCategoryOptions();
+        var sel = document.getElementById('detail-product-category') || document.getElementById('product-category-select');
+        var cur = null;
+        if (sel && sel.value) {
+            var n = parseInt(sel.value, 10);
+            cur = isNaN(n) ? null : n;
+        }
+        if (typeof this.populateCategorySelect === 'function') {
+            this.populateCategorySelect(cur);
+        }
+    },
 
     renderCategoryList: function() {
         const container = document.getElementById('category-edit-list');
@@ -2739,8 +2754,7 @@ window.ProductModule = {
             }
 
             this.editingCategory = null;
-            await this.loadCategories();
-            this.renderCategoryList();
+            await this.syncCategoryViewsAfterChange();
         } catch (error) {
             console.error('[ProductModule] 更新类别异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -2790,8 +2804,7 @@ window.ProductModule = {
             }
 
             input.value = '';
-            await this.loadCategories();
-            this.renderCategoryList();
+            await this.syncCategoryViewsAfterChange();
         } catch (error) {
             console.error('[ProductModule] 保存类别异常:', error);
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -2858,8 +2871,7 @@ window.ProductModule = {
                     window.TM_UI.showNotification('类别 "' + this.currentDeleteCategory.name + '" 已删除！', 'success');
                 }
 
-                await this.loadCategories();
-                this.renderCategoryList();
+                await this.syncCategoryViewsAfterChange();
                 this.hideDeleteConfirm();
             } catch (error) {
                 console.error('[ProductModule] 删除类别异常:', error);

@@ -482,9 +482,12 @@
         if (iv === 'DIGITAL_3C' && ts) ts.checked = true;
         var days = PM.el('detail-shelf-life-days');
         if (iv === 'FOOD' && days && !days.value) days.value = '180';
+        if (iv === 'FOOD' && days && days.value) PM._expiryConfigConfirmed = true;
         PM.applyDefaultIndustryTemplate();
         if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
         if (typeof PM.syncVariantMatrixPanelVisibility === 'function') PM.syncVariantMatrixPanelVisibility();
+        if (typeof PM.syncExpiryPanelVisibility === 'function') PM.syncExpiryPanelVisibility();
+        if (typeof PM.updateExpiryEntrySummary === 'function') PM.updateExpiryEntrySummary();
     };
 
     PM.applyDefaultIndustryTemplate = function () {
@@ -1024,6 +1027,129 @@
         }
     };
 
+    PM.syncExpiryPanelVisibility = function () {
+        var te = PM.el('detail-track-expiry');
+        var panel = document.getElementById('product-expiry-config-panel');
+        var openBtn = PM.el('detail-expiry-open-btn');
+        if (panel) {
+            panel.classList.add('hidden');
+            panel.setAttribute('aria-hidden', 'true');
+        }
+        if (openBtn && te) {
+            var show = !!te.checked;
+            openBtn.classList.toggle('opacity-0', !show);
+            openBtn.classList.toggle('pointer-events-none', !show);
+            openBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
+        }
+    };
+
+    PM.expiryPolicyLabel = function (code) {
+        return String(code || 'FEFO').toUpperCase() === 'FIFO' ? '先进先出' : '先到期先出';
+    };
+
+    PM.updateExpiryEntrySummary = function () {
+        var el = PM.el('detail-expiry-entry-summary');
+        if (!el) return;
+        var te = PM.el('detail-track-expiry');
+        var root = PM.getCapabilityFormRoot();
+        var capSe = root.querySelector('#cap-summary-expiry') || document.getElementById('cap-summary-expiry');
+        if (!te || !te.checked) {
+            el.textContent = '未启用';
+            if (capSe) capSe.textContent = '未启用';
+            return;
+        }
+        var days = PM.el('detail-shelf-life-days');
+        var policy = PM.el('detail-expiry-policy');
+        var daysVal = days && days.value ? String(days.value).trim() : '';
+        var policyVal = policy ? policy.value : 'FEFO';
+        if (!daysVal) {
+            el.textContent = '已启用，点击「编辑」配置保质期';
+            if (capSe) capSe.textContent = '已启用';
+            return;
+        }
+        var txt = '默认保质期 ' + daysVal + ' 天 · ' + PM.expiryPolicyLabel(policyVal);
+        el.textContent = txt;
+        if (capSe) capSe.textContent = '默认保质期 ' + daysVal + ' 天 · 按批次管理';
+    };
+
+    PM.openExpiryConfigModal = async function () {
+        var te = PM.el('detail-track-expiry');
+        if (!te || !te.checked) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('请先勾选启用保质期管理', 'warning');
+            }
+            return;
+        }
+        var modal = document.getElementById('product-expiry-modal');
+        if (!modal && typeof window.TM_syncProductCenterOverlays === 'function') {
+            try {
+                await window.TM_syncProductCenterOverlays();
+            } catch (e) { /* ignore */ }
+            modal = document.getElementById('product-expiry-modal');
+        }
+        if (!modal) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('保质期配置弹窗未加载，请刷新页面后重试', 'warning');
+            }
+            return;
+        }
+        var days = PM.el('detail-shelf-life-days');
+        var policy = PM.el('detail-expiry-policy');
+        var modalDays = document.getElementById('tm-expiry-modal-days');
+        var modalPolicy = document.getElementById('tm-expiry-modal-policy');
+        if (modalDays) modalDays.value = days && days.value ? days.value : '';
+        if (modalPolicy) modalPolicy.value = policy && policy.value ? policy.value : 'FEFO';
+        if (typeof window.TM_openUnifiedModal === 'function') {
+            window.TM_openUnifiedModal(modal, { variant: 'sheet' });
+        } else {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+    };
+
+    PM.closeExpiryConfigModal = function () {
+        var modal = document.getElementById('product-expiry-modal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+        if (typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        }
+    };
+
+    PM.confirmExpiryConfigModal = function () {
+        var modalDays = document.getElementById('tm-expiry-modal-days');
+        var modalPolicy = document.getElementById('tm-expiry-modal-policy');
+        var daysVal = modalDays && modalDays.value ? parseInt(modalDays.value, 10) : NaN;
+        if (!daysVal || isNaN(daysVal) || daysVal < 1) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('请填写有效的默认保质期天数', 'error');
+            }
+            return;
+        }
+        var days = PM.el('detail-shelf-life-days');
+        var policy = PM.el('detail-expiry-policy');
+        if (days) days.value = String(daysVal);
+        if (policy && modalPolicy) policy.value = modalPolicy.value || 'FEFO';
+        PM._expiryConfigConfirmed = true;
+        PM.updateExpiryEntrySummary();
+        if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+        PM.closeExpiryConfigModal();
+    };
+
+    PM.bindExpiryModalTriggers = function () {
+        var te = PM.el('detail-track-expiry');
+        if (te && !te.dataset.tmExpiryModalBound) {
+            te.dataset.tmExpiryModalBound = '1';
+            te.addEventListener('change', function () {
+                PM.syncExpiryPanelVisibility();
+                PM.updateExpiryEntrySummary();
+                if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+                if (!te.checked) PM._expiryConfigConfirmed = false;
+            });
+        }
+    };
+
     PM.populateCapabilityForm = function (spu) {
         spu = spu || {};
         var tv = PM.el('detail-track-variants');
@@ -1038,6 +1164,7 @@
         if (days) {
             var d = spu.default_shelf_life_days != null ? spu.default_shelf_life_days : spu.defaultShelfLifeDays;
             days.value = d != null ? String(d) : '';
+            PM._expiryConfigConfirmed = d != null && String(d).trim() !== '';
         }
         if (policy) {
             policy.value = spu.expiry_policy || spu.expiryPolicy || 'FEFO';
@@ -1050,6 +1177,12 @@
         }
         if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
             PM.syncVariantMatrixPanelVisibility();
+        }
+        if (typeof PM.syncExpiryPanelVisibility === 'function') {
+            PM.syncExpiryPanelVisibility();
+        }
+        if (typeof PM.updateExpiryEntrySummary === 'function') {
+            PM.updateExpiryEntrySummary();
         }
         if (typeof PM.updateVariantEntrySummary === 'function') {
             PM.updateVariantEntrySummary();
@@ -1068,9 +1201,16 @@
                 if (id === 'detail-track-variants' && typeof PM.syncVariantMatrixPanelVisibility === 'function') {
                     PM.syncVariantMatrixPanelVisibility();
                 }
+                if (id === 'detail-track-expiry') {
+                    if (typeof PM.syncExpiryPanelVisibility === 'function') PM.syncExpiryPanelVisibility();
+                    if (typeof PM.updateExpiryEntrySummary === 'function') PM.updateExpiryEntrySummary();
+                }
             });
             el.addEventListener('input', function () {
                 if (typeof PM.syncCapabilitySummaries === 'function') PM.syncCapabilitySummaries();
+                if (id === 'detail-shelf-life-days' && typeof PM.updateExpiryEntrySummary === 'function') {
+                    PM.updateExpiryEntrySummary();
+                }
             });
         });
     };
@@ -1199,10 +1339,15 @@
         delete root.dataset.tmCapBound;
         var tvReset = root.querySelector('[id$="detail-track-variants"]');
         if (tvReset) delete tvReset.dataset.tmVarModalBound;
+        var teReset = root.querySelector('[id$="detail-track-expiry"]');
+        if (teReset) delete teReset.dataset.tmExpiryModalBound;
         PM.bindCapabilityFormEvents();
         PM.bindCustomAttrHandlers();
         if (typeof PM.bindVariantModalTriggers === 'function') {
             PM.bindVariantModalTriggers();
+        }
+        if (typeof PM.bindExpiryModalTriggers === 'function') {
+            PM.bindExpiryModalTriggers();
         }
         if (typeof PM.ensureProductMediaBindings === 'function') {
             PM.ensureProductMediaBindings();
@@ -1225,7 +1370,9 @@
         var se = root.querySelector('#cap-summary-expiry') || document.getElementById('cap-summary-expiry');
         var ss = root.querySelector('#cap-summary-serial') || document.getElementById('cap-summary-serial');
         if (sv) sv.textContent = tv && tv.checked ? '已启用多规格' : '未启用规格';
-        if (se && te) {
+        if (typeof PM.updateExpiryEntrySummary === 'function') {
+            PM.updateExpiryEntrySummary();
+        } else if (se && te) {
             var days = PM.el('detail-shelf-life-days');
             se.textContent = te.checked
                 ? '默认保质期 ' + ((days && days.value) || '—') + ' 天 · 按批次管理'
@@ -1666,8 +1813,14 @@
         if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
             PM.syncVariantMatrixPanelVisibility();
         }
+        if (typeof PM.syncExpiryPanelVisibility === 'function') {
+            PM.syncExpiryPanelVisibility();
+        }
         if (typeof PM.updateVariantEntrySummary === 'function') {
             PM.updateVariantEntrySummary();
+        }
+        if (typeof PM.updateExpiryEntrySummary === 'function') {
+            PM.updateExpiryEntrySummary();
         }
         if (typeof PM.syncSkuCoversFromVariantDraft === 'function') {
             PM.syncSkuCoversFromVariantDraft();
@@ -1761,6 +1914,7 @@
         PM._variantComboDraft = [];
         PM._variantMatrixConfirmed = false;
         PM._variantDraftSpuId = null;
+        PM._expiryConfigConfirmed = false;
         var customList = document.getElementById('tm-variant-modal-custom-list');
         if (customList) customList.innerHTML = '';
         if (typeof window.TM_openUnifiedModal !== 'function') {
@@ -2825,5 +2979,34 @@
         if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
             PM.syncVariantMatrixPanelVisibility();
         }
+        if (typeof PM.syncExpiryPanelVisibility === 'function') {
+            PM.syncExpiryPanelVisibility();
+        }
     };
+
+    window.openProductExpiryModal = function () {
+        if (PM.openExpiryConfigModal) PM.openExpiryConfigModal();
+    };
+    window.closeProductExpiryModal = function () {
+        if (PM.closeExpiryConfigModal) PM.closeExpiryConfigModal();
+    };
+    window.confirmProductExpiryModal = function () {
+        if (PM.confirmExpiryConfigModal) PM.confirmExpiryConfigModal();
+    };
+
+    if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
+        var _bindPcFns = window.TM_bindProductCenterGlobalFns;
+        window.TM_bindProductCenterGlobalFns = function () {
+            _bindPcFns();
+            window.openProductExpiryModal = function () {
+                if (PM.openExpiryConfigModal) PM.openExpiryConfigModal();
+            };
+            window.closeProductExpiryModal = function () {
+                if (PM.closeExpiryConfigModal) PM.closeExpiryConfigModal();
+            };
+            window.confirmProductExpiryModal = function () {
+                if (PM.confirmExpiryConfigModal) PM.confirmExpiryConfigModal();
+            };
+        };
+    }
 })();

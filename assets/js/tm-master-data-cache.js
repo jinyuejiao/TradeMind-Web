@@ -49,6 +49,10 @@
             state.spu = {};
         },
 
+        invalidateCategories: function () {
+            state.categories = { list: [], loadedAt: 0 };
+        },
+
         getCategories: async function (force) {
             if (!force && isFresh(state.categories.loadedAt, TTL.categories) && state.categories.list.length) {
                 return state.categories.list;

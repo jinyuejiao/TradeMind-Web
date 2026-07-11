@@ -364,3 +364,53 @@
     pointer-events: none;
     text-decoration: line-through;
 }
+
+/* 仓库·收款 — 对齐订单详情 / 添加订单 */
+#rapid-order-modal.tm-order-detail-modal .rop-modal-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#rapid-order-modal.tm-order-detail-modal .rop-modal-body,
+#rapid-order-modal.tm-order-detail-modal .tm-document-modal-scroll {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#rapid-order-modal.tm-order-detail-modal #rop-bottom-panel {
+    flex: 0 0 auto;
+    max-height: min(42vh, 18rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#rapid-order-modal.tm-order-detail-modal #rop-aux-details > summary {
+    list-style: none;
+}
+
+#rapid-order-modal.tm-order-detail-modal #rop-aux-details > summary::-webkit-details-marker,
+#rapid-order-modal.tm-order-detail-modal .tm-order-aux-summary::-webkit-details-marker {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    #rapid-order-modal.tm-order-detail-modal.rop-modal-shell:not(.hidden) {
+        align-items: flex-end !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+
+    #rapid-order-modal.tm-order-detail-modal .rop-modal-panel {
+        width: 100%;
+        height: min(90dvh, 100%);
+        max-height: min(90dvh, 100%) !important;
+        border-radius: 2.5rem 2.5rem 0 0;
+    }
+
+    #rapid-order-modal.tm-order-detail-modal #rop-bottom-panel {
+        max-height: min(42vh, 18rem);
+    }
+}

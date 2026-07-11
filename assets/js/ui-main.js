@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260709tpl';
+    var url = '/modules/product-center/product-overlays.html?v=20260711expiry';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -34,6 +34,7 @@ function TM_syncProductCenterOverlays() {
                 'product-detail-modal',
                 'product-unit-modal',
                 'product-variant-modal',
+                'product-expiry-modal',
                 'attribute-template-modal',
                 'warehouse-transfer-modal'
             ];
@@ -641,7 +642,7 @@ function loadSmartOps() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260422r24',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260711smartops',
         '智能经营',
         { embedPathCheck: 'SmartOps' }
     );

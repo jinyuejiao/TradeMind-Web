@@ -60,13 +60,14 @@
         .pp-list { background: var(--tm-card); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
         .pp-row {
             padding: 14px 16px; border-bottom: 1px solid #E2E8F0;
-            display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
         }
         .pp-row:last-child { border-bottom: none; }
-        .pp-row-phone { font-weight: 700; font-size: 15px; }
+        .pp-row-name { font-weight: 700; font-size: 15px; line-height: 1.35; }
         .pp-row-meta { font-size: 11px; color: var(--tm-muted); margin-top: 4px; }
         .pp-badge {
-            font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 999px; white-space: nowrap;
+            font-size: 15px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+            line-height: 1.35; flex-shrink: 0;
         }
         .pp-badge-reg { background: #F1F5F9; color: #475569; }
         .pp-badge-pending { background: #FEF3C7; color: #B45309; }
@@ -407,7 +408,8 @@
         empty.classList.add('pp-hidden');
         list.innerHTML = rows.map(function (r) {
             var amt = r.rewardAmount != null ? (' · ¥' + fmtMoney(r.rewardAmount)) : '';
-            return '<div class="pp-row"><div><div class="pp-row-phone">' + (r.refereePhoneMasked || '****') +
+            var name = r.refereeTenantName || r.refereePhoneMasked || '—';
+            return '<div class="pp-row"><div><div class="pp-row-name">' + name +
                 '</div><div class="pp-row-meta">注册 ' + fmtDate(r.registeredAt) + amt + '</div></div>' +
                 '<span class="pp-badge ' + badgeClass(r.status) + '">' + (r.statusLabel || '') + '</span></div>';
         }).join('');

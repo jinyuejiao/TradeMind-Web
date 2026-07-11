@@ -143,6 +143,7 @@
             btn.addEventListener('click', function () {
                 var i = parseInt(btn.getAttribute('data-idx'), 10);
                 if (!isNaN(i)) {
+                    PM.syncAttributeTemplateDefsFromDom();
                     st.definitions.splice(i, 1);
                     renderDefinitionEditor();
                 }
@@ -155,6 +156,7 @@
                     notify('单模板最多 5 个规格属性', 'warning');
                     return;
                 }
+                PM.syncAttributeTemplateDefsFromDom();
                 st.definitions.push({ name: '', enumValues: [] });
                 renderDefinitionEditor();
             });
@@ -179,6 +181,9 @@
 
     PM.selectAttributeTemplateInModal = async function (templateId) {
         var st = PM._attrTplModalState;
+        if (st.selectedId) {
+            PM.syncAttributeTemplateDefsFromDom();
+        }
         st.selectedId = templateId;
         renderTemplateList();
         try {
