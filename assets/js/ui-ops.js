@@ -473,6 +473,16 @@
         });
     }
 
+    /** 将模块内弹层挂到 body，避免被滚动区 stacking context 压住底栏之上却点不到 */
+    function hoistOpsModalsToBody(container) {
+        if (!container) return;
+        container.querySelectorAll('.tm-ops-sheet-modal, .tm-ops-modal-backdrop').forEach(function (node) {
+            if (!node.id || !node.classList.contains('fixed')) return;
+            if (node.parentNode === document.body) return;
+            document.body.appendChild(node);
+        });
+    }
+
     function loadModule(route) {
         var cfg = ROUTES[route];
         if (!cfg) return Promise.resolve();
@@ -486,6 +496,7 @@
         setActiveNav(route);
         return fetchHtml(cfg.file + '?t=' + Date.now()).then(function (html) {
             root.innerHTML = html;
+            hoistOpsModalsToBody(root);
             if (route === 'tenants') initTenantsQuotaTreePage();
             else if (route === 'publish' || route === 'plans' || route === 'announce') initPublishCenterPage(route);
             else if (route === 'promoters' || route === 'referral') initPromotersHubPage(route);

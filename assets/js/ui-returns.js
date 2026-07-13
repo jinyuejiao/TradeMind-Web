@@ -420,6 +420,15 @@
         return '产品#' + (item.productId || item.product_id || '');
     }
 
+    function productSpecLabel(item) {
+        if (window.TM_ProductDomain && typeof window.TM_ProductDomain.resolveOrderItemSpecLabel === 'function') {
+            return window.TM_ProductDomain.resolveOrderItemSpecLabel(item) || '';
+        }
+        var direct = item && (item.attributes_display || item.attributesDisplay
+            || item.spec_display || item.specDisplay || '');
+        return direct && String(direct).trim() ? String(direct).trim() : '';
+    }
+
     function renderReturnCreateItems(items) {
         var container = document.getElementById('return-create-items');
         if (!container) return;
@@ -433,11 +442,14 @@
             var maxQ = returnableQty(item);
             var price = linePrice(item);
             var name = esc(productName(item));
+            var spec = productSpecLabel(item);
+            var specHtml = spec ? ('<span class="text-[11px] text-slate-500 block mt-0.5 break-words">' + esc(spec) + '</span>') : '';
             return ''
                 + '<div class="rounded-xl border border-slate-100 bg-slate-50 p-3 space-y-2">'
                 + '  <label class="flex items-start gap-3">'
                 + '    <input type="checkbox" class="return-create-check mt-1 w-5 h-5 accent-amber-600 shrink-0" data-item-id="' + itemId + '" data-product-id="' + (item.productId || item.product_id || '') + '" data-sku-id="' + (item.skuId || item.sku_id || '') + '" data-max-qty="' + maxQ + '" data-price="' + price + '" checked />'
                 + '    <span class="flex-1 min-w-0"><span class="text-sm font-bold text-slate-800 block break-words">' + name + '</span>'
+                + specHtml
                 + '      <span class="text-[11px] text-slate-500 block mt-0.5">可退 ' + maxQ + ' · 单价 ' + fmtMoney(price) + '</span></span>'
                 + '  </label>'
                 + '  <div class="flex items-center justify-between gap-3 pl-8">'

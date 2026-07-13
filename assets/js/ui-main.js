@@ -604,7 +604,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260706print', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260713order1', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -1760,23 +1760,34 @@ window.TM_shellSwitchTab = switchTab;
 
 function TM_openOrderDetailFromShell(orderId) {
     if (orderId == null) return;
-    switchTab('dashboard');
-    var attempts = 0;
-    function tryOpen() {
-        attempts += 1;
-        if (typeof window.openOrderDetailModal === 'function') {
-            window.openOrderDetailModal(orderId, {});
-            return;
+    var ready = document.getElementById('order-detail-modal') && typeof window.openOrderDetailModal === 'function';
+    var prep = ready
+        ? Promise.resolve()
+        : (typeof window.loadDashboard === 'function' ? window.loadDashboard() : Promise.resolve());
+    prep.then(function () {
+        var attempts = 0;
+        function tryOpen() {
+            attempts += 1;
+            if (typeof window.openOrderDetailModal === 'function') {
+                window.openOrderDetailModal(orderId, {});
+                return;
+            }
+            if (attempts < 40) {
+                setTimeout(tryOpen, 200);
+            }
         }
-        if (attempts < 40) {
-            setTimeout(tryOpen, 200);
-        }
-    }
-    var dashPromise = typeof window.loadDashboard === 'function' ? window.loadDashboard() : Promise.resolve();
-    dashPromise.then(function () {
-        setTimeout(tryOpen, 300);
+        setTimeout(tryOpen, 100);
     }).catch(function () {
-        setTimeout(tryOpen, 500);
+        var attempts = 0;
+        function tryOpen() {
+            attempts += 1;
+            if (typeof window.openOrderDetailModal === 'function') {
+                window.openOrderDetailModal(orderId, {});
+                return;
+            }
+            if (attempts < 40) setTimeout(tryOpen, 200);
+        }
+        setTimeout(tryOpen, 300);
     });
 }
 window.TM_openOrderDetailFromShell = TM_openOrderDetailFromShell;

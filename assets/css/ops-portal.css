@@ -287,25 +287,34 @@ body.tm-ops-portal {
 }
 
 /* ========== 权益/到期弹窗：手机端 Bottom Sheet ========== */
+body.tm-ops-portal .tm-ops-sheet-modal {
+    z-index: 300 !important;
+}
+
 @media (max-width: 767px) {
     .tm-ops-sheet-modal {
         align-items: flex-end !important;
         justify-content: flex-end !important;
         padding: 0 !important;
+        padding-bottom: calc(var(--tm-tabbar-h, 4.25rem) + env(safe-area-inset-bottom, 0px)) !important;
     }
 
     .tm-ops-sheet-modal .tm-ops-sheet-panel {
         width: 100%;
         max-width: 100%;
-        max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px)));
+        max-height: min(78dvh, calc(100dvh - var(--tm-tabbar-h, 4.25rem) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
         border-radius: 2.5rem 2.5rem 0 0;
         margin: 0;
+        padding-bottom: 1rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         animation: tm-ops-sheet-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     .tm-ops-sheet-modal .tm-ops-btn-primary {
         background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
         box-shadow: 0 8px 24px rgba(79, 70, 229, 0.28);
+        margin-bottom: 0.25rem;
     }
 }
 

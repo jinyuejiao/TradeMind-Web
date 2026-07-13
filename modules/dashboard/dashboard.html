@@ -1754,13 +1754,16 @@
                     var returnedHint = line.returnedQty > 0
                         ? ('<p class="text-[10px] text-amber-600 mt-0.5">已退 ' + line.returnedQty + ' · 可退 ' + line.returnableQty + '</p>')
                         : '';
+                    var specHint = p.spec
+                        ? ('<p class="text-[10px] text-slate-500 mt-0.5 whitespace-normal break-words">' + p.spec + '</p>')
+                        : '';
                     var chk = showShip
                         ? ('<td class="detail-ship-col px-2 py-2 text-center' + (showShip ? '' : ' hidden') + '">' +
                             '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '" data-row-index="' + rowIdx + '"' +
                             (proc ? ' checked disabled' : '') + ' aria-label="本次发货"></td>')
                         : '<td class="detail-ship-col hidden px-2 py-2"></td>';
                     return '<tr class="order-item-row">' + chk +
-                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p>' + returnedHint + '</td>' +
+                        '<td class="tm-col-product px-3 py-2"><p class="font-bold whitespace-normal break-words">' + p.name + '</p>' + specHint + returnedHint + '</td>' +
                         '<td class="tm-col-qty px-3 py-2 text-center font-mono">' + line.qty + '</td>' +
                         '<td class="tm-col-unit px-3 py-2 text-center text-slate-600">' + line.unit + '</td>' +
                         '<td class="tm-col-price px-3 py-2 text-center font-mono text-slate-700">' + formatCurrency(line.unitPrice) + '</td>' +
@@ -1778,10 +1781,13 @@
                             '<input type="checkbox" class="detail-ship-check w-4 h-4 accent-teal-600" data-item-id="' + itemId + '" data-row-index="' + rowIdx + '"' +
                             (proc ? ' checked disabled' : '') + '> 本次发货</label>')
                         : '';
+                    var specHint = p.spec
+                        ? ('<p class="text-[10px] text-slate-500 mt-0.5 break-words">' + p.spec + '</p>')
+                        : '';
                     return '<div class="order-item-row tm-purchase-item-card border border-slate-200 rounded-xl p-3 bg-slate-50">' +
                         chkRow +
-                        '<div class="flex justify-between gap-2"><span class="font-bold text-sm">' + p.name + '</span>' +
-                        '<span class="font-mono font-bold">' + formatCurrency(line.total) + '</span></div>' +
+                        '<div class="flex justify-between gap-2"><div class="min-w-0 flex-1"><span class="font-bold text-sm block break-words">' + p.name + '</span>' + specHint +
+                        '</div><span class="font-mono font-bold shrink-0">' + formatCurrency(line.total) + '</span></div>' +
                         '<div class="grid grid-cols-3 gap-2 mt-2 text-[10px]">' +
                         '<div><span class="text-slate-400 block">数量</span><span class="font-mono font-bold text-slate-800">' + line.qty + '</span></div>' +
                         '<div><span class="text-slate-400 block">单位</span><span class="font-bold text-slate-700">' + line.unit + '</span></div>' +
@@ -2948,20 +2954,32 @@
             };
         }
 
+        function resolveOrderItemSpecLabel(item) {
+            if (window.TM_ProductDomain && typeof window.TM_ProductDomain.resolveOrderItemSpecLabel === 'function') {
+                return window.TM_ProductDomain.resolveOrderItemSpecLabel(item);
+            }
+            if (!item) return '';
+            var direct = item.attributes_display || item.attributesDisplay
+                || item.spec_display || item.specDisplay || '';
+            return direct && String(direct).trim() ? String(direct).trim() : '';
+        }
+
         function resolveOrderItemProductDisplay(item) {
-            if (!item) return { name: '—', sku: '', unit: '' };
+            if (!item) return { name: '—', sku: '', unit: '', spec: '' };
+            var spec = resolveOrderItemSpecLabel(item);
             var name = item.product_name || item.productName;
             if (name && String(name).trim()) {
                 return {
                     name: String(name).trim(),
                     sku: item.sku || item.skuCode || item.sku_code || '',
-                    unit: item.unit || getProductUnitById(item.productId || item.product_id)
+                    unit: item.unit || getProductUnitById(item.productId || item.product_id),
+                    spec: spec
                 };
             }
             var pid = item.productId != null ? item.productId : item.product_id;
             var p = getProductDisplayById(pid);
             if (pid != null && p.name && p.name !== ('产品#undefined') && p.name !== ('产品#null')) {
-                return p;
+                return { name: p.name, sku: p.sku || '', unit: p.unit || '', spec: spec };
             }
             var skuId = item.skuId != null ? item.skuId : item.sku_id;
             if (skuId != null && window.TM_SkuCatalogCache && typeof window.TM_SkuCatalogCache.findSkuById === 'function') {
@@ -2970,11 +2988,13 @@
                     return {
                         name: row.name || row.spuName || row.productName || ('SKU#' + skuId),
                         sku: row.skuCode || row.sku || '',
-                        unit: row.unit || row.baseUnit || p.unit || ''
+                        unit: row.unit || row.baseUnit || p.unit || '',
+                        spec: spec || (window.TM_ProductDomain && window.TM_ProductDomain.formatSkuSpecLabel
+                            ? window.TM_ProductDomain.formatSkuSpecLabel(row) : '')
                     };
                 }
             }
-            return p;
+            return { name: p.name, sku: p.sku || '', unit: p.unit || '', spec: spec };
         }
 
         function setInputValueIfExists(id, value) {
@@ -5609,7 +5629,7 @@
     </script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
     <script src="../../assets/js/tm-print/tm-print-api.js?v=20260709print1"></script>
-    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260709print1"></script>
+    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260713order1"></script>
     <script src="../../assets/js/tm-print/tm-print-preview.js?v=20260709print1"></script>
     <script src="../../assets/js/tm-scan-router.js?v=20260706print"></script>
     <script src="../../assets/js/tm-scan-camera.js?v=20260706print"></script>
@@ -5617,12 +5637,12 @@
     <script src="../../assets/js/tm-print/tm-print-triggers.js?v=20260709print1"></script>
     <script src="../../assets/js/tm-order-dict.js?v=20260626"></script>
     <script src="../../assets/js/ui-sales-orders.js?v=20260626"></script>
-    <script src="../../assets/js/ui-returns.js?v=20260628"></script>
+    <script src="../../assets/js/ui-returns.js?v=20260713order1"></script>
     <script src="../../assets/js/order-workbench-modal.js?v=20260526ord2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526ord"></script>
     <script src="../../assets/js/tm-product-thumb.js?v=20260630"></script>
     <script src="../../assets/js/tm-biz-accounts.js?v=20260707fix1"></script>
-    <script src="../../assets/js/tm-product-domain.js?v=20260705fix1"></script>
+    <script src="../../assets/js/tm-product-domain.js?v=20260713order1"></script>
     <script src="../../assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
     <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260706fix1"></script>

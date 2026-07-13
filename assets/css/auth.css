@@ -69,14 +69,15 @@
     width: 3rem;
     height: 3rem;
     margin: 0 auto 0.75rem;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.12);
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--tm-radius-xl);
+    background: var(--tm-brand-500);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
     font-size: 1.35rem;
+    box-shadow: 0 0 15px rgba(20, 184, 166, 0.5);
 }
 
 .auth-title {

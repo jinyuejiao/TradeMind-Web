@@ -32,6 +32,28 @@
         return 0;
     }
 
+    function sumRowWarehouseStock(row) {
+        if (!row) return 0;
+        var whs = PM.warehouses || [];
+        if (!whs.length) {
+            return Math.max(0, parseInt(row.stock, 10) || 0);
+        }
+        var sum = 0;
+        whs.forEach(function (w) {
+            var wid = w.id != null ? w.id : w.warehouseId;
+            sum += whStockLookup(row.warehouseStocks, wid);
+        });
+        return sum;
+    }
+
+    function syncComboRowStockFromWarehouses(row) {
+        if (!row) return 0;
+        var whs = PM.warehouses || [];
+        if (!whs.length) return Math.max(0, parseInt(row.stock, 10) || 0);
+        row.stock = sumRowWarehouseStock(row);
+        return row.stock;
+    }
+
     function getEnabledDraftRows() {
         return (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
     }
@@ -94,6 +116,7 @@
     PM.syncComboDraftFromDom = function () {
         var tbody = document.getElementById('tm-variant-combo-tbody');
         if (!tbody) return;
+        var whs = PM.warehouses || [];
         tbody.querySelectorAll('.tm-variant-wh-qty').forEach(function (inp) {
             var ck = inp.getAttribute('data-combo-key');
             var whId = parseInt(inp.getAttribute('data-wh'), 10);
@@ -102,12 +125,18 @@
             row.warehouseStocks = row.warehouseStocks || {};
             row.warehouseStocks[whId] = Math.max(0, parseInt(inp.value, 10) || 0);
         });
-        tbody.querySelectorAll('.tm-variant-row-stock').forEach(function (inp) {
-            var ck = inp.getAttribute('data-combo-key');
-            var row = findDraftRowByComboKey(ck);
-            if (!row) return;
-            row.stock = Math.max(0, parseInt(inp.value, 10) || 0);
-        });
+        if (whs.length) {
+            getEnabledDraftRows().forEach(function (row) {
+                syncComboRowStockFromWarehouses(row);
+            });
+        } else {
+            tbody.querySelectorAll('.tm-variant-row-stock').forEach(function (inp) {
+                var ck = inp.getAttribute('data-combo-key');
+                var row = findDraftRowByComboKey(ck);
+                if (!row) return;
+                row.stock = Math.max(0, parseInt(inp.value, 10) || 0);
+            });
+        }
         var spuDefault = getSpuDefaultPrice();
         tbody.querySelectorAll('.tm-variant-row-price').forEach(function (inp) {
             var ck = inp.getAttribute('data-combo-key');
@@ -118,6 +147,16 @@
     };
 
     function findComboDomInput(className, comboKeyVal, whId) {
+        var rowEl = findComboTableRow(comboKeyVal);
+        if (rowEl) {
+            if (whId != null) {
+                var whInp = rowEl.querySelector('.' + className + '[data-wh="' + whId + '"]');
+                if (whInp) return whInp;
+            } else {
+                var inp = rowEl.querySelector('.' + className);
+                if (inp) return inp;
+            }
+        }
         var tbody = document.getElementById('tm-variant-combo-tbody');
         if (!tbody) return null;
         var nodes = tbody.querySelectorAll('.' + className);
@@ -128,6 +167,16 @@
             } else {
                 return nodes[i];
             }
+        }
+        return null;
+    }
+
+    function findComboTableRow(comboKeyVal) {
+        var tbody = document.getElementById('tm-variant-combo-tbody');
+        if (!tbody || !comboKeyVal) return null;
+        var rows = tbody.querySelectorAll('tr.tm-variant-combo-row');
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].getAttribute('data-combo-key') === comboKeyVal) return rows[i];
         }
         return null;
     }
@@ -287,14 +336,21 @@
             var whCells = whs.map(function (w) {
                 var wid = w.id != null ? w.id : w.warehouseId;
                 var v = whStockLookup(row.warehouseStocks, wid);
-                return '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input w-16 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" data-wh="' + wid + '" value="' + v + '" /></td>';
+                return '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input w-16 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" data-wh="' + wid + '" value="' + v + '" inputmode="numeric" /></td>';
             }).join('');
+            var rowStock = whs.length ? syncComboRowStockFromWarehouses(row) : (Math.max(0, parseInt(row.stock, 10) || 0));
+            var stockReadonly = whs.length > 0;
+            var stockCell = '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-row-stock form-input w-16 text-xs font-mono text-right py-1'
+                + (stockReadonly ? ' bg-slate-50 text-slate-600 cursor-default' : '')
+                + '" data-combo-key="' + keyAttr + '" value="' + rowStock + '"'
+                + (stockReadonly ? ' readonly tabindex="-1" aria-readonly="true" title="各仓库存自动合计"' : ' inputmode="numeric"')
+                + ' /></td>';
             return '<tr class="tm-variant-combo-row border-b border-slate-50 hover:bg-slate-50/80" data-combo-key="' + keyAttr + '">'
                 + '<td class="px-3 py-2 text-xs text-slate-700 font-medium max-w-[10rem]">' + PM.escHtmlText(label) + '</td>'
                 + imgCell
                 + priceCell
                 + whCells
-                + '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-row-stock form-input w-16 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" value="' + (row.stock || 0) + '" /></td>'
+                + stockCell
                 + '<td class="px-2 py-2 text-center"><button type="button" class="tm-variant-row-del text-red-400 hover:text-red-600 p-1" data-combo-key="' + keyAttr + '" title="移除此组合"><i class="ph ph-trash text-sm"></i></button></td>'
                 + '</tr>';
         }).join('');
@@ -305,14 +361,19 @@
             });
         });
         tbody.querySelectorAll('.tm-variant-wh-qty').forEach(function (inp) {
-            inp.addEventListener('input', function () {
+            var onWhQtyChange = function () {
                 PM.onVariantComboWhChange(inp.getAttribute('data-combo-key'), parseInt(inp.getAttribute('data-wh'), 10), inp.value);
-            });
+            };
+            inp.addEventListener('input', onWhQtyChange);
+            inp.addEventListener('change', onWhQtyChange);
         });
         tbody.querySelectorAll('.tm-variant-row-stock').forEach(function (inp) {
-            inp.addEventListener('input', function () {
+            if (inp.readOnly || inp.hasAttribute('readonly')) return;
+            var onStockChange = function () {
                 PM.onVariantComboStockChange(inp.getAttribute('data-combo-key'), inp.value);
-            });
+            };
+            inp.addEventListener('input', onStockChange);
+            inp.addEventListener('change', onStockChange);
         });
         tbody.querySelectorAll('.tm-variant-row-price').forEach(function (inp) {
             inp.addEventListener('input', function () {
@@ -435,13 +496,9 @@
         if (!row) return;
         row.warehouseStocks = row.warehouseStocks || {};
         row.warehouseStocks[whId] = Math.max(0, parseInt(val, 10) || 0);
-        var sum = 0;
-        Object.keys(row.warehouseStocks).forEach(function (k) {
-            sum += Math.max(0, parseInt(row.warehouseStocks[k], 10) || 0);
-        });
-        row.stock = sum;
+        row.stock = sumRowWarehouseStock(row);
         var stockInp = findComboDomInput('tm-variant-row-stock', comboKeyVal);
-        if (stockInp) stockInp.value = String(sum);
+        if (stockInp) stockInp.value = String(row.stock);
         PM.updateVariantComboSummary();
     };
 
@@ -478,13 +535,13 @@
         var el = document.getElementById('tm-variant-combo-summary');
         if (!el) return;
         var active = (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
-        var totalStock = active.reduce(function (s, r) { return s + (parseInt(r.stock, 10) || 0); }, 0);
+        var totalStock = active.reduce(function (s, r) { return s + sumRowWarehouseStock(r); }, 0);
         el.textContent = active.length ? ('共 ' + active.length + ' 个有效组合 · 合计库存 ' + totalStock + ' ' + (PM.getBaseUnitLabel ? PM.getBaseUnitLabel() : '件')) : '';
     };
 
     PM.syncVariantStockToMainForm = function () {
         var active = (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
-        var totalStock = active.reduce(function (s, r) { return s + (parseInt(r.stock, 10) || 0); }, 0);
+        var totalStock = active.reduce(function (s, r) { return s + sumRowWarehouseStock(r); }, 0);
         var stockInput = PM.el('detail-product-stock', 'product-stock-input');
         if (stockInput) {
             PM._stockSyncLock = true;
@@ -524,7 +581,7 @@
             return;
         }
         var active = (PM._variantComboDraft || []).filter(function (r) { return r.enabled !== false; });
-        var total = active.reduce(function (s, r) { return s + (parseInt(r.stock, 10) || 0); }, 0);
+        var total = active.reduce(function (s, r) { return s + sumRowWarehouseStock(r); }, 0);
         var txt = '已配置 ' + active.length + ' 个规格组合 · 合计库存 ' + total;
         el.textContent = txt;
         if (capSv) capSv.textContent = '已启用多规格';
@@ -757,6 +814,7 @@
                 if (!stock) {
                     Object.keys(whStocks).forEach(function (k) { stock += whStocks[k] || 0; });
                 }
+                stock = Math.max(0, parseInt(stock, 10) || 0);
                 var cover = sku.coverUrl || sku.cover_url || null;
                 var skuPrice = sku.price != null ? Number(sku.price) : null;
                 var spuDefault = getSpuDefaultPrice();
@@ -1012,7 +1070,7 @@
             });
             var combo = {
                 attributes: row.attrs,
-                stock: parseInt(row.stock, 10) || 0,
+                stock: sumRowWarehouseStock(row),
                 warehouseStocks: whItems,
                 enabled: true
             };

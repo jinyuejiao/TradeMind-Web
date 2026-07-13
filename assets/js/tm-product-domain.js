@@ -125,10 +125,27 @@
         return true;
     }
 
+    function resolveOrderItemSpecLabel(item) {
+        if (!item) return '';
+        var direct = item.attributes_display || item.attributesDisplay
+            || item.spec_display || item.specDisplay || '';
+        if (direct && String(direct).trim()) return String(direct).trim();
+        var skuId = item.skuId != null ? item.skuId : item.sku_id;
+        if (skuId != null && window.TM_SkuCatalogCache && typeof window.TM_SkuCatalogCache.findSkuById === 'function') {
+            var row = window.TM_SkuCatalogCache.findSkuById(skuId);
+            if (row) {
+                var label = formatSkuSpecLabel(row);
+                if (label) return label;
+            }
+        }
+        return '';
+    }
+
     window.TM_ProductDomain = {
         comboKey: comboKey,
         parseSkuAttributes: parseSkuAttributes,
         formatSkuSpecLabel: formatSkuSpecLabel,
+        resolveOrderItemSpecLabel: resolveOrderItemSpecLabel,
         cartesianFromSelection: cartesianFromSelection,
         whStockLookup: whStockLookup,
         getAllSpecDims: getAllSpecDims,

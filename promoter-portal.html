@@ -34,6 +34,28 @@
             padding: 28px 20px 24px;
             border-radius: 0 0 24px 24px;
         }
+        .pp-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .pp-header-top h1 { margin: 0 0 4px; flex: 1; min-width: 0; }
+        .pp-logout-btn {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(255,255,255,.2);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .pp-logout-btn:active { transform: scale(0.98); }
         .pp-header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
         .pp-header .pp-code {
             display: inline-flex; align-items: center; gap: 8px;
@@ -171,7 +193,12 @@
 
     <div id="pp-main-view" class="pp-hidden">
         <header class="pp-header">
-            <h1 id="pp-real-name">推广员</h1>
+            <div class="pp-header-top">
+                <h1 id="pp-real-name">推广员</h1>
+                <button type="button" class="pp-logout-btn" id="pp-logout-btn" title="退出登录" aria-label="退出登录">
+                    <i class="ph ph-sign-out"></i> 退出
+                </button>
+            </div>
             <div class="pp-code"><i class="ph ph-ticket"></i> 推广码 <span id="pp-referral-code">—</span></div>
             <div class="pp-header-actions">
                 <button type="button" class="pp-poster-btn" id="pp-poster-btn"><i class="ph ph-image-square-bold"></i> 生成推荐海报</button>
@@ -352,6 +379,16 @@
         localStorage.setItem(TOKEN_KEY, token);
     }
 
+    function logoutPromoter() {
+        localStorage.removeItem(TOKEN_KEY);
+        sessionStorage.removeItem(BIND_TOKEN_KEY);
+        window._ppCachedReferralCode = '';
+        document.getElementById('pp-user').value = '';
+        document.getElementById('pp-pwd').value = '';
+        show('login');
+        toast('已退出登录');
+    }
+
     function assertPromoterUser(user) {
         var role = user && (user.roleType || user.role_type || user.role || '');
         if (role !== 'ROLE_PROMOTER') {
@@ -523,6 +560,8 @@
         if (sessionStorage.getItem(BIND_TOKEN_KEY)) bindWechatWithPassword();
         else passwordLogin().catch(function (e) { toast(e.message || '登录失败'); });
     });
+
+    document.getElementById('pp-logout-btn').addEventListener('click', logoutPromoter);
 
     document.getElementById('pp-wechat-retry-btn').addEventListener('click', function () {
         wechatOAuthRedirect().catch(function (e) { toast(e.message || '微信授权不可用'); });

@@ -210,7 +210,8 @@
 
         var tbody = lines.map(function (line) {
             var nameCell = esc(line.productName || '—');
-            if (line.specDisplay) {
+            var hasSpecColumn = cols.indexOf('specDisplay') >= 0;
+            if (line.specDisplay && !hasSpecColumn) {
                 nameCell += '<span class="tm-print-receipt-spec">' + esc(line.specDisplay) + '</span>';
             }
             var cells = cols.map(function (c) {
