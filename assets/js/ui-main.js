@@ -642,10 +642,21 @@ function loadSmartOps() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260711smartops',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260714bizAi',
         '智能经营',
         { embedPathCheck: 'SmartOps' }
     );
+    // iframe 复用时不会重新执行页面脚本，主动通知刷新账户余额
+    try {
+        var bizHost = document.getElementById('view-biz');
+        var bizFrame = bizHost && bizHost.querySelector('iframe[data-tm-embed="biz"]');
+        if (bizFrame && bizFrame.contentWindow) {
+            bizFrame.contentWindow.postMessage({ type: 'TM_BIZ_ACCOUNTS_REFRESH' }, '*');
+            if (typeof bizFrame.contentWindow.loadBizAccounts === 'function') {
+                bizFrame.contentWindow.loadBizAccounts();
+            }
+        }
+    } catch (eBizRefresh) { /* ignore cross-origin / not ready */ }
 }
 
 function loadCRM() {
@@ -663,7 +674,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260705fix1', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260714stock-fix', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
@@ -715,7 +726,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260709nav1',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260714stock-fix',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -1390,6 +1401,27 @@ function TM_emitOrderDataChanged(detail) {
 }
 window.TM_emitOrderDataChanged = TM_emitOrderDataChanged;
 
+/** 进货/付款变更后通知经营模块刷新账户余额（含 iframe postMessage） */
+function TM_emitPurchasesChanged(detail) {
+    detail = detail || {};
+    try {
+        window.dispatchEvent(new CustomEvent('tm-purchases-changed', { detail: detail }));
+    } catch (e) { /* ignore */ }
+    try {
+        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+            try {
+                if (frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'TM_PURCHASES_CHANGED',
+                        purchaseId: detail.purchaseId
+                    }, '*');
+                }
+            } catch (e2) { /* ignore */ }
+        });
+    } catch (e3) { /* ignore */ }
+}
+window.TM_emitPurchasesChanged = TM_emitPurchasesChanged;
+
 /** 客户档案变更后通知 CRM iframe 等模块刷新列表 */
 function TM_emitCustomersChanged(detail) {
     detail = detail || {};
@@ -1820,11 +1852,17 @@ function TM_restoreShellNavigationGlobals() {
 TM_captureShellNavigationGlobals();
 
 function openAIAnalysis() {
+    if (window.TM_BizAI && typeof window.TM_BizAI.openAIAnalysis === 'function') {
+        return window.TM_BizAI.openAIAnalysis();
+    }
     var modal = document.getElementById('ai-modal');
     if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
     else if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
 }
 function closeAIAnalysis() {
+    if (window.TM_BizAI && typeof window.TM_BizAI.closeAIAnalysis === 'function') {
+        return window.TM_BizAI.closeAIAnalysis();
+    }
     var modal = document.getElementById('ai-modal');
     if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
     else if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
@@ -1838,41 +1876,7 @@ function toggleSidebar() {
     if (ol) ol.classList.toggle('hidden');
 }
 
-// --- <用户订阅>会员 / 海报：openMemberModal、showPoster 等由 auth.js 提供（含 wrapModal 与数据拉取） ---
-/**
-* 核心功能：生成并下载海报照片
-*/
-async function downloadPoster() {
-    const saveBtn = event.currentTarget;
-    const originalText = saveBtn.innerHTML;
-
-    // 改变按钮状态
-    saveBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin text-lg"></i> 生成中...';
-    saveBtn.disabled = true;
-
-    const element = document.getElementById('poster-capture-area');
-
-    try {
-        const canvas = await html2canvas(element, {
-            backgroundColor: null,
-            useCORS: true, // 允许加载跨域图片(二维码)
-            scale: 3,      // 提升清晰度
-            borderRadius: 40
-        });
-
-        // 转为图片并下载
-        const link = document.createElement('a');
-        link.download = `TradeMind-Invite-${USER_REF_CODE}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    } catch (err) {
-        console.error('海报生成失败:', err);
-        alert('保存失败，请稍后重试');
-    } finally {
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
-    }
-}
+// --- <用户订阅>会员 / 海报：openMemberModal、showPoster、downloadPoster 由 auth.js + tm-save-image.js 提供 ---
 
 // --- <工作台>语音逻辑：壳层仅提供稳定入口，真实录音/OSS/AI 由 dashboard 模块注册到 window.__TM_dashboardVoice ---
 (function () {
@@ -2942,8 +2946,20 @@ window.confirmPromoProductSelection = function () {
         if (window.TM_UI && window.TM_UI.alert) window.TM_UI.alert('请至少选择一个产品', 'warning');
         return;
     }
+    if (window.TM_BizAI && (!window.TM_BizAI.getPromoGoals || !window.TM_BizAI.getPromoGoals().length)) {
+        if (window.TM_UI && window.TM_UI.alert) window.TM_UI.alert('请先选择促销目标', 'warning');
+        if (window.TM_BizAI && typeof window.TM_BizAI.openPromoGoalModal === 'function') {
+            closePromoProductPickerModal();
+            window.TM_BizAI.openPromoGoalModal();
+        }
+        return;
+    }
     closePromoProductPickerModal();
-    openClearanceModal(window._promoSelectedProductIds);
+    if (window.TM_BizAI && typeof window.TM_BizAI.openClearanceModalWithGenerate === 'function') {
+        window.TM_BizAI.openClearanceModalWithGenerate(window._promoSelectedProductIds, false);
+    } else {
+        openClearanceModal(window._promoSelectedProductIds);
+    }
 };
 
 window.renderPromoProductPickerList = function (query) {

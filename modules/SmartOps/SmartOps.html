@@ -119,6 +119,8 @@
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260530modal"></script>
     <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
+    <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
+    <script src="../../assets/js/tm-biz-ai-insight.js?v=20260714bizai"></script>
     <script>
         // 打开会员订阅弹窗
         // 使用 auth.js 中定义的全局函数
@@ -201,11 +203,11 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h2 class="text-xl font-bold text-slate-800">智能经营中心</h2>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="openAIAnalysis()" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-colors flex items-center gap-2" title="查看AI经营决策分析报告">
+                        <button type="button" onclick="window.TM_BizAI?TM_BizAI.openAIAnalysis():openAIAnalysis()" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-colors flex items-center gap-2" title="查看AI经营决策分析报告">
                             <i class="ph ph-brain text-base"></i>
                             <span class="text-xs font-bold">AI经营分析</span>
                         </button>
-                        <button type="button" onclick="typeof openPromoProductPickerModal==='function'?openPromoProductPickerModal():openClearanceModal()" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-colors flex items-center gap-2" title="生成产品促销方案">
+                        <button type="button" onclick="window.TM_BizAI?TM_BizAI.startPromoFlow():(typeof openPromoProductPickerModal==='function'?openPromoProductPickerModal():openClearanceModal())" class="px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-brand-600 hover:border-brand-200 transition-colors flex items-center gap-2" title="生成产品促销方案">
                             <i class="ph ph-megaphone-simple text-base"></i>
                             <span class="text-xs font-bold">生成促销方案</span>
                         </button>
@@ -435,120 +437,55 @@
 
             <div id="clearance-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
                 <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeClearanceModal()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+                <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
                     <div class="tm-mobile-modal-header px-4 py-3 md:px-8 md:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                        <div class="flex items-center gap-3 md:gap-4 min-w-0"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-lightning-bold text-xl"></i></div><h2 class="text-sm font-black text-slate-800 uppercase tracking-widest italic truncate">AI Inventory Clearance Plan</h2></div>
-                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                        <div class="flex items-center gap-3 md:gap-4 min-w-0">
+                            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-megaphone-simple text-xl"></i></div>
+                            <div class="min-w-0">
+                                <h2 class="text-sm font-black text-slate-800">AI 促销方案</h2>
+                                <p id="promo-plan-target-names" class="text-[10px] text-slate-400 mt-0.5 truncate">针对所选产品生成促销建议</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0"><i class="ph ph-x text-xl text-slate-400"></i></button>
                     </div>
-                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-12 text-left">
-                        <section>
-                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
-                            <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">"监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理！"</div>
-                        </section>
+                    <div id="promo-ai-loading" class="hidden flex-1 flex flex-col items-center justify-center gap-4 p-10">
+                        <div class="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-sm font-bold text-teal-700" data-promo-ai-loading-text>AI 正在精算促销方案…</p>
                     </div>
-                    <div class="tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:p-6 border-t border-slate-100 shrink-0 mt-auto"><button onclick="closeClearanceModal()" class="w-full py-3 md:py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                    <div id="promo-ai-report-body" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar text-left"></div>
+                    <div class="tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:p-6 border-t border-slate-100 shrink-0 mt-auto flex gap-3">
+                        <button type="button" onclick="closeClearanceModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
+                        <button type="button" onclick="window.TM_BizAI && TM_BizAI.regeneratePromoPlan()" class="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-lg">重新生成</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- AI 预测报告弹窗 --> 
-            <div id="ai-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet"> 
-                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md modal-overlay" onclick="closeAIAnalysis()"></div> 
-                <div class="modal-content-box relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-2xl shadow-2xl overflow-hidden flex flex-col min-h-0"> 
-                    <div class="tm-mobile-modal-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0"> 
-                        <div class="flex items-center gap-2 min-w-0"> 
-                            <i class="ph ph-file-text text-brand-600 text-xl font-bold shrink-0"></i> 
-                            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider truncate">AI 经营决策分析报告 v2.4</h2> 
-                        </div> 
-                        <button onclick="closeAIAnalysis()" class="p-2 hover:bg-slate-200 rounded-full transition-colors shrink-0" aria-label="关闭"> 
-                            <i class="ph ph-x text-xl text-slate-400"></i> 
-                        </button> 
-                    </div> 
-
-                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-10"> 
-                        <!-- 报告标题与时间 --> 
-                        <div class="text-center border-b border-slate-100 pb-8"> 
-                            <h1 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">商户经营全项诊断与增长预测</h1> 
-                            <p class="text-xs text-slate-400 font-mono tracking-widest uppercase">报告生成时间: 2026.01.10 | 核心商户代码: TM-4820</p> 
-                        </div> 
-
-                        <!-- 第一部分：历史经营总结 --> 
-                        <section> 
-                            <div class="flex items-center gap-2 mb-4"> 
-                                <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> 
-                                <h3 class="text-lg font-bold text-slate-800">一、 历史产品及销售复盘</h3> 
-                            </div> 
-                            <p class="text-sm text-slate-600 leading-relaxed indent-8"> 
-                                通过对过去 12 个月的销售数据回溯显示，贵司主打的<span class="font-bold text-slate-900">"户外灯饰系列"</span>在 Q3、Q4 表现强劲，尤其是"金色镂空"系列单品，其利润贡献率高达 34.2%。以往销售高峰集中于 11-12 月，且主要客户群体分布在中东及南美地区，复购周期平均为 72 天。 
-                            </p> 
-                            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"> 
-                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"> 
-                                    <p class="text-[10px] text-slate-400">年营收增速</p> 
-                                    <p class="text-lg font-mono font-bold text-brand-600">+22.4%</p> 
-                                </div> 
-                                <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"> 
-                                    <p class="text-[10px] text-slate-400">高频SKU数</p> 
-                                    <p class="text-lg font-mono font-bold text-slate-800">14</p> 
-                                </div> 
-                            </div> 
-                        </section> 
-
-                        <!-- 第二部分：当前方案评估 --> 
-                        <section> 
-                            <div class="flex items-center gap-2 mb-4"> 
-                                <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> 
-                                <h3 class="text-lg font-bold text-slate-800">二、 当前销售方案分析</h3> 
-                            </div> 
-                            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200"> 
-                                <div class="flex items-start gap-3"> 
-                                    <i class="ph ph-magnifying-glass-plus text-2xl text-brand-600 mt-1"></i> 
-                                    <div> 
-                                        <p class="text-sm font-bold text-slate-800 mb-1">正在执行：东南亚尾货清理方案</p> 
-                                        <p class="text-xs text-slate-500 leading-relaxed"> 
-                                            AI 评估：该方案针对库存库龄超过 120 天的产品执行 85 折清理。目前该方案对<span class="text-brand-600 font-bold">现金流回笼</span>效果显著，但对整体毛利率产生了约 1.8% 的拉低效应。方案匹配度：<span class="font-bold">高</span>。 
-                                        </p> 
-                                    </div> 
-                                </div> 
-                            </div> 
-                        </section> 
-
-                        <!-- 第三部分：未来预测与规划 --> 
-                        <section> 
-                            <div class="flex items-center gap-2 mb-4"> 
-                                <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> 
-                                <h3 class="text-lg font-bold text-slate-800">三、 未来销售预测与产品规划</h3> 
-                            </div> 
-                            <div class="space-y-4"> 
-                                <div class="p-4 bg-white border border-slate-100 rounded-lg shadow-sm"> 
-                                    <div class="flex justify-between items-center mb-2"> 
-                                        <span class="text-xs font-bold text-slate-700">2026 Q1 市场需求热度预测</span> 
-                                        <span class="text-[10px] text-brand-600 bg-brand-50 px-2 rounded-full font-bold">上涨趋势 40%</span> 
-                                    </div> 
-                                    <p class="text-xs text-slate-500"> 
-                                        结合外部行业趋势，预计<span class="text-slate-900 font-bold">智能感应系列</span>需求将提前爆发。建议产品规划重点从"传统镂空"转向"轻量化、USB直充"型便携灯具。 
-                                    </p> 
-                                </div> 
-                                <div class="p-4 bg-brand-900 text-white rounded-lg shadow-lg relative overflow-hidden"> 
-                                    <div class="absolute -right-4 -top-4 opacity-10"><i class="ph ph-rocket-launch text-6xl"></i></div> 
-                                    <p class="text-xs font-bold text-brand-400 mb-2 uppercase tracking-tighter">AI 规划建议</p> 
-                                    <p class="text-sm font-medium leading-relaxed"> 
-                                        建议在 1 月 20 日前完成针对"北非市场"的复古系列选品，并利用当前供应链空档期提前锁定 2000 套包材料，可节省成本约 $1,200。 
-                                    </p> 
-                                </div> 
-                            </div> 
-                        </section> 
-
-                        <div class="text-center pt-6 opacity-30"> 
-                            <p class="text-[10px] text-slate-400 font-mono">--- 报告全文结束 ---</p> 
-                        </div> 
-                    </div> 
-
-                    <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 border-t border-slate-100 flex gap-3 shrink-0 mt-auto"> 
-                        <button onclick="closeAIAnalysis()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition">返回工作台</button> 
-                        <button class="flex-1 py-3 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2"> 
-                            <i class="ph ph-download"></i> 导出完整文档 
-                        </button> 
-                    </div> 
-                </div> 
+            <!-- AI 经营分析 -->
+            <div id="ai-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeAIAnalysis()"></div>
+                <div class="modal-content-box relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col min-h-0">
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/60 shrink-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="w-9 h-9 rounded-2xl bg-teal-500/15 text-teal-600 flex items-center justify-center shrink-0"><i class="ph ph-brain text-xl"></i></div>
+                            <h2 class="text-sm font-bold text-slate-800 truncate">AI 经营分析</h2>
+                        </div>
+                        <button type="button" onclick="closeAIAnalysis()" class="p-2 hover:bg-slate-200 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div id="biz-ai-loading" class="hidden flex-1 flex flex-col items-center justify-center gap-4 p-10">
+                        <div class="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-sm font-bold text-teal-700" data-biz-ai-loading-text>AI 正在思考…</p>
+                    </div>
+                    <div id="biz-ai-report-body" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar">
+                        <div class="text-center border-b border-slate-100 pb-6 mb-6">
+                            <h1 id="biz-ai-report-title" class="text-xl md:text-2xl font-bold text-slate-900 mb-2">商户经营全项诊断</h1>
+                            <p id="biz-ai-report-sub" class="text-xs text-slate-400">尚未生成报告</p>
+                        </div>
+                    </div>
+                    <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
+                        <button type="button" onclick="closeAIAnalysis()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
+                        <button type="button" onclick="window.TM_BizAI && TM_BizAI.regenerateAIAnalysis()" class="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-lg">重新生成</button>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -970,10 +907,42 @@
                 const data = result && result.data !== undefined ? result.data : result;
                 window.bizAccounts = Array.isArray(data) ? data : [];
                 renderBizAccounts();
+                // 详情弹窗打开时同步最新余额
+                if (window.bizAccountDetailId != null) {
+                    var detail = window.bizAccounts.find(function (a) {
+                        return Number(a.accountId) === Number(window.bizAccountDetailId);
+                    });
+                    if (detail && typeof window.renderBizAccountDetailFields === 'function') {
+                        window.renderBizAccountDetailFields(detail);
+                    }
+                }
             } catch (error) {
                 console.error('加载账户失败:', error);
                 window.bizAccounts = [];
                 renderBizAccounts();
+            }
+        }
+        window.loadBizAccounts = loadBizAccounts;
+
+        /** 用流水最新 balanceAfter 回写列表缓存（接口重拉前也可即时对齐展示） */
+        function syncBizAccountBalanceFromLedger(accountId, rows) {
+            if (accountId == null || !rows || !rows.length) return;
+            var latest = rows[0];
+            var bal = latest && latest.balanceAfter != null ? latest.balanceAfter : null;
+            if (bal == null) return;
+            var hit = (window.bizAccounts || []).find(function (a) {
+                return Number(a.accountId) === Number(accountId);
+            });
+            if (!hit) return;
+            var prev = Number(hit.balance);
+            var next = Number(bal);
+            if (Number.isFinite(prev) && Number.isFinite(next) && Math.abs(prev - next) < 0.000001) return;
+            hit.balance = next;
+            renderBizAccounts();
+            if (window.bizAccountDetailId != null
+                && Number(window.bizAccountDetailId) === Number(accountId)
+                && typeof window.renderBizAccountDetailFields === 'function') {
+                window.renderBizAccountDetailFields(hit);
             }
         }
 
@@ -1214,6 +1183,8 @@
                 }
             }
             window.bizLedgerAccountId = null;
+            // 流水可能已由订单/进货/手工调整变更，关闭后重拉列表余额
+            loadBizAccounts();
         };
 
         window.loadBizAccountLedger = async function() {
@@ -1230,6 +1201,11 @@
                 var pack = result && result.data !== undefined ? result.data : result;
                 var rows = pack && pack.records ? pack.records : [];
                 window.renderBizAccountLedgerTable(rows);
+                // 无日期筛选时流水首行即最新余额，先对齐列表再后台确认
+                if (!(ds && ds.value) && !(de && de.value)) {
+                    syncBizAccountBalanceFromLedger(id, rows);
+                }
+                loadBizAccounts();
             } catch (e) {
                 console.error(e);
                 window.renderBizAccountLedgerTable([]);
@@ -1288,46 +1264,40 @@
             }
         };
 
-        // 打开AI分析弹窗
         function openAIAnalysis() {
-            var modal = document.getElementById('ai-modal');
-            if (modal && typeof window.TM_openUnifiedModal === 'function') {
-                window.TM_openUnifiedModal(modal);
-            } else if (modal) {
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+            if (window.TM_BizAI && typeof window.TM_BizAI.openAIAnalysis === 'function') {
+                return window.TM_BizAI.openAIAnalysis();
             }
+            var modal = document.getElementById('ai-modal');
+            if (modal && typeof window.TM_openUnifiedModal === 'function') window.TM_openUnifiedModal(modal);
+            else if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
         }
 
-        // 关闭AI分析弹窗
         function closeAIAnalysis() {
-            var modal = document.getElementById('ai-modal');
-            if (modal && typeof window.TM_closeUnifiedModal === 'function') {
-                window.TM_closeUnifiedModal(modal);
-            } else if (modal) {
-                modal.classList.add('hidden');
-                document.body.style.overflow = '';
+            if (window.TM_BizAI && typeof window.TM_BizAI.closeAIAnalysis === 'function') {
+                return window.TM_BizAI.closeAIAnalysis();
             }
+            var modal = document.getElementById('ai-modal');
+            if (modal && typeof window.TM_closeUnifiedModal === 'function') window.TM_closeUnifiedModal(modal);
+            else if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
         }
 
         function openClearanceModal() {
-            var modal = document.getElementById('clearance-modal');
-            if (modal && typeof window.TM_openUnifiedModal === 'function') {
-                window.TM_openUnifiedModal(modal);
-            } else if (modal) {
-                modal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden';
+            if (window.TM_BizAI && typeof window.TM_BizAI.startPromoFlow === 'function') {
+                return window.TM_BizAI.startPromoFlow();
             }
+            var modal = document.getElementById('clearance-modal');
+            if (modal && typeof window.TM_openUnifiedModal === 'function') window.TM_openUnifiedModal(modal);
+            else if (modal) { modal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
         }
 
         function closeClearanceModal() {
-            var modal = document.getElementById('clearance-modal');
-            if (modal && typeof window.TM_closeUnifiedModal === 'function') {
-                window.TM_closeUnifiedModal(modal);
-            } else if (modal) {
-                modal.classList.add('hidden');
-                document.body.style.overflow = '';
+            if (window.TM_BizAI && typeof window.TM_BizAI.closeClearanceModal === 'function') {
+                return window.TM_BizAI.closeClearanceModal();
             }
+            var modal = document.getElementById('clearance-modal');
+            if (modal && typeof window.TM_closeUnifiedModal === 'function') window.TM_closeUnifiedModal(modal);
+            else if (modal) { modal.classList.add('hidden'); document.body.style.overflow = ''; }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -1370,18 +1340,36 @@
                 await switchReport('rev');
             }
 
+            function refreshBizAccountsFromShell() {
+                loadBizAccounts();
+            }
+
             window.addEventListener('tm-order-data-changed', function () {
                 refreshRevenueReportIfActive();
-                loadBizAccounts();
+                refreshBizAccountsFromShell();
             });
             window.addEventListener('tm-purchases-changed', function () {
-                loadBizAccounts();
+                refreshBizAccountsFromShell();
             });
             window.addEventListener('message', function (ev) {
                 var data = ev.data;
-                if (!data || data.type !== 'TM_ORDER_DATA_CHANGED') return;
-                refreshRevenueReportIfActive();
-                loadBizAccounts();
+                if (!data || !data.type) return;
+                if (data.type === 'TM_ORDER_DATA_CHANGED') {
+                    refreshRevenueReportIfActive();
+                    refreshBizAccountsFromShell();
+                    return;
+                }
+                if (data.type === 'TM_PURCHASES_CHANGED'
+                    || data.type === 'TM_BIZ_ACCOUNTS_REFRESH') {
+                    refreshBizAccountsFromShell();
+                }
+            });
+            // 从后台切回 / 页面重新可见时补拉余额（iframe 复用场景）
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') refreshBizAccountsFromShell();
+            });
+            window.addEventListener('pageshow', function () {
+                refreshBizAccountsFromShell();
             });
 
             // 默认显示营收报表

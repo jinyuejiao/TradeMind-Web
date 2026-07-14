@@ -15,6 +15,10 @@ window.ProductModule = {
         }
         var stockVal = apiProduct.stockQuantity != null ? apiProduct.stockQuantity : apiProduct.stock;
         var stockNum = stockVal != null ? Number(stockVal) : 0;
+        var totalStockVal = apiProduct.totalStock != null ? apiProduct.totalStock
+            : (apiProduct.total_stock != null ? apiProduct.total_stock : null);
+        var warehouseStockVal = apiProduct.warehouseStock != null ? apiProduct.warehouseStock
+            : (apiProduct.warehouse_stock != null ? apiProduct.warehouse_stock : null);
         var ucList = apiProduct.unitConversions || apiProduct.unit_conversions;
         var normalizedConversions = Array.isArray(ucList) ? ucList.map(function (c) {
             return {
@@ -47,6 +51,8 @@ window.ProductModule = {
                 return isFinite(n) && n > 0 ? n : null;
             })(),
             stock: stockNum,
+            totalStock: totalStockVal != null ? Number(totalStockVal) : null,
+            warehouseStock: warehouseStockVal != null ? Number(warehouseStockVal) : null,
             salesVolume: apiProduct.salesCount || apiProduct.salesVolume,
             icon: apiProduct.productIcon || apiProduct.icon || 'package',
             baseUnit: apiProduct.baseUnit || '',
@@ -133,7 +139,11 @@ window.ProductModule = {
                 return;
             }
 
-            const response = await window.wrappedFetch('/api/v1/rd/products', {
+            var url = '/api/v1/rd/products';
+            if (this.filterState && this.filterState.warehouseId != null) {
+                url += '?warehouseId=' + encodeURIComponent(this.filterState.warehouseId);
+            }
+            const response = await window.wrappedFetch(url, {
                 method: 'GET'
             });
 
@@ -146,6 +156,7 @@ window.ProductModule = {
             if (Array.isArray(productList)) {
                 this.products = productList.map(product => this.mapProductFromApi(product));
                 this._listCache = { products: this.products, at: Date.now() };
+                this.updateStockColumnHeader();
                 await this.refreshProductListView(opts);
             }
             
@@ -160,6 +171,16 @@ window.ProductModule = {
 
     invalidateProductListCache: function () {
         this._listCache = null;
+    },
+
+    updateStockColumnHeader: function() {
+        var el = document.getElementById('product-stock-col-header');
+        if (!el) return;
+        if (this.filterState && this.filterState.warehouseId != null) {
+            el.textContent = '本仓库存';
+        } else {
+            el.textContent = '实时库存';
+        }
     },
 
     loadCategories: async function(force) {
@@ -274,6 +295,9 @@ window.ProductModule = {
                 : [];
             
             this.warehouses = mappedWarehouses;
+            if (typeof this.initWarehouseOptions === 'function') {
+                this.initWarehouseOptions();
+            }
             return mappedWarehouses;
         } catch (error) {
             console.error('[ProductModule] 加载仓库数据异常:', error);
@@ -473,7 +497,9 @@ window.ProductModule = {
         var stkDd = document.getElementById('stock-dropdown');
         var whDd = document.getElementById('warehouse-dropdown');
         if (!catDd || !supDd || !stkDd) return;
-        if (catDd.dataset.tmFilterDelegated === '1' && supDd.dataset.tmFilterDelegated === '1' && stkDd.dataset.tmFilterDelegated === '1' && (!whDd || whDd.dataset.tmFilterDelegated === '1')) {
+        if (catDd.dataset.tmFilterDelegated === '1' && supDd.dataset.tmFilterDelegated === '1'
+            && stkDd.dataset.tmFilterDelegated === '1'
+            && (!whDd || whDd.dataset.tmFilterDelegated === '1')) {
             return;
         }
         catDd.dataset.tmFilterDelegated = '1';
@@ -521,7 +547,7 @@ window.ProductModule = {
                 e.stopPropagation();
                 var key = btn.getAttribute('data-warehouse-key');
                 if (key === 'all') {
-                    self.selectWarehouseFilter(null, '全部');
+                    self.selectWarehouseFilter(null, '全部仓库');
                 } else {
                     var wid = Number(key);
                     var label = (btn.textContent || '').trim();
@@ -541,17 +567,19 @@ window.ProductModule = {
             if (btn) btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
             await this.loadWarehouseStockFilter(this.filterState.warehouseId);
         } else {
-            if (label) label.textContent = '仓库';
+            if (label) label.textContent = '全部仓库';
             if (btn) btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
             this._warehouseStockFilter = null;
         }
+        this.updateStockColumnHeader();
+        this.invalidateProductListCache();
         const dropdown = document.getElementById('warehouse-dropdown');
         if (dropdown) dropdown.classList.add('hidden');
         this.updateResetButton();
         if (this.listViewMode === 'spu') {
             await this.loadSpuList();
         } else {
-            this.filterProducts();
+            await this.loadProducts({ force: true });
         }
     },
 
@@ -849,6 +877,37 @@ window.ProductModule = {
         this.filterProducts();
     },
 
+    selectWarehouseFilter: async function(warehouseId, displayName) {
+        const wid = warehouseId == null || warehouseId === '' ? null : Number(warehouseId);
+        this.filterState.warehouseId = wid != null && !Number.isNaN(wid) ? wid : null;
+
+        const label = document.getElementById('warehouse-label');
+        const btn = document.querySelector('#warehouse-filter > button');
+        if (label) {
+            label.textContent = this.filterState.warehouseId != null
+                ? (displayName || '已选仓库') : '全部仓库';
+        }
+        if (btn) {
+            if (this.filterState.warehouseId != null) {
+                btn.classList.add('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
+            } else {
+                btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
+            }
+        }
+        var whDd = document.getElementById('warehouse-dropdown');
+        if (whDd) whDd.classList.add('hidden');
+        const whFilterEl = document.getElementById('warehouse-filter');
+        if (whFilterEl) {
+            const caretIcon = whFilterEl.querySelector('.filter-caret-icon');
+            if (caretIcon) {
+                caretIcon.classList.remove('ph-caret-up', 'rotate-180', 'text-teal-500');
+                caretIcon.classList.add('ph-caret-down');
+            }
+        }
+        this.updateResetButton();
+        await this.loadProducts();
+    },
+
     updateResetButton: function() {
         const resetBtn = document.getElementById('reset-filter-btn');
         if (!resetBtn) return;
@@ -856,6 +915,7 @@ window.ProductModule = {
         const hasActiveFilter = this.filterState.categoryId != null || this.filterState.supplierId != null
             || this.filterState.warehouseId != null
             || (this.filterState.stockStatus && this.filterState.stockStatus !== '全部')
+            || this.filterState.warehouseId != null
             || (this.filterState.searchText && String(this.filterState.searchText).trim() !== '');
         
         if (hasActiveFilter) {
@@ -867,7 +927,8 @@ window.ProductModule = {
         }
     },
 
-    resetFilters: function() {
+    resetFilters: async function() {
+        var needReload = this.filterState.warehouseId != null;
         this.filterState = {
             categoryId: null,
             supplierId: null,
@@ -887,14 +948,20 @@ window.ProductModule = {
         document.getElementById('supplier-label').textContent = '供应商';
         document.getElementById('stock-label').textContent = '库存';
         var whLabel = document.getElementById('warehouse-label');
-        if (whLabel) whLabel.textContent = '仓库';
+        if (whLabel) whLabel.textContent = '全部仓库';
         
         document.querySelectorAll('#category-filter > button, #supplier-filter > button, #stock-filter > button, #warehouse-filter > button').forEach(function (btn) {
             btn.classList.remove('bg-white', 'ring-2', 'ring-teal-500/20', 'shadow-md');
         });
         
         this.updateResetButton();
-        this.filterProducts();
+        this.updateStockColumnHeader();
+        this.invalidateProductListCache();
+        if (needReload) {
+            await this.loadProducts({ force: true });
+        } else {
+            this.filterProducts();
+        }
     },
 
     filterInventoryTable: function() {
@@ -2373,7 +2440,11 @@ window.ProductModule = {
                 window.TM_UI.showNotification('进货单已生成（待审核），可在供货管理中查看', 'success');
             }
             self.removePurchaseGenSupplierGroup(supplierId);
-            window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+            if (typeof window.TM_emitPurchasesChanged === 'function') {
+                window.TM_emitPurchasesChanged({});
+            } else {
+                window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+            }
             try {
                 var refreshResp = await window.wrappedFetch('/api/v1/supp/purchases/suggestions/generation', { method: 'GET' });
                 var refreshWrap = await window.handleApiResponse(refreshResp);
@@ -3255,7 +3326,8 @@ window.saveCategoryEdit = function(idx) { window.ProductModule.saveCategoryEdit(
 document.addEventListener('click', function(e) {
     if (e.target.closest('#category-filter') ||
         e.target.closest('#supplier-filter') ||
-        e.target.closest('#stock-filter')) {
+        e.target.closest('#stock-filter') ||
+        e.target.closest('#warehouse-filter')) {
         return;
     }
     document.querySelectorAll('[id$="-dropdown"]').forEach(function (d) {

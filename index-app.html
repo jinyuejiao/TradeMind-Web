@@ -40,7 +40,8 @@
     <script src="/assets/js/tm-oss-upload.js?v=20260603img2"></script>
     <script src="/assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="/assets/js/tm-merchant-feedback.js?v=20260526fb3"></script>
-    <script src="/assets/js/auth.js?v=20260711pay"></script>
+    <script src="/assets/js/tm-save-image.js?v=20260714poster"></script>
+    <script src="/assets/js/auth.js?v=20260714poster"></script>
     <script src="/modules/membership/referral-rewards.js?v=20260521ref"></script>
     <script src="/assets/js/main-app.js?v=20260707fix1"></script>
     <script src="/assets/js/ui-permissions.js?v=20260527rbac"></script>
@@ -50,7 +51,8 @@
     <script src="/assets/js/tm-ui-loader.js"></script>
     <link rel="stylesheet" href="/assets/css/ops-portal.css?v=tm-ops-11">
     <script src="/assets/js/ui-ops.js?v=tm-ops-full-20260706"></script>
-    <script src="/assets/js/ui-main.js?v=20260713order1"></script>
+    <script src="/assets/js/ui-main.js?v=20260714stock-fix"></script>
+    <script src="/assets/js/tm-biz-ai-insight.js?v=20260714bizai"></script>
     <link rel="stylesheet" href="/assets/css/product-center.css?v=20260712expiry3">
     <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260531unit">
     <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260709print1">
@@ -58,9 +60,9 @@
     <script src="/assets/js/tm-biz-accounts.js?v=20260707fix1"></script>
     <script src="/assets/js/tm-master-data-cache.js?v=20260709fix3"></script>
     <script src="/assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260709fix1"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260714stock-fix"></script>
     <script src="/assets/js/tm-product-registry-form.js?v=20260712expiry3"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260712expiry3"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260714stock-fix"></script>
     <script src="/assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
     <script src="/assets/js/tm-product-variant-modal.js?v=20260713combo1"></script>
     <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
@@ -421,9 +423,54 @@
             </div>
 
             <!-- ================= [2] 所有弹窗模块 (核心修复点：确保在页面底部) ================= -->
-            <!-- AI 预测报告弹窗 -->
-            <div id="ai-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8">
-                <!-- AI 预测报告弹窗内容将通过 JavaScript 动态加载 -->
+            <!-- AI 经营分析报告 -->
+            <div id="ai-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeAIAnalysis()"></div>
+                <div class="modal-content-box relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col min-h-0">
+                    <div class="tm-mobile-modal-header px-4 py-3 md:px-6 md:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/60 shrink-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div class="w-9 h-9 rounded-2xl bg-teal-500/15 text-teal-600 flex items-center justify-center shrink-0"><i class="ph ph-brain text-xl"></i></div>
+                            <h2 class="text-sm font-bold text-slate-800 tracking-tight truncate">AI 经营分析</h2>
+                        </div>
+                        <button type="button" onclick="closeAIAnalysis()" class="p-2 hover:bg-slate-200 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div id="biz-ai-loading" class="hidden flex-1 flex flex-col items-center justify-center gap-4 p-10">
+                        <div class="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-sm font-bold text-teal-700" data-biz-ai-loading-text>AI 正在思考…</p>
+                        <p class="text-[11px] text-slate-400">正在聚合销售 / 库存 / 客户数据</p>
+                    </div>
+                    <div id="biz-ai-report-body" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar">
+                        <div class="text-center border-b border-slate-100 pb-6 mb-6">
+                            <h1 id="biz-ai-report-title" class="text-xl md:text-2xl font-bold text-slate-900 mb-2">商户经营全项诊断</h1>
+                            <p id="biz-ai-report-sub" class="text-xs text-slate-400">尚未生成报告</p>
+                        </div>
+                    </div>
+                    <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 border-t border-slate-100 flex gap-3 shrink-0 mt-auto">
+                        <button type="button" onclick="closeAIAnalysis()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
+                        <button type="button" onclick="window.TM_BizAI && TM_BizAI.regenerateAIAnalysis()" class="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2">
+                            <i class="ph ph-arrows-clockwise"></i> 重新生成
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 促销目标选择 -->
+            <div id="promo-goal-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[124] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closePromoGoalModal()"></div>
+                <div class="tm-dialog-panel relative bg-white w-full max-w-lg md:max-w-xl h-auto max-h-[min(90dvh,100%)] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0">
+                    <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                        <div>
+                            <h2 class="text-sm font-black text-slate-800">Step 1 · 选择促销目标</h2>
+                            <p class="text-[10px] text-slate-400 mt-0.5">可多选，将影响方案侧重点</p>
+                        </div>
+                        <button type="button" onclick="closePromoGoalModal()" class="p-2 hover:bg-slate-100 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                    </div>
+                    <div id="promo-goal-list" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 space-y-2 no-scrollbar"></div>
+                    <div class="tm-mobile-modal-footer p-4 border-t border-slate-100 flex gap-2 shrink-0">
+                        <button type="button" onclick="closePromoGoalModal()" class="tm-btn-secondary flex-1 py-3 text-xs">取消</button>
+                        <button type="button" onclick="window.TM_BizAI && TM_BizAI.confirmPromoGoalsAndPickProducts()" class="tm-btn-primary flex-[1.4] py-3 text-xs shadow-lg">下一步：选产品</button>
+                    </div>
+                </div>
             </div>
 
 
@@ -519,7 +566,7 @@
                 <div class="tm-dialog-panel relative bg-white w-full max-w-lg md:max-w-2xl h-[min(96dvh,100%)] md:h-auto md:max-h-[85vh] rounded-t-[1.75rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0">
                     <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
                         <div>
-                            <h2 class="text-sm font-black text-slate-800">选择促销产品</h2>
+                            <h2 class="text-sm font-black text-slate-800">Step 2 · 选择促销产品</h2>
                             <p class="text-[10px] text-slate-400 mt-0.5">支持按名称或 SKU 搜索</p>
                         </div>
                         <button type="button" onclick="closePromoProductPickerModal()" class="p-2 hover:bg-slate-100 rounded-full" aria-label="关闭"><i class="ph ph-x text-xl text-slate-400"></i></button>
@@ -539,40 +586,31 @@
                 </div>
             </div>
 
-            <!-- ================= [沉浸式弹窗 4] 呆滞品清理方案 ================= -->
+            <!-- ================= [沉浸式弹窗 4] AI 促销方案 ================= -->
             <div id="clearance-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
                 <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeClearanceModal()"></div>
-                <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+                <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
                     <div class="tm-mobile-modal-header px-4 py-3 md:px-8 md:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                         <div class="flex items-center gap-4 min-w-0">
-                            <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-megaphone-simple text-xl"></i></div>
+                            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-megaphone-simple text-xl"></i></div>
                             <div class="min-w-0">
-                                <h2 class="text-sm font-black text-slate-800">AI 促销方案</h2>
+                                <h2 class="text-sm font-black text-slate-800">Step 3 · AI 促销方案</h2>
                                 <p id="promo-plan-target-names" class="text-[10px] text-slate-400 mt-0.5 truncate">针对所选产品生成促销建议</p>
                             </div>
                         </div>
-                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                        <button type="button" onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full"><i class="ph ph-x text-xl text-slate-400"></i></button>
                     </div>
-                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-12 text-left">
-                        <section>
-                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
-                            <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">“监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理。”</div>
-                        </section>
-                        <section>
-                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 建议执行策略 (Strategy)</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="p-5 border border-slate-200 rounded-2xl">
-                                    <p class="text-xs font-black text-slate-900 uppercase mb-2">1. 阶梯折扣促销</p>
-                                    <p class="text-[11px] text-slate-400 leading-relaxed italic">针对 A 类大客户，推行‘买三赠一’或‘85折尾货清仓’政策，重点回笼现金流。</p>
-                                </div>
-                                <div class="p-5 border border-slate-200 rounded-2xl">
-                                    <p class="text-xs font-black text-slate-900 uppercase mb-2">2. 区域调拨</p>
-                                    <p class="text-[11px] text-slate-400 leading-relaxed italic">将当前积压的产品从华东仓调拨至需求旺季的东南亚分销点，平衡库存结构。</p>
-                                </div>
-                            </div>
-                        </section>
+                    <div id="promo-ai-loading" class="hidden flex-1 flex flex-col items-center justify-center gap-4 p-10">
+                        <div class="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-sm font-bold text-teal-700" data-promo-ai-loading-text>AI 正在精算促销方案…</p>
                     </div>
-                    <div class="tm-mobile-modal-footer p-4 md:p-6 border-t border-slate-100 shrink-0 mt-auto"><button onclick="closeClearanceModal()" class="w-full py-3 md:py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                    <div id="promo-ai-report-body" class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar text-left"></div>
+                    <div class="tm-mobile-modal-footer p-4 md:p-6 border-t border-slate-100 shrink-0 mt-auto flex gap-3">
+                        <button type="button" onclick="closeClearanceModal()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
+                        <button type="button" onclick="window.TM_BizAI && TM_BizAI.regeneratePromoPlan()" class="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2">
+                            <i class="ph ph-arrows-clockwise"></i> 重新生成
+                        </button>
+                    </div>
                 </div>
             </div>
 

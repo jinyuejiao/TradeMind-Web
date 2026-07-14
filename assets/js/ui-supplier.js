@@ -2268,17 +2268,26 @@ window.SupplierModule = {
     },
 
     resolvePurchaseUnitPrice: async function(productId, product, unitSelect, priceInput) {
-        var self = this;
+        var unitName = unitSelect && unitSelect.value ? String(unitSelect.value).trim() : '';
+        var skuId = product && (product.skuId != null ? product.skuId : product.defaultSkuId);
         var applied = false;
         try {
+            var line = { productId: productId, unitName: unitName };
+            if (skuId != null && Number(skuId) > 0) {
+                line.skuId = Number(skuId);
+            }
             var response = await window.wrappedFetch('/api/v1/supp/purchases/last-unit-prices', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productIds: [productId] })
+                body: JSON.stringify({ lines: [line], productIds: [productId] })
             });
             var result = await window.handleApiResponse(response);
             var data = result && result.data ? result.data : (result || {});
-            var lastPrice = data[String(productId)] != null ? data[String(productId)] : data[productId];
+            var key = String(productId)
+                + (line.skuId != null ? ':' + line.skuId : '')
+                + (unitName ? ':' + unitName : '');
+            var lastPrice = data[key] != null ? data[key]
+                : (data[String(productId)] != null ? data[String(productId)] : data[productId]);
             if (lastPrice != null && Number(lastPrice) > 0) {
                 priceInput.value = Number(lastPrice);
                 applied = true;
@@ -2287,30 +2296,37 @@ window.SupplierModule = {
             console.warn('[SupplierModule] 历史进货价查询失败', err);
         }
         if (applied) return;
-        var catalogPurchase = product.purchasePrice != null ? product.purchasePrice : (product.costPrice || 0);
+        // 后端失败时的本地兜底：售价 × (进货单位/销售单位) 相对基本单位换算比
         var catalogSale = product.price != null ? product.price : (product.salePrice || 0);
-        var unitName = unitSelect && unitSelect.value ? String(unitSelect.value).trim() : '';
-        var baseUnit = (product.baseUnit || '').trim();
         var salePrice = Number(catalogSale) || 0;
-        if (unitName && baseUnit && unitName !== baseUnit && salePrice > 0) {
-            var convs = product.unitConversions || [];
-            for (var i = 0; i < convs.length; i++) {
-                var c = convs[i];
-                var un = (c.unitName || c.unit_name || '').trim();
-                var ratio = Number(c.ratio != null ? c.ratio : c.perBase);
-                if (un && unitName === un && ratio > 0) {
-                    priceInput.value = Math.round(salePrice * ratio * 100) / 100;
-                    return;
-                }
+        var baseUnit = (product.baseUnit || '').trim();
+        var salesUnit = (product.salesUnit || '').trim() || baseUnit;
+        var targetUnit = unitName || (product.purchaseUnit || '').trim() || baseUnit;
+        if (salePrice > 0) {
+            var targetRatio = this._unitToBaseRatio(product, targetUnit, baseUnit);
+            var salesRatio = this._unitToBaseRatio(product, salesUnit, baseUnit);
+            if (targetRatio > 0 && salesRatio > 0) {
+                priceInput.value = Math.round(salePrice * targetRatio / salesRatio * 100) / 100;
+                return;
             }
-        }
-        if (catalogPurchase && Number(catalogPurchase) > 0) {
-            priceInput.value = Number(catalogPurchase);
-        } else if (salePrice > 0) {
             priceInput.value = salePrice;
-        } else {
-            priceInput.value = 0;
+            return;
         }
+        priceInput.value = 0;
+    },
+
+    _unitToBaseRatio: function(product, unit, baseUnit) {
+        var u = (unit || '').trim();
+        var b = (baseUnit || '').trim();
+        if (!u || !b || u === b) return 1;
+        var convs = (product && product.unitConversions) || [];
+        for (var i = 0; i < convs.length; i++) {
+            var c = convs[i];
+            var un = (c.unitName || c.unit_name || '').trim();
+            var ratio = Number(c.ratio != null ? c.ratio : c.perBase);
+            if (un && u === un && ratio > 0) return ratio;
+        }
+        return 1;
     },
 
     addPurchaseItem: function() {
@@ -2613,7 +2629,11 @@ window.SupplierModule = {
                 }
             }
             try {
-                window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+                if (typeof window.TM_emitPurchasesChanged === 'function') {
+                    window.TM_emitPurchasesChanged({});
+                } else {
+                    window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+                }
             } catch (evErr) { /* ignore */ }
             return result;
         } catch (error) {

@@ -1474,25 +1474,19 @@
             }, 0);
             var productStock = PM.currentProduct && PM.currentProduct.stock != null
                 ? Math.max(0, parseInt(PM.currentProduct.stock, 10) || 0) : 0;
-            if (whSum === 0 && productStock > 0 && list.length > 0) {
-                list = list.map(function (w, idx) {
-                    var row = Object.assign({}, w);
-                    if (idx === 0) row.quantity = productStock;
-                    return row;
-                });
+            // 禁止把产品总量静默灌入第一仓；分仓为真源，总量由分仓汇总
+            if (whSum === 0 && productStock > 0) {
+                console.warn('[ProductEnhance] 分仓库存均为 0，但产品总量为 ' + productStock
+                    + '。请保存分仓或执行库存纠偏，不再自动写入第一仓。');
             }
             PM.renderWarehouseStockSummary(list);
             PM.bindStockSyncHandlers();
-            var inputs = PM.getWarehouseStockInputs();
-            var whSumAfter = PM.sumWarehouseStocks();
-            if (whSumAfter > 0) {
+            if (whSum > 0) {
                 PM.syncTotalFromWarehouses();
             } else {
                 var stockInput = PM.el('detail-product-stock', 'product-stock-input');
-                var formTotal = stockInput ? parseInt(stockInput.value, 10) : NaN;
-                if (isNaN(formTotal) || formTotal <= 0) formTotal = productStock;
-                if (formTotal > 0 && stockInput) {
-                    stockInput.value = String(formTotal);
+                if (stockInput && (stockInput.value === '' || stockInput.value == null)) {
+                    stockInput.value = String(productStock || 0);
                 }
             }
         } catch (e) {

@@ -189,32 +189,15 @@
         _patched = true;
     }
 
+    function hideDetailReturnColumns() {
+        // 退货勾选在「申请退货」弹窗内完成，订单明细表仅保留：产品/数量/单位/单价/小计
+        document.querySelectorAll('#order-detail-modal .detail-return-col').forEach(function (el) {
+            el.classList.add('hidden');
+        });
+    }
+
     function injectReturnColumns(items) {
-        var detailModal = document.getElementById('order-detail-modal');
-        var btn = detailModal
-            ? detailModal.querySelector('#detail-apply-return-btn')
-            : document.getElementById('detail-apply-return-btn');
-        var show = btn && !btn.classList.contains('hidden');
-        document.querySelectorAll('#order-detail-modal .detail-return-col').forEach(function (th) {
-            th.classList.toggle('hidden', !show);
-        });
-        if (!show || !items || !items.length) return;
-        var tbody = detailModal
-            ? detailModal.querySelector('#detail-order-items-body')
-            : document.getElementById('detail-order-items-body');
-        if (!tbody) return;
-        tbody.querySelectorAll('tr.order-item-row').forEach(function (tr, idx) {
-            if (tr.querySelector('.detail-return-col')) return;
-            var item = items[idx];
-            if (!item) return;
-            var itemId = item.itemId != null ? item.itemId : (item.item_id != null ? item.item_id : idx);
-            var maxQ = returnableQty(item);
-            var price = linePrice(item);
-            var td = document.createElement('td');
-            td.className = 'detail-return-col tm-col-return px-2 py-2 text-center';
-            td.innerHTML = '<input type="checkbox" class="detail-return-check w-4 h-4 accent-amber-600" data-item-id="' + itemId + '" data-row-index="' + idx + '" data-max-qty="' + maxQ + '" data-price="' + price + '" aria-label="退货行">';
-            tr.appendChild(td);
-        });
+        hideDetailReturnColumns();
     }
 
     function syncDetailReturnUi(order) {
@@ -227,9 +210,7 @@
         var st = order && (order.orderStatus || order.order_status);
         var ok = returnableStatus(st);
         btn.classList.toggle('hidden', !ok);
-        document.querySelectorAll('#order-detail-modal .detail-return-col').forEach(function (el) {
-            el.classList.toggle('hidden', !ok);
-        });
+        hideDetailReturnColumns();
         var hintEl = detailModal
             ? detailModal.querySelector('#detail-order-return-hint')
             : document.getElementById('detail-order-return-hint');

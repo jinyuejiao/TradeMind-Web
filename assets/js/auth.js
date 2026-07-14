@@ -1992,10 +1992,12 @@ function copyReferralCode() {
     }
 }
 
-// 下载海报（与 UI 工程一致：高清 scale 3）
-async function downloadPoster() {
-    var saveBtn = (typeof event !== 'undefined' && event && event.currentTarget)
-        || document.querySelector('#poster-modal button[onclick*="downloadPoster"]');
+// 下载海报（高清 scale 3；手机分享/长按保存，PC 可选路径）
+async function downloadPoster(ev) {
+    var saveBtn = (ev && ev.currentTarget)
+        || (typeof event !== 'undefined' && event && event.currentTarget)
+        || document.querySelector('#poster-modal button[onclick*="downloadPoster"]')
+        || document.querySelector('#poster-modal .poster-modal-action-footer button');
     var originalHtml = saveBtn ? saveBtn.innerHTML : '';
     if (saveBtn) {
         saveBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin text-lg"></i> 生成中...';
@@ -2009,18 +2011,48 @@ async function downloadPoster() {
     }
     try {
         if (!window._tmCachedReferralCode) await tmSyncPosterReferral();
+        if (typeof html2canvas !== 'function') {
+            showNotification('海报组件未加载，请刷新页面');
+            return;
+        }
         var canvas = await html2canvas(element, {
             backgroundColor: null,
             useCORS: true,
             scale: 3,
             borderRadius: 40
         });
-        var link = document.createElement('a');
         var refCode = (document.getElementById('poster-ref-code') && document.getElementById('poster-ref-code').textContent || 'REF').replace(/\s+/g, '');
-        link.download = 'TradeMind-Invite-' + refCode + '.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showNotification('海报已成功下载');
+        var fileName = 'TradeMind-Invite-' + refCode + '.png';
+        var result;
+        if (typeof window.TM_saveCanvasAsImage === 'function') {
+            result = await window.TM_saveCanvasAsImage(canvas, { fileName: fileName });
+        } else {
+            var blob = await new Promise(function (resolve, reject) {
+                canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('toBlob failed')); }, 'image/png');
+            });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.download = fileName;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(function () {
+                URL.revokeObjectURL(url);
+                if (link.parentNode) link.parentNode.removeChild(link);
+            }, 2000);
+            result = 'download';
+        }
+        if (result === 'cancelled') {
+            showNotification('已取消保存');
+        } else if (result === 'saved') {
+            showNotification('海报已保存到所选位置');
+        } else if (result === 'shared') {
+            showNotification('请在系统面板中选择「存储到相册」');
+        } else if (result === 'preview') {
+            showNotification('请长按图片保存到相册');
+        } else {
+            showNotification('海报已开始下载，请在下载目录查看');
+        }
     } catch (error) {
         console.error('downloadPoster:', error);
         showNotification('海报下载失败，请重试');
