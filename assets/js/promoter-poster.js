@@ -1,5 +1,6 @@
 /**
  * 推广员门户 — 专属推荐海报（复用 modules/fragments/poster-modal.html）
+ * 保存：手机端走系统分享/长按存相册（tm-save-image.js）
  */
 (function (global) {
     'use strict';
@@ -114,39 +115,45 @@
     }
 
     async function downloadPoster(ev) {
-        var saveBtn = (ev && ev.currentTarget) || document.querySelector('#poster-modal button[type="button"]:last-of-type');
+        var saveBtn = (ev && ev.currentTarget)
+            || document.querySelector('#poster-modal .poster-modal-action-footer button');
         var originalHtml = saveBtn ? saveBtn.innerHTML : '';
         if (saveBtn) {
             saveBtn.innerHTML = '<i class="ph ph-circle-notch"></i> 生成中…';
             saveBtn.disabled = true;
         }
-        var element = document.getElementById('poster-capture-area');
-        if (!element) {
-            notify('海报元素未找到');
-            if (saveBtn) { saveBtn.innerHTML = originalHtml; saveBtn.disabled = false; }
-            return;
-        }
-        if (typeof global.html2canvas !== 'function') {
-            notify('海报组件未加载，请刷新页面');
-            if (saveBtn) { saveBtn.innerHTML = originalHtml; saveBtn.disabled = false; }
-            return;
-        }
         try {
-            var canvas = await global.html2canvas(element, {
-                backgroundColor: null,
-                useCORS: true,
-                scale: 3,
-                borderRadius: 40
-            });
-            var link = document.createElement('a');
-            var refCode = (document.getElementById('poster-ref-code') && document.getElementById('poster-ref-code').textContent || 'REF').replace(/\s+/g, '');
-            link.download = 'TradeMind-Invite-' + refCode + '.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            notify('海报已保存，可到相册查看');
+            var result;
+            if (global.TM_saveImage && typeof global.TM_saveImage.downloadPosterCapture === 'function') {
+                result = await global.TM_saveImage.downloadPosterCapture({ scale: 3 });
+            } else {
+                var element = document.getElementById('poster-capture-area');
+                if (!element) throw new Error('海报元素未找到');
+                if (typeof global.html2canvas !== 'function') throw new Error('海报组件未加载，请刷新页面');
+                var canvas = await global.html2canvas(element, {
+                    backgroundColor: null,
+                    useCORS: true,
+                    scale: 3,
+                    borderRadius: 40
+                });
+                var refCode = (document.getElementById('poster-ref-code') && document.getElementById('poster-ref-code').textContent || 'REF').replace(/\s+/g, '');
+                var filename = 'TradeMind-Invite-' + refCode + '.png';
+                if (typeof global.TM_saveCanvasToAlbum === 'function') {
+                    result = await global.TM_saveCanvasToAlbum(canvas, filename);
+                } else {
+                    var link = document.createElement('a');
+                    link.download = filename;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    result = { mode: 'download', message: '海报已保存' };
+                }
+            }
+            if (result && result.mode !== 'cancelled' && result.message) {
+                notify(result.message);
+            }
         } catch (err) {
             console.error('downloadPoster:', err);
-            notify('海报下载失败，请重试');
+            notify((err && err.message) || '海报保存失败，请重试');
         } finally {
             if (saveBtn) {
                 saveBtn.innerHTML = originalHtml;

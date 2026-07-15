@@ -1230,9 +1230,29 @@
     }
 
     function bootstrap() {
-        // 旧版「必学/新手导览」已下线：不启动任何引导 UI
-        console.info('[tm-onboarding] deprecated — skipped');
-        return;
+        if (!registry()) {
+            console.warn('[tm-onboarding] 缺少 TM_ONBOARDING_REGISTRY');
+            return;
+        }
+        patchSwitchTab();
+        patchNavClicks();
+        document.addEventListener('tm-role-ui-ready', function () {
+            if (serverHydrated) markRoleUiReady();
+        });
+        var hydrateDone = hydrateFromServer();
+        var hydrateTimeout = waitMs(5000).then(function () {
+            if (!serverHydrated) {
+                if (!state) state = loadStateLocalOnly();
+                serverHydrated = true;
+            }
+        });
+        Promise.all([hydrateDone, hydrateTimeout]).then(function () {
+            return waitMs(200);
+        }).then(function () {
+            if (!roleUiReady) {
+                markRoleUiReady();
+            }
+        });
     }
 
     if (document.readyState === 'loading') {

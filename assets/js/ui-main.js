@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260712expiry3';
+    var url = '/modules/product-center/product-overlays.html?v=20260715variant2';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -33,10 +33,10 @@ function TM_syncProductCenterOverlays() {
             var ids = [
                 'product-detail-modal',
                 'product-unit-modal',
+                'warehouse-transfer-modal',
                 'product-variant-modal',
                 'product-expiry-modal',
-                'attribute-template-modal',
-                'warehouse-transfer-modal'
+                'attribute-template-modal'
             ];
             ids.forEach(function (id) {
                 var nextNode = doc.getElementById(id);
@@ -88,7 +88,13 @@ function TM_syncDashboardOverlays(htmlString) {
             const current = document.getElementById(id);
             var preserveVoiceOpen = false;
             if (id === 'voice-modal') {
-                preserveVoiceOpen = !!(current && !current.classList.contains('hidden'));
+                var wasDomOpen = current && !current.classList.contains('hidden');
+                var inVoiceTour = window.TmOnboarding && typeof window.TmOnboarding.isVoiceModalPhase === 'function'
+                    && window.TmOnboarding.isVoiceModalPhase();
+                preserveVoiceOpen = !!(wasDomOpen || inVoiceTour);
+                if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
+                    window.TmOnboarding.setVoiceOverlaySyncLock(true);
+                }
             }
             const cloned = nextNode.cloneNode(true);
             if (current && current.parentNode) {
@@ -109,6 +115,13 @@ function TM_syncDashboardOverlays(htmlString) {
             if (id === 'voice-modal' && preserveVoiceOpen) {
                 cloned.classList.remove('hidden');
                 cloned.style.zIndex = '210';
+            }
+            if (id === 'voice-modal') {
+                if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalReplaced === 'function') {
+                    window.TmOnboarding.notifyVoiceModalReplaced(preserveVoiceOpen);
+                } else if (window.TmOnboarding && typeof window.TmOnboarding.setVoiceOverlaySyncLock === 'function') {
+                    window.TmOnboarding.setVoiceOverlaySyncLock(false);
+                }
             }
         });
         TM_rebindVoiceStopAfterOverlaySync();
@@ -150,12 +163,6 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (typeof window.loadDashboardOverviewStats === 'function') {
                     window.loadDashboardOverviewStats();
                 }
-                if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
-                    window.TM_SalesOrders.init();
-                }
-                if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
-                    window.TM_Returns.init();
-                }
             } catch (e0) { /* ignore */ }
             if (voiceUploadRev !== expectedVoiceRev && !window.__TM_VOICE_RELOAD_HINT_SHOWN) {
                 window.__TM_VOICE_RELOAD_HINT_SHOWN = true;
@@ -194,7 +201,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|tm-serial-capture\.js|tm-order-dict\.js|ui-sales-orders\.js|ui-returns\.js|tm-print\/|tm-peripheral-settings|tm-scan-router|tm-scan-camera|workbench-order-shipment/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|ui-product-center|tm-product-variant-modal|tm-attribute-template-modal/i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -233,12 +240,6 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 }
                 if (typeof window.loadDashboardOverviewStats === 'function') {
                     window.loadDashboardOverviewStats();
-                }
-                if (window.TM_SalesOrders && typeof window.TM_SalesOrders.init === 'function') {
-                    window.TM_SalesOrders.init();
-                }
-                if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
-                    window.TM_Returns.init();
                 }
                 if (typeof TM_scheduleShellOverlayRecovery === 'function') {
                     TM_scheduleShellOverlayRecovery();
@@ -352,19 +353,23 @@ function TM_mountEmbeddedFrame(host, frameKey, src, title, opts) {
     var existed = host.querySelector('iframe[data-tm-embed="' + frameKey + '"]');
     if (existed) {
         var didRewindSrc = false;
-        if (opts.embedPathCheck) {
+        var wantedBase = String(src || '').split('&_tmrec=')[0].split('?_tmrec=')[0];
+        var currentBase = String(existed.getAttribute('src') || '').split('&_tmrec=')[0].split('?_tmrec=')[0];
+        // 版本号/路径变更时强制换 src，避免长期卡在缓存旧页（如 CRM AI 弹窗）
+        if (wantedBase && currentBase && wantedBase !== currentBase) {
+            didRewindSrc = true;
+            existed.src = wantedBase + (wantedBase.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
+        } else if (opts.embedPathCheck) {
             try {
                 var idoc = existed.contentDocument;
                 var path = (idoc && idoc.location && idoc.location.pathname) || '';
                 if (path.indexOf(opts.embedPathCheck) === -1) {
                     didRewindSrc = true;
-                    var baseSrc = String(src || '').split('&_tmrec=')[0].split('?_tmrec=')[0];
-                    existed.src = baseSrc + (baseSrc.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
+                    existed.src = wantedBase + (wantedBase.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
                 }
             } catch (eReload) {
                 didRewindSrc = true;
-                var baseSrc2 = String(src || '').split('&_tmrec=')[0].split('?_tmrec=')[0];
-                existed.src = baseSrc2 + (baseSrc2.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
+                existed.src = wantedBase + (wantedBase.indexOf('?') >= 0 ? '&' : '?') + '_tmrec=' + Date.now();
             }
         }
         if (didRewindSrc) {
@@ -601,10 +606,11 @@ function TM_refreshDashboardPendingOrders() {
 
 // 模块加载函数（仅注入内容片段；CRM/供应链用 iframe+embed 保留原页面脚本与样式路径）
 function loadDashboard() {
+    console.log('[TM] 加载 dashboard 内容片段');
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260713order1', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601audit', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
@@ -639,42 +645,34 @@ function loadDashboard() {
 }
 
 function loadSmartOps() {
+    console.log('[TM] 以 iframe(embed) 加载 SmartOps');
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260714bizAi',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260715promoFix',
         '智能经营',
         { embedPathCheck: 'SmartOps' }
     );
-    // iframe 复用时不会重新执行页面脚本，主动通知刷新账户余额
-    try {
-        var bizHost = document.getElementById('view-biz');
-        var bizFrame = bizHost && bizHost.querySelector('iframe[data-tm-embed="biz"]');
-        if (bizFrame && bizFrame.contentWindow) {
-            bizFrame.contentWindow.postMessage({ type: 'TM_BIZ_ACCOUNTS_REFRESH' }, '*');
-            if (typeof bizFrame.contentWindow.loadBizAccounts === 'function') {
-                bizFrame.contentWindow.loadBizAccounts();
-            }
-        }
-    } catch (eBizRefresh) { /* ignore cross-origin / not ready */ }
 }
 
 function loadCRM() {
+    console.log('[TM] 以 iframe(embed) 加载 CRM');
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260709crm',
+        '/modules/crm/crm.html?embed=1&v=20260715crmAi3',
         'CRM',
         { embedPathCheck: 'crm' }
     );
 }
 
 function loadProductCenter() {
+    console.log('[TM] 加载产品中心内容（含管理弹窗与抽屉）');
     var overlayPromise = typeof TM_syncProductCenterOverlays === 'function'
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260714stock-fix', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260527pc', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
@@ -710,6 +708,7 @@ function loadProductCenter() {
             }
             setTimeout(function () {
                 if (window.ProductModule && window.ProductModule.init) {
+                    console.log('[ui-main] 初始化 ProductModule');
                     window.ProductModule.init();
                 }
                 if (window.TM_Compliance && typeof window.TM_Compliance.onTabChange === 'function') {
@@ -723,10 +722,11 @@ function loadProductCenter() {
 }
 
 function loadSupplier() {
+    console.log('[TM] 以 iframe(embed) 加载供应链/供应商');
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260714stock-fix',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260715po-price4',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -742,19 +742,33 @@ const TM_NAV_CONFIG = [
     { tab: 'biz', label: '智能经营', mobileLabel: '经营', icon: 'ph-chart-line-up' },
     { tab: 'crm', label: '客户 CRM', mobileLabel: '客户', icon: 'ph-users' },
     { tab: 'supply', label: '产品中心', mobileLabel: '产研', icon: 'ph-flask' },
-    { tab: 'supplier', label: '供货管理', mobileLabel: '供货', icon: 'ph-warehouse' }
+    { tab: 'supplier', label: '供应商管理', mobileLabel: '供应', icon: 'ph-warehouse' }
 ];
 
 const TM_OPS_NAV_CONFIG = [
     { route: 'tenants', label: '看板', title: '租户看板', icon: 'ph-squares-four' },
-    { route: 'publish', label: '定价', title: '内容与定价', icon: 'ph-currency-circle-dollar' },
-    { route: 'promoters', label: '推广', title: '推广运营', icon: 'ph-user-plus' },
-    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' }
+    { route: 'plans', label: '订阅', title: '订阅策略', icon: 'ph-currency-circle-dollar' },
+    { route: 'referral', label: '推荐', title: '推荐与结算', icon: 'ph-gift' },
+    { route: 'promoters', label: '推广', title: '推广员开号', icon: 'ph-user-plus' },
+    { route: 'feedback', label: '问题', title: '用户问题', icon: 'ph-chats-circle' },
+    { route: 'announce', label: '公告', title: '公告与审计', icon: 'ph-scroll' }
 ];
 
 const TM_OPS_ROUTE_IDS = TM_OPS_NAV_CONFIG.map(function (item) { return item.route; });
 
 function TM_getCurrentRoleType() {
+    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
+        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
+    }
+    try {
+        var raw = localStorage.getItem('user_info');
+        if (raw) {
+            var u = JSON.parse(raw);
+            if (u && u.roleType) {
+                return String(u.roleType).trim().toUpperCase();
+            }
+        }
+    } catch (e) { /* ignore */ }
     try {
         var token = localStorage.getItem('token');
         if (token && token !== 'mock-token') {
@@ -770,19 +784,7 @@ function TM_getCurrentRoleType() {
                 }
             }
         }
-    } catch (eJwt) { /* ignore */ }
-    if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.role) {
-        return String(window.TM_UI_CONTEXT.role).trim().toUpperCase();
-    }
-    try {
-        var raw = localStorage.getItem('user_info');
-        if (raw) {
-            var u = JSON.parse(raw);
-            if (u && u.roleType) {
-                return String(u.roleType).trim().toUpperCase();
-            }
-        }
-    } catch (e) { /* ignore */ }
+    } catch (e2) { /* ignore */ }
     return '';
 }
 
@@ -884,9 +886,6 @@ function TM_scrollOpsContentTop() {
 }
 
 function TM_switchOpsRoute(route) {
-    if (typeof window.TM_OPS_normalizeRoute === 'function') {
-        route = window.TM_OPS_normalizeRoute(route);
-    }
     if (TM_OPS_ROUTE_IDS.indexOf(route) < 0) {
         route = 'tenants';
     }
@@ -948,8 +947,8 @@ function TM_bootOpsHubShell() {
         TM_syncAppShellMetrics();
     }
     var raw = (location.hash || '').replace(/^#/, '');
-    if (typeof window.TM_OPS_normalizeRoute === 'function') {
-        raw = window.TM_OPS_normalizeRoute(raw);
+    if (raw === 'quota-ai' || raw === 'lifecycle' || raw === 'tenants-lifecycle' || raw === 'metering') {
+        raw = 'tenants';
     }
     var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
     TM_switchOpsRoute(route);
@@ -984,9 +983,6 @@ function TM_bootOpsIndexShell() {
     var raw = (location.hash || '').replace(/^#(?:tab=)?/, '').split('&')[0];
     if (raw.indexOf('tab=') === 0) {
         raw = raw.slice(4);
-    }
-    if (typeof window.TM_OPS_normalizeRoute === 'function') {
-        raw = window.TM_OPS_normalizeRoute(raw);
     }
     var route = TM_OPS_ROUTE_IDS.indexOf(raw) >= 0 ? raw : 'tenants';
     if (window.TM_OPS && typeof window.TM_OPS.loadModule === 'function') {
@@ -1232,11 +1228,8 @@ function TM_pushEmbedModalNotify() {
 function TM_popEmbedModalNotify(frame) {
     window.__TM_embedModalNotifyDepth = Math.max(0, (window.__TM_embedModalNotifyDepth || 0) - 1);
     TM_popShellOverlay();
-    if (window.__TM_embedModalNotifyDepth === 0) {
-        if (frame) {
-            TM_setEmbedFrameModalExpanded(frame, false);
-        }
-        TM_restoreAllEmbedFramesFromModal();
+    if (window.__TM_embedModalNotifyDepth === 0 && frame) {
+        TM_setEmbedFrameModalExpanded(frame, false);
     }
 }
 
@@ -1401,27 +1394,6 @@ function TM_emitOrderDataChanged(detail) {
 }
 window.TM_emitOrderDataChanged = TM_emitOrderDataChanged;
 
-/** 进货/付款变更后通知经营模块刷新账户余额（含 iframe postMessage） */
-function TM_emitPurchasesChanged(detail) {
-    detail = detail || {};
-    try {
-        window.dispatchEvent(new CustomEvent('tm-purchases-changed', { detail: detail }));
-    } catch (e) { /* ignore */ }
-    try {
-        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
-            try {
-                if (frame.contentWindow) {
-                    frame.contentWindow.postMessage({
-                        type: 'TM_PURCHASES_CHANGED',
-                        purchaseId: detail.purchaseId
-                    }, '*');
-                }
-            } catch (e2) { /* ignore */ }
-        });
-    } catch (e3) { /* ignore */ }
-}
-window.TM_emitPurchasesChanged = TM_emitPurchasesChanged;
-
 /** 客户档案变更后通知 CRM iframe 等模块刷新列表 */
 function TM_emitCustomersChanged(detail) {
     detail = detail || {};
@@ -1526,58 +1498,7 @@ if (!window.__tmEmbedModalListenerBound) {
     window.__tmEmbedModalListenerBound = true;
     window.addEventListener('message', function (ev) {
         var data = ev.data;
-        if (!data || !data.type) return;
-
-        if (data.type === 'TM_OPEN_ORDER_DETAIL') {
-            var fromModuleFrame = false;
-            try {
-                document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
-                    try {
-                        if (frame.contentWindow === ev.source) fromModuleFrame = true;
-                    } catch (e0) { /* ignore */ }
-                });
-            } catch (e1) { /* ignore */ }
-            if (fromModuleFrame && data.orderId != null && typeof TM_openOrderDetailFromShell === 'function') {
-                TM_openOrderDetailFromShell(data.orderId);
-            }
-            return;
-        }
-
-        if (data.type === 'TM_SHELL_SWITCH_TAB') {
-            var fromFrame = false;
-            try {
-                document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
-                    try {
-                        if (frame.contentWindow === ev.source) fromFrame = true;
-                    } catch (e2) { /* ignore */ }
-                });
-            } catch (e3) { /* ignore */ }
-            if (fromFrame && data.tab && typeof window.TM_shellSwitchTab === 'function') {
-                window.TM_shellSwitchTab(data.tab);
-            }
-            return;
-        }
-
-        if (data.type === 'TM_EMBED_MODAL_RECONCILE') {
-            var fromReconcile = false;
-            try {
-                document.querySelectorAll('iframe.tm-module-frame').forEach(function (f) {
-                    try {
-                        if (f.contentWindow === ev.source) fromReconcile = true;
-                    } catch (e2) { /* ignore */ }
-                });
-            } catch (e3) { /* ignore */ }
-            if (fromReconcile) {
-                if (typeof TM_resetShellOverlay === 'function') {
-                    TM_resetShellOverlay();
-                } else if (typeof TM_ensureShellOverlayVisible === 'function') {
-                    TM_ensureShellOverlayVisible();
-                }
-            }
-            return;
-        }
-
-        if (data.type !== 'TM_EMBED_MODAL') return;
+        if (!data || data.type !== 'TM_EMBED_MODAL') return;
         var fromModuleFrame = false;
         try {
             document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
@@ -1750,7 +1671,7 @@ function switchTab(tabId) {
         window.TM_Responsive.syncMobileNav(tabId);
     }
 
-    const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供货管理' };
+    const titles = { 'dashboard': '工作台', 'biz': '智能经营', 'crm': '客户管理 CRM', 'supply': '产品中心', 'supplier': '供应商管理' };
     if (document.getElementById('page-title')) document.getElementById('page-title').innerText = titles[tabId];
     document.getElementById('content-area').scrollTop = 0;
     try {
@@ -1789,40 +1710,6 @@ function switchTab(tabId) {
 }
 
 window.TM_shellSwitchTab = switchTab;
-
-function TM_openOrderDetailFromShell(orderId) {
-    if (orderId == null) return;
-    var ready = document.getElementById('order-detail-modal') && typeof window.openOrderDetailModal === 'function';
-    var prep = ready
-        ? Promise.resolve()
-        : (typeof window.loadDashboard === 'function' ? window.loadDashboard() : Promise.resolve());
-    prep.then(function () {
-        var attempts = 0;
-        function tryOpen() {
-            attempts += 1;
-            if (typeof window.openOrderDetailModal === 'function') {
-                window.openOrderDetailModal(orderId, {});
-                return;
-            }
-            if (attempts < 40) {
-                setTimeout(tryOpen, 200);
-            }
-        }
-        setTimeout(tryOpen, 100);
-    }).catch(function () {
-        var attempts = 0;
-        function tryOpen() {
-            attempts += 1;
-            if (typeof window.openOrderDetailModal === 'function') {
-                window.openOrderDetailModal(orderId, {});
-                return;
-            }
-            if (attempts < 40) setTimeout(tryOpen, 200);
-        }
-        setTimeout(tryOpen, 300);
-    });
-}
-window.TM_openOrderDetailFromShell = TM_openOrderDetailFromShell;
 
 const TM_SHELL_NAV_FN_NAMES = ['switchTab', 'loadDashboard', 'loadSmartOps', 'loadCRM', 'loadProductCenter', 'loadSupplier'];
 const TM_SHELL_NAV_FN_SNAPSHOT = {};
@@ -1876,7 +1763,8 @@ function toggleSidebar() {
     if (ol) ol.classList.toggle('hidden');
 }
 
-// --- <用户订阅>会员 / 海报：openMemberModal、showPoster、downloadPoster 由 auth.js + tm-save-image.js 提供 ---
+// --- <用户订阅>会员 / 海报：downloadPoster / showPoster 由 auth.js + tm-save-image.js 提供 ---
+// 勿在此重复定义 downloadPoster，避免覆盖手机端「保存到相册」能力。
 
 // --- <工作台>语音逻辑：壳层仅提供稳定入口，真实录音/OSS/AI 由 dashboard 模块注册到 window.__TM_dashboardVoice ---
 (function () {
@@ -1914,6 +1802,10 @@ function toggleSidebar() {
         var impl = tmVoiceImpl();
         if (impl && typeof impl.closeVoiceModal === 'function') {
             return impl.closeVoiceModal(opts);
+        }
+        if (window.TmOnboarding && typeof window.TmOnboarding.notifyVoiceModalClosing === 'function') {
+            var reason = (opts && opts.reason) ? opts.reason : 'user_cancel';
+            window.TmOnboarding.notifyVoiceModalClosing(reason);
         }
         var m = document.getElementById('voice-modal');
         if (m) m.classList.add('hidden');
@@ -1979,10 +1871,6 @@ function openOrderDetail(orderId) {
     if (typeof window.__TM_dashboardOpenOrderDetail === 'function') {
         return window.__TM_dashboardOpenOrderDetail(orderId);
     }
-    if (typeof window.openOrderDetailModal === 'function') {
-        return window.openOrderDetailModal(orderId, {});
-    }
-    window.currentDetailOrderId = orderId;
     var idEl = document.getElementById('detail-order-id');
     if (idEl) idEl.innerText = orderId || '';
     var modal = document.getElementById('order-detail-modal');
@@ -1994,11 +1882,6 @@ function openOrderDetail(orderId) {
         if (typeof TM_pushShellOverlay === 'function') TM_pushShellOverlay();
         else if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
         else document.body.style.overflow = 'hidden';
-    }
-    if (typeof window.loadOrderDetailContent === 'function') {
-        window.loadOrderDetailContent(orderId, { orderId: orderId, id: orderId });
-    } else if (window.TM_PrintTriggers && typeof window.TM_PrintTriggers.syncOrderDetailPrintBtn === 'function') {
-        window.TM_PrintTriggers.syncOrderDetailPrintBtn(orderId);
     }
 }
 
@@ -2105,9 +1988,6 @@ function legacySwitchReport(type) {
 
 // --- 手动订单逻辑 ---
 function openManualOrderModal() {
-    if (typeof window.TM_openRapidOrder === 'function') {
-        return window.TM_openRapidOrder({ title: '添加订单', source: 'manual' });
-    }
     if (typeof window.TM_openManualOrderModal === 'function') {
         return window.TM_openManualOrderModal();
     }
@@ -2817,6 +2697,8 @@ function saveSupplierEdit() {
     const rating = ratingEl ? ratingEl.value : '';
     
     // 模拟保存操作
+    console.log('保存供应商信息:', { name, contact, phone, rating });
+    
     // 关闭弹窗并显示提示
     closeSupplierEditModal();
     showToast('供应商信息已保存');
@@ -2889,16 +2771,26 @@ function closeWorkshopModal() {
 }
 
 window._promoSelectedProductIds = window._promoSelectedProductIds || [];
+window._promoPickerProducts = window._promoPickerProducts || [];
 
 function openPromoProductPickerModal() {
     var modal = document.getElementById('promo-product-picker-modal');
     if (!modal) {
-        openClearanceModal([]);
+        if (window.TM_BizAI && typeof window.TM_BizAI.openClearanceModalWithGenerate === 'function') {
+            window.TM_BizAI.openClearanceModalWithGenerate([], false);
+        } else {
+            openClearanceModal([]);
+        }
         return;
     }
     window._promoSelectedProductIds = [];
-    if (typeof window.renderPromoProductPickerList === 'function') {
-        window.renderPromoProductPickerList('');
+    var bar = document.getElementById('promo-picker-selected-bar');
+    var countEl = document.getElementById('promo-picker-count');
+    if (bar) bar.classList.add('hidden');
+    if (countEl) countEl.textContent = '0';
+    var listEl = document.getElementById('promo-product-picker-list');
+    if (listEl) {
+        listEl.innerHTML = '<p class="text-center text-xs text-slate-400 py-8">正在加载产品…</p>';
     }
     if (typeof TM_openUnifiedModal === 'function') TM_openUnifiedModal(modal);
     else {
@@ -2907,6 +2799,80 @@ function openPromoProductPickerModal() {
         document.body.style.overflow = 'hidden';
         if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(true);
     }
+    ensurePromoPickerProductsLoaded().then(function () {
+        if (typeof window.renderPromoProductPickerList === 'function') {
+            window.renderPromoProductPickerList('');
+        }
+    }).catch(function (err) {
+        if (listEl) {
+            listEl.innerHTML = '<p class="text-center text-xs text-rose-500 py-8">'
+                + (err && err.message ? err.message : '加载产品失败') + '</p>';
+        }
+    });
+}
+
+/** 选品列表：优先内存，否则拉 /api/v1/rd/products（不依赖先进产品中心） */
+function ensurePromoPickerProductsLoaded(force) {
+    var cached = getPromoPickerProductSource();
+    if (!force && cached.length > 0) {
+        window._promoPickerProducts = cached;
+        return Promise.resolve(cached);
+    }
+    if (!window.wrappedFetch) {
+        return Promise.reject(new Error('网络组件未就绪'));
+    }
+    return window.wrappedFetch('/api/v1/rd/products', { method: 'GET' }).then(function (response) {
+        if (typeof window.handleApiResponse === 'function') {
+            return window.handleApiResponse(response);
+        }
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        return response.json();
+    }).then(function (data) {
+        if (!data) throw new Error('获取产品列表失败');
+        var raw = data.data !== undefined ? data.data : data;
+        if (raw && Array.isArray(raw.records)) raw = raw.records;
+        if (!Array.isArray(raw)) raw = [];
+        var mapped = raw.map(function (p) {
+            if (window.ProductModule && typeof window.ProductModule.mapProductFromApi === 'function') {
+                return window.ProductModule.mapProductFromApi(p);
+            }
+            var id = p.productId != null ? p.productId : p.id;
+            var name = p.productName || p.name || '';
+            var sku = p.productSku || p.sku || '';
+            var price = p.salePrice != null ? p.salePrice : p.price;
+            return {
+                id: id,
+                productId: id,
+                name: name,
+                productName: name,
+                sku: sku,
+                productSku: sku,
+                price: price,
+                salePrice: price
+            };
+        });
+        window._promoPickerProducts = mapped;
+        window.products = mapped;
+        if (window.ProductModule && Array.isArray(window.ProductModule.products)
+            && window.ProductModule.products.length === 0) {
+            window.ProductModule.products = mapped.slice();
+        }
+        return mapped;
+    });
+}
+
+function getPromoPickerProductSource() {
+    if (window.ProductModule && Array.isArray(window.ProductModule.products)
+        && window.ProductModule.products.length > 0) {
+        return window.ProductModule.products;
+    }
+    if (Array.isArray(window._promoPickerProducts) && window._promoPickerProducts.length > 0) {
+        return window._promoPickerProducts;
+    }
+    if (Array.isArray(window.products) && window.products.length > 0) {
+        return window.products;
+    }
+    return [];
 }
 
 function closePromoProductPickerModal() {
@@ -2946,29 +2912,27 @@ window.confirmPromoProductSelection = function () {
         if (window.TM_UI && window.TM_UI.alert) window.TM_UI.alert('请至少选择一个产品', 'warning');
         return;
     }
-    if (window.TM_BizAI && (!window.TM_BizAI.getPromoGoals || !window.TM_BizAI.getPromoGoals().length)) {
-        if (window.TM_UI && window.TM_UI.alert) window.TM_UI.alert('请先选择促销目标', 'warning');
-        if (window.TM_BizAI && typeof window.TM_BizAI.openPromoGoalModal === 'function') {
-            closePromoProductPickerModal();
-            window.TM_BizAI.openPromoGoalModal();
+    // 确保有促销目标（未走 Step1 时默认清库存）
+    if (window.TM_BizAI) {
+        var goals = typeof window.TM_BizAI.getPromoGoals === 'function' ? window.TM_BizAI.getPromoGoals() : [];
+        if (!goals || !goals.length) {
+            if (typeof window.TM_BizAI.setPromoGoals === 'function') {
+                window.TM_BizAI.setPromoGoals(['CLEAR_STOCK']);
+            }
         }
-        return;
     }
     closePromoProductPickerModal();
     if (window.TM_BizAI && typeof window.TM_BizAI.openClearanceModalWithGenerate === 'function') {
         window.TM_BizAI.openClearanceModalWithGenerate(window._promoSelectedProductIds, false);
-    } else {
-        openClearanceModal(window._promoSelectedProductIds);
+        return;
     }
+    openClearanceModal(window._promoSelectedProductIds);
 };
 
 window.renderPromoProductPickerList = function (query) {
     var container = document.getElementById('promo-product-picker-list');
     if (!container) return;
-    var products = window.products || [];
-    if (window.ProductModule && Array.isArray(window.ProductModule.products)) {
-        products = window.ProductModule.products;
-    }
+    var products = getPromoPickerProductSource();
     var q = (query || '').toLowerCase();
     var selected = window._promoSelectedProductIds || [];
     var filtered = (products || []).filter(function (p) {
@@ -2978,7 +2942,11 @@ window.renderPromoProductPickerList = function (query) {
         return name.indexOf(q) >= 0 || sku.indexOf(q) >= 0;
     });
     if (filtered.length === 0) {
-        container.innerHTML = '<p class="text-center text-xs text-slate-400 py-8">未找到匹配产品，请先在产品中心维护商品</p>';
+        container.innerHTML = '<p class="text-center text-xs text-slate-400 py-8">'
+            + (products.length === 0
+                ? '暂无产品，请先在产品中心维护商品'
+                : '未找到匹配产品，请调整搜索关键词')
+            + '</p>';
         return;
     }
     container.innerHTML = filtered.map(function (p) {
@@ -3001,12 +2969,18 @@ window.renderPromoProductPickerList = function (query) {
 
 window.openPromoProductPickerModal = openPromoProductPickerModal;
 window.closePromoProductPickerModal = closePromoProductPickerModal;
+window.ensurePromoPickerProductsLoaded = ensurePromoPickerProductsLoaded;
 
 function openClearanceModal(productIds) {
+    if (window.TM_BizAI && typeof window.TM_BizAI.openClearanceModalWithGenerate === 'function'
+        && Array.isArray(productIds) && productIds.length > 0) {
+        window.TM_BizAI.openClearanceModalWithGenerate(productIds, false);
+        return;
+    }
     var modal = document.getElementById('clearance-modal');
     if (!modal) return;
     var ids = Array.isArray(productIds) ? productIds : (window._promoSelectedProductIds || []);
-    var products = window.products || [];
+    var products = getPromoPickerProductSource();
     var names = ids.map(function (id) {
         var p = products.find(function (x) { return Number(x.id || x.productId) === Number(id); });
         return p ? (p.productName || p.name) : null;
@@ -3026,6 +3000,9 @@ function openClearanceModal(productIds) {
     }
 }
 function closeClearanceModal() {
+    if (window.TM_BizAI && typeof window.TM_BizAI.closeClearanceModal === 'function') {
+        return window.TM_BizAI.closeClearanceModal();
+    }
     var modal = document.getElementById('clearance-modal');
     if (typeof TM_closeUnifiedModal === 'function') TM_closeUnifiedModal(modal);
     else {
@@ -3066,7 +3043,7 @@ function closeNewProductReport() {
 }
 
 // 产品中心由 ui-product-center.js（ProductModule）提供；主壳不再内嵌模拟数据或重复 window.* 绑定。
-// --- 供货管理交互逻辑 ---
+// --- 供应商管理交互逻辑 ---
 
 
 // --- 供应商视图切换 ---

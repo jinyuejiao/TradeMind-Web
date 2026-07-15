@@ -543,10 +543,13 @@
 
     function init(options) {
         options = options || {};
-        gatewayUrl = options.gatewayUrl || (typeof window.getApiUrl === 'function' ? window.getApiUrl('gateway') : '');
-        if (!gatewayUrl) {
+        gatewayUrl = options.gatewayUrl != null
+            ? options.gatewayUrl
+            : (typeof window.getApiUrl === 'function' ? window.getApiUrl('gateway') : '');
+        // 空字符串表示同源相对路径（生产 Nginx / 静态+反代），仍可请求
+        if (gatewayUrl == null) {
             console.warn('[TmCrm] gatewayUrl 未配置');
-            return Promise.resolve();
+            gatewayUrl = '';
         }
         return Promise.all([
             loadOrderStatusDict(),
@@ -589,4 +592,43 @@
             window.TM_openOrderDetailFromShell(orderId);
         }
     };
+
+    /** 即使 crm.html 仍是旧缓存页，也动态注入 AI 营销脚本并升级弹窗 */
+    (function bootstrapCrmAiMarketing() {
+        function resolveScriptUrl() {
+            var scripts = document.getElementsByTagName('script');
+            for (var i = 0; i < scripts.length; i++) {
+                var src = scripts[i].src || '';
+                if (src.indexOf('ui-crm.js') !== -1) {
+                    return src.replace(/ui-crm\.js[^/]*$/, 'tm-crm-ai-marketing.js?v=20260715crmAi3');
+                }
+            }
+            return '../../assets/js/tm-crm-ai-marketing.js?v=20260715crmAi3';
+        }
+        function afterLoad() {
+            if (window.TM_CrmAI && typeof window.TM_CrmAI.ensureUi === 'function') {
+                window.TM_CrmAI.ensureUi();
+            }
+        }
+        function boot() {
+            if (!document.getElementById('crm-ai-modal')) return;
+            if (window.TM_CrmAI) {
+                afterLoad();
+                return;
+            }
+            var s = document.createElement('script');
+            s.src = resolveScriptUrl();
+            s.async = true;
+            s.onload = afterLoad;
+            s.onerror = function () {
+                console.warn('[TmCrm] 加载 tm-crm-ai-marketing.js 失败');
+            };
+            document.head.appendChild(s);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot);
+        } else {
+            boot();
+        }
+    })();
 })();

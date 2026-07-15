@@ -556,11 +556,32 @@
             if (typeof v === 'string') return v === 'true' || v === '1';
             return !!v;
         }
-        return {
+        var merged = {
             allowVariants: asBool(raw.allowVariants, defaults.allowVariants),
             allowExpiry: asBool(raw.allowExpiry, defaults.allowExpiry),
             allowSerial: asBool(raw.allowSerial, defaults.allowSerial)
         };
+        // 行业硬约束：服饰不开批次/序列号；食品不开序列号；数码不开批次
+        var vertical = '';
+        try {
+            vertical = String((profile.industryVertical || PM.getIndustryVertical && PM.getIndustryVertical()) || 'GENERAL').toUpperCase();
+        } catch (e2) {
+            vertical = 'GENERAL';
+        }
+        if (vertical === 'CLOTHING') {
+            merged.allowVariants = true;
+            merged.allowExpiry = false;
+            merged.allowSerial = false;
+        } else if (vertical === 'FOOD') {
+            merged.allowSerial = false;
+        } else if (vertical === 'DIGITAL_3C') {
+            merged.allowExpiry = false;
+        } else if (vertical === 'GENERAL' || vertical === 'PENDING') {
+            merged.allowVariants = false;
+            merged.allowExpiry = false;
+            merged.allowSerial = false;
+        }
+        return merged;
     };
 
     PM.getCapabilityFormRoot = function () {
@@ -2415,6 +2436,37 @@
             icon.classList.toggle('ph-caret-up', hasAdvanced);
         }
         PM.showFormErrors('audit-product-form-errors', []);
+        if (typeof PM.resetProductMediaDraft === 'function') {
+            PM.resetProductMediaDraft();
+        }
+        if (typeof PM.ensureProductMediaBindings === 'function') {
+            PM.ensureProductMediaBindings();
+        }
+        if (typeof PM.bindCapabilityFormEvents === 'function') {
+            var formRoot = PM.getProductFormRoot && PM.getProductFormRoot();
+            if (formRoot) delete formRoot.dataset.tmCapBound;
+            PM.bindCapabilityFormEvents();
+        }
+        if (typeof PM.bindVariantModalTriggers === 'function') PM.bindVariantModalTriggers();
+        if (typeof PM.bindExpiryModalTriggers === 'function') PM.bindExpiryModalTriggers();
+        if (typeof PM.applyProductCapabilityVisibility === 'function') {
+            PM.applyProductCapabilityVisibility();
+        }
+        if (typeof PM.applyIndustryProductDefaults === 'function') {
+            PM.applyIndustryProductDefaults({ editMode: false });
+        }
+        if (typeof PM.syncVariantMatrixPanelVisibility === 'function') {
+            PM.syncVariantMatrixPanelVisibility();
+        }
+        if (typeof PM.syncExpiryPanelVisibility === 'function') {
+            PM.syncExpiryPanelVisibility();
+        }
+        if (typeof PM.syncCapabilitySummaries === 'function') {
+            PM.syncCapabilitySummaries();
+        }
+        if (typeof PM.updateVariantEntrySummary === 'function') {
+            PM.updateVariantEntrySummary();
+        }
     };
 
     PM.saveAuditNewProduct = async function () {

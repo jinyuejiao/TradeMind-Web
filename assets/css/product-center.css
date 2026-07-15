@@ -1188,10 +1188,68 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     color: #0f766e;
     box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.15);
 }
+.tm-variant-combo-toolbar .tm-variant-combo-actions {
+    gap: 0.5rem;
+}
+.tm-variant-combo-toolbar .tm-variant-generate-btn {
+    position: relative;
+    z-index: 1;
+}
+.tm-variant-combo-summary:empty {
+    display: none;
+    margin: 0;
+}
 .tm-variant-combo-scroll {
     max-height: min(14rem, 38vh);
-    overflow-y: auto;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
+}
+.tm-variant-combo-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
+}
+.tm-variant-col-label {
+    min-width: 7.5rem;
+    max-width: 10rem;
+}
+.tm-variant-col-img {
+    width: 3.5rem;
+    min-width: 3.5rem;
+}
+.tm-variant-col-price,
+.tm-variant-col-qty {
+    width: 4.5rem;
+    min-width: 4.5rem;
+}
+.tm-variant-col-act {
+    width: 2.25rem;
+    min-width: 2.25rem;
+}
+/* Override .form-input { width:100% } so short headers (门店/合计) cannot crush inputs */
+.tm-variant-modal .tm-variant-qty-input.form-input {
+    width: 3.75rem !important;
+    min-width: 3.75rem;
+    max-width: 3.75rem;
+    box-sizing: border-box;
+    padding: 0.35rem 0.4rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.tm-variant-modal .tm-variant-qty-input.form-input::-webkit-outer-spin-button,
+.tm-variant-modal .tm-variant-qty-input.form-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.tm-variant-modal .tm-variant-col-price .tm-variant-qty-input.form-input {
+    width: 4.25rem !important;
+    min-width: 4.25rem;
+    max-width: 4.25rem;
 }
 #tm-variant-modal-scroll {
     -webkit-overflow-scrolling: touch;
@@ -1247,6 +1305,27 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     top: 0;
     z-index: 1;
     background: #f8fafc;
+}
+@media (max-width: 640px) {
+    .tm-variant-combo-toolbar .tm-variant-combo-actions {
+        gap: 0.625rem;
+    }
+    .tm-variant-col-price,
+    .tm-variant-col-qty {
+        width: 4.75rem;
+        min-width: 4.75rem;
+    }
+    .tm-variant-modal .tm-variant-qty-input.form-input {
+        width: 4rem !important;
+        min-width: 4rem;
+        max-width: 4rem;
+        padding: 0.4rem 0.45rem;
+    }
+    .tm-variant-modal .tm-variant-col-price .tm-variant-qty-input.form-input {
+        width: 4.5rem !important;
+        min-width: 4.5rem;
+        max-width: 4.5rem;
+    }
 }
 
 /* 规格属性模板管理弹窗 */

@@ -87,25 +87,25 @@
             </div>
             </div>
             <div id="tm-variant-combo-panel" class="flex flex-col min-h-[10rem] mt-2 pt-2 border-t border-slate-100">
-                <div class="flex items-center justify-between mb-2 gap-2 shrink-0">
-                    <div class="flex items-center gap-1.5 min-w-0">
+                <div class="tm-variant-combo-toolbar mb-2 shrink-0">
+                    <div class="flex items-center justify-between gap-2">
                         <p class="text-xs font-bold text-slate-700 shrink-0">SKU 组合与库存</p>
-                        <button type="button" id="tm-variant-combo-expand-btn" class="tm-variant-combo-expand-btn inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-brand-600 shrink-0" title="展开编辑区域" aria-label="展开 SKU 编辑区域">
-                            <i class="ph ph-caret-up text-sm"></i>
-                        </button>
+                        <div class="tm-variant-combo-actions flex items-center gap-2 shrink-0">
+                            <button type="button" id="tm-variant-combo-expand-btn" class="tm-variant-combo-expand-btn inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-brand-600 shrink-0" title="展开编辑区域" aria-label="展开 SKU 编辑区域">
+                                <i class="ph ph-caret-up text-sm"></i>
+                            </button>
+                            <button type="button" id="tm-variant-generate-btn" class="tm-variant-generate-btn text-[10px] font-bold text-brand-600 border border-brand-200 rounded-lg px-2.5 py-1 hover:bg-brand-50 whitespace-nowrap shrink-0">生成组合</button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button type="button" id="tm-variant-generate-btn" class="text-[10px] font-bold text-brand-600 border border-brand-200 rounded-lg px-2.5 py-1 hover:bg-brand-50">生成组合</button>
-                        <p id="tm-variant-combo-summary" class="text-[10px] text-brand-600 font-mono"></p>
-                    </div>
+                    <p id="tm-variant-combo-summary" class="tm-variant-combo-summary text-[10px] text-brand-600 font-mono mt-1 leading-snug"></p>
                 </div>
                 <div class="tm-variant-combo-scroll rounded-xl border border-slate-100 overflow-auto flex-1 min-h-0">
-                    <table class="w-full text-left text-xs min-w-[28rem]">
+                    <table class="tm-variant-combo-table text-left text-xs">
                         <thead class="bg-slate-50 text-[10px] text-slate-400 font-bold uppercase">
                             <tr id="tm-variant-combo-head">
                                 <th class="px-3 py-2">规格组合</th>
-                                <th class="px-2 py-2 text-center w-14">图</th>
-                                <th class="px-2 py-2 text-right w-20">售价</th>
+                                <th class="px-2 py-2 text-center">图</th>
+                                <th class="px-2 py-2 text-right">售价</th>
                                 <th class="px-2 py-2 text-right" colspan="99">各仓库存 / 合计 / 操作</th>
                             </tr>
                         </thead>

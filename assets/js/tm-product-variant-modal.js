@@ -301,13 +301,14 @@
         if (!tbody) return;
         var whs = PM.warehouses || [];
         if (thead) {
-            thead.innerHTML = '<th class="px-3 py-2 min-w-[8rem]">规格组合</th>'
-                + '<th class="px-2 py-2 text-center w-14">图</th>'
-                + '<th class="px-2 py-2 text-right whitespace-nowrap w-20">售价</th>'
+            thead.innerHTML = '<th class="tm-variant-col-label px-3 py-2">规格组合</th>'
+                + '<th class="tm-variant-col-img px-2 py-2 text-center">图</th>'
+                + '<th class="tm-variant-col-price px-2 py-2 text-right whitespace-nowrap">售价</th>'
                 + whs.map(function (w) {
-                    return '<th class="px-2 py-2 text-right whitespace-nowrap">' + PM.escHtmlText(w.name || w.warehouseName || '仓') + '</th>';
+                    return '<th class="tm-variant-col-qty px-2 py-2 text-right whitespace-nowrap">' + PM.escHtmlText(w.name || w.warehouseName || '仓') + '</th>';
                 }).join('')
-                + '<th class="px-2 py-2 text-right">合计</th><th class="px-2 py-2 w-10"></th>';
+                + '<th class="tm-variant-col-qty px-2 py-2 text-right whitespace-nowrap">合计</th>'
+                + '<th class="tm-variant-col-act px-2 py-2"></th>';
         }
         var spuDefault = getSpuDefaultPrice();
         var spuPh = spuDefault > 0 ? String(spuDefault) : 'SPU价';
@@ -324,7 +325,7 @@
                 return k + '：' + row.attrs[k];
             }).join(' · ');
             var imgSrc = row.coverPreview || row.coverUrl || '';
-            var imgCell = '<td class="px-2 py-2 text-center">'
+            var imgCell = '<td class="tm-variant-col-img px-2 py-2 text-center">'
                 + '<label class="tm-variant-img-btn relative inline-flex w-10 h-10 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:border-brand-300" title="上传 SKU 图片（限1张）">'
                 + (imgSrc
                     ? ('<img src="' + imgSrc.replace(/"/g, '&quot;') + '" class="w-full h-full object-cover" alt="" />')
@@ -332,26 +333,26 @@
                 + '<input type="file" accept="image/*" class="hidden tm-variant-img-input" data-combo-key="' + keyAttr + '" />'
                 + '</label></td>';
             var priceVal = row.priceOverride != null && row.priceOverride !== '' ? String(row.priceOverride) : '';
-            var priceCell = '<td class="px-2 py-2"><input type="number" min="0" step="0.01" class="tm-variant-row-price form-input w-20 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" value="' + PM.escHtmlAttr(priceVal) + '" placeholder="' + PM.escHtmlAttr(spuPh) + '" title="留空则使用 SPU 销售价 ' + PM.escHtmlAttr(spuPh) + '" /></td>';
+            var priceCell = '<td class="tm-variant-col-price px-2 py-2"><input type="number" min="0" step="0.01" class="tm-variant-row-price form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" value="' + PM.escHtmlAttr(priceVal) + '" placeholder="' + PM.escHtmlAttr(spuPh) + '" title="留空则使用 SPU 销售价 ' + PM.escHtmlAttr(spuPh) + '" /></td>';
             var whCells = whs.map(function (w) {
                 var wid = w.id != null ? w.id : w.warehouseId;
                 var v = whStockLookup(row.warehouseStocks, wid);
-                return '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input w-16 text-xs font-mono text-right py-1" data-combo-key="' + keyAttr + '" data-wh="' + wid + '" value="' + v + '" inputmode="numeric" /></td>';
+                return '<td class="tm-variant-col-qty px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" data-wh="' + wid + '" value="' + v + '" inputmode="numeric" /></td>';
             }).join('');
             var rowStock = whs.length ? syncComboRowStockFromWarehouses(row) : (Math.max(0, parseInt(row.stock, 10) || 0));
             var stockReadonly = whs.length > 0;
-            var stockCell = '<td class="px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-row-stock form-input w-16 text-xs font-mono text-right py-1'
+            var stockCell = '<td class="tm-variant-col-qty px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-row-stock form-input tm-variant-qty-input text-xs font-mono text-right'
                 + (stockReadonly ? ' bg-slate-50 text-slate-600 cursor-default' : '')
                 + '" data-combo-key="' + keyAttr + '" value="' + rowStock + '"'
                 + (stockReadonly ? ' readonly tabindex="-1" aria-readonly="true" title="各仓库存自动合计"' : ' inputmode="numeric"')
                 + ' /></td>';
             return '<tr class="tm-variant-combo-row border-b border-slate-50 hover:bg-slate-50/80" data-combo-key="' + keyAttr + '">'
-                + '<td class="px-3 py-2 text-xs text-slate-700 font-medium max-w-[10rem]">' + PM.escHtmlText(label) + '</td>'
+                + '<td class="tm-variant-col-label px-3 py-2 text-xs text-slate-700 font-medium">' + PM.escHtmlText(label) + '</td>'
                 + imgCell
                 + priceCell
                 + whCells
                 + stockCell
-                + '<td class="px-2 py-2 text-center"><button type="button" class="tm-variant-row-del text-red-400 hover:text-red-600 p-1" data-combo-key="' + keyAttr + '" title="移除此组合"><i class="ph ph-trash text-sm"></i></button></td>'
+                + '<td class="tm-variant-col-act px-2 py-2 text-center"><button type="button" class="tm-variant-row-del text-red-400 hover:text-red-600 p-1" data-combo-key="' + keyAttr + '" title="移除此组合"><i class="ph ph-trash text-sm"></i></button></td>'
                 + '</tr>';
         }).join('');
         tbody.querySelectorAll('.tm-variant-img-input').forEach(function (inp) {
@@ -854,6 +855,12 @@
     PM.openVariantMatrixModal = async function () {
         PM.toggleVariantComboExpanded(false);
         var modal = document.getElementById('product-variant-modal');
+        if (!modal && typeof window.TM_syncProductCenterOverlays === 'function') {
+            try {
+                await window.TM_syncProductCenterOverlays();
+            } catch (e) { /* ignore */ }
+            modal = document.getElementById('product-variant-modal');
+        }
         if (!modal) {
             if (window.TM_UI && window.TM_UI.showNotification) {
                 window.TM_UI.showNotification('规格弹窗未加载，请刷新页面后重试', 'warning');

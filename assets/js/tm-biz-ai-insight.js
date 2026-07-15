@@ -468,7 +468,30 @@
     function openClearanceModalWithGenerate(productIds, regenerate) {
         var ids = Array.isArray(productIds) ? productIds : (global._promoSelectedProductIds || []);
         state.promoProductIds = ids.map(Number).filter(function (n) { return n > 0; });
+        if (!state.promoGoals.length) {
+            state.promoGoals = ['CLEAR_STOCK'];
+        }
         var modal = document.getElementById('clearance-modal');
+        if (!modal) {
+            toast('促销结果弹窗未找到', 'error');
+            return;
+        }
+        // 确保结果区占位节点存在（兼容旧静态弹窗结构）
+        if (!document.getElementById('promo-ai-loading') || !document.getElementById('promo-ai-report-body')) {
+            var panel = modal.querySelector('.modal-content-box, .tm-dialog-panel, .relative.bg-white') || modal;
+            var bodyHost = panel.querySelector('.tm-mobile-modal-body') || panel;
+            if (!document.getElementById('promo-ai-loading')) {
+                var loading = document.createElement('div');
+                loading.id = 'promo-ai-loading';
+                loading.className = 'hidden flex-1 flex flex-col items-center justify-center gap-4 p-10';
+                loading.innerHTML = '<div class="w-14 h-14 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>'
+                    + '<p class="text-sm font-bold text-teal-700" data-promo-ai-loading-text>AI 正在精算促销方案…</p>';
+                bodyHost.parentNode.insertBefore(loading, bodyHost);
+            }
+            if (!document.getElementById('promo-ai-report-body')) {
+                bodyHost.id = 'promo-ai-report-body';
+            }
+        }
         openModal(modal);
         showPromoLoading(true, 'AI 正在生成促销方案…');
 
@@ -527,7 +550,13 @@
             throw new Error('未返回有效结果');
         }).catch(function (err) {
             showPromoLoading(false);
-            toast(err.message || '加载失败', 'error');
+            var body = document.getElementById('promo-ai-report-body');
+            if (body) {
+                body.classList.remove('hidden');
+                body.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
+                    + esc((err && err.message) || '加载失败') + '</p>';
+            }
+            toast((err && err.message) || '加载失败', 'error');
         });
     }
 

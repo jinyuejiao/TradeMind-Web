@@ -430,7 +430,7 @@
 
     function ensureOrderModal() {
         var existing = document.getElementById('rapid-order-modal');
-        if (existing && !existing.querySelector('#rop-aux-details')) {
+        if (existing && (!existing.querySelector('#rop-aux-details') || !existing.querySelector('#rop-total-bar'))) {
             existing.remove();
             window._ropAuxPanelBound = false;
             existing = null;
@@ -484,9 +484,12 @@
             '<button type="button" id="rop-open-picker" class="w-full py-2.5 rounded-xl border-2 border-dashed border-teal-200 text-teal-600 text-xs font-bold">' +
             '+ 选择产品</button>' +
             '<div id="rop-lines" class="text-xs space-y-2 min-h-[2rem]"></div>' +
-            '<div class="text-right font-mono font-bold text-slate-800 pt-2">合计 <span id="rop-total">¥0.00</span></div>' +
             '</main>' +
             '<div id="rop-bottom-panel" class="tm-document-aux-dock shrink-0 border-t border-slate-100 bg-slate-50/90 px-4 md:px-6 py-1.5">' +
+            '<div id="rop-total-bar" class="rop-total-bar flex items-center justify-end gap-2 py-1.5 border-b border-slate-200/50">' +
+            '<span class="text-xs font-bold text-slate-600">合计</span>' +
+            '<span id="rop-total" class="font-mono font-black text-base text-slate-900">¥0.00</span>' +
+            '</div>' +
             '<details id="rop-aux-details" class="tm-aux-details-up group">' +
             '<summary class="flex flex-wrap items-center gap-x-2 gap-y-0.5 cursor-pointer list-none text-[11px] text-slate-600 py-1 tm-order-aux-summary">' +
             '<span class="font-bold text-slate-500 shrink-0"><i class="ph ph-gear-six text-brand-500"></i> 仓库·收款</span>' +

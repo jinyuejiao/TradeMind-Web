@@ -1,13 +1,18 @@
 // 安全检查：确保 wrappedFetch 可用
 (function ensureWrappedFetch() {
+    console.log('[Auth] 检查 wrappedFetch 是否可用...');
+    
     // 如果 wrappedFetch 不存在，提供一个简单的后备方案
     if (!window.wrappedFetch) {
         console.warn('[Auth] wrappedFetch 未找到，使用后备方案');
         
         window.wrappedFetch = async function(url, options = {}) {
+            console.log('[Auth-Fallback] 使用后备 fetch');
             const { skipAuth = false, ...requestOptions } = options;
             
             const finalUrl = url.startsWith('http') ? url : (window.TM_API_BASE + url);
+            console.log('[Auth-Fallback] 请求URL:', finalUrl);
+            
             const headers = {
                 'Content-Type': 'application/json',
                 ...requestOptions.headers
@@ -26,7 +31,8 @@
             });
         };
     } else {
-        }
+        console.log('[Auth] wrappedFetch 已就绪');
+    }
 })();
 
 /** 海报/分享落地页注册链接 */
@@ -160,6 +166,7 @@ window.tmGetSelectedMerchantType = function () {
 
 // 注入全局 UI 样式
 (function injectGlobalStyles() {
+    console.log('TradeMindUI: 开始注入全局 CSS 样式');
     try {
         const styles = `
             <style>
@@ -576,7 +583,8 @@ window.tmGetSelectedMerchantType = function () {
         `;
         if (document.head) {
             document.head.insertAdjacentHTML('beforeend', styles);
-            } else {
+            console.log('TradeMindUI: 全局 CSS 样式注入成功');
+        } else {
             console.error('TradeMindUI: document.head 不存在，无法注入 CSS 样式');
         }
     } catch (error) {
@@ -592,7 +600,10 @@ window.tmGetSelectedMerchantType = function () {
         if (isLoginPage || isRegisterPage) {
             const usesAuthInputWrap = isRegisterPage && document.querySelector('.auth-register-form');
             if (usesAuthInputWrap) {
-                } else {
+                console.log('TradeMindUI: 注册页使用 auth.css 输入框结构，跳过 legacy padding 注入');
+            } else {
+                console.log('TradeMindUI: 检测到登录/注册页面，调整输入框样式');
+
                 const adjustInputPadding = function() {
                     const inputs = document.querySelectorAll('input[type="text"], input[type="password"], input[type="email"], input[type="tel"]');
                     inputs.forEach(input => {
@@ -1211,13 +1222,6 @@ function getAppEntryPath(tabName) {
 /** 登录成功后：运维账号进运维门户，其余进商户主壳 */
 function getPostLoginEntryPath(user) {
     try {
-        var token = localStorage.getItem('token');
-        if (token) {
-            var payload = parseTokenPayload(token);
-            if (payload.roleType === 'ROLE_OPS_ADMIN') {
-                return resolveStaticPageUrl('ops-hub.html');
-            }
-        }
         if (user && user.roleType === 'ROLE_OPS_ADMIN') {
             return resolveStaticPageUrl('ops-hub.html');
         }
@@ -1240,6 +1244,7 @@ function checkLocalStorage() {
 
 // 全局logout函数
 function logout() {
+    console.log('执行全局logout操作');
     // 清除localStorage中的认证信息
     try {
         if (checkLocalStorage()) {
@@ -1250,10 +1255,12 @@ function logout() {
             localStorage.removeItem('user_info');
             localStorage.removeItem('username');
             localStorage.removeItem('currentUser');
+            // 清除sessionStorage作为额外保障
             if (window.sessionStorage) {
                 sessionStorage.clear();
             }
-            }
+            console.log('已清空本地存储中的认证信息');
+        }
     } catch (error) {
         console.error('清除localStorage时发生错误:', error);
     }
@@ -1283,39 +1290,59 @@ window.tmLogout = tmLogout;
 
 // 检查认证状态
 function checkAuth() {
+    console.log('========== 开始检查认证状态 ==========');
+    
     // 规范化路径判断
     const path = window.location.pathname;
+    console.log('当前路径:', path);
+    
     // 更健壮的登录页面判断
     const isLoginPage = path.endsWith('login.html');
+    console.log('当前是否为登录页面:', isLoginPage);
+    
     // 首先检查localStorage是否可用
+    console.log('步骤1: 检查localStorage是否可用');
     if (!checkLocalStorage()) {
+        console.log('❌ localStorage不可用');
         if (!isLoginPage) {
+            console.log('未登录，跳转至登录页');
             tmSafeReplace('/login.html');
         }
         return false;
     }
+    console.log('✅ localStorage可用');
+    
     try {
+        console.log('步骤2: 获取token');
         const token = localStorage.getItem('token');
+        console.log('获取到的token:', token ? '存在' : '不存在');
+        
         // 核心重定向逻辑
         if (!token || token.trim() === '' || token === 'null' || token === 'undefined') {
+            console.log('❌ Token不存在或无效');
             if (!isLoginPage) {
+                console.log('未登录，跳转至登录页');
                 tmSafeReplace('/login.html');
             }
             return false;
         }
         
         if (token && isLoginPage) {
+            console.log('已登录，跳转至工作台或运维门户');
             let u = {};
             try { u = JSON.parse(localStorage.getItem('user_info') || '{}'); } catch (e) { /* ignore */ }
             tmSafeReplace(getPostLoginEntryPath(u));
             return false;
         }
         
+        console.log('✅ Token存在且当前页面正确');
+        
         // 尝试解析token，检查是否损坏
         try {
             // 这里可以添加token解析逻辑，例如JWT解析
             // 如果解析失败，会抛出异常
-            } catch (tokenError) {
+            console.log('✅ Token解析成功');
+        } catch (tokenError) {
             console.error('❌ Token解析失败，可能已损坏:', tokenError);
             // 清除损坏的token
             if (checkLocalStorage()) {
@@ -1324,53 +1351,75 @@ function checkAuth() {
                 localStorage.removeItem('user_info');
                 localStorage.removeItem('username');
                 localStorage.removeItem('currentUser');
-                }
+                console.log('已清除损坏的token');
+            }
             if (!isLoginPage) {
+                console.log('未登录，跳转至登录页');
                 tmSafeReplace('/login.html');
             }
             return false;
         }
         
         // 检查token是否为mock-token且非开发模式
+        console.log('步骤3: 检查token是否为mock-token');
         const isDevMode = (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+        console.log('当前是否为开发模式:', isDevMode);
         if (token === 'mock-token' && !isDevMode) {
+            console.log('❌ Mock token在非开发模式下无效');
             if (checkLocalStorage()) {
                 localStorage.removeItem('token');
                 localStorage.removeItem('login_timestamp');
                 localStorage.removeItem('user_info');
                 localStorage.removeItem('username');
                 localStorage.removeItem('currentUser');
-                }
+                console.log('已清除无效的mock token');
+            }
             if (!isLoginPage) {
+                console.log('未登录，跳转至登录页');
                 tmSafeReplace('/login.html');
             }
             return false;
         }
+        console.log('✅ Token验证通过');
+        
         // 检查token是否过期
+        console.log('步骤4: 检查token是否过期');
         const loginTimestamp = localStorage.getItem('login_timestamp');
+        console.log('获取到的login_timestamp:', loginTimestamp);
         if (loginTimestamp) {
             const currentTime = Date.now();
             const elapsedTime = currentTime - parseInt(loginTimestamp);
             const remainingTime = TOKEN_EXPIRE_TIME - elapsedTime;
+            console.log('当前时间:', new Date(currentTime).toLocaleString());
+            console.log('登录时间:', new Date(parseInt(loginTimestamp)).toLocaleString());
+            console.log('已用时间:', Math.round(elapsedTime / 1000 / 60), '分钟');
+            console.log('剩余时间:', Math.round(remainingTime / 1000 / 60), '分钟');
+            
             if (elapsedTime > TOKEN_EXPIRE_TIME) {
+                console.log('❌ Token已过期');
                 if (checkLocalStorage()) {
                     localStorage.removeItem('token');
                     localStorage.removeItem('login_timestamp');
                     localStorage.removeItem('user_info');
                     localStorage.removeItem('username');
                     localStorage.removeItem('currentUser');
-                    }
+                    console.log('已清除过期的token');
+                }
                 if (!isLoginPage) {
+                    console.log('未登录，跳转至登录页');
                     tmSafeReplace('/login.html');
                 }
                 return false;
             }
         } else {
             // 兼容旧会话：仅有 token、未写入 login_timestamp 时不应直接清登录态（否则会与登录页「有 token 即跳主页」形成往返刷新）
+            console.log('⚠️ 缺少登录时间戳，写入当前时间以迁移本地会话');
             if (checkLocalStorage()) {
                 localStorage.setItem('login_timestamp', Date.now().toString());
             }
         }
+        console.log('✅ Token未过期');
+
         // 嵌入态（iframe 或 ?embed=1）下，保留模块页面本身，避免被重定向到 index-app 导致空白/嵌套。
         let isEmbeddedMode = false;
         try {
@@ -1386,11 +1435,9 @@ function checkAuth() {
             tmSafeReplace(getAppEntryPath(tab));
             return false;
         }
-
-        if (!tmEnforceRolePageGuard(path)) {
-            return false;
-        }
         
+        console.log('✅ 认证状态检查通过');
+        console.log('========== 认证状态检查完成 ==========');
         return true;
     } catch (error) {
         console.error('❌ 检查认证状态时发生错误:', error);
@@ -1401,8 +1448,10 @@ function checkAuth() {
             localStorage.removeItem('user_info');
             localStorage.removeItem('username');
             localStorage.removeItem('currentUser');
-            }
+            console.log('已清除可能损坏的认证信息');
+        }
         if (!isLoginPage) {
+            console.log('未登录，跳转至登录页');
             tmSafeReplace('/login.html');
         }
         return false;
@@ -1430,7 +1479,8 @@ function detectRedirectLoop() {
         // 清除localStorage
         if (checkLocalStorage()) {
             localStorage.clear();
-            }
+            console.log('已强制清理localStorage');
+        }
         // 重置跳转时间
         lastRedirectTime = 0;
         return true;
@@ -1501,7 +1551,7 @@ function tmQuotaFeatureLines(q) {
         ['max_users', 'ph-user', '个账号'],
         ['max_products', 'ph-package', '个产品数量管理'],
         ['max_customers', 'ph-address-book', '个客户管理'],
-        ['max_suppliers', 'ph-warehouse', '个供货管理']
+        ['max_suppliers', 'ph-warehouse', '个供应商管理']
     ];
     var rows = [];
     for (var i = 0; i < pairs.length; i++) {
@@ -1649,27 +1699,15 @@ async function tmHydrateMemberCenter(modalEl) {
             subscriptionType: me.subscriptionType || 'TRIAL',
             paidActive: me.paidSubscriptionActive === true,
             merchantType: me.merchantType || merchantType,
-            canManageUsers: me.canManageUsers === true,
-            paymentCashierEnabled: me.paymentCashierEnabled === true
+            canManageUsers: me.canManageUsers === true
         };
         window._tmMemberMe = me;
         var dname = me.displayName || (ctx.subscriptionType === 'TRIAL' ? '试用版本' : ctx.subscriptionType === 'BASIC' ? '启航会员' : ctx.subscriptionType === 'PREMIUM' ? '优享会员' : ctx.subscriptionType);
         var endLabel = tmFmtSubEnd(me.subEndTime);
-        var accessMode = (me.accessMode || 'FULL').toUpperCase();
-        var statusHint = '';
-        if (accessMode === 'READ_ONLY') {
-            statusHint = '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">宽限期</span>';
-        } else if (accessMode === 'BILLING_ONLY') {
-            statusHint = '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black">已过期</span>';
-        }
-        var renewNudge = (accessMode === 'READ_ONLY' || accessMode === 'BILLING_ONLY')
-            ? '<p class="text-[10px] text-slate-500 mt-1 leading-relaxed">续费后无需重新配置，即可恢复开单、编辑与 AI 助手等完整功能。</p>'
-            : '';
         strip.innerHTML = '<div class="rounded-2xl border border-teal-100 bg-teal-50/80 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">' +
-            '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' + statusHint +
+            '<div class="text-xs text-slate-700"><span class="font-black text-slate-900">' + tmEscapeHtml(dname) + '</span>' +
             '<span class="text-slate-500"> · 有效期至 </span><span class="font-mono font-bold">' + tmEscapeHtml(endLabel) + '</span>' +
-            (me.pricePaidCny != null ? '<span class="text-slate-400"> · 实付 ¥' + tmEscapeHtml(tmFmtMoneyDisplay(me.pricePaidCny)) + '</span>' : '') +
-            renewNudge + '</div>' +
+            (me.pricePaidCny != null ? '<span class="text-slate-400"> · 实付 ¥' + tmEscapeHtml(tmFmtMoneyDisplay(me.pricePaidCny)) + '</span>' : '') + '</div>' +
             (me.canManageUsers === true ? '<button type="button" data-role="ADMIN" data-action="member.manage" onclick="openMemberAccountsManageModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#14B8A6] text-white text-[10px] font-black shadow-md"><i class="ph ph-users-three"></i> 账号管理</button>' : '') + '</div>';
     } else {
         strip.innerHTML = '<div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs text-amber-900">登录后可查看当前租户订阅状态，并进行续费或升级。</div>';
@@ -1894,7 +1932,7 @@ async function tmMemberPayFallback(action, targetTierCode, legacyPrice) {
                 return;
             }
             if (data2.newToken) localStorage.setItem('token', data2.newToken);
-            showNotification(action === 'NEW' ? '订阅成功' : '升级成功');
+            showNotification('升级成功');
         }
         var m = document.getElementById('member-modal') || document.getElementById('subscription-modal');
         if (m) await tmHydrateMemberCenter(m);
@@ -1906,11 +1944,6 @@ async function tmMemberPayFallback(action, targetTierCode, legacyPrice) {
 
 window.tmMemberPay = async function (action, targetTierCode, legacyPrice) {
     try {
-        var me = window._tmMemberMe || {};
-        if (me.paymentCashierEnabled === false) {
-            await tmMemberPayFallback(action, targetTierCode, legacyPrice);
-            return;
-        }
         var url = tmMemberApiUrl('/api/v1/tenant/subscription/payment/create');
         var res = await wrappedFetch(url, {
             method: 'POST',
@@ -1978,11 +2011,13 @@ function closeSubscriptionModal() {
 
 // 复制推荐码
 function copyReferralCode() {
+    console.log('copyReferralCode: 开始执行');
     try {
         const referralCode = document.getElementById('referral-code');
         if (referralCode) {
             referralCode.select();
             document.execCommand('copy');
+            console.log('copyReferralCode: 推荐码已复制');
             showNotification('推荐码已复制到剪贴板');
         } else {
             console.error('copyReferralCode: 未找到推荐码元素');
@@ -1992,10 +2027,9 @@ function copyReferralCode() {
     }
 }
 
-// 下载海报（高清 scale 3；手机分享/长按保存，PC 可选路径）
-async function downloadPoster(ev) {
-    var saveBtn = (ev && ev.currentTarget)
-        || (typeof event !== 'undefined' && event && event.currentTarget)
+// 保存海报到相册（手机：系统分享/长按存图；桌面：下载）
+async function downloadPoster() {
+    var saveBtn = (typeof event !== 'undefined' && event && event.currentTarget)
         || document.querySelector('#poster-modal button[onclick*="downloadPoster"]')
         || document.querySelector('#poster-modal .poster-modal-action-footer button');
     var originalHtml = saveBtn ? saveBtn.innerHTML : '';
@@ -2003,59 +2037,34 @@ async function downloadPoster(ev) {
         saveBtn.innerHTML = '<i class="ph ph-circle-notch animate-spin text-lg"></i> 生成中...';
         saveBtn.disabled = true;
     }
-    var element = document.getElementById('poster-capture-area');
-    if (!element) {
-        if (saveBtn) { saveBtn.innerHTML = originalHtml; saveBtn.disabled = false; }
-        showNotification('海报元素未找到');
-        return;
-    }
     try {
-        if (!window._tmCachedReferralCode) await tmSyncPosterReferral();
-        if (typeof html2canvas !== 'function') {
-            showNotification('海报组件未加载，请刷新页面');
-            return;
+        if (!window._tmCachedReferralCode && typeof tmSyncPosterReferral === 'function') {
+            await tmSyncPosterReferral();
         }
-        var canvas = await html2canvas(element, {
-            backgroundColor: null,
-            useCORS: true,
-            scale: 3,
-            borderRadius: 40
-        });
-        var refCode = (document.getElementById('poster-ref-code') && document.getElementById('poster-ref-code').textContent || 'REF').replace(/\s+/g, '');
-        var fileName = 'TradeMind-Invite-' + refCode + '.png';
         var result;
-        if (typeof window.TM_saveCanvasAsImage === 'function') {
-            result = await window.TM_saveCanvasAsImage(canvas, { fileName: fileName });
+        if (window.TM_saveImage && typeof window.TM_saveImage.downloadPosterCapture === 'function') {
+            result = await window.TM_saveImage.downloadPosterCapture({ scale: 3 });
         } else {
-            var blob = await new Promise(function (resolve, reject) {
-                canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('toBlob failed')); }, 'image/png');
-            });
-            var url = URL.createObjectURL(blob);
-            var link = document.createElement('a');
-            link.download = fileName;
-            link.href = url;
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(function () {
-                URL.revokeObjectURL(url);
-                if (link.parentNode) link.parentNode.removeChild(link);
-            }, 2000);
-            result = 'download';
+            var element = document.getElementById('poster-capture-area');
+            if (!element) throw new Error('海报元素未找到');
+            var canvas = await html2canvas(element, { backgroundColor: null, useCORS: true, scale: 3 });
+            var refCode = (document.getElementById('poster-ref-code') && document.getElementById('poster-ref-code').textContent || 'REF').replace(/\s+/g, '');
+            if (window.TM_saveCanvasToAlbum) {
+                result = await window.TM_saveCanvasToAlbum(canvas, 'TradeMind-Invite-' + refCode + '.png');
+            } else {
+                var link = document.createElement('a');
+                link.download = 'TradeMind-Invite-' + refCode + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                result = { mode: 'download', message: '海报已成功下载' };
+            }
         }
-        if (result === 'cancelled') {
-            showNotification('已取消保存');
-        } else if (result === 'saved') {
-            showNotification('海报已保存到所选位置');
-        } else if (result === 'shared') {
-            showNotification('请在系统面板中选择「存储到相册」');
-        } else if (result === 'preview') {
-            showNotification('请长按图片保存到相册');
-        } else {
-            showNotification('海报已开始下载，请在下载目录查看');
+        if (result && result.mode !== 'cancelled' && result.message) {
+            showNotification(result.message);
         }
     } catch (error) {
         console.error('downloadPoster:', error);
-        showNotification('海报下载失败，请重试');
+        showNotification((error && error.message) || '海报保存失败，请重试');
     } finally {
         if (saveBtn) {
             saveBtn.innerHTML = originalHtml;
@@ -2281,18 +2290,23 @@ async function showPoster() {
 
 // 关闭海报弹窗
 function closePoster() {
+    console.log('========== 关闭海报弹窗 ==========');
+    console.log('closePoster: 开始执行');
     try {
         const modal = document.getElementById('poster-modal');
         if (modal) {
+            console.log('closePoster: 找到弹窗元素，添加 hidden 类');
             modal.classList.add('hidden');
             document.body.style.overflow = '';
-            } else {
+            console.log('closePoster: 弹窗已隐藏');
+        } else {
             console.error('closePoster: 未找到弹窗元素');
         }
     } catch (error) {
         console.error('closePoster: 关闭海报弹窗时出错:', error);
     }
-    }
+    console.log('========== 关闭海报弹窗完成 ==========');
+}
 
 // 统一注入公共 UI 组件
 /** 站点根路径静态资源（勿用 resolveStaticPageUrl，避免 embed 模块页解析成 /modules/.../assets/） */
@@ -2378,12 +2392,18 @@ function ensureMerchantFeedbackAssets() {
 }
 
 window.injectCommonUI = function() {
+    console.log('========== TradeMindUI: injectCommonUI 开始执行 ==========');
+    console.log('TradeMindUI.injectCommonUI: 函数被调用');
+    
     try {
         // 清理历史动态注入的旧备案节点（统一改为页面静态备案）
         document.querySelectorAll('#tm-compliance-footer').forEach((el) => el.remove());
         
         // 0. 注入统一的页面标题
+        console.log('TradeMindUI.injectCommonUI: 步骤0 - 注入统一页面标题');
         document.title = '杭州巨猿科技有限公司 - TradeMind商贸智脑';
+        console.log('TradeMindUI.injectCommonUI: 页面标题已设置');
+        
         const pathLower = (window.location.pathname || '').toLowerCase();
         const isPublicAuthPage = pathLower.endsWith('login.html') || pathLower.endsWith('register.html');
 
@@ -2392,24 +2412,31 @@ window.injectCommonUI = function() {
         }
 
         // 1. 弹窗注入（登录/注册页不注入，避免无 Tailwind 时 .hidden 失效导致会员中心等内容露出）
+        console.log('TradeMindUI.injectCommonUI: 步骤1 - 检查并注入弹窗模板');
         if (isPublicAuthPage) {
             document.querySelectorAll('#subscription-modal, #poster-modal, #member-accounts-manage-modal, #referral-rewards-modal').forEach(function (el) {
                 el.remove();
             });
-            } else {
+            console.log('TradeMindUI.injectCommonUI: 公开认证页，跳过会员/订阅弹窗注入');
+        } else {
             const existingSubModal = document.getElementById('subscription-modal');
             const existingMemberShell = document.getElementById('member-modal');
             if (!existingSubModal && !existingMemberShell) {
+                console.log('TradeMindUI.injectCommonUI: 未找到会员/订阅弹窗壳，开始注入 MODAL_TEMPLATE');
                 document.body.insertAdjacentHTML('beforeend', MODAL_TEMPLATE);
+                console.log('TradeMindUI.injectCommonUI: 弹窗模板注入成功');
                 if (typeof window.injectMemberAuxModals === 'function') {
                     window.injectMemberAuxModals().catch(function (e) { console.warn('injectMemberAuxModals', e); });
                 }
             } else {
-                }
+                console.log('TradeMindUI.injectCommonUI: 页面已含 member-modal 或 subscription-modal，跳过重复注入');
+            }
         }
         
         // 2. 检测环境并适配移动端
         const isMobile = window.innerWidth < 768;
+        console.log('TradeMindUI.injectCommonUI: 步骤2 - 检测环境 - isMobile:', isMobile, '窗口宽度:', window.innerWidth);
+
         /** iframe 内嵌模块页（SmartOps/CRM/供应链 embed）：禁止注入顶栏/底栏，避免主壳内出现第二层模块切换栏 */
         let isEmbeddedModule = false;
         try {
@@ -2426,6 +2453,8 @@ window.injectCommonUI = function() {
         }
         
         if (isMobile && !isPublicAuthPage) {
+            console.log('TradeMindUI.injectCommonUI: 检测到移动设备，开始移动端适配');
+
             if (!document.getElementById('tm-app-tabbar') && !isEmbeddedModule) {
                 ensureMobileShellAssets();
             }
@@ -2434,7 +2463,8 @@ window.injectCommonUI = function() {
             if (!isEmbeddedModule) {
                 document.body.classList.add('tm-mobile-active');
                 document.body.classList.add('tm-module-body');
-                }
+                console.log('TradeMindUI.injectCommonUI: 已为 body 添加 tm-mobile-active / tm-module-body 类');
+            }
 
             /** index-app 等主壳页已内置顶栏与 .mobile-nav-btn 底栏（方案 A），禁止再注入 tm-mobile-header / tm-mobile-nav */
             const isAppShellPage = !!document.getElementById('tm-app-tabbar');
@@ -2449,14 +2479,20 @@ window.injectCommonUI = function() {
             if (!isAppShellPage && !isEmbeddedModule) {
             const sidebar = document.querySelector('aside');
             if (sidebar) {
+                console.log('TradeMindUI.injectCommonUI: 找到侧边栏，准备隐藏');
                 sidebar.classList.add('hidden');
                 sidebar.classList.add('md:hidden');
-                } else {
-                }
+                console.log('TradeMindUI.injectCommonUI: 侧边栏已隐藏');
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 未找到侧边栏元素');
+            }
             
             // 注入移动端顶部导航（统一组件）
+            console.log('TradeMindUI.injectCommonUI: 检查并注入移动端顶部导航');
             const existingHeader = document.querySelector('.tm-mobile-header');
             if (!existingHeader) {
+                console.log('TradeMindUI.injectCommonUI: 未找到移动端Header，开始注入');
+                
                 // 根据当前路径确定页面标题
                 const currentPath = window.location.pathname;
                 let pageTitle = '商贸智脑';
@@ -2470,10 +2506,12 @@ window.injectCommonUI = function() {
                 } else if (currentPath.includes('/product-center/')) {
                     pageTitle = '产品中心';
                 } else if (currentPath.includes('/supply-chain/')) {
-                    pageTitle = '供货管理';
+                    pageTitle = '供应商管理';
                 } else {
                     pageTitle = '商贸智脑';
                 }
+                
+                console.log('TradeMindUI.injectCommonUI: 当前页面标题:', pageTitle);
                 
                 // 创建统一的移动端 Header
                 const headerHtml = TradeMindUI.createMobileHeader({
@@ -2481,10 +2519,14 @@ window.injectCommonUI = function() {
                 });
                 
                 // 直接在 body 开头注入移动端 Header
+                console.log('TradeMindUI.injectCommonUI: 在body开头注入Header');
                 document.body.insertAdjacentHTML('afterbegin', headerHtml);
+                
+                console.log('TradeMindUI.injectCommonUI: 移动端Header注入成功');
                 
                 // 延迟一下，确保DOM更新后再加载用户信息
                 setTimeout(() => {
+                    console.log('TradeMindUI.injectCommonUI: Header注入后，重新加载用户信息');
                     try {
                         loadUserInfo();
                     } catch (e) {
@@ -2492,12 +2534,14 @@ window.injectCommonUI = function() {
                     }
                 }, 50);
             } else {
-                }
+                console.log('TradeMindUI.injectCommonUI: 移动端Header已存在，跳过注入');
+            }
             
             // 注入移动端底部导航（登录/注册页不注入）
             if (!isPublicAuthPage) {
                 const existingNav = document.querySelector('.tm-mobile-nav');
                 if (!existingNav) {
+                    console.log('TradeMindUI.injectCommonUI: 注入移动端底部导航');
                     const mobileNav = `
                     <nav class="tm-mobile-nav">
                         <a href="${resolveStaticPageUrl('index-app.html#tab=dashboard')}" class="tm-nav-item active">
@@ -2523,24 +2567,33 @@ window.injectCommonUI = function() {
                     </nav>
                 `;
                     document.body.insertAdjacentHTML('beforeend', mobileNav);
-                    } else {
-                    }
+                    console.log('TradeMindUI.injectCommonUI: 移动端底部导航注入成功');
+                } else {
+                    console.log('TradeMindUI.injectCommonUI: 移动端底部导航已存在，跳过注入');
+                }
             }
             
             // 高亮当前页的导航项（仅当存在注入式底栏时）
             if (!isPublicAuthPage) {
+                console.log('TradeMindUI.injectCommonUI: 步骤3 - 高亮当前页导航项');
                 const currentPath = window.location.pathname;
                 const navItems = document.querySelectorAll('.tm-nav-item');
+                console.log('TradeMindUI.injectCommonUI: 当前路径:', currentPath, '找到导航项数量:', navItems.length);
+                
                 navItems.forEach((item, index) => {
                     const href = item.getAttribute('href');
+                    console.log(`TradeMindUI.injectCommonUI: 导航项 ${index} href:`, href);
                     if (currentPath === href || currentPath.startsWith(href.replace('.html', ''))) {
                         navItems.forEach(nav => nav.classList.remove('active'));
                         item.classList.add('active');
-                        }
+                        console.log('TradeMindUI.injectCommonUI: 已高亮导航项:', href);
+                    }
                 });
             }
             } else if (isEmbeddedModule) {
-                } else {
+                console.log('TradeMindUI.injectCommonUI: 嵌入模块页（iframe/embed），跳过注入式顶栏/底栏与侧栏覆盖');
+            } else {
+                console.log('TradeMindUI.injectCommonUI: 主壳页面 (tm-app-tabbar) 已含内置导航，跳过注入式顶栏/底栏与侧栏覆盖');
                 if (typeof window.TM_scheduleShellOverlayRecovery === 'function') {
                     window.TM_scheduleShellOverlayRecovery();
                 } else if (typeof window.TM_resetShellOverlay === 'function') {
@@ -2548,17 +2601,23 @@ window.injectCommonUI = function() {
                 }
             }
         } else if (!isPublicAuthPage) {
-            } else {
-            }
+            console.log('TradeMindUI.injectCommonUI: 检测到桌面设备，跳过移动端适配');
+        } else {
+            console.log('TradeMindUI.injectCommonUI: 公开认证页，跳过移动端壳层注入');
+        }
         
         // 3. 动态数据绑定
+        console.log('TradeMindUI.injectCommonUI: 步骤4 - 加载用户信息');
         try {
             loadUserInfo();
-            } catch (error) {
+            console.log('TradeMindUI.injectCommonUI: 用户信息加载完成');
+        } catch (error) {
             console.error('TradeMindUI.injectCommonUI: 加载用户信息时出错:', error);
         }
         
         // 4. 绑定移动端头像点击事件
+        console.log('TradeMindUI.injectCommonUI: 步骤5 - 绑定移动端头像点击事件');
+        
         // 尝试两种可能的 ID：mobile-user-avatar (dashboard.html 中的) 和 mobile-user-trigger
         let mobileUserTrigger = document.getElementById('mobile-user-avatar');
         if (!mobileUserTrigger) {
@@ -2566,14 +2625,20 @@ window.injectCommonUI = function() {
         }
         
         if (mobileUserTrigger) {
+            console.log('TradeMindUI.injectCommonUI: 找到移动端头像触发元素，绑定点击事件');
             mobileUserTrigger.onclick = function() {
+                console.log('TradeMindUI.injectCommonUI: 移动端头像被点击');
                 openSubscriptionModal();
             };
         } else {
-            }
+            console.log('TradeMindUI.injectCommonUI: 未找到移动端头像触发元素');
+        }
         
         // 6. 备案信息统一为页面静态底部展示，不在 JS 中动态注入
-        } catch (error) {
+        console.log('TradeMindUI.injectCommonUI: 步骤6 - 使用页面静态备案展示');
+        
+        console.log('========== TradeMindUI: injectCommonUI 执行完成 ==========');
+    } catch (error) {
         console.error('========== TradeMindUI: injectCommonUI 执行出错 ==========');
         console.error('TradeMindUI.injectCommonUI: 错误详情:', error);
         console.error('TradeMindUI.injectCommonUI: 错误堆栈:', error.stack);
@@ -2671,69 +2736,10 @@ function parseTokenPayload(token) {
     try {
         const tokenParts = String(token || '').split('.');
         if (tokenParts.length !== 3) return {};
-        var b64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
-        while (b64.length % 4) b64 += '=';
-        return JSON.parse(atob(b64)) || {};
+        return JSON.parse(atob(tokenParts[1])) || {};
     } catch (e) {
         return {};
     }
-}
-
-/** 以 JWT 为权威同步 user_info 中的 roleType，避免跨标签会话串扰 */
-function tmSyncUserInfoRoleFromToken(token) {
-    if (!checkLocalStorage() || !token) return;
-    try {
-        var payload = parseTokenPayload(token);
-        if (!payload.roleType) return;
-        var u = {};
-        try { u = JSON.parse(localStorage.getItem('user_info') || '{}'); } catch (e) { /* ignore */ }
-        if (String(u.roleType || '').toUpperCase() !== String(payload.roleType).toUpperCase()) {
-            u.roleType = payload.roleType;
-            if (payload.userName) u.userName = payload.userName;
-            if (payload.tenantId) u.tenantId = payload.tenantId;
-            localStorage.setItem('user_info', JSON.stringify(u));
-        }
-    } catch (e2) { /* ignore */ }
-}
-
-/** 角色与页面对齐：运维账号不得停留在商户壳层（除非显式进入工作台链） */
-function tmEnforceRolePageGuard(path) {
-    if (!checkLocalStorage()) return true;
-    var token = localStorage.getItem('token');
-    if (!token) return true;
-    tmSyncUserInfoRoleFromToken(token);
-    var payload = parseTokenPayload(token);
-    var role = String(payload.roleType || '').trim().toUpperCase();
-    var isOps = role === 'ROLE_OPS_ADMIN';
-    var isOpsHub = path.indexOf('ops-hub') >= 0 || path.indexOf('ops-portal') >= 0;
-    var isMerchantApp = path.indexOf('index-app') >= 0;
-    var isLogin = path.endsWith('login.html');
-    if (isLogin) return true;
-    if (isOps && isMerchantApp && !sessionStorage.getItem('tm_ops_merchant_preview')) {
-        tmSafeReplace(resolveStaticPageUrl('ops-hub.html'));
-        return false;
-    }
-    if (!isOps && isOpsHub) {
-        tmSafeReplace(getAppEntryPath('dashboard'));
-        return false;
-    }
-    return true;
-}
-
-window.parseTokenPayload = parseTokenPayload;
-window.tmSyncUserInfoRoleFromToken = tmSyncUserInfoRoleFromToken;
-
-if (!window.__tmAuthStorageBound) {
-    window.__tmAuthStorageBound = true;
-    window.addEventListener('storage', function (ev) {
-        if (ev.key !== 'token') return;
-        var path = window.location.pathname || '';
-        if (path.endsWith('login.html')) return;
-        if (ev.newValue) {
-            tmSyncUserInfoRoleFromToken(ev.newValue);
-            tmEnforceRolePageGuard(path);
-        }
-    });
 }
 
 function getStoredUserInfo() {
@@ -2818,6 +2824,8 @@ window.TradeMindUI = {
      * @returns {string} - 移动端 Header 的 HTML 字符串
      */
     createMobileHeader: function(options) {
+        console.log('TradeMindUI.createMobileHeader: 开始创建移动端Header，参数:', options);
+        
         const opts = options || {};
         const pageTitle = opts.pageTitle || '商贸智脑';
         const userInitial = opts.userInitial || 'J';
@@ -2844,6 +2852,7 @@ window.TradeMindUI = {
             </header>
         `;
         
+        console.log('TradeMindUI.createMobileHeader: 移动端Header创建完成');
         return headerHtml;
     },
 
@@ -2852,6 +2861,7 @@ window.TradeMindUI = {
      * @param {string} modalId - 弹窗的 ID
      */
     wrapModal: function(modalId) {
+        console.log('TradeMindUI.wrapModal: 开始包装弹窗，ID:', modalId);
         const modal = document.getElementById(modalId);
         if (!modal) {
             console.error('TradeMindUI.wrapModal: 未找到弹窗元素，ID:', modalId);
@@ -2860,10 +2870,13 @@ window.TradeMindUI = {
         
         // 检查是否已经包装过
         if (modal.classList.contains('tm-modal-wrapper')) {
+            console.log('TradeMindUI.wrapModal: 弹窗已经包装过，ID:', modalId);
             return;
         }
         
         const isMobile = window.innerWidth < 768;
+        console.log('TradeMindUI.wrapModal: 检测设备类型 - isMobile:', isMobile, '窗口宽度:', window.innerWidth);
+        
         // 添加包装类
         modal.classList.add('tm-modal-wrapper');
         
@@ -2871,12 +2884,15 @@ window.TradeMindUI = {
         // 使用更可靠的选择器来找到弹窗内容容器
         let modalContent = null;
         const allDivs = modal.querySelectorAll('div');
+        console.log('TradeMindUI.wrapModal: 弹窗内共有', allDivs.length, '个 div 元素');
+        
         // 找到第一个不是绝对定位的且有实际内容的 div
         for (let i = 0; i < allDivs.length; i++) {
             const div = allDivs[i];
             const computedStyle = window.getComputedStyle(div);
             if (computedStyle.position !== 'absolute' && div.children.length > 0) {
                 modalContent = div;
+                console.log('TradeMindUI.wrapModal: 找到弹窗内容容器，索引:', i);
                 break;
             }
         }
@@ -2887,16 +2903,21 @@ window.TradeMindUI = {
                            modal.querySelector('[class*="modal-content"]') ||
                            modal.querySelector('div[class*="relative"]');
             if (modalContent) {
-                }
+                console.log('TradeMindUI.wrapModal: 通过备选选择器找到弹窗内容容器');
+            }
         }
         
         if (modalContent) {
             modalContent.classList.add('tm-modal-container');
+            console.log('TradeMindUI.wrapModal: 已添加 tm-modal-container 类到内容容器');
+            
             // 移动端添加关闭手柄
             if (isMobile && !modalContent.querySelector('.tm-modal-handle')) {
+                console.log('TradeMindUI.wrapModal: 移动端添加关闭手柄');
                 const handle = document.createElement('div');
                 handle.className = 'tm-modal-handle';
                 handle.onclick = function() {
+                    console.log('TradeMindUI.wrapModal: 关闭手柄被点击');
                     // 查找并调用对应的关闭函数
                     const closeFunctions = [
                         'closeSubscriptionModal',
@@ -2923,12 +2944,14 @@ window.TradeMindUI = {
                     let closed = false;
                     for (const fnName of closeFunctions) {
                         if (typeof window[fnName] === 'function') {
+                            console.log('TradeMindUI.wrapModal: 调用关闭函数:', fnName);
                             window[fnName]();
                             closed = true;
                             break;
                         }
                     }
                     if (!closed) {
+                        console.log('TradeMindUI.wrapModal: 未找到关闭函数，直接隐藏弹窗');
                         modal.classList.add('hidden');
                     }
                 };
@@ -2937,17 +2960,20 @@ window.TradeMindUI = {
             
             // 添加动画效果
             if (isMobile) {
+                console.log('TradeMindUI.wrapModal: 添加移动端动画效果');
                 modalContent.style.transform = 'translateY(100%)';
                 modalContent.style.transition = 'transform 0.3s ease';
                 setTimeout(() => {
                     modalContent.style.transform = 'translateY(0)';
-                    }, 10);
+                    console.log('TradeMindUI.wrapModal: 动画开始执行');
+                }, 10);
             }
         } else {
             console.error('TradeMindUI.wrapModal: 未找到弹窗内容容器，ID:', modalId);
         }
         
-        }
+        console.log('TradeMindUI.wrapModal: 弹窗包装完成，ID:', modalId);
+    }
 };
 
 // 将函数暴露到全局作用域，以便其他页面使用
@@ -2984,6 +3010,7 @@ window.syncUserContext = function() {
     try {
         // 检查localStorage是否可用
         if (!checkLocalStorage()) {
+            console.log('❌ localStorage不可用，无法加载用户信息');
             return;
         }
         
@@ -3061,6 +3088,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const data = await response.json();
                 
+                console.log('登录接口响应:', data);
+                
                 if (!response.ok) {
                     // 处理401等错误
                     const errorMessage = data.msg || data.message || '登录失败：用户名或密码错误';
@@ -3084,6 +3113,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
                             window.TM_UI.applyContextFromToken(data.token);
                         }
+                        if (window.TM_ONBOARDING_SYNC && data.onboarding) {
+                            window.TM_ONBOARDING_SYNC.stashLoginBootstrap(data.onboarding);
+                        }
                         
                         window.location.href = getPostLoginEntryPath(data.user || {});
                     } else {
@@ -3103,6 +3135,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
                             window.TM_UI.applyContextFromToken(data.data.token);
+                        }
+                        if (window.TM_ONBOARDING_SYNC && data.data.onboarding) {
+                            window.TM_ONBOARDING_SYNC.stashLoginBootstrap(data.data.onboarding);
                         }
                         
                         window.location.href = getPostLoginEntryPath(data.data.user || {});
@@ -3332,8 +3367,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     username: username,
                     email: email || null,
                     phone: phone,
-                    tenantName: company,
-                    tenantCode: creditCode,
+                    tenantName: company, // 公司名称
+                    tenantCode: creditCode, // 社会信用代码
                     password: encryptedPassword,
                     referralCode: inviteCode,
                     smsToken: registerSmsToken || '',
@@ -3352,11 +3387,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 // 检查响应状态
+                console.log('注册请求状态:', response.status);
+                console.log('注册请求状态文本:', response.statusText);
+                
                 // 尝试解析响应
                 let data;
                 try {
                     data = await response.json();
-                    } catch (parseError) {
+                    console.log('注册接口响应:', data);
+                } catch (parseError) {
                     console.error('解析响应失败:', parseError);
                     showModal('注册失败：服务器响应格式错误', true);
                     return;
@@ -3409,6 +3448,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 初始化公共 UI 组件
+    console.log('TradeMindUI: DOM 加载完成，准备调用 injectCommonUI');
     try {
         window.injectCommonUI();
     } catch (error) {
@@ -3436,6 +3476,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ================= [图标库降级加载方案] =================
 (function loadPhosphorIconsWithFallback() {
+    console.log('TradeMindUI: 图标库降级加载方案初始化');
+    
     // 定义多个CDN源作为降级方案
     const iconCdnSources = [
         'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest',
@@ -3457,11 +3499,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 加载图标库
     function loadIconsFromSource(sourceUrl) {
+        console.log(`TradeMindUI: 尝试从 ${sourceUrl} 加载图标库`);
+        
         const script = document.createElement('script');
         script.src = sourceUrl;
         script.async = false;
         
         script.onload = function() {
+            console.log(`TradeMindUI: 图标库从 ${sourceUrl} 加载成功`);
             iconsLoaded = true;
         };
         
@@ -3477,6 +3522,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function tryNextSource() {
         currentSourceIndex++;
         if (currentSourceIndex < iconCdnSources.length) {
+            console.log(`TradeMindUI: 尝试下一个CDN源 (${currentSourceIndex + 1}/${iconCdnSources.length})`);
             loadIconsFromSource(iconCdnSources[currentSourceIndex]);
         } else {
             console.error('TradeMindUI: 所有CDN源都加载失败，图标可能无法正常显示');
@@ -3486,8 +3532,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // 延迟检查图标库加载状态
     setTimeout(function() {
         if (!checkIconsLoaded()) {
+            console.log('TradeMindUI: 图标库未检测到，启动降级加载方案');
             loadIconsFromSource(iconCdnSources[0]);
         } else {
-            }
+            console.log('TradeMindUI: 图标库已正常加载');
+        }
     }, 1000);
 })();

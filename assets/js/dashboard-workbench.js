@@ -75,7 +75,18 @@
                         return;
                     }
                     var filtered = rows
-                        .filter(function (r) { return r.status === 'SUCCESS' || r.status === 'EXTRACTING'; })
+                        .filter(function (r) {
+                            var op = String(r.opType || r.op_type || 'ORDER_EXTRACT').toUpperCase();
+                            if (op && op !== 'ORDER_EXTRACT') return false;
+                            if (r.status !== 'SUCCESS' && r.status !== 'EXTRACTING') return false;
+                            if (r.status === 'EXTRACTING') return true;
+                            var parsed = typeof window.parseAiEnvelope === 'function'
+                                ? window.parseAiEnvelope(r.aiResult || r.ai_result || '')
+                                : { data: {} };
+                            var items = (parsed.data && parsed.data.order_data && Array.isArray(parsed.data.order_data.items))
+                                ? parsed.data.order_data.items : [];
+                            return items.length > 0;
+                        })
                         .sort(function (a, b) { return new Date(b.createTime || 0) - new Date(a.createTime || 0); })
                         .slice(0, 20);
                     self.records = filtered;
@@ -658,23 +669,88 @@
     };
 
     /* ---------- 审核弹窗 / 列表 / 确认下单补丁 ---------- */
+    function TM_capAsBool(v, fallback) {
+        if (v === undefined || v === null || v === '') return !!fallback;
+        if (typeof v === 'string') return v === 'true' || v === '1';
+        return !!v;
+    }
+
+    function TM_getAuditIndustryVertical() {
+        var iv = '';
+        if (window.TM_WorkbenchProfile) {
+            iv = window.TM_WorkbenchProfile.industryVertical
+                || (window.TM_WorkbenchProfile.getIndustryVertical && window.TM_WorkbenchProfile.getIndustryVertical())
+                || '';
+        }
+        if (!iv && window.ProductModule && typeof window.ProductModule.getIndustryVertical === 'function') {
+            iv = window.ProductModule.getIndustryVertical();
+        }
+        try {
+            if (!iv) {
+                iv = document.documentElement.getAttribute('data-industry-vertical') || '';
+            }
+        } catch (e) { /* ignore */ }
+        iv = String(iv || 'GENERAL').toUpperCase().trim();
+        if (iv === 'PENDING') return 'GENERAL';
+        return iv;
+    }
+
+    /** 行业硬门控（不依赖外部实现，避免服饰误开序列号/批次） */
+    function TM_auditIndustryAllows(capKey) {
+        var iv = TM_getAuditIndustryVertical();
+        if (iv === 'GENERAL' || iv === 'PENDING') return false;
+        if (capKey === 'allowExpiry') return iv === 'FOOD';
+        if (capKey === 'allowSerial') return iv === 'DIGITAL_3C';
+        if (capKey === 'allowVariants') {
+            return iv === 'CLOTHING' || iv === 'FOOD' || iv === 'DIGITAL_3C';
+        }
+        return false;
+    }
+
+    function TM_normalizeAuditCaps(raw) {
+        var src = raw || window.TM_productCapabilities || {};
+        var industryOn = {
+            allowVariants: TM_auditIndustryAllows('allowVariants'),
+            allowExpiry: TM_auditIndustryAllows('allowExpiry'),
+            allowSerial: TM_auditIndustryAllows('allowSerial')
+        };
+        return {
+            allowVariants: industryOn.allowVariants && TM_capAsBool(src.allowVariants, industryOn.allowVariants),
+            allowExpiry: industryOn.allowExpiry && TM_capAsBool(src.allowExpiry, industryOn.allowExpiry),
+            allowSerial: industryOn.allowSerial && TM_capAsBool(src.allowSerial, industryOn.allowSerial)
+        };
+    }
+
     function TM_getAuditCaps() {
-        return window.TM_productCapabilities || {};
+        return TM_normalizeAuditCaps(window.TM_productCapabilities || {});
     }
 
     function TM_syncAuditTableHeaders() {
         var caps = TM_getAuditCaps();
-        var iv = (window.TM_WorkbenchProfile && window.TM_WorkbenchProfile.industryVertical) || '';
-        var showExpiry = !!caps.allowExpiry && iv !== 'CLOTHING' && iv !== 'DIGITAL_3C';
+        var showVariant = !!caps.allowVariants;
+        var showExpiry = !!caps.allowExpiry;
+        var showSerial = !!caps.allowSerial;
         document.querySelectorAll('.tm-audit-col-variant').forEach(function (el) {
-            el.classList.toggle('hidden', !caps.allowVariants);
+            el.classList.toggle('hidden', !showVariant);
         });
         document.querySelectorAll('.tm-audit-col-batch').forEach(function (el) {
             el.classList.toggle('hidden', !showExpiry);
         });
         document.querySelectorAll('.tm-audit-col-serial').forEach(function (el) {
-            el.classList.toggle('hidden', !caps.allowSerial);
+            el.classList.toggle('hidden', !showSerial);
         });
+        // 表体多余列直接移除，避免仅表头 hidden 后与单元格错位（「已录 0 个」悬浮列）
+        if (!showExpiry) {
+            document.querySelectorAll('#order-items-body td.tm-audit-col-batch').forEach(function (el) {
+                el.parentNode && el.parentNode.removeChild(el);
+            });
+        }
+        if (!showSerial) {
+            document.querySelectorAll('#order-items-body td.tm-audit-col-serial').forEach(function (el) {
+                el.parentNode && el.parentNode.removeChild(el);
+            });
+        }
+        return { showVariant: showVariant, showExpiry: showExpiry, showSerial: showSerial };
     }
 
     function TM_buildSkuSelectOptionsHtml() {
@@ -708,6 +784,8 @@
                 window.TM_productCapabilities = capsData.data;
             }
         } catch (e) { /* ignore */ }
+        // 前端再按行业收紧一次，防止接口缓存/历史存档误开序列号
+        window.TM_productCapabilities = TM_normalizeAuditCaps(window.TM_productCapabilities || {});
         if (typeof window.loadProductList === 'function') {
             await window.loadProductList();
         }
@@ -736,7 +814,16 @@
             var items = Array.isArray(orderData.items) ? orderData.items : [];
 
             var caps = TM_getAuditCaps();
-            TM_syncAuditTableHeaders();
+            var colVis = TM_syncAuditTableHeaders() || {};
+            var showVariant = !!colVis.showVariant && !!caps.allowVariants;
+            var showExpiry = !!colVis.showExpiry && !!caps.allowExpiry;
+            var showSerial = !!colVis.showSerial && !!caps.allowSerial;
+            // 服饰/通用行业：绝不渲染批次与序列号单元格（防止表头 hidden、表体仍有「已录 0 个」错位）
+            var iv = TM_getAuditIndustryVertical();
+            if (iv === 'CLOTHING' || iv === 'GENERAL') {
+                showExpiry = false;
+                showSerial = false;
+            }
 
             items.forEach(function (item, index) {
                 if (typeof window.normalizeAuditOrderItem === 'function') {
@@ -752,13 +839,13 @@
                 var unitReadonly = matchedSkuId > 0;
                 var selectOptions = TM_buildSkuSelectOptionsHtml();
 
-                var variantCell = caps.allowVariants
+                var variantCell = showVariant
                     ? ('<td class="tm-audit-td tm-audit-col-variant"><input type="text" class="form-input tm-audit-cell-input audit-variant-input text-xs" value="' + escapeHtml(attrsDisplay) + '" placeholder="规格摘要" readonly /></td>')
                     : '';
-                var batchCell = caps.allowExpiry
+                var batchCell = showExpiry
                     ? ('<td class="tm-audit-td tm-audit-col-batch"><input type="text" class="form-input tm-audit-cell-input audit-batch-input text-xs" value="' + escapeHtml(item.batch_no || '') + '" placeholder="批次号" /><input type="date" class="form-input tm-audit-cell-input audit-prod-date-input text-xs mt-1" value="' + escapeHtml((item.production_date || '').slice(0, 10)) + '" /></td>')
                     : '';
-                var serialCell = caps.allowSerial
+                var serialCell = showSerial
                     ? ('<td class="tm-audit-td tm-audit-col-serial"><button type="button" class="text-xs text-brand-600 audit-serial-btn" data-index="' + index + '">已录 ' + ((item.serial_nos || []).length) + ' 个</button></td>')
                     : '';
 
@@ -840,26 +927,39 @@
 
             window.recalcAuditOrderTotals();
             fillMissingAuditPrices();
+            TM_syncAuditTableHeaders();
         };
 
-        var origOpen = window.openAuditModal;
-        window.openAuditModal = async function (recordId) {
+        var origOpen = window.__TM_DASHBOARD_OPEN_AUDIT_ORIG
+            || window.__TM_DASHBOARD_OPEN_AUDIT
+            || window.openAuditModal;
+        if (typeof origOpen === 'function' && !origOpen.__tmAuditPatched) {
+            window.__TM_DASHBOARD_OPEN_AUDIT_ORIG = origOpen;
+        } else if (typeof window.__TM_DASHBOARD_OPEN_AUDIT_ORIG === 'function') {
+            origOpen = window.__TM_DASHBOARD_OPEN_AUDIT_ORIG;
+        }
+        var patchedOpen = async function (recordId) {
             if (typeof window.TM_loadSkuListAndCapabilities === 'function') {
                 await window.TM_loadSkuListAndCapabilities();
             }
             await origOpen(recordId);
+            TM_syncAuditTableHeaders();
             var dateEl = document.getElementById('order-delivery-date');
             if (dateEl && !dateEl.value && typeof window.getTodayDateInput === 'function') {
                 dateEl.value = window.getTodayDateInput();
             }
             var custSelect = document.getElementById('order-customer');
-            if (custSelect) {
-                var prevOnChange = custSelect.onchange;
+            if (custSelect && !custSelect.dataset.tmAuditPriceBound) {
+                custSelect.dataset.tmAuditPriceBound = '1';
                 custSelect.addEventListener('change', function () {
                     setTimeout(fillMissingAuditPrices, 100);
                 });
             }
         };
+        patchedOpen.__tmAuditPatched = true;
+        window.openAuditModal = patchedOpen;
+        // 主壳 ui-main 走 __TM_DASHBOARD_OPEN_AUDIT，需同步挂载补丁后的打开逻辑
+        window.__TM_DASHBOARD_OPEN_AUDIT = patchedOpen;
 
         function hasUnsavedAuditUnitConversions() {
             if (!window.auditState || typeof window.hasNewProducts !== 'function'
@@ -915,6 +1015,53 @@
             return origConfirm();
         };
 
+        window.TM_confirmAuditShortageIfNeeded = async function (items) {
+            var list = window.skuList || window.productList || [];
+            function findStock(skuId, productId) {
+                for (var i = 0; i < list.length; i++) {
+                    var s = list[i];
+                    var sid = s.sku_id || s.skuId;
+                    var pid = s.legacy_product_id || s.legacyProductId || s.productId || s.product_id;
+                    if ((skuId && String(sid) === String(skuId)) || (productId && String(pid) === String(productId))) {
+                        var stock = s.stock != null ? s.stock : (s.quantity != null ? s.quantity : s.available_qty);
+                        if (stock == null) return null;
+                        return Number(stock) || 0;
+                    }
+                }
+                return null;
+            }
+            var shortages = [];
+            (items || []).forEach(function (item) {
+                var stock = findStock(item.skuId, item.productId);
+                if (stock == null) return;
+                if (stock < item.quantity) {
+                    var name = item._name || ('SKU#' + (item.skuId || item.productId));
+                    shortages.push({ name: name, qty: item.quantity, stock: stock, lack: item.quantity - Math.max(0, stock) });
+                }
+            });
+            if (!shortages.length) return true;
+            var msg = shortages.map(function (x) {
+                return x.name + '：需 ' + x.qty + '，可用 ' + x.stock + '，欠 ' + x.lack;
+            }).join('\n');
+            var fullMsg = '以下商品库存不足，是否欠货开单？\n\n' + msg;
+            if (window.TM_UI && typeof window.TM_UI.confirm === 'function') {
+                return window.TM_UI.confirm({ title: '库存不足', message: fullMsg, confirmLabel: '欠货开单', cancelLabel: '返回修改' });
+            }
+            if (window.TmConfirm && typeof window.TmConfirm.open === 'function') {
+                return new Promise(function (resolve) {
+                    window.TmConfirm.open({
+                        title: '库存不足',
+                        message: fullMsg,
+                        confirmLabel: '欠货开单',
+                        cancelLabel: '返回修改',
+                        onConfirm: function () { resolve(true); },
+                        onCancel: function () { resolve(false); }
+                    });
+                });
+            }
+            return window.confirm(fullMsg);
+        };
+
         window.collectAuditOrderItemsForSubmit = function (deliveryDate) {
             var items = [];
             var errors = [];
@@ -953,10 +1100,22 @@
                     unitPrice: unitPrice,
                     totalAmount: lineTotal,
                     itemStatus: 'PENDING',
-                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null
+                    deliveryDate: deliveryDate ? (deliveryDate + 'T00:00:00') : null,
+                    _name: opt ? (opt.getAttribute('data-name') || opt.textContent || '') : ''
                 };
                 if (legacyPid && !isNaN(legacyPid)) {
                     line.productId = legacyPid;
+                }
+                var batchInp = row.querySelector('.audit-batch-input');
+                if (batchInp && String(batchInp.value || '').trim()) {
+                    line.batchNo = String(batchInp.value).trim();
+                }
+                var idx = Number(row.getAttribute('data-row-index'));
+                var draftItems = window.auditState && window.auditState.aiStructured
+                    && window.auditState.aiStructured.order_data
+                    && window.auditState.aiStructured.order_data.items;
+                if (draftItems && !isNaN(idx) && draftItems[idx] && Array.isArray(draftItems[idx].serial_nos) && draftItems[idx].serial_nos.length) {
+                    line.serialNos = draftItems[idx].serial_nos.slice();
                 }
                 items.push(line);
             });

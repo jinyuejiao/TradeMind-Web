@@ -143,6 +143,13 @@
     text-align: center;
 }
 
+/* 批次/序列号：表头与表体须同时隐藏，避免「已录 N 个」错位成无表头列 */
+.tm-audit-lines-table .tm-audit-col-batch.hidden,
+.tm-audit-lines-table .tm-audit-col-serial.hidden,
+.tm-audit-lines-table .tm-audit-col-variant.hidden {
+    display: none !important;
+}
+
 .tm-audit-cell-input {
     width: 100%;
     min-height: 2.5rem;

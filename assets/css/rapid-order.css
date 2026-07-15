@@ -382,9 +382,16 @@
 
 #rapid-order-modal.tm-order-detail-modal #rop-bottom-panel {
     flex: 0 0 auto;
-    max-height: min(42vh, 18rem);
+    max-height: min(48vh, 22rem);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+}
+
+#rapid-order-modal .rop-total-bar {
+    position: relative;
+    z-index: 2;
+    background: #f8fafc;
+    flex-shrink: 0;
 }
 
 #rapid-order-modal.tm-order-detail-modal #rop-aux-details > summary {
