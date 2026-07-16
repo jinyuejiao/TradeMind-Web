@@ -79,7 +79,10 @@ window.tmApplyPosterReferralData = function (referralCode, merchantType) {
         if (el) el.textContent = code;
     });
     var qr = document.getElementById('poster-qr');
-    if (qr) qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(landing);
+    if (qr) {
+        qr.crossOrigin = 'anonymous';
+        qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(landing);
+    }
     var hint = document.getElementById('poster-qr-url-hint');
     if (hint) hint.textContent = 'trademind.com.cn';
     var linkEl = document.getElementById('poster-landing-link');
@@ -3113,9 +3116,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
                             window.TM_UI.applyContextFromToken(data.token);
                         }
-                        if (window.TM_ONBOARDING_SYNC && data.onboarding) {
-                            window.TM_ONBOARDING_SYNC.stashLoginBootstrap(data.onboarding);
-                        }
                         
                         window.location.href = getPostLoginEntryPath(data.user || {});
                     } else {
@@ -3135,9 +3135,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
                             window.TM_UI.applyContextFromToken(data.data.token);
-                        }
-                        if (window.TM_ONBOARDING_SYNC && data.data.onboarding) {
-                            window.TM_ONBOARDING_SYNC.stashLoginBootstrap(data.data.onboarding);
                         }
                         
                         window.location.href = getPostLoginEntryPath(data.data.user || {});

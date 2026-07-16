@@ -628,10 +628,14 @@
                 + (d.remark ? ('<p class="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">' + esc(d.remark) + '</p>') : '')
                 + '<div class="space-y-2"><p class="text-[10px] font-bold text-slate-400 uppercase">明细</p>'
                 + (items.length ? items.map(function (it) {
-                    var name = it.product_name || it.productName || ('产品#' + (it.product_id || it.productId || ''));
+                    var name = it.product_name || it.productName
+                        || it.sku_name || it.skuName
+                        || ('产品#' + (it.product_id || it.productId || it.sku_id || it.skuId || ''));
+                    var skuCode = it.sku_code || it.skuCode || '';
+                    var label = skuCode ? (name + '（' + skuCode + '）') : name;
                     var qty = it.return_qty != null ? it.return_qty : (it.returnQty || it.quantity || 0);
                     return '<div class="flex justify-between text-xs py-2 border-b border-slate-50">'
-                        + '<span class="text-slate-700">' + esc(name) + ' ×' + qty + '</span>'
+                        + '<span class="text-slate-700">' + esc(label) + ' ×' + qty + '</span>'
                         + '<span class="font-mono text-slate-500">' + fmtMoney(it.total_amount || it.totalAmount) + '</span></div>';
                 }).join('') : '<p class="text-slate-400 text-xs">无明细</p>')
                 + '</div>';
@@ -665,9 +669,10 @@
             box.innerHTML = items.map(function (it) {
                 var rid = it.return_item_id != null ? it.return_item_id : it.returnItemId;
                 var qty = it.quantity || 0;
+                var name = it.product_name || it.productName || ('行 #' + rid);
                 return ''
                     + '<div class="p-3 rounded-xl border border-slate-100 bg-slate-50 space-y-2" data-return-item-id="' + rid + '">'
-                    + '  <p class="text-xs font-bold text-slate-800">行 #' + rid + ' · 申请数量 ' + qty + '</p>'
+                    + '  <p class="text-xs font-bold text-slate-800">' + esc(name) + ' · 申请数量 ' + qty + '</p>'
                     + '  <div class="grid grid-cols-3 gap-2">'
                     + '    <div><label class="text-[10px] text-slate-400">良品</label><input type="number" class="inspect-good form-input w-full text-xs font-mono" min="0" max="' + qty + '" value="' + qty + '" /></div>'
                     + '    <div><label class="text-[10px] text-slate-400">残次</label><input type="number" class="inspect-defective form-input w-full text-xs font-mono" min="0" value="0" /></div>'

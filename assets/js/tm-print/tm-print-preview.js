@@ -13,17 +13,36 @@
 
     function notify(msg, type) {
         if (global.TM_UI && global.TM_UI.showNotification) global.TM_UI.showNotification(msg, type || 'info');
+        else if (typeof global.showToast === 'function') global.showToast(msg);
     }
 
-    function escAttr(s) {
-        return String(s == null ? '' : s).replace(/"/g, '&quot;');
+    function ensurePrintStyles() {
+        if (document.getElementById('tm-print-css')) return;
+        var existing = document.querySelector('link[href*="tm-print.css"]');
+        if (existing) {
+            existing.id = existing.id || 'tm-print-css';
+            return;
+        }
+        var link = document.createElement('link');
+        link.id = 'tm-print-css';
+        link.rel = 'stylesheet';
+        link.href = '/assets/css/tm-print.css?v=20260716print1';
+        document.head.appendChild(link);
     }
 
     function ensureModal() {
-        if (document.getElementById('tm-print-preview-modal')) return;
-        var html = '<div id="tm-print-preview-modal" class="tm-print-preview-modal fixed inset-0 hidden">' +
+        ensurePrintStyles();
+        var existing = document.getElementById('tm-print-preview-modal');
+        if (existing) {
+            // 旧实例可能挂在业务弹窗内部 → 抬到 body，避免被遮挡/尺寸错乱
+            if (existing.parentNode !== document.body) {
+                document.body.appendChild(existing);
+            }
+            return;
+        }
+        var html = '<div id="tm-print-preview-modal" class="tm-print-preview-modal fixed inset-0 hidden" style="z-index:520" aria-modal="true" role="dialog">' +
             '<div class="tm-print-preview-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-sm" data-action="close"></div>' +
-            '<div class="tm-print-preview-panel relative z-10 mx-auto flex flex-col bg-white shadow-2xl overflow-hidden">' +
+            '<div class="tm-print-preview-panel relative mx-auto flex flex-col bg-white shadow-2xl overflow-hidden">' +
             '<div class="tm-print-preview-header shrink-0 flex items-start justify-between gap-3 px-4 pt-4 pb-3 border-b border-slate-100">' +
             '<div class="min-w-0"><p class="text-[10px] font-black text-teal-600 uppercase tracking-widest">打印预览</p>' +
             '<h3 id="tm-print-preview-title" class="text-base font-black text-slate-800 truncate mt-0.5">单据预览</h3>' +
@@ -97,20 +116,36 @@
     }
 
     function openModal() {
+        ensurePrintStyles();
         var modal = document.getElementById('tm-print-preview-modal');
         if (!modal) return;
-        // 置于 body 末尾，配合 tm-print.css 中的 z-index 保证盖住业务弹窗
+        // 始终挂到 body 末尾，避免落在订单详情等 stacking context 内被盖住
         document.body.appendChild(modal);
+        modal.style.setProperty('z-index', '520', 'important');
         modal.classList.remove('hidden');
+        modal.setAttribute('aria-hidden', 'false');
         document.body.classList.add('tm-print-preview-open');
         document.body.style.overflow = 'hidden';
+        if (typeof global.TM_pushShellOverlay === 'function' && !modal.dataset.tmShellPushed) {
+            global.TM_pushShellOverlay();
+            modal.dataset.tmShellPushed = '1';
+        }
     }
 
     function close() {
         var modal = document.getElementById('tm-print-preview-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            if (modal.dataset.tmShellPushed === '1' && typeof global.TM_popShellOverlay === 'function') {
+                global.TM_popShellOverlay();
+                delete modal.dataset.tmShellPushed;
+            }
+        }
         document.body.classList.remove('tm-print-preview-open');
-        document.body.style.overflow = '';
+        if (!(global.__TM_shellOverlayDepth > 0)) {
+            document.body.style.overflow = '';
+        }
         state.docType = null;
         state.docId = null;
         state.doc = null;

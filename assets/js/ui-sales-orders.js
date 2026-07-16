@@ -221,14 +221,18 @@
     }
 
     function initSalesOrdersView() {
-        var viewToggle = document.getElementById('workbench-view-toggle');
-        if (!viewToggle || viewToggle.dataset.tmSalesBound === '1') return;
-        viewToggle.dataset.tmSalesBound = '1';
-        viewToggle.querySelectorAll('[data-view]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
+        // 事件委托：工作台 DOM 被主壳反复注入后仍可点击
+        if (!window.__TM_SALES_TAB_DELEGATE) {
+            window.__TM_SALES_TAB_DELEGATE = true;
+            document.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest
+                    ? e.target.closest('#workbench-view-toggle [data-view]')
+                    : null;
+                if (!btn) return;
+                e.preventDefault();
                 switchView(btn.getAttribute('data-view'));
             });
-        });
+        }
         var searchBtn = document.getElementById('sales-orders-search-btn');
         if (searchBtn && searchBtn.dataset.tmBound !== '1') {
             searchBtn.dataset.tmBound = '1';
@@ -239,7 +243,27 @@
         if (window.TM_OrderDict && typeof window.TM_OrderDict.ensureOrderDictLoaded === 'function') {
             window.TM_OrderDict.ensureOrderDictLoaded();
         }
+        if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+            window.TM_Returns.init();
+        }
     }
 
-    window.TM_SalesOrders = { load: loadSalesOrders, init: initSalesOrdersView, switchView: switchView };
+    window.TM_SalesOrders = {
+        load: loadSalesOrders,
+        init: initSalesOrdersView,
+        switchView: switchView,
+        ensureInit: initSalesOrdersView
+    };
+
+    // 主壳片段注入后脚本才执行：立即尝试绑定；DOM 稍后到位时再兜底一次
+    function tryBindSalesTabs() {
+        initSalesOrdersView();
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryBindSalesTabs);
+    } else {
+        tryBindSalesTabs();
+    }
+    setTimeout(tryBindSalesTabs, 0);
+    setTimeout(tryBindSalesTabs, 400);
 })();

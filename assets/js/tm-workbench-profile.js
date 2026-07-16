@@ -101,11 +101,18 @@
                     var opsJson = await window.handleApiResponse(opsResp);
                     var ops = opsJson && opsJson.data ? opsJson.data : opsJson;
                     if (ops) {
-                        if (ops.industryVertical) this.industryVertical = ops.industryVertical;
+                        if (ops.industryVertical) {
+                            var opsIv = String(ops.industryVertical).toUpperCase();
+                            var curIv = String(this.industryVertical || 'PENDING').toUpperCase();
+                            // 勿用 PENDING 覆盖 JWT/已选定的具体行业（ops 查询失败时曾误伤服饰户）
+                            if (opsIv !== 'PENDING' || curIv === 'PENDING' || !curIv) {
+                                this.industryVertical = opsIv;
+                            }
+                        }
                         if (ops.productCapabilities) this.capabilities = ops.productCapabilities;
                         if (ops.uiProfile) this.uiProfile = ops.uiProfile;
-                        if (ops.industryVertical && COLUMN_PRESETS[ops.industryVertical]) {
-                            this.quickOrderColumns = COLUMN_PRESETS[ops.industryVertical];
+                        if (this.industryVertical && COLUMN_PRESETS[this.industryVertical]) {
+                            this.quickOrderColumns = COLUMN_PRESETS[this.industryVertical];
                         }
                     }
                     try {
@@ -126,6 +133,13 @@
         },
 
         afterLoad: function () {
+            try {
+                var iv = String(this.industryVertical || '').toUpperCase();
+                if (iv && iv !== 'PENDING') {
+                    document.documentElement.setAttribute('data-industry-vertical', iv);
+                    if (window.TM_UI_CONTEXT) window.TM_UI_CONTEXT.industryVertical = iv;
+                }
+            } catch (e) { /* ignore */ }
             if (window.TM_IndustryUI) {
                 window.TM_IndustryUI.apply(document.body, this);
             }

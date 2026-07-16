@@ -76,6 +76,7 @@
 
         var qr = document.getElementById('poster-qr');
         if (qr) {
+            qr.crossOrigin = 'anonymous';
             qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(landing);
         }
         var hint = document.getElementById('poster-qr-url-hint');

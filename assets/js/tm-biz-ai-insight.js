@@ -30,8 +30,17 @@
         console.log('[BizAI]', msg);
     }
 
+    function hoistModalToBody(el) {
+        if (!el || !el.parentNode) return el;
+        if (el.parentNode === document.body) return el;
+        document.body.appendChild(el);
+        return el;
+    }
+
     function openModal(el) {
         if (!el) return;
+        el = hoistModalToBody(el);
+        el.style.setProperty('z-index', '320', 'important');
         if (typeof global.TM_openUnifiedModal === 'function') global.TM_openUnifiedModal(el);
         else {
             el.classList.remove('hidden');
@@ -586,6 +595,14 @@
         openPromoGoalModal();
     }
 
+    /** 主壳启动时把促销相关弹窗抬到 body，避免落在 #content-area overflow 内不可见 */
+    function hoistPromoShellModals() {
+        ['ai-modal', 'promo-goal-modal', 'promo-product-picker-modal', 'clearance-modal'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) hoistModalToBody(el);
+        });
+    }
+
     var api = {
         openAIAnalysis: openAIAnalysis,
         closeAIAnalysis: closeAIAnalysis,
@@ -599,6 +616,7 @@
         closeClearanceModal: closeClearanceModal,
         selectPromoPlan: selectPromoPlan,
         startPromoFlow: startPromoFlow,
+        hoistPromoShellModals: hoistPromoShellModals,
         getPromoGoals: function () { return state.promoGoals.slice(); },
         setPromoGoals: function (g) { state.promoGoals = Array.isArray(g) ? g.slice() : []; }
     };
@@ -609,4 +627,10 @@
     global.openPromoGoalModal = openPromoGoalModal;
     global.closePromoGoalModal = closePromoGoalModal;
     global.closeClearanceModal = closeClearanceModal;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hoistPromoShellModals);
+    } else {
+        hoistPromoShellModals();
+    }
 })(window);

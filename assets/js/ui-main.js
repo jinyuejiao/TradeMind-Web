@@ -140,6 +140,176 @@ function TM_syncDashboardOverlays(htmlString) {
  * 不得再把 dashboard.html 中的 auth/app/tailwind 等整页脚本插入主壳：会污染全局、错误解析相对路径，
  * 且 TM_restoreShellNavigationGlobals 若早于异步脚本执行则无法恢复 switchTab，导致跳转到 /dashboard/dashboard.html 等 404。
  */
+function TM_ensureRapidOrderStyles() {
+    if (document.getElementById('tm-rapid-order-css')) return;
+    var link = document.createElement('link');
+    link.id = 'tm-rapid-order-css';
+    link.rel = 'stylesheet';
+    link.href = '/assets/css/rapid-order.css?v=20260715total2';
+    document.head.appendChild(link);
+    var flw = document.getElementById('tm-first-login-wizard-css');
+    if (!flw) {
+        var link2 = document.createElement('link');
+        link2.id = 'tm-first-login-wizard-css';
+        link2.rel = 'stylesheet';
+        link2.href = '/assets/css/tm-first-login-wizard.css?v=20260630';
+        document.head.appendChild(link2);
+    }
+}
+
+function TM_isRapidOrderReady() {
+    var fn = window.TM_openRapidOrder;
+    return typeof fn === 'function' && !fn.__tmStub;
+}
+
+function TM_flushRapidOrderWaiters() {
+    var waiters = window.__TM_RAPID_ORDER_WAITERS || [];
+    window.__TM_RAPID_ORDER_WAITERS = [];
+    for (var i = 0; i < waiters.length; i++) {
+        try { waiters[i](); } catch (e) { console.warn('[TM] rapid-order waiter', e); }
+    }
+}
+
+/** 主壳片段模式下补载极速开单依赖（白名单遗漏或会话已加载过旧队列时） */
+function TM_ensureRapidOrderScripts(done) {
+    TM_ensureRapidOrderStyles();
+    if (typeof done === 'function') {
+        (window.__TM_RAPID_ORDER_WAITERS = window.__TM_RAPID_ORDER_WAITERS || []).push(done);
+    }
+    if (TM_isRapidOrderReady()) {
+        TM_flushRapidOrderWaiters();
+        return;
+    }
+    if (window.__TM_RAPID_ORDER_LOADING) return;
+    window.__TM_RAPID_ORDER_LOADING = true;
+    var base = window.location.origin + '/assets/js/';
+    var deps = [
+        'tm-product-domain.js?v=20260713order1',
+        'tm-master-data-cache.js?v=20260706fix1',
+        'tm-sku-catalog-cache.js?v=20260716cat1',
+        'tm-industry-ui.js?v=20260630',
+        'tm-workbench-profile.js?v=20260706fix1',
+        'tm-first-login-wizard.js?v=20260630',
+        'rapid-order.js?v=20260716cat1'
+    ];
+    function finish() {
+        window.__TM_RAPID_ORDER_LOADING = false;
+        if (!TM_isRapidOrderReady()) {
+            console.error('[TM] 极速开单脚本加载后仍未定义 TM_openRapidOrder');
+        }
+        TM_flushRapidOrderWaiters();
+    }
+    function loadNext(i) {
+        if (i >= deps.length) {
+            finish();
+            return;
+        }
+        if (TM_isRapidOrderReady() && deps[i].indexOf('rapid-order.js') >= 0) {
+            // 注入队列可能已装好真实现，跳过后续
+            finish();
+            return;
+        }
+        var name = deps[i].split('?')[0];
+        if (document.querySelector('script[data-tm-rapid="' + name + '"], script[src*="' + name + '"]')) {
+            // 已在加载/已加载：rapid-order 需等真实现就绪
+            if (name === 'rapid-order.js' && !TM_isRapidOrderReady()) {
+                var polls = 0;
+                var timer = setInterval(function () {
+                    polls++;
+                    if (TM_isRapidOrderReady() || polls > 40) {
+                        clearInterval(timer);
+                        loadNext(i + 1);
+                    }
+                }, 50);
+                return;
+            }
+            loadNext(i + 1);
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = base + deps[i];
+        s.async = false;
+        s.setAttribute('data-tm-module', 'dashboard');
+        s.setAttribute('data-tm-rapid', name);
+        s.onload = function () { loadNext(i + 1); };
+        s.onerror = function () {
+            console.warn('[TM] 极速开单依赖加载失败:', deps[i]);
+            loadNext(i + 1);
+        };
+        document.body.appendChild(s);
+    }
+    loadNext(0);
+}
+
+/** 点击时若脚本尚未注入，先补载再打开，避免 ReferenceError */
+(function TM_installRapidOrderStub() {
+    if (TM_isRapidOrderReady()) return;
+    function stub() {
+        var args = arguments;
+        TM_ensureRapidOrderScripts(function () {
+            var fn = window.TM_openRapidOrder;
+            if (typeof fn === 'function' && !fn.__tmStub) {
+                return fn.apply(window, args);
+            }
+            console.error('[TM] 极速开单不可用：TM_openRapidOrder 未加载');
+        });
+    }
+    stub.__tmStub = true;
+    window.TM_openRapidOrder = stub;
+})();
+
+function TM_ensureWorkbenchOrderTabs() {
+    try {
+        if (!window.TM_SalesOrders && !window.__TM_SALES_ORDERS_LOADING) {
+            window.__TM_SALES_ORDERS_LOADING = true;
+            var base = window.location.origin + '/assets/js/';
+            var files = [
+                'tm-order-dict.js?v=20260626',
+                'ui-sales-orders.js?v=20260716tabs1',
+                'ui-returns.js?v=20260716return1'
+            ];
+            function next(i) {
+                if (i >= files.length) {
+                    window.__TM_SALES_ORDERS_LOADING = false;
+                    if (window.TM_SalesOrders && typeof window.TM_SalesOrders.ensureInit === 'function') {
+                        window.TM_SalesOrders.ensureInit();
+                    }
+                    if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+                        window.TM_Returns.init();
+                    }
+                    return;
+                }
+                var name = files[i].split('?')[0];
+                if (document.querySelector('script[src*="' + name + '"]')) {
+                    next(i + 1);
+                    return;
+                }
+                var s = document.createElement('script');
+                s.src = base + files[i];
+                s.async = false;
+                s.setAttribute('data-tm-module', 'dashboard');
+                s.onload = function () { next(i + 1); };
+                s.onerror = function () { next(i + 1); };
+                document.body.appendChild(s);
+            }
+            next(0);
+            return;
+        }
+        if (window.TM_SalesOrders) {
+            if (typeof window.TM_SalesOrders.ensureInit === 'function') {
+                window.TM_SalesOrders.ensureInit();
+            } else if (typeof window.TM_SalesOrders.init === 'function') {
+                window.TM_SalesOrders.init();
+            }
+        }
+        if (window.TM_Returns && typeof window.TM_Returns.init === 'function') {
+            window.TM_Returns.init();
+        }
+    } catch (e) {
+        console.warn('[TM] 工作台销售/退货 Tab 绑定失败', e);
+    }
+}
+
 function TM_injectModuleScripts(htmlString, moduleKey) {
     if (moduleKey !== 'dashboard') {
         return;
@@ -154,6 +324,11 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
             if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
                 window.TM_bindProductCenterGlobalFns();
             }
+            // 历史会话可能未注入极速开单：补载一次
+            if (!TM_isRapidOrderReady()) {
+                TM_ensureRapidOrderScripts();
+            }
+            TM_ensureWorkbenchOrderTabs();
             TM_refreshDashboardPendingOrders();
             TM_rebindVoiceStopAfterOverlaySync();
             try {
@@ -201,7 +376,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|ui-product-center|tm-product-variant-modal|tm-attribute-template-modal/i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|ui-product-center|tm-product-variant-modal|tm-attribute-template-modal|rapid-order\.js|tm-sku-catalog-cache|tm-workbench-profile|tm-product-domain|tm-master-data-cache|tm-industry-ui|tm-industry-product-registry|tm-first-login-wizard|workbench-order-shipment|ui-returns|ui-sales-orders|tm-product-thumb|tm-biz-accounts|tm-subscription-notice|order-workbench-modal|tenant-ops|tm-order-dict|tm-serial-capture|tm-scan-|tm-peripheral|tm-print\//i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -234,6 +409,10 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (typeof window.TM_bindProductCenterGlobalFns === 'function') {
                     window.TM_bindProductCenterGlobalFns();
                 }
+                if (!TM_isRapidOrderReady()) {
+                    TM_ensureRapidOrderScripts();
+                }
+                TM_ensureWorkbenchOrderTabs();
                 TM_refreshDashboardPendingOrders();
                 if (typeof window.loadInProgressOrders === 'function') {
                     window.loadInProgressOrders();
@@ -610,13 +789,21 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260601audit', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260716print1', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
+            TM_ensureRapidOrderStyles();
             const inner = TM_extractInnerFromModuleHtml(html, '#view-dashboard');
             document.getElementById('view-dashboard').innerHTML = inner || html;
             TM_syncDashboardOverlays(html);
             TM_injectModuleScripts(html, 'dashboard');
+            // 队列异步；再兜底确保极速开单可用
+            setTimeout(function () {
+                if (!TM_isRapidOrderReady()) {
+                    TM_ensureRapidOrderScripts();
+                }
+                TM_ensureWorkbenchOrderTabs();
+            }, 600);
             var vd = document.getElementById('view-dashboard');
             if (vd && window.TM_UI && typeof window.TM_UI.injectSlots === 'function') {
                 window.TM_UI.injectSlots(vd).then(function () {
@@ -649,7 +836,7 @@ function loadSmartOps() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260715promoFix',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260716promo2',
         '智能经营',
         { embedPathCheck: 'SmartOps' }
     );
@@ -660,7 +847,7 @@ function loadCRM() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-crm'),
         'crm',
-        '/modules/crm/crm.html?embed=1&v=20260715crmAi3',
+        '/modules/crm/crm.html?embed=1&v=20260716crmAi1',
         'CRM',
         { embedPathCheck: 'crm' }
     );
@@ -672,7 +859,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260527pc', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260716spu1', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
@@ -726,7 +913,7 @@ function loadSupplier() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-supplier'),
         'supplier',
-        '/modules/supply-chain/supply-chain.html?embed=1&v=20260715po-price4',
+        '/modules/supply-chain/supply-chain.html?embed=1&v=20260716po2',
         '供应商',
         { embedPathCheck: 'supply-chain' }
     );
@@ -2783,6 +2970,10 @@ function openPromoProductPickerModal() {
         }
         return;
     }
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
+    modal.style.setProperty('z-index', '320', 'important');
     window._promoSelectedProductIds = [];
     var bar = document.getElementById('promo-picker-selected-bar');
     var countEl = document.getElementById('promo-picker-count');

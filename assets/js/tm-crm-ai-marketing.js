@@ -264,6 +264,13 @@
         tick();
     }
 
+    function syncModalHeader(name, subText) {
+        var titleName = document.getElementById('crm-ai-modal-customer');
+        if (titleName) titleName.textContent = name || '客户';
+        var sub = document.getElementById('crm-ai-modal-sub');
+        if (sub) sub.textContent = subText != null ? subText : 'Customer Marketing';
+    }
+
     function openCrmAiModal(opts) {
         opts = opts || {};
         var cust = getCustomerIdName(opts);
@@ -272,17 +279,25 @@
             return;
         }
         state.customerId = cust.id;
-        state.customerName = cust.name;
+        state.customerName = cust.name || ('客户#' + cust.id);
 
         var modal = document.getElementById('crm-ai-modal');
         if (!modal) return;
+        // 等待态立刻刷新标题，避免残留上一客户名称与旧 meta
+        syncModalHeader(state.customerName, '分析中…');
+        var body = document.getElementById('crm-ai-report-body');
+        if (body) {
+            body.innerHTML = '<p class="text-sm text-slate-400 text-center py-16">正在为「'
+                + esc(state.customerName) + '」生成营销建议…</p>';
+        }
+
         if (typeof global.TM_openUnifiedModal === 'function') global.TM_openUnifiedModal(modal);
         else {
             modal.classList.remove('hidden');
             if (typeof global.TM_notifyEmbedModal === 'function') global.TM_notifyEmbedModal(true);
         }
 
-        showLoading(true, '正在加载营销建议…');
+        showLoading(true, 'AI 正在分析「' + state.customerName + '」，请稍候…');
         var regenerate = !!opts.regenerate;
 
         var run = regenerate
@@ -292,6 +307,7 @@
         run.then(function (latest) {
             if (latest && latest.exists && latest.status === 'SUCCESS' && latest.report && !regenerate) {
                 if (latest.localCustomerName) state.customerName = latest.localCustomerName;
+                syncModalHeader(state.customerName);
                 renderReport(latest.report, state.customerName);
                 return null;
             }
@@ -313,21 +329,22 @@
                 throw new Error((data && data.message) || '请求失败');
             }
             if (data.localCustomerName) state.customerName = data.localCustomerName;
+            syncModalHeader(state.customerName, '分析中…');
             if (data.status === 'SUCCESS' && data.report) {
                 renderReport(data.report, state.customerName);
                 return;
             }
             if (data.requestId) {
                 state.requestId = data.requestId;
-                showLoading(true, 'AI 正在分析该客户，请稍候…');
+                showLoading(true, 'AI 正在分析「' + state.customerName + '」，请稍候…');
                 pollUntilDone(data.requestId, function (report) {
                     renderReport(report, state.customerName);
                 }, function (err) {
                     showLoading(false);
-                    var body = document.getElementById('crm-ai-report-body');
-                    if (body) {
-                        body.classList.remove('hidden');
-                        body.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
+                    var bodyEl = document.getElementById('crm-ai-report-body');
+                    if (bodyEl) {
+                        bodyEl.classList.remove('hidden');
+                        bodyEl.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
                             + esc(err.message || '生成失败') + '</p>';
                     }
                     toast(err.message || '生成失败', 'error');
@@ -338,10 +355,10 @@
         }).catch(function (err) {
             showLoading(false);
             toast(err.message || '加载失败', 'error');
-            var body = document.getElementById('crm-ai-report-body');
-            if (body) {
-                body.classList.remove('hidden');
-                body.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
+            var bodyEl = document.getElementById('crm-ai-report-body');
+            if (bodyEl) {
+                bodyEl.classList.remove('hidden');
+                bodyEl.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
                     + esc(err.message || '加载失败') + '</p>';
             }
         });

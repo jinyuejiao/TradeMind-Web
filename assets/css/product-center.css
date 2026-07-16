@@ -630,11 +630,33 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
     text-align: center;
 }
 
+.tm-po-th--prod-date,
+.tm-po-td--prod-date {
+    width: 8.5rem;
+    min-width: 8.5rem;
+    text-align: center;
+}
+
+.tm-po-th--serial,
+.tm-po-td--serial {
+    width: 8rem;
+    min-width: 8rem;
+    text-align: center;
+}
+
+/* 隐藏列必须彻底不参与表格布局，避免与可见列错位 */
+.tm-po-lines-table .purchase-spec-col.hidden,
+.tm-po-lines-table .purchase-ext-col.hidden,
+.tm-po-lines-table .purchase-inbound-col.hidden {
+    display: none !important;
+}
+
 .tm-po-th--sub,
 .tm-po-td--sub {
     width: 5.5rem;
     min-width: 5.5rem;
     text-align: right;
+    white-space: nowrap;
 }
 
 .tm-po-th--action,

@@ -33,16 +33,40 @@
         };
     }
 
-    function buildCategories(rows) {
+    /**
+     * 侧栏展示全量一级分类（来自分类 API），不以「有货 SKU」过滤；
+     * 同时合并 SKU 上出现但 API 未返回的分类，避免漏项。
+     */
+    function buildCategories(rows, catList) {
         var map = { 0: { id: 0, name: '全部' } };
         var names = state.categoryNames || {};
-        rows.forEach(function (r) {
-            var cid = r.categoryId != null ? r.categoryId : 0;
+
+        (catList || []).forEach(function (c) {
+            if (!c) return;
+            var id = c.categoryId != null ? c.categoryId
+                : (c.category_id != null ? c.category_id : (c.id != null ? c.id : null));
+            if (id == null || id === '' || Number(id) === 0) return;
+            var name = c.categoryName || c.name || c.category_name || names[id] || ('分类#' + id);
+            map[id] = { id: Number(id) || id, name: String(name) };
+            names[id] = map[id].name;
+        });
+
+        (rows || []).forEach(function (r) {
+            var cid = r.categoryId != null ? r.categoryId : null;
+            if (cid == null || cid === '' || Number(cid) === 0) return;
             if (!map[cid]) {
-                map[cid] = { id: cid, name: names[cid] || ('分类#' + cid) };
+                map[cid] = { id: Number(cid) || cid, name: names[cid] || ('分类#' + cid) };
             }
         });
-        return Object.keys(map).map(function (k) { return map[k]; });
+
+        state.categoryNames = names;
+        var list = Object.keys(map).map(function (k) { return map[k]; });
+        list.sort(function (a, b) {
+            if (Number(a.id) === 0) return -1;
+            if (Number(b.id) === 0) return 1;
+            return String(a.name).localeCompare(String(b.name), 'zh');
+        });
+        return list;
     }
 
     function normalizeRowAttrs(row) {
@@ -86,15 +110,22 @@
             var catList = results[1] || [];
             state.categoryNames = {};
             catList.forEach(function (c) {
+                if (!c) return;
                 var id = c.categoryId != null ? c.categoryId : c.category_id;
                 var name = c.categoryName || c.name || c.category_name;
                 if (id != null && name) state.categoryNames[id] = name;
             });
-            state.categories = buildCategories(state.rows);
+            state.categories = buildCategories(state.rows, catList);
             state.loadedAt = Date.now();
             state.warehouseId = warehouseId != null ? warehouseId : null;
             try {
-                sessionStorage.setItem('tm_sku_catalog_cache', JSON.stringify({ t: state.loadedAt, wh: state.warehouseId, rows: state.rows }));
+                sessionStorage.setItem('tm_sku_catalog_cache_v2', JSON.stringify({
+                    t: state.loadedAt,
+                    wh: state.warehouseId,
+                    rows: state.rows,
+                    categories: state.categories,
+                    categoryNames: state.categoryNames
+                }));
             } catch (e) { /* ignore */ }
             return state.rows;
         },
@@ -146,14 +177,22 @@
 
         warmFromSession: function () {
             try {
-                var raw = sessionStorage.getItem('tm_sku_catalog_cache');
+                var raw = sessionStorage.getItem('tm_sku_catalog_cache_v2')
+                    || sessionStorage.getItem('tm_sku_catalog_cache');
                 if (!raw) return false;
                 var o = JSON.parse(raw);
                 if (!o.rows || Date.now() - o.t > CACHE_TTL_MS) return false;
                 state.rows = o.rows.map(normalizeRowAttrs);
                 state.loadedAt = o.t;
                 state.warehouseId = o.wh;
-                state.categories = buildCategories(state.rows);
+                state.categoryNames = o.categoryNames || {};
+                if (o.categories && o.categories.length) {
+                    state.categories = o.categories;
+                } else {
+                    // 旧缓存仅按有货 SKU 建分类，强制走完整加载
+                    state.loadedAt = 0;
+                    return false;
+                }
                 return true;
             } catch (e) {
                 return false;
@@ -167,6 +206,7 @@
             state.loadedAt = 0;
             state.warehouseId = null;
             try {
+                sessionStorage.removeItem('tm_sku_catalog_cache_v2');
                 sessionStorage.removeItem('tm_sku_catalog_cache');
             } catch (e) { /* ignore */ }
         }

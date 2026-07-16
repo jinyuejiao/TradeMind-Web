@@ -32,14 +32,13 @@
     <script src="/assets/js/tm-order-total.js?v=20260524ui"></script>
     <script src="/assets/js/tm-ui-feedback.js?v=20260524ui"></script>
     <script src="/assets/js/tm-confirm.js?v=20260524crm"></script>
-    <link rel="stylesheet" href="/assets/css/tm-onboarding.css?v=20260524shell">
     <link rel="stylesheet" href="/assets/css/tm-merchant-feedback.css?v=20260526fb">
     <script src="/assets/js/tm-oss-path.js?v=20260527"></script>
     <script src="/assets/js/tm-oss-upload.js?v=20260603img2"></script>
     <script src="/assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="/assets/js/tm-merchant-feedback.js?v=20260526fb3"></script>
-    <script src="/assets/js/tm-save-image.js?v=20260715album"></script>
-    <script src="/assets/js/auth.js?v=20260715album"></script>
+    <script src="/assets/js/tm-save-image.js?v=20260716album2"></script>
+    <script src="/assets/js/auth.js?v=20260716onbOff"></script>
     <script src="/modules/membership/referral-rewards.js?v=20260521ref"></script>
     <script src="/assets/js/main-app.js"></script>
     <script src="/assets/js/ui-permissions.js?v=20260527rbac"></script>
@@ -49,15 +48,24 @@
     <script src="/assets/js/tm-ui-loader.js"></script>
     <link rel="stylesheet" href="/assets/css/ops-portal.css?v=tm-ops-11">
     <script src="/assets/js/ui-ops.js?v=tm-ops-merchant-fix-20260601"></script>
-    <script src="/assets/js/ui-main.js?v=20260715po-price4"></script>
-    <script src="/assets/js/tm-biz-ai-insight.js?v=20260715promoFix"></script>
+    <script src="/assets/js/ui-main.js?v=20260716spu1"></script>
+    <script src="/assets/js/tm-biz-ai-insight.js?v=20260716promo2"></script>
     <link rel="stylesheet" href="/assets/css/product-center.css?v=20260715variant2">
     <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260531unit">
-    <script src="/assets/js/ui-product-center.js?v=20260715audit1"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260715audit1"></script>
-    <script src="/assets/js/tm-onboarding-registry.js?v=20260524onb2"></script>
-    <script src="/assets/js/tm-onboarding-sync.js?v=20260524onb2"></script>
-    <script src="/assets/js/tm-onboarding.js?v=20260612voice"></script>
+    <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260716print1">
+    <!-- 产品规格/行业能力：主壳直开产品中心时也需这些依赖（不能只靠工作台注入） -->
+    <script src="/assets/js/tm-workbench-profile.js?v=20260716iv1"></script>
+    <script src="/assets/js/tm-subscription-notice.js?v=20260706sub"></script>
+    <script src="/assets/js/tm-industry-ui.js?v=20260630"></script>
+    <script src="/assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
+    <script src="/assets/js/tm-product-domain.js?v=20260713order1"></script>
+    <script src="/assets/js/tm-master-data-cache.js?v=20260711cat"></script>
+    <script src="/assets/js/tm-product-registry-form.js?v=20260712expiry3"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260716spu1"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260716spu1"></script>
+    <script src="/assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260715variant2"></script>
+    <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans w-full flex overflow-hidden">
 
@@ -200,7 +208,7 @@
                             </div>
                             <div class="bg-white p-1.5 rounded-xl shadow-lg">
                                 <!-- 动态二维码 -->
-                                <img id="poster-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-TM778201" class="w-10 h-10" alt="QR">
+                                <img id="poster-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TradeMind-TM778201" crossorigin="anonymous" class="w-10 h-10" alt="QR">
                             </div>
                         </div>
                     </div>

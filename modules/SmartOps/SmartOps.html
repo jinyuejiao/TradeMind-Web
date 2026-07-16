@@ -119,7 +119,7 @@
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260530modal"></script>
     <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
-    <script src="../../assets/js/tm-biz-ai-insight.js?v=20260715promoFix"></script>
+    <script src="../../assets/js/tm-biz-ai-insight.js?v=20260716promo2"></script>
     <script>
         // 打开会员订阅弹窗
         // 使用 auth.js 中定义的全局函数
@@ -439,16 +439,18 @@
                 <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeClearanceModal()"></div>
                 <div class="relative bg-white w-full max-w-4xl h-[min(96dvh,100%)] md:h-auto md:max-h-[90vh] rounded-t-[1.75rem] md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
                     <div class="tm-mobile-modal-header px-4 py-3 md:px-8 md:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-                        <div class="flex items-center gap-3 md:gap-4 min-w-0"><div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-lightning-bold text-xl"></i></div><h2 class="text-sm font-black text-slate-800 uppercase tracking-widest italic truncate">AI Inventory Clearance Plan</h2></div>
-                        <button onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0"><i class="ph ph-x text-xl text-slate-400"></i></button>
+                        <div class="flex items-center gap-3 md:gap-4 min-w-0">
+                            <div class="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center text-white shrink-0"><i class="ph ph-megaphone-simple text-xl"></i></div>
+                            <h2 class="text-sm font-black text-slate-800 truncate">AI 促销方案</h2>
+                        </div>
+                        <button type="button" onclick="closeClearanceModal()" class="p-2 hover:bg-slate-100 rounded-full shrink-0"><i class="ph ph-x text-xl text-slate-400"></i></button>
                     </div>
-                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar space-y-8 md:space-y-12 text-left">
-                        <section>
-                            <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><span class="w-1.5 h-6 bg-red-500 rounded-full"></span> 呆滞风险诊断结果</h3>
-                            <div class="p-6 bg-red-50 border border-red-100 rounded-3xl text-sm text-red-700 leading-relaxed font-medium italic">"监测到共有 12 个 SKU 的库龄已超过 150 天，平均周转速度环比下降 42%。预计下月仓储成本溢出风险为高。建议立即处理！"</div>
-                        </section>
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-10 no-scrollbar text-left">
+                        <p class="text-sm text-slate-500 text-center py-12">请从智能经营页点击「生成促销方案」，在主界面完成目标选择与方案生成。</p>
                     </div>
-                    <div class="tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:p-6 border-t border-slate-100 shrink-0 mt-auto"><button onclick="closeClearanceModal()" class="w-full py-3 md:py-4 rounded-2xl bg-slate-900 text-white text-xs font-black shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Execute Clearance Plan</button></div>
+                    <div class="tm-mobile-modal-footer tm-modal-footer-safe px-4 py-3 md:p-6 border-t border-slate-100 shrink-0 mt-auto">
+                        <button type="button" onclick="closeClearanceModal()" class="w-full py-3 md:py-4 rounded-2xl bg-slate-900 text-white text-xs font-black">关闭</button>
+                    </div>
                 </div>
             </div>
 
@@ -1313,6 +1315,17 @@
         }
 
         function openClearanceModal() {
+            try {
+                if (window.parent && window.parent !== window && window.parent.TM_BizAI
+                    && typeof window.parent.TM_BizAI.startPromoFlow === 'function') {
+                    window.parent.TM_BizAI.startPromoFlow();
+                    return;
+                }
+            } catch (e) { /* ignore */ }
+            if (window.TM_BizAI && typeof window.TM_BizAI.startPromoFlow === 'function') {
+                window.TM_BizAI.startPromoFlow();
+                return;
+            }
             var modal = document.getElementById('clearance-modal');
             if (modal && typeof window.TM_openUnifiedModal === 'function') {
                 window.TM_openUnifiedModal(modal);

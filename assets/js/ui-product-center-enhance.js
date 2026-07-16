@@ -445,11 +445,74 @@
         };
     };
 
+    PM.parseJwtIndustryVertical = function () {
+        try {
+            var token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return '';
+            var parts = String(token).split('.');
+            if (parts.length < 2) return '';
+            var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (b64.length % 4) b64 += '=';
+            var payload = JSON.parse(atob(b64));
+            return String(payload.industryVertical || payload.industry_vertical || '').toUpperCase();
+        } catch (e) {
+            return '';
+        }
+    };
+
+    PM.syncIndustryVerticalToShell = function (iv) {
+        iv = String(iv || '').toUpperCase();
+        if (!iv || iv === 'PENDING') return;
+        try {
+            document.documentElement.setAttribute('data-industry-vertical', iv);
+        } catch (e) { /* ignore */ }
+        if (window.TM_UI_CONTEXT) {
+            window.TM_UI_CONTEXT.industryVertical = iv;
+        }
+        if (window.TM_WorkbenchProfile) {
+            window.TM_WorkbenchProfile.industryVertical = iv;
+        }
+    };
+
+    /**
+     * 解析租户行业垂直：优先具体行业（CLOTHING/FOOD/DIGITAL_3C），避免 PENDING 被当成 GENERAL 后规格卡永不展示。
+     */
     PM.getIndustryVertical = function () {
+        var candidates = [];
         var p = window.TM_WorkbenchProfile || {};
-        var iv = String(p.industryVertical || 'GENERAL').toUpperCase();
-        if (iv === 'PENDING') return 'GENERAL';
-        return iv;
+        if (p.industryVertical) candidates.push(p.industryVertical);
+        try {
+            var domIv = document.documentElement.getAttribute('data-industry-vertical');
+            if (domIv) candidates.push(domIv);
+        } catch (e0) { /* ignore */ }
+        if (window.TM_UI_CONTEXT && window.TM_UI_CONTEXT.industryVertical) {
+            candidates.push(window.TM_UI_CONTEXT.industryVertical);
+        }
+        var caps = window.TM_productCapabilities || {};
+        if (caps.industryVertical) candidates.push(caps.industryVertical);
+        var jwtIv = PM.parseJwtIndustryVertical();
+        if (jwtIv) candidates.push(jwtIv);
+
+        var specialized = null;
+        var general = null;
+        for (var i = 0; i < candidates.length; i++) {
+            var iv = String(candidates[i] || '').toUpperCase().trim();
+            if (!iv || iv === 'UNDEFINED' || iv === 'NULL') continue;
+            if (iv === 'PENDING') continue;
+            if (iv === 'GENERAL') {
+                if (!general) general = 'GENERAL';
+                continue;
+            }
+            if (iv === 'CLOTHING' || iv === 'FOOD' || iv === 'DIGITAL_3C' || iv === 'APPAREL') {
+                specialized = iv === 'APPAREL' ? 'CLOTHING' : iv;
+                break;
+            }
+            // 未知但非空：保留为首选
+            if (!specialized) specialized = iv;
+        }
+        var resolved = specialized || general || 'GENERAL';
+        if (specialized) PM.syncIndustryVerticalToShell(specialized);
+        return resolved;
     };
 
     PM.isIndustryCardAllowed = function (cardKey, vertical) {
@@ -524,7 +587,16 @@
             headers: { 'Content-Type': 'application/json' }
         }).then(function (r) { return r.json(); }).then(function (res) {
             if (!res.success) return null;
-            window.TM_productCapabilities = PM.normalizeProductCapabilities(res.data || {});
+            var raw = res.data || {};
+            var apiIv = raw.industryVertical || raw.industry_vertical;
+            if (apiIv) {
+                PM.syncIndustryVerticalToShell(apiIv);
+                raw.industryVertical = String(apiIv).toUpperCase();
+            }
+            window.TM_productCapabilities = PM.normalizeProductCapabilities(raw);
+            if (apiIv) {
+                window.TM_productCapabilities.industryVertical = String(apiIv).toUpperCase();
+            }
             PM.applyProductCapabilityVisibility();
             return window.TM_productCapabilities;
         }).catch(function () { return null; });
@@ -564,7 +636,14 @@
         // 行业硬约束：服饰不开批次/序列号；食品不开序列号；数码不开批次
         var vertical = '';
         try {
-            vertical = String((profile.industryVertical || PM.getIndustryVertical && PM.getIndustryVertical()) || 'GENERAL').toUpperCase();
+            vertical = String(
+                (raw && raw.industryVertical) ||
+                (profile.industryVertical) ||
+                (PM.getIndustryVertical && PM.getIndustryVertical()) ||
+                'GENERAL'
+            ).toUpperCase();
+            if (vertical === 'PENDING') vertical = 'GENERAL';
+            if (vertical === 'APPAREL') vertical = 'CLOTHING';
         } catch (e2) {
             vertical = 'GENERAL';
         }
