@@ -47,36 +47,39 @@
         return input;
     }
 
+    async function applyPhotoFile(file) {
+        var processed = await compressPhotoBlob(file);
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var preview = document.getElementById('image-preview');
+            var previewArea = document.getElementById('photo-preview-area');
+            var submitBtn = document.getElementById('photo-submit-btn');
+            window.selectedImageFile = processed;
+            window.capturedImageBlob = null;
+            if (preview) {
+                preview.src = e.target.result;
+            }
+            if (previewArea) {
+                previewArea.classList.remove('hidden');
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+        };
+        reader.onerror = function () {
+            if (typeof showToast === 'function') {
+                showToast('读取图片失败，请换一张重试');
+            }
+        };
+        reader.readAsDataURL(processed);
+    }
+
     async function handlePhotoSelected(input) {
         try {
             if (!input.files || !input.files[0]) {
                 return;
             }
-            var file = input.files[0];
-            var processed = await compressPhotoBlob(file);
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                var preview = document.getElementById('image-preview');
-                var previewArea = document.getElementById('photo-preview-area');
-                var submitBtn = document.getElementById('photo-submit-btn');
-                window.selectedImageFile = processed;
-                window.capturedImageBlob = null;
-                if (preview) {
-                    preview.src = e.target.result;
-                }
-                if (previewArea) {
-                    previewArea.classList.remove('hidden');
-                }
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                }
-            };
-            reader.onerror = function () {
-                if (typeof showToast === 'function') {
-                    showToast('读取图片失败，请换一张重试');
-                }
-            };
-            reader.readAsDataURL(processed);
+            await applyPhotoFile(input.files[0]);
             input.value = '';
         } catch (error) {
             console.error('[TM_DashboardPhoto] 处理照片选择失败:', error, 'rev=', REV);
@@ -85,6 +88,47 @@
             }
         }
     }
+
+    /**
+     * App / Web 统一选图入口（优先 TM_Native 相机插件）
+     * @param {'CAMERA'|'PHOTOS'} source
+     */
+    async function pickNativeOrWeb(source) {
+        try {
+            if (window.TM_Native && window.TM_Native.camera && window.TM_Native.camera.takePhoto) {
+                var photo = await window.TM_Native.camera.takePhoto({ source: source || 'CAMERA' });
+                var file = photo.file || photo.blob;
+                if (!file && photo.webPath) {
+                    var resp = await fetch(photo.webPath);
+                    var blob = await resp.blob();
+                    file = new File([blob], 'capture.jpg', { type: blob.type || 'image/jpeg' });
+                }
+                if (!file) {
+                    throw new Error('未获取到图片');
+                }
+                await applyPhotoFile(file);
+                return;
+            }
+            // 无桥接时降级 file input
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            if (source !== 'PHOTOS') input.setAttribute('capture', 'environment');
+            input.onchange = function () { handlePhotoSelected(input); };
+            input.click();
+        } catch (error) {
+            if (error && error.message && /cancel|取消|User cancelled|No image/i.test(String(error.message))) {
+                return;
+            }
+            console.error('[TM_DashboardPhoto] pickNativeOrWeb 失败:', error, 'rev=', REV);
+            if (typeof showToast === 'function') {
+                showToast((error && error.message) || '选择图片失败');
+            }
+        }
+    }
+
+    function pickCamera() { return pickNativeOrWeb('CAMERA'); }
+    function pickGallery() { return pickNativeOrWeb('PHOTOS'); }
 
     async function resolveSubmitBlob() {
         var preview = document.getElementById('image-preview');
@@ -186,10 +230,15 @@
         resetPhoto: resetPhoto,
         handlePhotoSelected: handlePhotoSelected,
         submitPhoto: submitPhoto,
-        processImageWithAIService: processImageWithAIService
+        processImageWithAIService: processImageWithAIService,
+        pickCamera: pickCamera,
+        pickGallery: pickGallery,
+        pickNativeOrWeb: pickNativeOrWeb
     };
 
     window.handlePhotoSelected = handlePhotoSelected;
     window.submitPhoto = submitPhoto;
     window.resetPhoto = resetPhoto;
+    window.pickCameraPhoto = pickCamera;
+    window.pickGalleryPhoto = pickGallery;
 })();

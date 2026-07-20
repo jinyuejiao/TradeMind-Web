@@ -29,8 +29,14 @@
 - `ui-product-center.js` - 产品中心业务逻辑
 - `main-app.js` - 应用初始化逻辑（提供 `window.TM_UI` 基础方法）
 - `tm-ui-loader.js` - 商户上下文 `TM_UI_CONTEXT`、`TM_UI.injectSlots` / `refreshAll`、`TM_RoleGate`（须在 `main-app.js` 之后加载）
+- `tm-native-bridge.js` - 跨端原生能力门面 `window.TM_Native`（推送/相机/文件/导出/分享/定位）；业务禁止直连 Capacitor
 - ⚠️ 注意：所有业务逻辑 JavaScript 必须存放在 `/assets/js/` 目录下，禁止在 `/modules/` 目录下存放 JS 文件
 - ⚠️ 扩展 `TM_UI` 时使用 `Object.assign(window.TM_UI, { ... })`，禁止整对象覆盖导致丢失 `showNotification` 等
+
+### 跨端（Capacitor App）
+- 业务唯一源：`TradeMind-Web`；原生壳：`TradeMind-App`
+- App 发版：`cd TradeMind-App && npm run sync`
+- 详见：`/docs/跨端技术方案.md`、`docs/CROSS_PLATFORM.md`
 
 ### `/assets/css/` - 全局样式与主题
 - `theme.css` - 主题色与变量定义

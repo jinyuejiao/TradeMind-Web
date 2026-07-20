@@ -247,6 +247,18 @@
         }
         var objectUrl = URL.createObjectURL(blob);
 
+        // App：写入缓存并唤起系统分享（可存相册）
+        try {
+            if (global.TM_Native && global.TM_Native.isNative && global.TM_Native.isNative()
+                && global.TM_Native.export && global.TM_Native.export.saveFile) {
+                await global.TM_Native.export.saveFile(blob, name, 'image/png');
+                revokeLater(objectUrl, 3000);
+                return { mode: 'native', message: '已打开系统分享，请选择保存到相册' };
+            }
+        } catch (nativeErr) {
+            console.warn('[TM_SaveImage] native save fallback', nativeErr);
+        }
+
         // 微信：只能长按存图，不要走 share / download
         if (isMobile() && isWeChat()) {
             return showLongPressPreview(objectUrl, name);

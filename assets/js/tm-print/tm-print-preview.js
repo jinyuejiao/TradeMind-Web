@@ -151,6 +151,29 @@
         state.doc = null;
     }
 
+    async function ensureJsPdf() {
+        if (global.jspdf && global.jspdf.jsPDF) return true;
+        if (global.__tmJsPdfLoading) {
+            try { await global.__tmJsPdfLoading; } catch (e) { /* ignore */ }
+            return !!(global.jspdf && global.jspdf.jsPDF);
+        }
+        global.__tmJsPdfLoading = new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+            s.async = true;
+            s.onload = function () { resolve(true); };
+            s.onerror = function () { reject(new Error('jspdf load failed')); };
+            document.head.appendChild(s);
+        });
+        try {
+            await global.__tmJsPdfLoading;
+        } catch (e) {
+            global.__tmJsPdfLoading = null;
+            return false;
+        }
+        return !!(global.jspdf && global.jspdf.jsPDF);
+    }
+
     async function exportPng() {
         var el = captureEl();
         if (!el || state.busy) return;
@@ -166,8 +189,22 @@
                 scale: Math.min(3, global.devicePixelRatio ? global.devicePixelRatio * 2 : 2),
                 logging: false
             });
+            var name = fileBaseName() + '.png';
+            // 原生 App 桥
+            if (global.TM_Native && global.TM_Native.export && typeof global.TM_Native.export.saveFile === 'function') {
+                var dataUrl = canvas.toDataURL('image/png');
+                var blob = await (await fetch(dataUrl)).blob();
+                await global.TM_Native.export.saveFile(blob, name, 'image/png');
+                notify('已打开系统分享，请选择保存到相册', 'success');
+                return;
+            }
+            // 手机 Web：长按预览 / 分享
+            if (global.TM_saveImage && typeof global.TM_saveImage.saveCanvasToAlbum === 'function') {
+                await global.TM_saveImage.saveCanvasToAlbum(canvas, name);
+                return;
+            }
             var link = document.createElement('a');
-            link.download = fileBaseName() + '.png';
+            link.download = name;
             link.href = canvas.toDataURL('image/png');
             link.click();
             notify('图片已导出', 'success');
@@ -185,8 +222,9 @@
             notify('导出组件未加载，请刷新页面后重试', 'error');
             return;
         }
-        if (!global.jspdf || !global.jspdf.jsPDF) {
-            notify('PDF 组件未加载，请刷新页面后重试', 'error');
+        var okPdf = await ensureJsPdf();
+        if (!okPdf) {
+            notify('PDF 组件未加载，请检查网络后刷新重试', 'error');
             return;
         }
         setBusy(true);
@@ -206,7 +244,30 @@
                 format: [pdfWidth, pdfHeight]
             });
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(fileBaseName() + '.pdf');
+            var pdfName = fileBaseName() + '.pdf';
+            if (global.TM_Native && global.TM_Native.export && typeof global.TM_Native.export.saveFile === 'function') {
+                var pdfBlob = pdf.output('blob');
+                await global.TM_Native.export.saveFile(pdfBlob, pdfName, 'application/pdf');
+                notify('已打开系统分享，请选择保存位置', 'success');
+                return;
+            }
+            // 手机优先分享 PDF
+            var isMobile = false;
+            try {
+                isMobile = global.matchMedia && global.matchMedia('(max-width: 768px)').matches;
+            } catch (e2) { /* ignore */ }
+            if (isMobile && global.navigator && global.navigator.share && global.navigator.canShare) {
+                try {
+                    var shareBlob = pdf.output('blob');
+                    var file = new File([shareBlob], pdfName, { type: 'application/pdf' });
+                    if (global.navigator.canShare({ files: [file] })) {
+                        await global.navigator.share({ files: [file], title: pdfName });
+                        notify('请在分享面板中选择保存', 'success');
+                        return;
+                    }
+                } catch (shareErr) { /* fall through */ }
+            }
+            pdf.save(pdfName);
             notify('PDF 已导出', 'success');
         } catch (e) {
             notify(e.message || '导出 PDF 失败', 'error');

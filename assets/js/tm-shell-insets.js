@@ -26,11 +26,17 @@
         }
 
         if (header) {
-            var headerH = Math.ceil(header.getBoundingClientRect().height);
-            if (headerH > 0) {
-                root.style.setProperty('--tm-header-h', headerH + 'px');
-                root.style.setProperty('--tm-mobile-header-h', headerH + 'px');
-            }
+            /*
+             * --tm-mobile-header-h：仅内容高度（默认 3.5rem），CSS 另加 padding-top:safe-area。
+             * 禁止把 getBoundingClientRect（含 padding）写回该变量，否则每次 sync 会累加变高。
+             * --tm-header-h：整栏占位（内容+safe），供内容区高度计算。
+             */
+            var cs = window.getComputedStyle(header);
+            var padTop = parseFloat(cs.paddingTop) || 0;
+            var contentOnly = 56; // 3.5rem
+            root.style.setProperty('--tm-mobile-header-h', contentOnly + 'px');
+            var totalH = contentOnly + Math.round(padTop);
+            root.style.setProperty('--tm-header-h', totalH + 'px');
         }
 
         if (document.body.classList.contains('tm-ops-portal')) {

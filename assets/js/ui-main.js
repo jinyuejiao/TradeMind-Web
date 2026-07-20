@@ -369,6 +369,13 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (/tailwindcss\.com|phosphor-icons|html2canvas/.test(srcAttr)) {
                     return;
                 }
+                if (/jspdf/i.test(srcAttr)) {
+                    if (window.jspdf || (window.jspdf && window.jspdf.jsPDF)) {
+                        return;
+                    }
+                    queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
+                    return;
+                }
                 if (/aliyun-oss/.test(srcAttr)) {
                     if (typeof window.OSS !== 'undefined') {
                         return;

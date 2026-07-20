@@ -2322,7 +2322,7 @@ function siteRootAsset(path) {
 function ensureMobileShellAssets() {
     var cssId = 'tm-mobile-adapt-css';
     if (!document.getElementById(cssId)) {
-        var cssHref = siteRootAsset('assets/css/tm-layout-engine.css?v=20260525layout');
+        var cssHref = siteRootAsset('assets/css/tm-layout-engine.css?v=20260720fix1');
         var link = document.createElement('link');
         link.id = cssId;
         link.rel = 'stylesheet';

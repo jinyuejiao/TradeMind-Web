@@ -474,22 +474,44 @@
         closeClearanceModal();
     }
 
+    function resolveClearanceModal() {
+        var withReport = document.querySelector('#clearance-modal #promo-ai-report-body');
+        if (withReport) {
+            var host = withReport.closest('#clearance-modal');
+            if (host) return host;
+        }
+        var withLoading = document.querySelector('#clearance-modal #promo-ai-loading');
+        if (withLoading) {
+            var host2 = withLoading.closest('#clearance-modal');
+            if (host2) return host2;
+        }
+        var all = document.querySelectorAll('#clearance-modal');
+        for (var i = 0; i < all.length; i++) {
+            if (all[i].getAttribute('data-tm-promo-result') === '1'
+                || all[i].querySelector('#promo-ai-report-body, #promo-ai-loading')) {
+                return all[i];
+            }
+        }
+        return all.length ? all[all.length - 1] : null;
+    }
+
     function openClearanceModalWithGenerate(productIds, regenerate) {
         var ids = Array.isArray(productIds) ? productIds : (global._promoSelectedProductIds || []);
         state.promoProductIds = ids.map(Number).filter(function (n) { return n > 0; });
         if (!state.promoGoals.length) {
             state.promoGoals = ['CLEAR_STOCK'];
         }
-        var modal = document.getElementById('clearance-modal');
+        var modal = resolveClearanceModal();
+        state._clearanceModalEl = modal;
         if (!modal) {
             toast('促销结果弹窗未找到', 'error');
             return;
         }
         // 确保结果区占位节点存在（兼容旧静态弹窗结构）
-        if (!document.getElementById('promo-ai-loading') || !document.getElementById('promo-ai-report-body')) {
+        if (!modal.querySelector('#promo-ai-loading') || !modal.querySelector('#promo-ai-report-body')) {
             var panel = modal.querySelector('.modal-content-box, .tm-dialog-panel, .relative.bg-white') || modal;
             var bodyHost = panel.querySelector('.tm-mobile-modal-body') || panel;
-            if (!document.getElementById('promo-ai-loading')) {
+            if (!modal.querySelector('#promo-ai-loading')) {
                 var loading = document.createElement('div');
                 loading.id = 'promo-ai-loading';
                 loading.className = 'hidden flex-1 flex flex-col items-center justify-center gap-4 p-10';
@@ -497,10 +519,11 @@
                     + '<p class="text-sm font-bold text-teal-700" data-promo-ai-loading-text>AI 正在精算促销方案…</p>';
                 bodyHost.parentNode.insertBefore(loading, bodyHost);
             }
-            if (!document.getElementById('promo-ai-report-body')) {
+            if (!modal.querySelector('#promo-ai-report-body')) {
                 bodyHost.id = 'promo-ai-report-body';
             }
         }
+        modal.setAttribute('data-tm-promo-result', '1');
         openModal(modal);
         showPromoLoading(true, 'AI 正在生成促销方案…');
 
@@ -575,7 +598,9 @@
 
     function closeClearanceModal() {
         stopPoll();
-        closeModal(document.getElementById('clearance-modal'));
+        var modal = state._clearanceModalEl || resolveClearanceModal();
+        state._clearanceModalEl = null;
+        closeModal(modal);
     }
 
     function startPromoFlow() {

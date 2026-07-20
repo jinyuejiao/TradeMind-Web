@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TradeMind 商贸智脑 - 智能经营一体化平台</title>
 
+    <script src="/assets/js/tm-app-api-override.js"></script>
+    <script src="/assets/js/vendor/tm-capacitor.js?v=20260720cap1"></script>
     <script src="/assets/js/env-config.js"></script>
+    <script src="/assets/js/tm-native-bridge.js?v=20260720native2"></script>
+    <script src="/assets/js/tm-app-boot.js?v=20260720boot1"></script>
+    <link rel="stylesheet" href="/assets/css/tm-native-app.css?v=20260720">
     <script src="/assets/js/api-client.js?v=20260506r3"></script>
     <script src="/assets/js/dashboard-voice-upload.js?v=20260524"></script>
     <script src="/assets/js/ui-ai-service.js?v=20260603jpeg"></script>
@@ -25,9 +30,10 @@
     <script src="/assets/js/tm-customer-registry-form.js?v=20260527crf"></script>
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script src="/assets/js/tm-embed-shell.js?v=20260530modal"></script>
     <script src="/assets/js/tm-format.js?v=20260524ui"></script>
-    <script src="/assets/js/tm-shell-insets.js?v=20260530modal2"></script>
+    <script src="/assets/js/tm-shell-insets.js?v=20260720fix1"></script>
     <script src="/assets/js/tm-compliance.js?v=20260524compliance4"></script>
     <script src="/assets/js/tm-order-total.js?v=20260524ui"></script>
     <script src="/assets/js/tm-ui-feedback.js?v=20260524ui"></script>
@@ -48,11 +54,11 @@
     <script src="/assets/js/tm-ui-loader.js"></script>
     <link rel="stylesheet" href="/assets/css/ops-portal.css?v=tm-ops-11">
     <script src="/assets/js/ui-ops.js?v=tm-ops-merchant-fix-20260601"></script>
-    <script src="/assets/js/ui-main.js?v=20260716spu1"></script>
-    <script src="/assets/js/tm-biz-ai-insight.js?v=20260716promo2"></script>
-    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260715variant2">
+    <script src="/assets/js/ui-main.js?v=20260720fix1"></script>
+    <script src="/assets/js/tm-biz-ai-insight.js?v=20260720fix1"></script>
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260720fix1">
     <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260531unit">
-    <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260716print1">
+    <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260720fix1">
     <!-- 产品规格/行业能力：主壳直开产品中心时也需这些依赖（不能只靠工作台注入） -->
     <script src="/assets/js/tm-workbench-profile.js?v=20260716iv1"></script>
     <script src="/assets/js/tm-subscription-notice.js?v=20260706sub"></script>
@@ -61,8 +67,8 @@
     <script src="/assets/js/tm-product-domain.js?v=20260713order1"></script>
     <script src="/assets/js/tm-master-data-cache.js?v=20260711cat"></script>
     <script src="/assets/js/tm-product-registry-form.js?v=20260712expiry3"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260716spu1"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260716spu1"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260720fix1"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260720fix1"></script>
     <script src="/assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
     <script src="/assets/js/tm-product-variant-modal.js?v=20260715variant2"></script>
     <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
@@ -367,16 +373,14 @@
                     </div>
                     <div class="p-8 space-y-6">
                         <div class="grid grid-cols-2 gap-4">
-                            <label class="flex flex-col items-center p-6 rounded-3xl bg-slate-50 cursor-pointer hover:bg-brand-50 border-2 border-transparent hover:border-brand-200 transition-all group">
+                            <button type="button" onclick="pickCameraPhoto()" class="flex flex-col items-center p-6 rounded-3xl bg-slate-50 cursor-pointer hover:bg-brand-50 border-2 border-transparent hover:border-brand-200 transition-all group">
                                 <i class="ph ph-device-mobile-camera text-3xl mb-2 text-slate-400 group-hover:text-brand-600"></i>
                                 <span class="text-xs font-bold text-slate-800">实时拍照</span>
-                                <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoSelected(this)">
-                            </label>
-                            <label class="flex flex-col items-center p-6 rounded-3xl bg-slate-50 cursor-pointer hover:bg-brand-50 border-2 border-transparent hover:border-brand-200 transition-all group">
+                            </button>
+                            <button type="button" onclick="pickGalleryPhoto()" class="flex flex-col items-center p-6 rounded-3xl bg-slate-50 cursor-pointer hover:bg-brand-50 border-2 border-transparent hover:border-brand-200 transition-all group">
                                 <i class="ph ph-image text-3xl mb-2 text-slate-400 group-hover:text-brand-600"></i>
                                 <span class="text-xs font-bold text-slate-800">本地文件</span>
-                                <input type="file" accept="image/*" class="hidden" onchange="handlePhotoSelected(this)">
-                            </label>
+                            </button>
                         </div>
                         <div id="photo-preview-area" class="hidden bg-slate-50 rounded-2xl p-2 border-2 border-dashed border-brand-100 relative">
                             <img id="image-preview" class="w-full h-40 object-cover rounded-xl shadow-inner">

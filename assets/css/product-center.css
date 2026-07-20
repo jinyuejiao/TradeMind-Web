@@ -357,9 +357,15 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
     z-index: 200;
 }
 
-/* 单位换算弹窗须高于待确认 sheet（110 !important） */
+/* 单位换算 / 规格矩阵弹窗须高于待确认 sheet（110 !important） */
 #product-unit-modal.tm-product-unit-modal:not(.hidden) {
     z-index: 130 !important;
+}
+
+#product-variant-modal:not(.hidden),
+#product-variant-modal.tm-mobile-sheet-modal:not(.hidden),
+#attribute-template-modal:not(.hidden) {
+    z-index: 160 !important;
 }
 
 #purchase-modal.tm-purchase-modal .modal-content-box,

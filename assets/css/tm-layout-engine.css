@@ -66,7 +66,8 @@
         z-index: 40;
         display: flex !important;
         width: 100%;
-        min-height: var(--tm-mobile-header-h);
+        /* 内容高度固定；safe-area 计入总 min-height（border-box），避免与变量互相喂养 */
+        min-height: calc(var(--tm-mobile-header-h, 3.5rem) + var(--tm-safe-t, 0px));
         height: auto;
         padding-top: var(--tm-safe-t);
         padding-bottom: 0.125rem;

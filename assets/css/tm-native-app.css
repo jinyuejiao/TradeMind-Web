@@ -1,0 +1,19 @@
+/* App 安全区与原生壳微调 */
+html.tm-native-app,
+html[data-tm-runtime='capacitor'] {
+  /* iOS 刘海 / Android 手势条 */
+  --tm-safe-top: env(safe-area-inset-top, 0px);
+  --tm-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html.tm-native-app body,
+html[data-tm-runtime='capacitor'] body {
+  padding-top: var(--tm-safe-top);
+  padding-bottom: var(--tm-safe-bottom);
+}
+
+/* 底栏避开 Home Indicator */
+html.tm-native-app #tm-app-tabbar,
+html[data-tm-runtime='capacitor'] #tm-app-tabbar {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
