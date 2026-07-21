@@ -97,7 +97,7 @@
             
             <div class="mt-6 pt-6 border-t border-slate-200">
                 <p class="text-center text-sm text-slate-600">
-                    还没有账号？ <a href="register.html" class="text-brand-600 hover:text-brand-700 font-bold">立即注册</a>
+                    还没有账号？ <a href="register.html" id="tm-acq-register-link" class="text-brand-600 hover:text-brand-700 font-bold">立即注册</a>
                 </p>
                 <p class="text-center text-xs text-slate-500 mt-3">
                     <a href="https://www.juyuankeji.xin" target="_blank" class="hover:text-teal-500 transition-colors">
@@ -121,7 +121,18 @@
     <script src="./assets/js/main-app.js"></script>
     <script src="./assets/js/tm-ui-loader.js"></script>
     <script src="./assets/js/legal-agreements.js?v=20260518"></script>
-    <script src="./assets/js/auth.js?v=20260619mobile"></script>
+    <script src="./assets/js/auth.js?v=20260721bizDiag2"></script>
     <script src="./modules/membership/referral-rewards.js?v=20260608"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                if (typeof window.tmCaptureAcqIntent === 'function') window.tmCaptureAcqIntent();
+                var reg = document.getElementById('tm-acq-register-link');
+                if (reg && typeof window.tmHasPendingBizDiagAcq === 'function' && window.tmHasPendingBizDiagAcq()) {
+                    reg.href = 'register.html?intent=biz_diag';
+                }
+            } catch (e) { /* ignore */ }
+        });
+    </script>
 </body>
 </html>

@@ -148,6 +148,58 @@ window.tmResolveMerchantIntent = function () {
     return 'WHOLESALE';
 };
 
+/** 获客经营诊断意图：扫码落地 ?intent=biz_diag / ?acq=biz_diag */
+window.TM_ACQ_BIZ_DIAG = 'biz_diag';
+window.tmCaptureAcqIntent = function () {
+    try {
+        var params = new URLSearchParams(window.location.search || '');
+        var raw = params.get('intent') || params.get('acq') || params.get('campaign');
+        if (raw) {
+            var v = String(raw).trim().toLowerCase().replace(/-/g, '_');
+            if (v === 'biz_diag' || v === 'biz_analysis' || v === 'bizdiag' || v === 'operation_diag') {
+                sessionStorage.setItem('tm_acq_intent', window.TM_ACQ_BIZ_DIAG);
+                return window.TM_ACQ_BIZ_DIAG;
+            }
+        }
+        return sessionStorage.getItem('tm_acq_intent') || '';
+    } catch (e) {
+        console.warn('[Auth] tmCaptureAcqIntent:', e);
+        return '';
+    }
+};
+window.tmHasPendingBizDiagAcq = function () {
+    try {
+        return window.tmCaptureAcqIntent() === window.TM_ACQ_BIZ_DIAG;
+    } catch (e) {
+        return false;
+    }
+};
+window.tmClearAcqIntent = function () {
+    try { sessionStorage.removeItem('tm_acq_intent'); } catch (e) { /* ignore */ }
+};
+/** 答卷完成或进入正常使用后调用：消费获客意图，避免再次强制改道 */
+window.tmMarkBizDiagAcqDone = function () {
+    window.tmClearAcqIntent();
+};
+window.tmGetBizDiagEntryPath = function () {
+    // 登录成功后进主壳，由主壳弹窗打开答卷（不经独立页、不经导览）
+    return resolveStaticPageUrl('index-app.html#tab=dashboard&acqSurvey=1');
+};
+/** 活动二维码落地：注册页 + 获客答卷意图（可附推荐码） */
+window.tmBuildBizDiagLandingUrl = function (referralCode) {
+    var base = 'https://trademind.com.cn/register.html';
+    try {
+        var u = new URL(base);
+        u.searchParams.set('intent', 'biz_diag');
+        if (referralCode) u.searchParams.set('ref', String(referralCode).trim());
+        return u.toString();
+    } catch (e) {
+        var q = 'intent=biz_diag';
+        if (referralCode) q += '&ref=' + encodeURIComponent(String(referralCode).trim());
+        return base + '?' + q;
+    }
+};
+
 /** 注册页：优先取已勾选的商户类型单选，否则回落 URL/session 意图 */
 window.tmGetSelectedMerchantType = function () {
     try {
@@ -1222,15 +1274,23 @@ function getAppEntryPath(tabName) {
     return resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab));
 }
 
-/** 登录成功后：运维账号进运维门户，其余进商户主壳 */
+/** 登录成功后：运维账号进运维门户；获客意图进经营诊断答卷；其余进商户主壳 */
 function getPostLoginEntryPath(user) {
     try {
         if (user && user.roleType === 'ROLE_OPS_ADMIN') {
             return resolveStaticPageUrl('ops-hub.html');
         }
     } catch (e) { /* ignore */ }
+    try {
+        if (typeof window.tmHasPendingBizDiagAcq === 'function' && window.tmHasPendingBizDiagAcq()) {
+            return typeof window.tmGetBizDiagEntryPath === 'function'
+                ? window.tmGetBizDiagEntryPath()
+                : resolveStaticPageUrl('biz-diag.html');
+        }
+    } catch (e2) { /* ignore */ }
     return getAppEntryPath('dashboard');
 }
+window.getPostLoginEntryPath = getPostLoginEntryPath;
 
 // 检查localStorage是否可用
 function checkLocalStorage() {
@@ -3026,6 +3086,10 @@ window.syncUserContext = function() {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
+    try {
+        if (typeof window.tmCaptureAcqIntent === 'function') window.tmCaptureAcqIntent();
+        if (typeof window.tmResolveMerchantIntent === 'function') window.tmResolveMerchantIntent();
+    } catch (eAcq) { /* ignore */ }
     if (window.TM_Legal) {
         if (typeof window.TM_Legal.bindLegalLinks === 'function') {
             window.TM_Legal.bindLegalLinks(document);
@@ -3405,6 +3469,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 if (data.success === true) {
+                    // 获客答卷链路：注册成功后自动登录并直达答卷页
+                    var pendingBizDiag = typeof window.tmHasPendingBizDiagAcq === 'function'
+                        && window.tmHasPendingBizDiagAcq();
+                    if (pendingBizDiag) {
+                        try {
+                            var loginUrl = gatewayUrl + '/api/v1/tenant/login';
+                            var loginResp = await window.wrappedFetch(loginUrl, {
+                                skipAuth: true,
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userName: username, password: encryptedPassword })
+                            });
+                            var loginData = await loginResp.json().catch(function () { return {}; });
+                            var token = loginData.token || (loginData.data && loginData.data.token);
+                            var userObj = loginData.user || (loginData.data && loginData.data.user) || {};
+                            if (loginResp.ok && token) {
+                                if (checkLocalStorage()) {
+                                    localStorage.setItem('token', token);
+                                    localStorage.setItem('login_timestamp', Date.now().toString());
+                                    localStorage.setItem('user_info', JSON.stringify(userObj));
+                                    localStorage.setItem('username', username);
+                                    localStorage.setItem('currentUser', JSON.stringify(userObj));
+                                }
+                                if (window.TM_UI && typeof window.TM_UI.applyContextFromToken === 'function') {
+                                    window.TM_UI.applyContextFromToken(token);
+                                }
+                                window.location.href = getPostLoginEntryPath(userObj);
+                                return;
+                            }
+                        } catch (autoLoginErr) {
+                            console.warn('[Auth] 获客注册后自动登录失败，回落登录页', autoLoginErr);
+                        }
+                        window.location.href = 'login.html?intent=biz_diag';
+                        return;
+                    }
                     // 注册成功，直接跳转至登录界面
                     window.location.href = 'login.html';
                 } else {

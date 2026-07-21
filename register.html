@@ -134,7 +134,7 @@
                 </form>
 
                 <p class="auth-footer-links">
-                    已有账号？<a class="auth-link" href="login.html">立即登录</a>
+                    已有账号？<a class="auth-link" id="tm-acq-login-link" href="login.html">立即登录</a>
                 </p>
             </div>
         </div>
@@ -152,7 +152,7 @@
     <script src="./assets/js/main-app.js"></script>
     <script src="./assets/js/tm-ui-loader.js"></script>
     <script src="./assets/js/legal-agreements.js?v=20260518"></script>
-    <script src="./assets/js/auth.js?v=20260629reg"></script>
+    <script src="./assets/js/auth.js?v=20260721bizDiag2"></script>
     <script>
         function tmRegisterTogglePwd(inputId, btn) {
             var input = document.getElementById(inputId);
@@ -177,6 +177,11 @@
                 if (ref) {
                     var ic = document.getElementById('inviteCode');
                     if (ic) ic.value = ref.trim();
+                }
+                if (typeof window.tmCaptureAcqIntent === 'function') window.tmCaptureAcqIntent();
+                var loginLink = document.getElementById('tm-acq-login-link');
+                if (loginLink && typeof window.tmHasPendingBizDiagAcq === 'function' && window.tmHasPendingBizDiagAcq()) {
+                    loginLink.href = 'login.html?intent=biz_diag';
                 }
             } catch (eRef) { /* ignore */ }
         });

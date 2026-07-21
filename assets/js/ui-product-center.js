@@ -859,6 +859,8 @@ window.ProductModule = {
             var name = self.escHtml(spu.name || ('SPU#' + spuId));
             var skuCount = Number(spu.sku_count != null ? spu.sku_count : (spu.skuCount || 0)) || 0;
             var totalStock = Number(spu.total_stock != null ? spu.total_stock : (spu.totalStock || 0)) || 0;
+            var unitMeta = self.resolveUnitMetaForSpu(spu);
+            var stockLabel = self.formatStockQtyDisplay(totalStock, unitMeta);
             var expanded = !!self.spuExpandedMap[spuId];
             var caret = expanded ? 'ph-caret-down' : 'ph-caret-right';
             html += '<tr class="product-row product-spu-row hover:bg-slate-50 transition-all group" data-spu-id="' + spuId + '">'
@@ -874,7 +876,7 @@ window.ProductModule = {
                 + '<td class="px-6 py-4 text-right font-mono font-bold text-slate-400 col-hide-mobile">—</td>'
                 + '<td class="px-6 py-4 text-right font-mono font-bold text-slate-400 col-hide-mobile">—</td>'
                 + '<td class="px-6 py-4 text-right"><p class="font-mono font-bold text-slate-700 tracking-tighter text-sm">'
-                + totalStock + '</p><p class="text-[10px] text-slate-400">总库存（基本单位）</p></td>'
+                + self.escHtml(stockLabel) + '</p><p class="text-[10px] text-slate-400">总库存</p></td>'
                 + '<td class="px-6 py-4 text-right whitespace-nowrap">'
                 + '<button type="button" onclick="event.stopPropagation(); window.ProductModule.toggleSpuExpand(' + spuId + ')"'
                 + ' class="action-icon-btn" title="展开/收起规格"><i class="ph ph-tree-structure text-lg"></i></button></td></tr>';
@@ -889,6 +891,11 @@ window.ProductModule = {
                         var code = sku.skuCode || sku.sku_code || '';
                         var price = Number(sku.price || 0) || 0;
                         var stock = Number(sku.stock || 0) || 0;
+                        var skuMeta = {
+                            baseUnit: sku.baseUnit || sku.base_unit || unitMeta.baseUnit,
+                            unitConversions: sku.unitConversions || sku.unit_conversions || unitMeta.unitConversions
+                        };
+                        var skuStockLabel = self.formatStockQtyDisplay(stock, skuMeta);
                         var legacyId = sku.legacyProductId != null ? sku.legacyProductId : sku.legacy_product_id;
                         var openFn = legacyId
                             ? ('window.ProductModule.openProductDetail(' + legacyId + ')')
@@ -900,7 +907,7 @@ window.ProductModule = {
                             + self.escHtml(code || sid) + '</p></div></div></td>'
                             + '<td class="px-6 py-3 text-right font-mono font-bold text-slate-500 col-hide-mobile">$' + price.toFixed(2) + '</td>'
                             + '<td class="px-6 py-3 text-right font-mono font-bold text-slate-400 col-hide-mobile">—</td>'
-                            + '<td class="px-6 py-3 text-right font-mono font-bold text-sm text-slate-700">' + stock + '</td>'
+                            + '<td class="px-6 py-3 text-right font-mono font-bold text-sm text-slate-700">' + self.escHtml(skuStockLabel) + '</td>'
                             + '<td class="px-6 py-3 text-right"><button type="button" onclick="event.stopPropagation(); ' + openFn
                             + '" class="action-icon-btn" title="编辑"><i class="ph ph-pencil-simple-line text-lg"></i></button></td></tr>';
                     });
@@ -925,6 +932,8 @@ window.ProductModule = {
             var name = self.escHtml(spu.name || ('SPU#' + spuId));
             var skuCount = Number(spu.sku_count != null ? spu.sku_count : (spu.skuCount || 0)) || 0;
             var totalStock = Number(spu.total_stock != null ? spu.total_stock : (spu.totalStock || 0)) || 0;
+            var unitMeta = self.resolveUnitMetaForSpu(spu);
+            var stockLabel = self.formatStockQtyDisplay(totalStock, unitMeta);
             var expanded = !!self.spuExpandedMap[spuId];
             var skus = self.spuSkuCache[spuId] || [];
             var childHtml = '';
@@ -936,20 +945,25 @@ window.ProductModule = {
                         var sid = sku.skuId != null ? sku.skuId : sku.sku_id;
                         var label = self.escHtml(sku.attributesDisplay || sku.attributes_display || sku.name || ('SKU#' + sid));
                         var stock = Number(sku.stock || 0) || 0;
+                        var skuMeta = {
+                            baseUnit: sku.baseUnit || sku.base_unit || unitMeta.baseUnit,
+                            unitConversions: sku.unitConversions || sku.unit_conversions || unitMeta.unitConversions
+                        };
+                        var skuStockLabel = self.formatStockQtyDisplay(stock, skuMeta);
                         var legacyId = sku.legacyProductId != null ? sku.legacyProductId : sku.legacy_product_id;
                         var openFn = legacyId
                             ? ('window.ProductModule.openProductDetail(' + legacyId + ')')
                             : ('window.ProductModule.openSpuDetail(' + spuId + ')');
                         return '<button type="button" onclick="' + openFn + '" class="w-full text-left px-3 py-2 rounded-lg bg-white border border-slate-100 flex justify-between gap-2">'
                             + '<span class="text-xs font-bold text-slate-700 truncate">' + label + '</span>'
-                            + '<span class="text-[11px] font-mono text-slate-500 shrink-0">库存 ' + stock + '</span></button>';
+                            + '<span class="text-[11px] font-mono text-slate-500 shrink-0">' + self.escHtml(skuStockLabel) + '</span></button>';
                     }).join('');
                 }
             }
             return '<div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">'
                 + '<div class="flex items-start justify-between gap-2">'
                 + '<div class="min-w-0"><p class="font-bold text-slate-800 truncate">' + name + '</p>'
-                + '<p class="text-[10px] text-teal-700 font-bold mt-1">' + skuCount + ' 个规格 · 总库存 ' + totalStock + '</p></div>'
+                + '<p class="text-[10px] text-teal-700 font-bold mt-1">' + skuCount + ' 个规格 · 总库存 ' + self.escHtml(stockLabel) + '</p></div>'
                 + '<button type="button" class="tm-spu-expand-btn w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-50 hover:text-brand-600 shrink-0 flex items-center justify-center"'
                 + ' onclick="window.ProductModule.toggleSpuExpand(' + spuId + ')" aria-label="' + (expanded ? '收起规格' : '展开规格') + '">'
                 + '<i class="ph ' + (expanded ? 'ph-caret-down' : 'ph-caret-right') + '"></i></button></div>'
@@ -968,25 +982,25 @@ window.ProductModule = {
             return;
         }
         this.spuExpandedMap[spuId] = true;
+        // 展开时强制重拉，避免入库后子行库存陈旧
+        delete this.spuSkuCache[spuId];
         this.renderSpuList(this.spuListRecords || []);
-        if (!this.spuSkuCache[spuId] || !this.spuSkuCache[spuId].length) {
-            try {
-                var detail = null;
-                if (window.TM_MasterDataCache && typeof window.TM_MasterDataCache.getSpuDetail === 'function') {
-                    detail = await window.TM_MasterDataCache.getSpuDetail(spuId, null, true);
-                } else {
-                    var resp = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId, { method: 'GET' });
-                    var data = await window.handleApiResponse(resp);
-                    detail = data && data.data ? data.data : data;
-                }
-                this.spuSkuCache[spuId] = (detail && detail.skus) ? detail.skus : [];
-            } catch (e) {
-                console.warn('[ProductModule] 加载 SPU 规格失败', e);
-                this.spuSkuCache[spuId] = [];
+        try {
+            var detail = null;
+            if (window.TM_MasterDataCache && typeof window.TM_MasterDataCache.getSpuDetail === 'function') {
+                detail = await window.TM_MasterDataCache.getSpuDetail(spuId, null, true);
+            } else {
+                var resp = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId, { method: 'GET' });
+                var data = await window.handleApiResponse(resp);
+                detail = data && data.data ? data.data : data;
             }
-            if (this.spuExpandedMap[spuId]) {
-                this.renderSpuList(this.spuListRecords || []);
-            }
+            this.spuSkuCache[spuId] = (detail && detail.skus) ? detail.skus : [];
+        } catch (e) {
+            console.warn('[ProductModule] 加载 SPU 规格失败', e);
+            this.spuSkuCache[spuId] = [];
+        }
+        if (this.spuExpandedMap[spuId]) {
+            this.renderSpuList(this.spuListRecords || []);
         }
     },
 
@@ -1785,6 +1799,47 @@ window.ProductModule = {
         if (remain > 0) parts.push(remain + baseUnit);
         if (!parts.length) parts.push('0' + baseUnit);
         return parts.join('');
+    },
+
+    /** 入库/调拨后清 SPU 展开缓存，避免父级已更新、子行仍旧 */
+    invalidateInventoryCaches: function () {
+        this.spuSkuCache = {};
+        if (window.TM_MasterDataCache) {
+            if (typeof window.TM_MasterDataCache.invalidateAll === 'function') {
+                try { window.TM_MasterDataCache.invalidateAll(); } catch (e) { /* ignore */ }
+            } else if (typeof window.TM_MasterDataCache.invalidateSpu === 'function') {
+                Object.keys(this.spuExpandedMap || {}).forEach(function (id) {
+                    try { window.TM_MasterDataCache.invalidateSpu(id); } catch (e2) { /* ignore */ }
+                });
+            }
+        }
+    },
+
+    resolveUnitMetaForSpu: function (spu) {
+        var name = (spu && (spu.name || spu.spu_name || '')).trim();
+        var hit = null;
+        if (name && Array.isArray(this.products)) {
+            hit = this.products.find(function (p) { return String(p.name || '').trim() === name; });
+        }
+        if (!hit && spu) {
+            var lid = spu.legacy_product_id || spu.legacyProductId;
+            if (lid != null && Array.isArray(this.products)) {
+                hit = this.products.find(function (p) { return String(p.id) === String(lid); });
+            }
+        }
+        return {
+            baseUnit: (hit && hit.baseUnit) || '件',
+            unitConversions: (hit && hit.unitConversions) || []
+        };
+    },
+
+    formatStockQtyDisplay: function (qty, unitMeta) {
+        unitMeta = unitMeta || {};
+        return this.formatCompoundStockDisplay({
+            stock: qty,
+            baseUnit: unitMeta.baseUnit || '件',
+            unitConversions: unitMeta.unitConversions || []
+        });
     },
 
     // ---------- 单位换算（unitConversion 表） ----------

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>经营分析获客二维码 — TradeMind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#14B8A6', 600: '#0D9488' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white px-6 py-5">
+            <p class="text-teal-300 text-xs font-bold tracking-wider uppercase mb-1">TradeMind · 获客活动</p>
+            <h1 class="text-lg font-bold">经营分析答卷二维码</h1>
+            <p class="text-slate-300 text-xs mt-2 leading-relaxed">扫码 → 注册/登录 → 主壳弹窗答卷 → 生成极速经营分析</p>
+        </div>
+        <div class="p-8 flex flex-col items-center text-center">
+            <img src="./assets/img/biz-diag-acq-qr.png" width="280" height="280" alt="经营分析获客二维码"
+                 class="rounded-2xl border border-slate-100 shadow-sm bg-white p-3">
+            <p class="mt-5 text-sm font-bold text-slate-800 break-all" id="landing-url">
+                https://trademind.com.cn/register.html?intent=biz_diag
+            </p>
+            <p class="mt-2 text-xs text-slate-400">也可本地预览时改用当前站点域名</p>
+            <div class="mt-6 flex flex-wrap gap-2 justify-center">
+                <a id="open-link" href="https://trademind.com.cn/register.html?intent=biz_diag" target="_blank" rel="noopener"
+                   class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold shadow">
+                    打开落地页
+                </a>
+                <a href="./assets/img/biz-diag-acq-qr.png" download="trademind-biz-diag-acq-qr.png"
+                   class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold bg-white">
+                    下载二维码 PNG
+                </a>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            try {
+                var host = location.hostname;
+                var isLocal = host === 'localhost' || host === '127.0.0.1';
+                if (!isLocal) return;
+                var localUrl = location.origin + '/register.html?intent=biz_diag';
+                var el = document.getElementById('landing-url');
+                var a = document.getElementById('open-link');
+                if (el) el.textContent = localUrl + '（本地调试）';
+                if (a) a.href = localUrl;
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
+</body>
+</html>

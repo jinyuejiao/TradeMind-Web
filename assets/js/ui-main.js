@@ -81,7 +81,7 @@ function TM_syncDashboardOverlays(htmlString) {
     try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
-        const overlayIds = ['audit-modal', 'order-detail-modal', 'manual-order-modal', 'unit-modal', 'voice-modal', 'photo-modal', 'toast'];
+        const overlayIds = ['audit-modal', 'order-detail-modal', 'manual-order-modal', 'shortage-fulfillment-modal', 'unit-modal', 'voice-modal', 'photo-modal', 'toast'];
         overlayIds.forEach(function (id) {
             const nextNode = doc.getElementById(id);
             if (!nextNode) return;
@@ -328,6 +328,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
             if (!TM_isRapidOrderReady()) {
                 TM_ensureRapidOrderScripts();
             }
+            TM_ensureShortageFulfillmentScripts();
             TM_ensureWorkbenchOrderTabs();
             TM_refreshDashboardPendingOrders();
             TM_rebindVoiceStopAfterOverlaySync();
@@ -383,7 +384,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
-                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|ui-product-center|tm-product-variant-modal|tm-attribute-template-modal|rapid-order\.js|tm-sku-catalog-cache|tm-workbench-profile|tm-product-domain|tm-master-data-cache|tm-industry-ui|tm-industry-product-registry|tm-first-login-wizard|workbench-order-shipment|ui-returns|ui-sales-orders|tm-product-thumb|tm-biz-accounts|tm-subscription-notice|order-workbench-modal|tenant-ops|tm-order-dict|tm-serial-capture|tm-scan-|tm-peripheral|tm-print\//i.test(srcAttr)) {
+                if (/dashboard-workbench\.js|ai-order-extract-parse\.js|tm-customer-registry-form\.js|tm-product-registry-form\.js|ui-product-center|tm-product-variant-modal|tm-attribute-template-modal|rapid-order\.js|tm-sku-catalog-cache|tm-workbench-profile|tm-product-domain|tm-master-data-cache|tm-industry-ui|tm-industry-product-registry|tm-first-login-wizard|workbench-order-shipment|shortage-fulfillment|ui-returns|ui-sales-orders|tm-product-thumb|tm-biz-accounts|tm-subscription-notice|order-workbench-modal|tenant-ops|tm-order-dict|tm-serial-capture|tm-scan-|tm-peripheral|tm-print\//i.test(srcAttr)) {
                     queue.push({ kind: 'ext', src: new URL(srcAttr, baseForResolve).href });
                     return;
                 }
@@ -419,6 +420,7 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 if (!TM_isRapidOrderReady()) {
                     TM_ensureRapidOrderScripts();
                 }
+                TM_ensureShortageFulfillmentScripts();
                 TM_ensureWorkbenchOrderTabs();
                 TM_refreshDashboardPendingOrders();
                 if (typeof window.loadInProgressOrders === 'function') {
@@ -796,7 +798,7 @@ function loadDashboard() {
     if (window.__TM_loadDashboardInFlight) {
         return window.__TM_loadDashboardInFlight;
     }
-    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260716print1', { cache: 'no-store' })
+    window.__TM_loadDashboardInFlight = fetch('/modules/dashboard/dashboard.html?v=20260721sf2', { cache: 'no-store' })
         .then(function (response) { return response.text(); })
         .then(function (html) {
             TM_ensureRapidOrderStyles();
@@ -809,6 +811,7 @@ function loadDashboard() {
                 if (!TM_isRapidOrderReady()) {
                     TM_ensureRapidOrderScripts();
                 }
+                TM_ensureShortageFulfillmentScripts();
                 TM_ensureWorkbenchOrderTabs();
             }, 600);
             var vd = document.getElementById('view-dashboard');
@@ -1692,7 +1695,7 @@ if (!window.__tmEmbedModalListenerBound) {
     window.__tmEmbedModalListenerBound = true;
     window.addEventListener('message', function (ev) {
         var data = ev.data;
-        if (!data || data.type !== 'TM_EMBED_MODAL') return;
+        if (!data || !data.type) return;
         var fromModuleFrame = false;
         try {
             document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
@@ -1702,6 +1705,22 @@ if (!window.__tmEmbedModalListenerBound) {
             });
         } catch (e1) { /* ignore */ }
         if (!fromModuleFrame) return;
+
+        if (data.type === 'TM_OPEN_ORDER_DETAIL') {
+            if (typeof window.TM_openOrderDetailFromShell === 'function') {
+                window.TM_openOrderDetailFromShell(data.orderId);
+            }
+            return;
+        }
+        if (data.type === 'TM_SHELL_SWITCH_TAB' && data.tab) {
+            if (typeof window.TM_shellSwitchTab === 'function') {
+                window.TM_shellSwitchTab(data.tab);
+            } else if (typeof window.switchTab === 'function') {
+                window.switchTab(data.tab);
+            }
+            return;
+        }
+        if (data.type !== 'TM_EMBED_MODAL') return;
         var frame = TM_findEmbedFrameByWindow(ev.source);
         if (data.open) {
             if (typeof TM_pushEmbedModalNotify === 'function') {
@@ -1722,6 +1741,29 @@ if (!window.__tmEmbedModalListenerBound) {
         }
     });
 }
+
+/** CRM iframe 交互轴：打开主壳订单详情弹窗（勿用带 requireInProgress 的 openOrderDetail） */
+window.TM_openOrderDetailFromShell = async function (orderId) {
+    var id = parseInt(orderId, 10);
+    if (!id || isNaN(id)) return;
+    async function tryOpen() {
+        if (typeof window.openOrderDetailModal === 'function' && document.getElementById('order-detail-modal')) {
+            window.openOrderDetailModal(id, {});
+            return true;
+        }
+        return false;
+    }
+    if (await tryOpen()) return;
+    if (typeof window.loadDashboard === 'function') {
+        try { await window.loadDashboard(); } catch (eLoad) { /* ignore */ }
+    }
+    await new Promise(function (r) { setTimeout(r, 80); });
+    if (!(await tryOpen())) {
+        if (window.TM_UI && typeof window.TM_UI.showNotification === 'function') {
+            window.TM_UI.showNotification('订单详情暂不可用，请稍后再试', 'warning');
+        }
+    }
+};
 
 if (!window.__tmShellOverlayReconcileBound) {
     window.__tmShellOverlayReconcileBound = true;
@@ -2179,6 +2221,73 @@ function legacySwitchReport(type) {
         }
     }, 300);
 }
+
+function TM_isShortageFulfillmentReady() {
+    return !!(window.TM_ShortageFulfillment && typeof window.TM_ShortageFulfillment.open === 'function');
+}
+
+function TM_ensureShortageFulfillmentScripts(done) {
+    if (TM_isShortageFulfillmentReady()) {
+        if (typeof done === 'function') done();
+        return;
+    }
+    var existing = document.querySelector('script[data-tm-shortage-fulfillment="1"], script[src*="shortage-fulfillment.js"]');
+    if (existing) {
+        var polls = 0;
+        var timer = setInterval(function () {
+            polls++;
+            if (TM_isShortageFulfillmentReady() || polls > 40) {
+                clearInterval(timer);
+                if (typeof done === 'function') done();
+            }
+        }, 50);
+        return;
+    }
+    var s = document.createElement('script');
+    s.src = '/assets/js/shortage-fulfillment.js?v=20260721sf7';
+    s.setAttribute('data-tm-module', 'dashboard');
+    s.setAttribute('data-tm-shortage-fulfillment', '1');
+    s.onload = function () {
+        if (typeof done === 'function') done();
+    };
+    s.onerror = function () {
+        console.warn('[TM] shortage-fulfillment.js 加载失败');
+        if (typeof done === 'function') done();
+    };
+    document.head.appendChild(s);
+}
+
+function openShortageFulfillment() {
+    function run() {
+        if (window.TM_ShortageFulfillment && typeof window.TM_ShortageFulfillment.open === 'function') {
+            return window.TM_ShortageFulfillment.open();
+        }
+        if (window.TM_UI && window.TM_UI.showNotification) {
+            window.TM_UI.showNotification('欠货履约模块加载失败，请强制刷新后重试', 'error');
+        }
+    }
+    if (TM_isShortageFulfillmentReady()) {
+        return run();
+    }
+    TM_ensureShortageFulfillmentScripts(run);
+}
+
+function closeShortageFulfillment() {
+    if (window.TM_ShortageFulfillment && typeof window.TM_ShortageFulfillment.close === 'function') {
+        return window.TM_ShortageFulfillment.close();
+    }
+    var modal = document.getElementById('shortage-fulfillment-modal');
+    if (modal) {
+        if (typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else {
+            modal.classList.add('hidden');
+        }
+    }
+}
+
+window.openShortageFulfillment = openShortageFulfillment;
+window.closeShortageFulfillment = closeShortageFulfillment;
 
 // --- 手动订单逻辑 ---
 function openManualOrderModal() {

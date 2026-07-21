@@ -161,17 +161,36 @@
         var effTips = Array.isArray(report.efficiency_tips) ? report.efficiency_tips : [];
         var outlook = report.outlook || {};
         var kpis = Array.isArray(report.kpi_highlights) ? report.kpi_highlights : [];
+        var processable = Array.isArray(report.processable_actions) ? report.processable_actions : [];
+        var humanFocus = Array.isArray(report.human_focus_actions) ? report.human_focus_actions : [];
+        var autoAssess = report.automation_assessment || {};
+        var timeInsight = report.time_energy_insight || {};
+        var painAlign = report.pain_alignment || {};
+        var isSurvey = String(meta.source || '').toUpperCase() === 'QUESTIONNAIRE';
 
         var titleEl = document.getElementById('biz-ai-report-title');
         var subEl = document.getElementById('biz-ai-report-sub');
-        if (titleEl) titleEl.textContent = meta.title || '商户经营全项诊断与增长建议';
+        if (titleEl) {
+            titleEl.textContent = meta.title
+                || (isSurvey ? '极速经营诊断（基于问卷）' : '商户经营全项诊断与增长建议');
+        }
         if (subEl) {
-            subEl.textContent = '生成时间: ' + (meta.generated_at || '—')
-                + ' | 窗口: 近 ' + (meta.period_days || 90) + ' 天'
-                + (meta.summary ? ' · ' + meta.summary : '');
+            var bits = [];
+            if (isSurvey) bits.push('基于问卷 · 极速报告');
+            else bits.push('基于经营数据');
+            bits.push('生成时间: ' + (meta.generated_at || '—'));
+            if (!isSurvey) bits.push('窗口: 近 ' + (meta.period_days || 90) + ' 天');
+            if (meta.summary) bits.push(meta.summary);
+            subEl.textContent = bits.join(' · ');
         }
 
         var html = '';
+        if (isSurvey) {
+            html += '<div class="mb-6 p-4 rounded-2xl border border-amber-100 bg-amber-50/80 text-amber-900 text-xs leading-relaxed">'
+                + '<p class="font-bold mb-1"><i class="ph ph-clipboard-text mr-1"></i>本报告基于问卷快速生成</p>'
+                + '<p>完善订单、进货、库存与客户数据后，可在「智能经营 → AI经营分析」重新生成更深度、有单据支撑的报告。</p></div>';
+        }
+
         if (kpis.length) {
             html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">';
             kpis.forEach(function (k) {
@@ -182,6 +201,98 @@
             });
             html += '</div>';
         }
+
+        if (autoAssess.headline || (Array.isArray(autoAssess.items) && autoAssess.items.length)) {
+            html += '<section class="mb-10"><div class="flex items-center gap-2 mb-4">'
+                + '<span class="w-1.5 h-6 bg-teal-500 rounded-full"></span>'
+                + '<h3 class="text-lg font-bold text-slate-800">当前自动化程度</h3></div>';
+            if (autoAssess.headline) {
+                html += '<p class="text-sm text-slate-600 mb-3">' + esc(autoAssess.headline) + '</p>';
+            }
+            if (Array.isArray(autoAssess.items) && autoAssess.items.length) {
+                html += '<div class="space-y-2">';
+                autoAssess.items.forEach(function (it) {
+                    var modeLabel = it.mode === 'SYSTEM' ? '系统/工具'
+                        : (it.mode === 'WECHAT_SHEET' ? '微信/表格' : '人脑/黑本/口头');
+                    html += '<div class="p-3 rounded-xl border border-slate-100 bg-white/80 text-xs">'
+                        + '<span class="font-bold text-slate-800">' + esc(it.process || '') + '</span>'
+                        + '<span class="mx-2 text-slate-300">·</span>'
+                        + '<span class="text-teal-700 font-bold">' + esc(modeLabel) + '</span>'
+                        + (it.comment ? '<p class="text-slate-500 mt-1">' + esc(it.comment) + '</p>' : '')
+                        + '</div>';
+                });
+                html += '</div>';
+            }
+            html += '</section>';
+        }
+
+        if (timeInsight.headline || (Array.isArray(timeInsight.top_drains) && timeInsight.top_drains.length)) {
+            html += '<section class="mb-10"><div class="flex items-center gap-2 mb-4">'
+                + '<span class="w-1.5 h-6 bg-teal-500 rounded-full"></span>'
+                + '<h3 class="text-lg font-bold text-slate-800">耗时与精力占比</h3></div>'
+                + '<p class="text-sm text-slate-600 mb-2">' + esc(timeInsight.headline || '时间主要耗在以下环节') + '</p>';
+            var drains = Array.isArray(timeInsight.top_drains) ? timeInsight.top_drains : [];
+            if (drains.length) {
+                html += '<div class="flex flex-wrap gap-2 mb-3">';
+                drains.forEach(function (d) {
+                    html += '<span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">'
+                        + esc(d) + '</span>';
+                });
+                html += '</div>';
+            }
+            var risks = Array.isArray(timeInsight.risk_notes) ? timeInsight.risk_notes : [];
+            if (risks.length) {
+                html += '<ul class="text-xs text-slate-500 space-y-1 list-disc pl-4">';
+                risks.forEach(function (r) { html += '<li>' + esc(r) + '</li>'; });
+                html += '</ul>';
+            }
+            html += '</section>';
+        }
+
+        if (painAlign.judgment || (Array.isArray(painAlign.primary_pains) && painAlign.primary_pains.length)) {
+            html += '<section class="mb-10"><div class="flex items-center gap-2 mb-4">'
+                + '<span class="w-1.5 h-6 bg-teal-500 rounded-full"></span>'
+                + '<h3 class="text-lg font-bold text-slate-800">痛点对齐</h3></div>';
+            var pains = Array.isArray(painAlign.primary_pains) ? painAlign.primary_pains : [];
+            if (pains.length) {
+                html += '<div class="flex flex-wrap gap-2 mb-3">';
+                pains.forEach(function (p) {
+                    html += '<span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100">'
+                        + esc(p) + '</span>';
+                });
+                html += '</div>';
+            }
+            if (painAlign.judgment) {
+                html += '<p class="text-sm text-slate-600 leading-relaxed">' + esc(painAlign.judgment) + '</p>';
+            }
+            html += '</section>';
+        }
+
+        function actionSection(title, items, icon, accent) {
+            var s = '<section class="mb-10"><div class="flex items-center gap-2 mb-4">'
+                + '<span class="w-1.5 h-6 ' + accent + ' rounded-full"></span>'
+                + '<h3 class="text-lg font-bold text-slate-800">' + esc(title) + '</h3></div>';
+            if (!items.length) {
+                s += '<p class="text-sm text-slate-400">暂无该项建议。</p></section>';
+                return s;
+            }
+            s += '<div class="space-y-3">';
+            items.forEach(function (t) {
+                s += '<div class="p-4 rounded-2xl border border-slate-100 bg-white/80 backdrop-blur-sm shadow-sm">'
+                    + '<div class="flex items-start gap-3"><i class="ph ' + icon + ' text-teal-600 text-xl mt-0.5"></i>'
+                    + '<div><p class="text-sm font-bold text-slate-800 mb-1">' + esc(t.title) + '</p>'
+                    + '<p class="text-xs text-slate-500 leading-relaxed">' + esc(t.detail) + '</p>'
+                    + (t.action ? '<p class="text-xs font-bold text-teal-700 mt-2">做法：' + esc(t.action) + '</p>' : '')
+                    + (t.expected_relief ? '<p class="text-xs text-slate-500 mt-1">预期：' + esc(t.expected_relief) + '</p>' : '')
+                    + (t.owner_hint ? '<p class="text-xs text-slate-500 mt-1">建议关注人：' + esc(t.owner_hint) + '</p>' : '')
+                    + '</div></div></div>';
+            });
+            s += '</div></section>';
+            return s;
+        }
+
+        html += actionSection('适合流程化 / 工具替代', processable, 'ph-gear-six', 'bg-teal-500');
+        html += actionSection('需要增加员工关注度', humanFocus, 'ph-users-three', 'bg-amber-500');
 
         html += '<section class="mb-10"><div class="flex items-center gap-2 mb-4">'
             + '<span class="w-1.5 h-6 bg-teal-500 rounded-full"></span>'
@@ -250,8 +361,85 @@
         }
         html += '</div></section>';
 
-        body.innerHTML = html;
+        // 保留标题区：若 body 内已有标题节点则只替换后续内容
+        var titleBlock = body.querySelector('#biz-ai-report-title');
+        if (titleBlock && titleBlock.parentElement) {
+            var keep = titleBlock.parentElement;
+            var rest = document.createElement('div');
+            rest.innerHTML = html;
+            Array.prototype.slice.call(body.children).forEach(function (ch) {
+                if (ch !== keep) body.removeChild(ch);
+            });
+            while (rest.firstChild) body.appendChild(rest.firstChild);
+        } else {
+            body.innerHTML = html;
+        }
         showBizLoading(false);
+    }
+
+    function openAIAnalysisShell() {
+        var modal = document.getElementById('ai-modal');
+        openModal(modal);
+        showBizLoading(true, '正在加载经营分析…');
+    }
+
+    function generateFromQuestionnaire(questionnaire, opts) {
+        opts = opts || {};
+        var modal = document.getElementById('ai-modal');
+        if (modal) openModal(modal);
+        showBizLoading(true, 'AI 正在根据答卷生成报告…');
+        var body = document.getElementById('biz-ai-report-body');
+        if (body) body.classList.remove('hidden');
+
+        return fetchJson('/api/v1/ai/reports/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                opType: OP_BIZ,
+                regenerate: true,
+                source: 'QUESTIONNAIRE',
+                questionnaire: questionnaire || {}
+            })
+        }).then(function (data) {
+            if (!data || data.success === false) {
+                throw new Error((data && data.message) || '请求失败');
+            }
+            if (data.status === 'SUCCESS' && data.report) {
+                renderBizReport(data.report);
+                if (typeof opts.onDone === 'function') opts.onDone(data.report);
+                return data.report;
+            }
+            if (data.requestId) {
+                state.bizRequestId = data.requestId;
+                showBizLoading(true, 'AI 正在根据答卷生成报告…');
+                return new Promise(function (resolve, reject) {
+                    pollUntilDone(data.requestId, function (report) {
+                        renderBizReport(report);
+                        if (typeof opts.onDone === 'function') opts.onDone(report);
+                        resolve(report);
+                    }, function (err) {
+                        showBizLoading(false);
+                        if (body) {
+                            body.classList.remove('hidden');
+                            body.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
+                                + esc(err.message || '生成失败') + '</p>';
+                        }
+                        toast(err.message || '生成失败', 'error');
+                        reject(err);
+                    });
+                });
+            }
+            throw new Error('未返回有效结果');
+        }).catch(function (err) {
+            showBizLoading(false);
+            toast(err.message || '生成失败', 'error');
+            if (body) {
+                body.classList.remove('hidden');
+                body.innerHTML = '<p class="text-sm text-rose-600 text-center py-10">'
+                    + esc(err.message || '生成失败') + '</p>';
+            }
+            throw err;
+        });
     }
 
     function openAIAnalysis(opts) {
@@ -622,7 +810,7 @@
 
     /** 主壳启动时把促销相关弹窗抬到 body，避免落在 #content-area overflow 内不可见 */
     function hoistPromoShellModals() {
-        ['ai-modal', 'promo-goal-modal', 'promo-product-picker-modal', 'clearance-modal'].forEach(function (id) {
+        ['ai-modal', 'biz-diag-survey-modal', 'promo-goal-modal', 'promo-product-picker-modal', 'clearance-modal'].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) hoistModalToBody(el);
         });
@@ -630,8 +818,11 @@
 
     var api = {
         openAIAnalysis: openAIAnalysis,
+        openAIAnalysisShell: openAIAnalysisShell,
         closeAIAnalysis: closeAIAnalysis,
         regenerateAIAnalysis: regenerateAIAnalysis,
+        generateFromQuestionnaire: generateFromQuestionnaire,
+        renderBizReport: renderBizReport,
         openPromoGoalModal: openPromoGoalModal,
         closePromoGoalModal: closePromoGoalModal,
         togglePromoGoal: togglePromoGoal,

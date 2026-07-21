@@ -44,7 +44,7 @@
     <script src="/assets/js/tm-dashboard-photo.js?v=20260603jpeg"></script>
     <script src="/assets/js/tm-merchant-feedback.js?v=20260526fb3"></script>
     <script src="/assets/js/tm-save-image.js?v=20260716album2"></script>
-    <script src="/assets/js/auth.js?v=20260716onbOff"></script>
+    <script src="/assets/js/auth.js?v=20260721bizDiag2"></script>
     <script src="/modules/membership/referral-rewards.js?v=20260521ref"></script>
     <script src="/assets/js/main-app.js"></script>
     <script src="/assets/js/ui-permissions.js?v=20260527rbac"></script>
@@ -54,8 +54,24 @@
     <script src="/assets/js/tm-ui-loader.js"></script>
     <link rel="stylesheet" href="/assets/css/ops-portal.css?v=tm-ops-11">
     <script src="/assets/js/ui-ops.js?v=tm-ops-merchant-fix-20260601"></script>
-    <script src="/assets/js/ui-main.js?v=20260720fix1"></script>
-    <script src="/assets/js/tm-biz-ai-insight.js?v=20260720fix1"></script>
+    <script src="/assets/js/ui-main.js?v=20260721sf7"></script>
+    <script src="/assets/js/tm-biz-ai-insight.js?v=20260721bizDiag2"></script>
+    <script src="/assets/js/tm-biz-diag-survey.js?v=20260721bizDiag2"></script>
+    <style>
+        .tm-chip input:checked + span {
+            background: #0D9488; color: #fff; border-color: #0D9488;
+        }
+        .tm-chip span {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.5rem 0.75rem; border-radius: 9999px; border: 1px solid #E2E8F0;
+            font-size: 12px; font-weight: 700; color: #475569; background: #fff;
+            cursor: pointer; user-select: none;
+        }
+        .tm-chip input.sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+        }
+    </style>
     <link rel="stylesheet" href="/assets/css/product-center.css?v=20260720fix1">
     <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260531unit">
     <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260720fix1">
@@ -67,7 +83,7 @@
     <script src="/assets/js/tm-product-domain.js?v=20260713order1"></script>
     <script src="/assets/js/tm-master-data-cache.js?v=20260711cat"></script>
     <script src="/assets/js/tm-product-registry-form.js?v=20260712expiry3"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260720fix1"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260721fix1"></script>
     <script src="/assets/js/ui-product-center-enhance.js?v=20260720fix1"></script>
     <script src="/assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
     <script src="/assets/js/tm-product-variant-modal.js?v=20260715variant2"></script>
@@ -439,6 +455,58 @@
                         <button type="button" onclick="closeAIAnalysis()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">关闭</button>
                         <button type="button" onclick="window.TM_BizAI && TM_BizAI.regenerateAIAnalysis()" class="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2">
                             <i class="ph ph-arrows-clockwise"></i> 重新生成
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 获客极速经营诊断答卷弹窗 -->
+            <div id="biz-diag-survey-modal" class="tm-unified-mobile-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[125] flex items-end md:items-center justify-center p-0 md:p-6" data-tm-dialog-variant="sheet">
+                <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="window.TM_BizDiag && TM_BizDiag.skipToApp()"></div>
+                <div class="tm-dialog-panel relative bg-white w-full max-w-2xl h-[min(96dvh,100%)] md:h-auto md:max-h-[92vh] rounded-t-[1.75rem] md:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col min-h-0">
+                    <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+                        <div class="min-w-0 pr-3">
+                            <p class="text-[10px] font-bold text-teal-300 tracking-wider uppercase mb-0.5">TradeMind · 极速经营诊断</p>
+                            <h2 class="text-sm font-black truncate">先答几题，马上出经营分析</h2>
+                        </div>
+                        <button type="button" onclick="window.TM_BizDiag && TM_BizDiag.skipToApp()" class="p-2 hover:bg-white/10 rounded-full shrink-0" aria-label="关闭">
+                            <i class="ph ph-x text-xl text-white/80"></i>
+                        </button>
+                    </div>
+                    <div class="tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto p-4 md:p-6 no-scrollbar">
+                        <p class="text-xs text-slate-500 mb-4 leading-relaxed">柜台当面开单用极速开单；语音/拍照/文本偏事后补录。本问卷用于生成可落地的经营建议。</p>
+                        <form id="biz-diag-form" class="space-y-5">
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                                <h3 class="text-sm font-bold text-slate-900 mb-1">1. 各环节现在怎么做？</h3>
+                                <p class="text-[11px] text-slate-400 mb-3">选最接近现状的一项</p>
+                                <div class="space-y-4" id="automation-fields"></div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                                <h3 class="text-sm font-bold text-slate-900 mb-1">2. 时间和精力主要耗在哪？</h3>
+                                <p class="text-[11px] text-slate-400 mb-3">最多选 2 项</p>
+                                <div class="flex flex-wrap gap-2" id="time-energy-fields"></div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                                <h3 class="text-sm font-bold text-slate-900 mb-1">3. 当下最头疼的是？</h3>
+                                <p class="text-[11px] text-slate-400 mb-3">可多选，建议 1～3 项</p>
+                                <div class="flex flex-wrap gap-2" id="pain-fields"></div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                                <h3 class="text-sm font-bold text-slate-900 mb-1">4. 大概一天开多少单？</h3>
+                                <div class="flex flex-wrap gap-2 mt-3" id="volume-fields"></div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                                <label class="text-sm font-bold text-slate-900" for="diag-notes">补充说明（选填）</label>
+                                <textarea id="diag-notes" rows="2" maxlength="300"
+                                    class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    placeholder="例如：大客欠款难催、旺季找货乱…"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="tm-mobile-modal-footer tm-modal-footer-safe p-4 border-t border-slate-100 flex gap-3 shrink-0">
+                        <button type="button" onclick="window.TM_BizDiag && TM_BizDiag.skipToApp()" class="flex-1 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-500">跳过</button>
+                        <button type="button" id="btn-submit-diag" onclick="window.TM_BizDiag && TM_BizDiag.submitSurvey()" class="flex-[1.6] py-3 rounded-2xl bg-teal-600 text-white text-xs font-bold shadow-lg flex items-center justify-center gap-2">
+                            <i class="ph ph-magic-wand"></i> 生成极速分析
                         </button>
                     </div>
                 </div>

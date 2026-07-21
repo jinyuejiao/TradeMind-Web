@@ -358,6 +358,9 @@
                         <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center gap-3 bg-white shrink-0 z-10">
                             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 min-w-0 flex-1"><i class="ph ph-truck text-blue-500 font-bold shrink-0"></i><span class="truncate">进行中业务单据</span></h3>
                             <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="openShortageFulfillment()" class="flex items-center gap-1 px-2.5 py-1.5 border border-rose-200 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-bold hover:bg-rose-100 transition-all active:scale-95 whitespace-nowrap" title="欠货履约：调货 / 发货 / 转进货">
+                                    <i class="ph ph-arrows-left-right text-sm shrink-0 leading-none"></i><span>欠货履约</span>
+                                </button>
                                 <button type="button" onclick="openManualOrderModal()" class="flex items-center gap-1 px-3 py-1.5 border border-brand-200 bg-brand-50 text-brand-600 rounded-xl text-[11px] font-bold hover:bg-brand-100 transition-all active:scale-95 whitespace-nowrap">
                                     <i class="ph ph-plus-circle text-lg shrink-0 leading-none"></i><span>添加订单</span>
                                 </button>
@@ -761,6 +764,63 @@
         </div>
     </div>
 
+
+    <!-- 欠货履约工作台 -->
+    <div id="shortage-fulfillment-modal" class="tm-unified-mobile-modal tm-document-modal tm-dialog-root tm-mobile-sheet-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
+        <div class="tm-modal-backdrop absolute inset-0 bg-slate-900/55 backdrop-blur-md" onclick="closeShortageFulfillment()"></div>
+        <div class="tm-dialog-panel relative bg-white w-full max-w-3xl max-h-[100dvh] md:h-auto md:max-h-[90vh] rounded-t-[2.5rem] md:rounded-3xl shadow-2xl overflow-hidden flex flex-col fade-in modal-content-box min-h-0">
+            <div class="tm-mobile-modal-header px-4 py-3 md:px-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 gap-2">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <div class="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center text-white shrink-0"><i class="ph ph-arrows-left-right"></i></div>
+                    <div class="min-w-0">
+                        <h2 class="text-sm font-bold text-slate-800 truncate">欠货履约</h2>
+                        <p class="text-[10px] text-slate-400 mt-0.5 truncate">傍晚统一处理：调货 · 发货 · 转进货</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeShortageFulfillment()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
+            </div>
+            <div class="px-4 md:px-6 pt-3 pb-2 shrink-0 space-y-3 border-b border-slate-50">
+                <div class="flex flex-wrap gap-2 items-end">
+                    <div class="min-w-[8rem]">
+                        <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sf-date">日期</label>
+                        <input type="date" id="sf-date" class="form-input form-input--compact text-xs py-2 w-full">
+                    </div>
+                    <div class="min-w-[8rem] flex-1">
+                        <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sf-warehouse">仓库</label>
+                        <select id="sf-warehouse" class="form-input form-input--compact text-xs py-2 w-full">
+                            <option value="">全部仓库</option>
+                        </select>
+                    </div>
+                    <button type="button" id="sf-refresh-btn" class="px-3 py-2 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50">刷新</button>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" data-sf-tab="transfer" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-brand-200 bg-brand-50 text-brand-700">
+                        待调货 <span data-sf-count class="font-mono">0</span>
+                    </button>
+                    <button type="button" data-sf-tab="ship" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600">
+                        待发货 <span data-sf-count class="font-mono">0</span>
+                    </button>
+                    <button type="button" data-sf-tab="purchase" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 bg-white text-slate-600">
+                        待进货 <span data-sf-count class="font-mono">0</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between gap-2">
+                    <p id="sf-action-hint" class="text-[10px] text-slate-400 min-w-0 truncate">可改实际调货数（默认=欠货量，可多调备货）</p>
+                    <div class="flex gap-2 shrink-0">
+                        <button type="button" id="sf-select-all" class="text-[10px] font-bold text-slate-500">全选</button>
+                        <button type="button" id="sf-select-none" class="text-[10px] font-bold text-slate-400">清空</button>
+                    </div>
+                </div>
+            </div>
+            <div id="sf-list-body" class="tm-document-modal-scroll tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 md:px-6 py-3 space-y-2 bg-slate-50/60">
+                <div class="py-12 text-center text-slate-400 text-sm">打开后加载…</div>
+            </div>
+            <div class="px-4 md:px-6 py-3 border-t border-slate-100 bg-white shrink-0 flex gap-2">
+                <button type="button" onclick="closeShortageFulfillment()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600">关闭</button>
+                <button type="button" id="sf-action-btn" class="flex-[1.4] py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 active:scale-[0.99]">确认调货</button>
+            </div>
+        </div>
+    </div>
 
         <!-- 进行中业务弹窗 -->
     <div id="order-detail-modal" class="tm-unified-mobile-modal tm-document-modal tm-dialog-root tm-mobile-sheet-modal tm-order-detail-modal hidden fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-8" data-tm-dialog-variant="sheet">
@@ -2501,14 +2561,41 @@
                     ? orderData.items[index] : {};
                 var item = Object.assign({}, prev);
                 var rawPid = select ? String(select.value || '').trim() : '';
-                item.matched_product_id = /^\d+$/.test(rawPid) ? Number(rawPid) : 0;
+                var legacyFromDs = row.dataset.legacyProductId ? Number(row.dataset.legacyProductId) : 0;
+                var skuFromDs = row.dataset.skuId ? Number(row.dataset.skuId) : 0;
+                var spuMatch = rawPid.match(/^(spu|legacy):(\d+)$/);
+                if (/^\d+$/.test(rawPid)) {
+                    item.matched_product_id = Number(rawPid);
+                } else if (spuMatch) {
+                    if (spuMatch[1] === 'spu') {
+                        item.matched_spu_id = Number(spuMatch[2]);
+                        item.matched_product_id = legacyFromDs > 0 ? legacyFromDs : (Number(item.matched_product_id) || 0);
+                    } else {
+                        item.matched_product_id = Number(spuMatch[2]);
+                    }
+                } else if (legacyFromDs > 0) {
+                    item.matched_product_id = legacyFromDs;
+                } else {
+                    item.matched_product_id = 0;
+                }
+                if (skuFromDs > 0) {
+                    item.matched_sku_id = skuFromDs;
+                }
                 if (select && select.selectedIndex >= 0) {
                     var opt = select.options[select.selectedIndex];
                     var selectedName = opt ? ((opt.getAttribute('data-name') || opt.textContent || '').trim()) : '';
                     var selectedSku = opt ? ((opt.getAttribute('data-sku') || '').trim()) : '';
+                    var legAttr = opt ? opt.getAttribute('data-legacy-product-id') : null;
+                    var spuAttr = opt ? opt.getAttribute('data-spu-id') : null;
                     item.matched_product_name = selectedName;
                     item.product_name_raw = selectedName;
                     if (selectedSku) item.sku = selectedSku;
+                    if (legAttr && !(item.matched_product_id > 0)) {
+                        item.matched_product_id = Number(legAttr);
+                    }
+                    if (spuAttr && !(item.matched_spu_id > 0)) {
+                        item.matched_spu_id = Number(spuAttr);
+                    }
                 }
                 item.quantity = qty;
                 item.price_at_time = price;
@@ -3093,6 +3180,22 @@
                     || ('保存草稿失败 (HTTP ' + response.status + ')');
                 throw new Error(errMsg);
             }
+            // 同步本地待确认缓存，避免重开读到过期 new_products_found
+            var envelopeStr = payload.aiResult;
+            var patchCache = function (arr) {
+                if (!Array.isArray(arr)) return;
+                for (var i = 0; i < arr.length; i++) {
+                    if (String(arr[i].id) === String(auditState.currentRecordId)) {
+                        arr[i].aiResult = envelopeStr;
+                        arr[i].ai_result = envelopeStr;
+                    }
+                }
+            };
+            patchCache(pendingRecordsCache);
+            patchCache(window.__TM_PENDING_RECORDS);
+            if (window.TM_PendingOrdersStore && typeof window.TM_PendingOrdersStore.refresh === 'function') {
+                try { window.TM_PendingOrdersStore.refresh(false); } catch (eRefresh) { /* ignore */ }
+            }
         }
 
         // 加载产品列表
@@ -3585,22 +3688,24 @@
             if (typeof loadCustomerList === 'function' && typeof loadProductList === 'function') {
                 await Promise.all([loadCustomerList(), loadProductList()]);
             }
-            let record = pendingRecordsCache.find(item => String(item.id) === String(recordId));
-            if (!record && Array.isArray(window.__TM_PENDING_RECORDS)) {
-                record = window.__TM_PENDING_RECORDS.find(item => String(item.id) === String(recordId));
+            let record = null;
+            // 优先拉最新列表，避免「非新增/存草稿」后读到过期缓存
+            try {
+                const response = await window.wrappedFetch('/api/v1/ai/records', { method: 'GET' });
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    pendingRecordsCache = data;
+                    window.__TM_PENDING_RECORDS = data;
+                    record = data.find(item => String(item.id) === String(recordId));
+                }
+            } catch (e) {
+                console.warn('回源查询待确认单据失败，回退本地缓存:', e);
             }
             if (!record) {
-                try {
-                    const response = await window.wrappedFetch('/api/v1/ai/records', { method: 'GET' });
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        pendingRecordsCache = data;
-                        window.__TM_PENDING_RECORDS = data;
-                        record = data.find(item => String(item.id) === String(recordId));
-                    }
-                } catch (e) {
-                    console.error('回源查询待确认单据失败:', e);
-                }
+                record = pendingRecordsCache.find(item => String(item.id) === String(recordId));
+            }
+            if (!record && Array.isArray(window.__TM_PENDING_RECORDS)) {
+                record = window.__TM_PENDING_RECORDS.find(item => String(item.id) === String(recordId));
             }
             if (!record) {
                 alert('未找到待确认单据，请刷新重试');
@@ -5739,7 +5844,8 @@
     <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
     <script src="../../assets/js/rapid-order.js?v=20260715total2"></script>
     <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
-    <script src="../../assets/js/dashboard-workbench.js?v=20260720fix1"></script>
+    <script src="../../assets/js/shortage-fulfillment.js?v=20260721sf7"></script>
+    <script src="../../assets/js/dashboard-workbench.js?v=20260721fix1"></script>
 </body>
 </html>
 
