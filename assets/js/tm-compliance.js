@@ -56,19 +56,23 @@
         var foot = globalFooter();
         var content = contentArea();
         if (!foot || !content) return;
+        var savedScroll = content.scrollTop || 0;
         content.appendChild(foot);
+        content.scrollTop = savedScroll;
     }
 
     /**
      * 手机端：footer 紧跟当前 Tab，与工作台同一文档流位置关系
      */
     function relocateGlobalFooter(tabId) {
+        var content = contentArea();
+        var savedScroll = content ? (content.scrollTop || 0) : 0;
         if (!isMobile()) {
             restoreFooterToShellEnd();
+            if (content) content.scrollTop = savedScroll;
             return;
         }
         var foot = globalFooter();
-        var content = contentArea();
         var viewId = TAB_VIEW_IDS[tabId] || TAB_VIEW_IDS.dashboard;
         var view = document.getElementById(viewId);
         if (!foot || !content || !view) return;
@@ -76,6 +80,7 @@
         if (view.nextElementSibling !== foot) {
             content.insertBefore(foot, view.nextSibling);
         }
+        content.scrollTop = savedScroll;
     }
 
     function syncGlobalFooterForMobile() {

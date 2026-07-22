@@ -54,13 +54,13 @@
     </script>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <link rel="stylesheet" href="../CSS/common.css?v=20260707fix1">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260716po2">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260722fix1">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/tm-format.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-confirm.js?v=20260709nav1"></script>
     <script src="../../assets/js/tm-embed-shell.js?v=20260709nav1"></script>
-    <script src="../../assets/js/tm-shell-insets.js?v=20260530modal"></script>
+    <script src="../../assets/js/tm-shell-insets.js?v=20260722fix1"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526po"></script>
     <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
@@ -76,7 +76,7 @@
     <script src="../../assets/js/tm-industry-ui.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-product-domain.js?v=20260709po2"></script>
     <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260709po2"></script>
-    <script src="../../assets/js/ui-supplier.js?v=20260721fix1"></script>
+    <script src="../../assets/js/ui-supplier.js?v=20260722fix1"></script>
     <script>console.info('[PO] ui-supplier po-spec2 loaded');</script>
     <style>
         .view-toggle-btn { transition: all 0.2s ease; }
@@ -299,7 +299,7 @@
             <div id="purchase-form-errors" class="hidden mx-4 mt-2 md:mx-6 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700 shrink-0" role="alert"></div>
             <div class="tm-document-modal-scroll tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto no-scrollbar">
             <div class="tm-purchase-modal-body flex flex-col px-4 py-3 md:px-6 md:flex-1 md:min-h-0 md:overflow-hidden">
-                <section class="shrink-0">
+                <section class="tm-purchase-modal-upper shrink-0">
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-supplier">供应商</label>
@@ -317,7 +317,12 @@
                 </section>
                 <section class="tm-purchase-items-core flex flex-col mt-3 shrink-0">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
-                        <h3 class="text-xs font-black text-slate-700">进货明细</h3>
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <h3 class="text-xs font-black text-slate-700">进货明细</h3>
+                            <button type="button" id="purchase-items-expand-btn" class="tm-purchase-items-expand-btn inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-brand-600 shrink-0" title="展开明细区域" aria-label="展开进货明细区域" onclick="SupplierModule.togglePurchaseItemsExpanded()">
+                                <i class="ph ph-caret-up text-sm"></i>
+                            </button>
+                        </div>
                         <div class="flex flex-wrap items-center gap-2 justify-end">
                             <span id="purchase-inbound-hint" class="hidden text-[10px] text-teal-600 max-w-[14rem] leading-tight text-right">勾选明细后点「确认入库」</span>
                             <button type="button" id="purchase-inbound-btn" onclick="SupplierModule.confirmPartialInbound()" class="hidden px-3 py-1 rounded-lg border border-teal-500 bg-teal-50 text-teal-700 text-[11px] font-bold shrink-0">确认入库</button>

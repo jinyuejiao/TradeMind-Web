@@ -1475,6 +1475,16 @@ function TM_applyShellOverlayHidden(hidden) {
         if (typeof TM_syncAppShellMetrics === 'function') {
             TM_syncAppShellMetrics();
         }
+        requestAnimationFrame(function () {
+            try {
+                if (window.TM_Compliance && typeof window.TM_Compliance.relocateGlobalFooter === 'function') {
+                    var tabId = window.TM_Compliance.getActiveTabId
+                        ? window.TM_Compliance.getActiveTabId()
+                        : undefined;
+                    window.TM_Compliance.relocateGlobalFooter(tabId);
+                }
+            } catch (eRel) { /* ignore */ }
+        });
     }
 }
 
@@ -1664,6 +1674,76 @@ function TM_applyDialogShell(modalEl, opts) {
     }
 }
 
+/** 订单详情弹窗打开前：记录主壳 content-area 与 CRM iframe 滚动位置 */
+function TM_captureOrderDetailScroll() {
+    var snap = {
+        contentScrollTop: 0,
+        crmScrollY: null,
+        crmContentScrollTop: null
+    };
+    try {
+        var content = document.getElementById('content-area');
+        if (content) snap.contentScrollTop = content.scrollTop || 0;
+    } catch (e0) { /* ignore */ }
+    try {
+        var frame = document.querySelector('#view-crm iframe.tm-module-frame')
+            || document.querySelector('iframe.tm-module-frame');
+        if (frame && frame.contentWindow) {
+            var win = frame.contentWindow;
+            snap.crmScrollY = win.scrollY || win.pageYOffset || 0;
+            var crmDoc = frame.contentDocument || (win.document || null);
+            var crmContent = crmDoc && crmDoc.getElementById('content-area');
+            if (crmContent) snap.crmContentScrollTop = crmContent.scrollTop || 0;
+        }
+    } catch (e1) { /* cross-origin 或未就绪 */ }
+    window.__TM_orderDetailScrollRestore = snap;
+    return snap;
+}
+window.TM_captureOrderDetailScroll = TM_captureOrderDetailScroll;
+
+/** 订单详情弹窗关闭后：rAF 写回滚动，并可选重定位备案 footer */
+function TM_restoreOrderDetailScroll() {
+    var snap = window.__TM_orderDetailScrollRestore;
+    if (!snap) return;
+    window.__TM_orderDetailScrollRestore = null;
+    requestAnimationFrame(function () {
+        try {
+            var content = document.getElementById('content-area');
+            if (content && typeof snap.contentScrollTop === 'number') {
+                content.scrollTop = snap.contentScrollTop;
+            }
+        } catch (e0) { /* ignore */ }
+        try {
+            var frame = document.querySelector('#view-crm iframe.tm-module-frame')
+                || document.querySelector('iframe.tm-module-frame');
+            if (frame && frame.contentWindow) {
+                var win = frame.contentWindow;
+                if (typeof snap.crmScrollY === 'number') {
+                    win.scrollTo(0, snap.crmScrollY);
+                }
+                var crmDoc = frame.contentDocument || (win.document || null);
+                var crmContent = crmDoc && crmDoc.getElementById('content-area');
+                if (crmContent && typeof snap.crmContentScrollTop === 'number') {
+                    crmContent.scrollTop = snap.crmContentScrollTop;
+                }
+            }
+        } catch (e1) { /* ignore */ }
+        try {
+            if (window.TM_Compliance && typeof window.TM_Compliance.relocateGlobalFooter === 'function') {
+                var tabId = window.TM_Compliance.getActiveTabId
+                    ? window.TM_Compliance.getActiveTabId()
+                    : undefined;
+                window.TM_Compliance.relocateGlobalFooter(tabId);
+                var content2 = document.getElementById('content-area');
+                if (content2 && typeof snap.contentScrollTop === 'number') {
+                    content2.scrollTop = snap.contentScrollTop;
+                }
+            }
+        } catch (e2) { /* ignore */ }
+    });
+}
+window.TM_restoreOrderDetailScroll = TM_restoreOrderDetailScroll;
+
 /** 打开统一移动端弹窗：应用壳层、锁定滚动、隐藏底栏 */
 function TM_openUnifiedModal(modalEl, opts) {
     if (!modalEl) return;
@@ -1685,6 +1765,9 @@ function TM_closeUnifiedModal(modalEl) {
     TM_popShellOverlay();
     if ((window.__TM_shellOverlayDepth || 0) === 0) {
         document.body.style.overflow = '';
+        if (typeof TM_restoreOrderDetailScroll === 'function') {
+            TM_restoreOrderDetailScroll();
+        }
     }
     TM_reconcileShellOverlay();
 }
@@ -1746,6 +1829,9 @@ if (!window.__tmEmbedModalListenerBound) {
 window.TM_openOrderDetailFromShell = async function (orderId) {
     var id = parseInt(orderId, 10);
     if (!id || isNaN(id)) return;
+    if (typeof TM_captureOrderDetailScroll === 'function') {
+        TM_captureOrderDetailScroll();
+    }
     async function tryOpen() {
         if (typeof window.openOrderDetailModal === 'function' && document.getElementById('order-detail-modal')) {
             window.openOrderDetailModal(id, {});
@@ -2107,6 +2193,9 @@ function openOrderDetail(orderId) {
     if (typeof window.__TM_dashboardOpenOrderDetail === 'function') {
         return window.__TM_dashboardOpenOrderDetail(orderId);
     }
+    if (typeof TM_captureOrderDetailScroll === 'function') {
+        TM_captureOrderDetailScroll();
+    }
     var idEl = document.getElementById('detail-order-id');
     if (idEl) idEl.innerText = orderId || '';
     var modal = document.getElementById('order-detail-modal');
@@ -2133,6 +2222,7 @@ function closeOrderDetail() {
         else if (typeof TM_setShellChromeHidden === 'function') TM_setShellChromeHidden(false);
         document.body.style.overflow = '';
         if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
+        if (typeof TM_restoreOrderDetailScroll === 'function') TM_restoreOrderDetailScroll();
     }
 }
 

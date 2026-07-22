@@ -168,6 +168,15 @@
 }
 
 /* 仓库产品调拨弹窗 */
+html.tm-embedded #warehouse-transfer-modal.tm-transfer-modal,
+#warehouse-transfer-modal.tm-transfer-modal {
+    z-index: 200;
+}
+
+#warehouse-transfer-modal .tm-transfer-header {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
 .tm-transfer-table-wrap {
     max-height: min(42vh, 22rem);
     overflow: auto;
@@ -179,7 +188,7 @@
 
 .tm-transfer-table {
     table-layout: fixed;
-    min-width: 32rem;
+    min-width: 38rem;
     border-collapse: collapse;
 }
 
@@ -195,10 +204,11 @@
     vertical-align: middle;
 }
 
-.tm-transfer-th--product { width: 38%; text-align: left; }
-.tm-transfer-th--price { width: 18%; text-align: right; }
-.tm-transfer-th--qty { width: 14%; text-align: right; }
-.tm-transfer-th--total { width: 18%; text-align: right; }
+.tm-transfer-th--product { width: 26%; text-align: left; }
+.tm-transfer-th--spec { width: 20%; text-align: left; }
+.tm-transfer-th--price { width: 16%; text-align: right; }
+.tm-transfer-th--qty { width: 12%; text-align: right; }
+.tm-transfer-th--total { width: 14%; text-align: right; }
 .tm-transfer-th--action { width: 12%; text-align: center; }
 
 .tm-transfer-td {
@@ -207,7 +217,8 @@
     border-bottom: 1px solid #f1f5f9;
 }
 
-.tm-transfer-td--product { text-align: left; }
+.tm-transfer-td--product,
+.tm-transfer-td--spec { text-align: left; }
 .tm-transfer-td--price,
 .tm-transfer-td--qty,
 .tm-transfer-td--total { text-align: right; }
@@ -223,7 +234,8 @@
     font-family: ui-monospace, monospace;
 }
 
-.tm-transfer-td--product .form-input {
+.tm-transfer-td--product .form-input,
+.tm-transfer-td--spec .form-input {
     min-height: 2.5rem;
     width: 100%;
 }
@@ -390,6 +402,48 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
 
 #purchase-modal.tm-purchase-modal .tm-purchase-items-core.tm-purchase-items-core--compact {
     flex: 0 0 auto;
+}
+
+/* 进货明细全屏展开（对齐规格弹窗 combo-expanded） */
+#purchase-modal.tm-purchase-modal.tm-purchase-modal--items-expanded .tm-document-modal-scroll {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#purchase-modal.tm-purchase-modal.tm-purchase-modal--items-expanded .tm-purchase-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#purchase-modal.tm-purchase-modal.tm-purchase-modal--items-expanded .tm-purchase-modal-upper {
+    display: none;
+}
+
+#purchase-modal.tm-purchase-modal.tm-purchase-modal--items-expanded .tm-purchase-items-core {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#purchase-modal.tm-purchase-modal.tm-purchase-modal--items-expanded .tm-purchase-items-scroll,
+#purchase-modal.tm-purchase-modal.tm-purchase-modal--items-expanded .tm-po-lines-wrap {
+    flex: 1 1 auto;
+    min-height: 10rem;
+    max-height: none !important;
+    overflow: auto;
+}
+
+.tm-purchase-items-expand-btn.is-expanded i {
+    transform: rotate(180deg);
+    transition: transform 0.15s ease;
+}
+
+.tm-purchase-items-expand-btn i {
+    transition: transform 0.15s ease;
 }
 
 /* 进货单弹窗 — 手机端明细横向滚动（对齐 UI 工程 tm-po-lines-*） */

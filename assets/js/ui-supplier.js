@@ -1870,24 +1870,49 @@ window.SupplierModule = {
         var rows = document.querySelectorAll('#purchase-modal .purchase-item-row');
         var n = rows.length;
         var maxRows = 5;
+        var modal = document.getElementById('purchase-modal');
+        var expanded = !!(modal && modal.classList.contains('tm-purchase-modal--items-expanded'));
         var scroll = document.querySelector('#purchase-modal .tm-purchase-items-scroll');
         var core = document.querySelector('#purchase-modal .tm-purchase-items-core');
         var rowH = '2.75rem';
         if (scroll) {
-            scroll.classList.toggle('tm-purchase-items--scroll', n > maxRows);
-            scroll.style.flex = n > maxRows ? '1 1 auto' : '0 0 auto';
-            scroll.style.maxHeight = n > maxRows ? ('calc(' + rowH + ' * ' + maxRows + ' + 2.25rem)') : '';
-            scroll.style.overflowY = n > maxRows ? 'auto' : 'visible';
-            scroll.style.overflowX = 'auto';
+            if (expanded) {
+                scroll.classList.add('tm-purchase-items--scroll');
+                scroll.style.flex = '1 1 auto';
+                scroll.style.maxHeight = 'none';
+                scroll.style.overflowY = 'auto';
+                scroll.style.overflowX = 'auto';
+            } else {
+                scroll.classList.toggle('tm-purchase-items--scroll', n > maxRows);
+                scroll.style.flex = n > maxRows ? '1 1 auto' : '0 0 auto';
+                scroll.style.maxHeight = n > maxRows ? ('calc(' + rowH + ' * ' + maxRows + ' + 2.25rem)') : '';
+                scroll.style.overflowY = n > maxRows ? 'auto' : 'visible';
+                scroll.style.overflowX = 'auto';
+            }
         }
         if (core) {
-            core.classList.toggle('tm-purchase-items-core--compact', n <= maxRows);
+            core.classList.toggle('tm-purchase-items-core--compact', !expanded && n <= maxRows);
         }
+    },
+
+    togglePurchaseItemsExpanded: function(expand) {
+        var modal = document.getElementById('purchase-modal');
+        var btn = document.getElementById('purchase-items-expand-btn');
+        if (!modal) return;
+        var on = expand != null ? !!expand : !modal.classList.contains('tm-purchase-modal--items-expanded');
+        modal.classList.toggle('tm-purchase-modal--items-expanded', on);
+        if (btn) {
+            btn.classList.toggle('is-expanded', on);
+            btn.title = on ? '恢复默认布局' : '展开明细区域';
+            btn.setAttribute('aria-label', on ? '恢复默认布局' : '展开进货明细区域');
+        }
+        this.refreshPurchaseItemsLayout();
     },
 
     openPurchaseModal: async function() {
         this.currentPurchase = null;
         document.getElementById('purchase-modal-title').textContent = '新增进货单';
+        this.togglePurchaseItemsExpanded(false);
 
         try {
             if (window.TM_WorkbenchProfile && typeof window.TM_WorkbenchProfile.load === 'function') {
@@ -1931,6 +1956,7 @@ window.SupplierModule = {
     },
 
     closePurchaseModal: function() {
+        this.togglePurchaseItemsExpanded(false);
         var modal = document.getElementById('purchase-modal');
         if (modal && typeof window.TM_closeUnifiedModal === 'function') {
             window.TM_closeUnifiedModal(modal);
@@ -2601,6 +2627,7 @@ window.SupplierModule = {
         this.currentPurchase = purchase;
         document.getElementById('purchase-modal-title').textContent = '编辑进货单';
         this.clearPurchaseFormError();
+        this.togglePurchaseItemsExpanded(false);
 
         try {
             if (window.TM_WorkbenchProfile && typeof window.TM_WorkbenchProfile.load === 'function') {

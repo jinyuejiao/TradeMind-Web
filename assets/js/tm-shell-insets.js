@@ -156,6 +156,17 @@
             if (typeof window.TM_syncAppShellMetrics === 'function') {
                 window.TM_syncAppShellMetrics();
             }
+            /* 弹窗关闭后重定位备案 footer，避免 DOM 回流把滚动顶到顶部 */
+            requestAnimationFrame(function () {
+                try {
+                    if (window.TM_Compliance && typeof window.TM_Compliance.relocateGlobalFooter === 'function') {
+                        var tabId = window.TM_Compliance.getActiveTabId
+                            ? window.TM_Compliance.getActiveTabId()
+                            : undefined;
+                        window.TM_Compliance.relocateGlobalFooter(tabId);
+                    }
+                } catch (eRel) { /* ignore */ }
+            });
         }
     }
 

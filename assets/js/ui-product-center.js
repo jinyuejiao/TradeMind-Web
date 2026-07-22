@@ -890,7 +890,8 @@ window.ProductModule = {
                         var label = sku.attributesDisplay || sku.attributes_display || sku.name || ('SKU#' + sid);
                         var code = sku.skuCode || sku.sku_code || '';
                         var price = Number(sku.price || 0) || 0;
-                        var stock = Number(sku.stock || 0) || 0;
+                        var stock = Number(sku.warehouseStock != null ? sku.warehouseStock
+                            : (sku.warehouse_stock != null ? sku.warehouse_stock : sku.stock || 0)) || 0;
                         var skuMeta = {
                             baseUnit: sku.baseUnit || sku.base_unit || unitMeta.baseUnit,
                             unitConversions: sku.unitConversions || sku.unit_conversions || unitMeta.unitConversions
@@ -944,7 +945,8 @@ window.ProductModule = {
                     childHtml = skus.map(function (sku) {
                         var sid = sku.skuId != null ? sku.skuId : sku.sku_id;
                         var label = self.escHtml(sku.attributesDisplay || sku.attributes_display || sku.name || ('SKU#' + sid));
-                        var stock = Number(sku.stock || 0) || 0;
+                        var stock = Number(sku.warehouseStock != null ? sku.warehouseStock
+                            : (sku.warehouse_stock != null ? sku.warehouse_stock : sku.stock || 0)) || 0;
                         var skuMeta = {
                             baseUnit: sku.baseUnit || sku.base_unit || unitMeta.baseUnit,
                             unitConversions: sku.unitConversions || sku.unit_conversions || unitMeta.unitConversions
@@ -982,22 +984,33 @@ window.ProductModule = {
             return;
         }
         this.spuExpandedMap[spuId] = true;
-        // 展开时强制重拉，避免入库后子行库存陈旧
+        // 展开时强制重拉，并带上当前仓库过滤
         delete this.spuSkuCache[spuId];
+        var cacheKey = spuId;
+        var warehouseId = this.filterState && this.filterState.warehouseId != null
+            ? Number(this.filterState.warehouseId) : null;
+        if (warehouseId != null && !isNaN(warehouseId)) {
+            cacheKey = spuId + ':wh:' + warehouseId;
+            delete this.spuSkuCache[cacheKey];
+        }
         this.renderSpuList(this.spuListRecords || []);
         try {
             var detail = null;
             if (window.TM_MasterDataCache && typeof window.TM_MasterDataCache.getSpuDetail === 'function') {
-                detail = await window.TM_MasterDataCache.getSpuDetail(spuId, null, true);
+                detail = await window.TM_MasterDataCache.getSpuDetail(spuId, warehouseId, true);
             } else {
-                var resp = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId, { method: 'GET' });
+                var qs = warehouseId ? ('?warehouseId=' + encodeURIComponent(warehouseId)) : '';
+                var resp = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId + qs, { method: 'GET' });
                 var data = await window.handleApiResponse(resp);
                 detail = data && data.data ? data.data : data;
             }
-            this.spuSkuCache[spuId] = (detail && detail.skus) ? detail.skus : [];
+            var skus = (detail && detail.skus) ? detail.skus : [];
+            this.spuSkuCache[spuId] = skus;
+            this.spuSkuCache[cacheKey] = skus;
         } catch (e) {
             console.warn('[ProductModule] 加载 SPU 规格失败', e);
             this.spuSkuCache[spuId] = [];
+            this.spuSkuCache[cacheKey] = [];
         }
         if (this.spuExpandedMap[spuId]) {
             this.renderSpuList(this.spuListRecords || []);
@@ -3096,7 +3109,11 @@ window.ProductModule = {
                 }
 
                 this.addProductRow();
-                modal.classList.remove('hidden');
+                if (typeof window.TM_openUnifiedModal === 'function') {
+                    window.TM_openUnifiedModal(modal);
+                } else {
+                    modal.classList.remove('hidden');
+                }
             }
         } catch (error) {
             console.error('[ProductModule] 打开调拨弹窗异常:', error);
@@ -3140,12 +3157,14 @@ window.ProductModule = {
         const rowId = Date.now();
         this.transferState.productRows.push({
             id: rowId,
+            spuKey: '',
             productId: null,
             productName: '',
             sku: '',
             price: 0,
             quantity: 0,
-            total: 0
+            total: 0,
+            maxQty: 0
         });
         
         this.renderTransferProductList();
@@ -3326,7 +3345,9 @@ window.ProductModule = {
     closeTransferModal: function() {
         console.log('[ProductModule] closeTransferModal 被调用 ===');
         const modal = document.getElementById('warehouse-transfer-modal');
-        if (modal) {
+        if (modal && typeof window.TM_closeUnifiedModal === 'function') {
+            window.TM_closeUnifiedModal(modal);
+        } else if (modal) {
             modal.classList.add('hidden');
         }
         this.transferState = {
@@ -3450,6 +3471,7 @@ window.confirmDelete = function() { window.ProductModule.confirmDelete(); };
 window.openTransferModal = function(warehouseId) { window.ProductModule.openTransferModal(warehouseId); };
 window.switchTransferType = function(isVariablePrice) { window.ProductModule.switchTransferType(isVariablePrice); };
 window.addProductRow = function() { window.ProductModule.addProductRow(); };
+window.handleTransferSpuSelect = function(rowId, spuKey) { window.ProductModule.handleTransferSpuSelect(rowId, spuKey); };
 window.handleProductSelect = function(rowId, productId) { window.ProductModule.handleProductSelect(rowId, productId); };
 window.calculateRowTotal = function(rowId) { window.ProductModule.calculateRowTotal(rowId); };
 window.calculateGrandTotal = function() { window.ProductModule.calculateGrandTotal(); };

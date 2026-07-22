@@ -23,7 +23,7 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260715audit2">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260715variant2">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260722fix1">
     <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
     <link rel="stylesheet" href="../../assets/css/tm-first-login-wizard.css?v=20260630">
     <link rel="stylesheet" href="../../assets/css/rapid-order.css?v=20260715total2">
@@ -780,18 +780,18 @@
                 <button type="button" onclick="closeShortageFulfillment()" class="p-2 hover:bg-slate-100 rounded-full shrink-0" aria-label="关闭"><i class="ph ph-x text-lg text-slate-400"></i></button>
             </div>
             <div class="px-4 md:px-6 pt-3 pb-2 shrink-0 space-y-3 border-b border-slate-50">
-                <div class="flex flex-wrap gap-2 items-end">
-                    <div class="min-w-[8rem]">
+                <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-end">
+                    <div class="min-w-0 w-full sm:w-auto sm:min-w-[8rem] sm:flex-1">
                         <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sf-date">日期</label>
-                        <input type="date" id="sf-date" class="form-input form-input--compact text-xs py-2 w-full">
+                        <input type="date" id="sf-date" class="form-input form-input--compact text-xs py-2 w-full max-w-full min-w-0">
                     </div>
-                    <div class="min-w-[8rem] flex-1">
+                    <div class="min-w-0 w-full sm:w-auto sm:min-w-[8rem] sm:flex-1">
                         <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sf-warehouse">仓库</label>
-                        <select id="sf-warehouse" class="form-input form-input--compact text-xs py-2 w-full">
+                        <select id="sf-warehouse" class="form-input form-input--compact text-xs py-2 w-full max-w-full min-w-0">
                             <option value="">全部仓库</option>
                         </select>
                     </div>
-                    <button type="button" id="sf-refresh-btn" class="px-3 py-2 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50">刷新</button>
+                    <button type="button" id="sf-refresh-btn" class="px-3 py-2 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50 shrink-0 w-full sm:w-auto">刷新</button>
                 </div>
                 <div class="flex gap-2">
                     <button type="button" data-sf-tab="transfer" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold border border-brand-200 bg-brand-50 text-brand-700">
@@ -4588,6 +4588,18 @@
                     return;
                 }
             }
+            if (typeof window.TM_captureOrderDetailScroll === 'function') {
+                window.TM_captureOrderDetailScroll();
+            } else {
+                try {
+                    var ca = document.getElementById('content-area');
+                    window.__TM_orderDetailScrollRestore = {
+                        contentScrollTop: ca ? (ca.scrollTop || 0) : 0,
+                        crmScrollY: null,
+                        crmContentScrollTop: null
+                    };
+                } catch (eCap) { /* ignore */ }
+            }
             if (!orderStatusDictList.length) await loadOrderStatusDict();
             if (!bizAccountsList.length) await loadBizAccounts();
             if (!orderWarehousesList.length) await loadOrderWarehouses();
@@ -4710,16 +4722,21 @@
             var detailModal = document.getElementById('order-detail-modal');
             if (detailModal && typeof window.TM_closeUnifiedModal === 'function') {
                 window.TM_closeUnifiedModal(detailModal);
-            } else if (detailModal) {
-                detailModal.classList.add('hidden');
-                if (typeof window.TM_popShellOverlay === 'function') {
-                    window.TM_popShellOverlay();
-                } else if (typeof window.TM_setShellChromeHidden === 'function') {
-                    window.TM_setShellChromeHidden(false);
+            } else {
+                if (detailModal) {
+                    detailModal.classList.add('hidden');
+                    if (typeof window.TM_popShellOverlay === 'function') {
+                        window.TM_popShellOverlay();
+                    } else if (typeof window.TM_setShellChromeHidden === 'function') {
+                        window.TM_setShellChromeHidden(false);
+                    }
+                    document.body.style.overflow = '';
+                    if (typeof window.TM_reconcileShellOverlay === 'function') {
+                        window.TM_reconcileShellOverlay();
+                    }
                 }
-                document.body.style.overflow = '';
-                if (typeof window.TM_reconcileShellOverlay === 'function') {
-                    window.TM_reconcileShellOverlay();
+                if (typeof window.TM_restoreOrderDetailScroll === 'function') {
+                    window.TM_restoreOrderDetailScroll();
                 }
             }
             if (typeof window.TM_ensureShellOverlayVisible === 'function') {
@@ -5833,10 +5850,10 @@
     <script src="../../assets/js/tm-product-domain.js?v=20260713order1"></script>
     <script src="../../assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
-    <script src="../../assets/js/ui-product-center.js?v=20260715audit1"></script>
-    <script src="../../assets/js/ui-product-center-enhance.js?v=20260715audit2"></script>
-    <script src="../../assets/js/tm-attribute-template-modal.js?v=20260711tplfix"></script>
-    <script src="../../assets/js/tm-product-variant-modal.js?v=20260715variant2"></script>
+    <script src="../../assets/js/ui-product-center.js?v=20260722fix1"></script>
+    <script src="../../assets/js/ui-product-center-enhance.js?v=20260722fix1"></script>
+    <script src="../../assets/js/tm-attribute-template-modal.js?v=20260722fix1"></script>
+    <script src="../../assets/js/tm-product-variant-modal.js?v=20260722fix1"></script>
     <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-ui.js?v=20260630"></script>
     <script src="../../assets/js/tm-workbench-profile.js?v=20260706fix1"></script>

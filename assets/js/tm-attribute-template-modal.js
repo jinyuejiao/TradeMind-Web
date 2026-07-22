@@ -321,7 +321,10 @@
                 tplSel.value = String(newId);
             }
             if (typeof PM.loadVariantMatrixFromTemplate === 'function' && newId) {
-                await PM.loadVariantMatrixFromTemplate(newId, { force: true });
+                await PM.loadVariantMatrixFromTemplate(newId, { force: true, preserve: true });
+                if (typeof PM.rebuildVariantSelectionFromComboDraft === 'function') {
+                    PM.rebuildVariantSelectionFromComboDraft();
+                }
             }
             if (typeof PM.renderVariantModalTemplateIntoModal === 'function') {
                 PM.renderVariantModalTemplateIntoModal();

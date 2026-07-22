@@ -21,15 +21,45 @@
         }).join('|');
     }
 
-    function whStockLookup(whStocks, wid) {
+    function whStockLookup(whStocks, wid, opts) {
+        opts = opts || {};
         if (window.TM_ProductDomain && window.TM_ProductDomain.whStockLookup) {
-            return window.TM_ProductDomain.whStockLookup(whStocks, wid);
+            var v = window.TM_ProductDomain.whStockLookup(whStocks, wid);
+            if (opts.allowEmpty && (whStocks == null || (whStocks[wid] == null && whStocks[String(wid)] == null))) {
+                return null;
+            }
+            return v;
         }
-        if (!whStocks || wid == null) return 0;
+        if (!whStocks || wid == null) return opts.allowEmpty ? null : 0;
         if (whStocks[wid] != null) return parseInt(whStocks[wid], 10) || 0;
         var sk = String(wid);
         if (whStocks[sk] != null) return parseInt(whStocks[sk], 10) || 0;
-        return 0;
+        return opts.allowEmpty ? null : 0;
+    }
+
+    function parseAttrsFromSku(sku) {
+        var attrs = sku && (sku.attributes || sku.attrs) || {};
+        if (typeof attrs === 'string') {
+            try { attrs = JSON.parse(attrs); } catch (e) { attrs = {}; }
+        }
+        if (attrs && typeof attrs === 'object' && Object.keys(attrs).length) return attrs;
+        var disp = sku && (sku.attributesDisplay || sku.attributes_display || sku.specDisplay || '');
+        if (disp && window.TM_ProductDomain && typeof window.TM_ProductDomain.parseSkuAttributes === 'function') {
+            var parsed = window.TM_ProductDomain.parseSkuAttributes(disp);
+            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) return parsed;
+        }
+        // 兜底：从 "颜色：红 · 尺码：M" / "红 / M" 反推简单键值
+        if (disp && String(disp).trim()) {
+            var out = {};
+            var parts = String(disp).split(/\s*[·/|]\s*/);
+            parts.forEach(function (p, i) {
+                var m = p.match(/^([^:：]+)[:：]\s*(.+)$/);
+                if (m) out[m[1].trim()] = m[2].trim();
+                else if (p.trim()) out['规格' + (i + 1)] = p.trim();
+            });
+            return out;
+        }
+        return {};
     }
 
     function sumRowWarehouseStock(row) {
@@ -123,7 +153,13 @@
             var row = findDraftRowByComboKey(ck);
             if (!row || isNaN(whId)) return;
             row.warehouseStocks = row.warehouseStocks || {};
-            row.warehouseStocks[whId] = Math.max(0, parseInt(inp.value, 10) || 0);
+            var raw = String(inp.value || '').trim();
+            if (raw === '') {
+                delete row.warehouseStocks[whId];
+                delete row.warehouseStocks[String(whId)];
+            } else {
+                row.warehouseStocks[whId] = Math.max(0, parseInt(raw, 10) || 0);
+            }
         });
         if (whs.length) {
             getEnabledDraftRows().forEach(function (row) {
@@ -326,18 +362,26 @@
             }).join(' · ');
             var imgSrc = row.coverPreview || row.coverUrl || '';
             var imgCell = '<td class="tm-variant-col-img px-2 py-2 text-center">'
+                + '<div class="relative inline-block">'
                 + '<label class="tm-variant-img-btn relative inline-flex w-10 h-10 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 overflow-hidden cursor-pointer hover:border-brand-300" title="上传 SKU 图片（限1张）">'
                 + (imgSrc
                     ? ('<img src="' + imgSrc.replace(/"/g, '&quot;') + '" class="w-full h-full object-cover" alt="" />')
                     : '<i class="ph ph-camera text-slate-400 text-lg"></i>')
                 + '<input type="file" accept="image/*" class="hidden tm-variant-img-input" data-combo-key="' + keyAttr + '" />'
-                + '</label></td>';
+                + '</label>'
+                + (imgSrc
+                    ? ('<button type="button" class="tm-variant-img-del absolute -top-1 -right-1 z-10 w-5 h-5 flex items-center justify-center bg-black/60 text-white text-xs leading-none rounded-full" data-combo-key="'
+                        + keyAttr + '" aria-label="删除图片" title="删除图片">×</button>')
+                    : '')
+                + '</div></td>';
             var priceVal = row.priceOverride != null && row.priceOverride !== '' ? String(row.priceOverride) : '';
             var priceCell = '<td class="tm-variant-col-price px-2 py-2"><input type="number" min="0" step="0.01" class="tm-variant-row-price form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" value="' + PM.escHtmlAttr(priceVal) + '" placeholder="' + PM.escHtmlAttr(spuPh) + '" title="留空则使用 SPU 销售价 ' + PM.escHtmlAttr(spuPh) + '" /></td>';
             var whCells = whs.map(function (w) {
                 var wid = w.id != null ? w.id : w.warehouseId;
-                var v = whStockLookup(row.warehouseStocks, wid);
-                return '<td class="tm-variant-col-qty px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" data-wh="' + wid + '" value="' + v + '" inputmode="numeric" /></td>';
+                var hasKey = row.warehouseStocks && (row.warehouseStocks[wid] != null || row.warehouseStocks[String(wid)] != null);
+                var v = hasKey ? whStockLookup(row.warehouseStocks, wid) : null;
+                var valAttr = (v != null && !isNaN(v)) ? (' value="' + v + '"') : '';
+                return '<td class="tm-variant-col-qty px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" data-wh="' + wid + '"' + valAttr + ' placeholder="0" inputmode="numeric" title="留空表示未填，可直接输入覆盖" /></td>';
             }).join('');
             var rowStock = whs.length ? syncComboRowStockFromWarehouses(row) : (Math.max(0, parseInt(row.stock, 10) || 0));
             var stockReadonly = whs.length > 0;
@@ -386,7 +430,51 @@
                 PM.removeVariantComboRow(btn.getAttribute('data-combo-key'));
             });
         });
+        tbody.querySelectorAll('.tm-variant-img-del').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                PM.onVariantComboImageDelete(btn.getAttribute('data-combo-key'));
+            });
+        });
         PM.updateVariantComboSummary();
+    };
+
+    PM.onVariantComboImageDelete = async function (comboKeyVal) {
+        PM.syncComboDraftFromDom();
+        var row = findDraftRowByComboKey(comboKeyVal);
+        if (!row) return;
+        var mediaId = row.mediaId;
+        if (mediaId && window.wrappedFetch) {
+            try {
+                var resp = await window.wrappedFetch('/api/v1/rd/products/media/' + mediaId + '?skuMedia=true', {
+                    method: 'DELETE'
+                });
+                if (!resp.ok) {
+                    var errBody = await resp.json().catch(function () { return {}; });
+                    throw new Error((errBody && errBody.message) || ('删除失败 ' + resp.status));
+                }
+            } catch (e) {
+                if (window.TM_UI && window.TM_UI.showNotification) {
+                    window.TM_UI.showNotification('删除图片失败: ' + (e.message || e), 'error');
+                }
+                return;
+            }
+        }
+        if (row.coverPreview && String(row.coverPreview).indexOf('blob:') === 0) {
+            try { URL.revokeObjectURL(row.coverPreview); } catch (e2) { /* ignore */ }
+        }
+        row.coverUrl = null;
+        row.coverPreview = null;
+        row.mediaId = null;
+        row.imageFile = null;
+        if (typeof PM.syncSkuCoversFromVariantDraft === 'function') {
+            PM.syncSkuCoversFromVariantDraft();
+        }
+        if (typeof PM.renderMediaGrid === 'function') {
+            PM.renderMediaGrid();
+        }
+        PM.renderVariantComboTable();
     };
 
     PM.onVariantComboImageSelect = async function (comboKeyVal, file) {
@@ -417,6 +505,7 @@
                 var body = await resp.json().catch(function () { return {}; });
                 if (resp.ok && body && body.success !== false && body.data) {
                     row.coverUrl = body.data.url || row.coverPreview;
+                    row.mediaId = body.data.mediaId || body.data.media_id || row.mediaId || null;
                     row.imageFile = null;
                     if (typeof PM.syncSkuCoversFromVariantDraft === 'function') {
                         PM.syncSkuCoversFromVariantDraft();
@@ -496,7 +585,13 @@
         var row = findDraftRowByComboKey(comboKeyVal);
         if (!row) return;
         row.warehouseStocks = row.warehouseStocks || {};
-        row.warehouseStocks[whId] = Math.max(0, parseInt(val, 10) || 0);
+        var raw = String(val == null ? '' : val).trim();
+        if (raw === '') {
+            delete row.warehouseStocks[whId];
+            delete row.warehouseStocks[String(whId)];
+        } else {
+            row.warehouseStocks[whId] = Math.max(0, parseInt(raw, 10) || 0);
+        }
         row.stock = sumRowWarehouseStock(row);
         var stockInp = findComboDomInput('tm-variant-row-stock', comboKeyVal);
         if (stockInp) stockInp.value = String(row.stock);
@@ -647,6 +742,14 @@
         if (Object.keys(sel).length) {
             PM._variantMatrixSelection = sel;
         }
+        var box = PM.el ? PM.el('detail-variant-matrix') : document.getElementById('detail-variant-matrix');
+        if (box) {
+            box.querySelectorAll('.tm-matrix-val').forEach(function (cb) {
+                var attr = cb.getAttribute('data-attr');
+                var arr = (PM._variantMatrixSelection && PM._variantMatrixSelection[attr]) || [];
+                cb.checked = arr.indexOf(cb.value) >= 0;
+            });
+        }
     };
 
     PM.rebuildCustomAttrRowsFromComboDraft = function () {
@@ -725,10 +828,7 @@
             }
             var skus = detail.skus;
             var variantSkus = skus.filter(function (s) {
-                var attrs = s.attributes || {};
-                if (typeof attrs === 'string') {
-                    try { attrs = JSON.parse(attrs); } catch (e) { attrs = {}; }
-                }
+                var attrs = parseAttrsFromSku(s);
                 var disp = s.attributesDisplay || s.attributes_display || '';
                 return Object.keys(attrs).length > 0 || (disp && String(disp).trim().length > 0);
             });
@@ -775,10 +875,7 @@
             }
 
             variantSkus.forEach(function (sku) {
-                var attrs = sku.attributes || {};
-                if (typeof attrs === 'string') {
-                    try { attrs = JSON.parse(attrs); } catch (e) { attrs = {}; }
-                }
+                var attrs = parseAttrsFromSku(sku);
                 Object.keys(attrs).forEach(function (k) {
                     var v = String(attrs[k]);
                     if (!templateAttrNames[k]) {
@@ -799,10 +896,7 @@
                 return false;
             }
             PM._variantComboDraft = variantSkus.map(function (sku) {
-                var attrs = sku.attributes || {};
-                if (typeof attrs === 'string') {
-                    try { attrs = JSON.parse(attrs); } catch (e) { attrs = {}; }
-                }
+                var attrs = parseAttrsFromSku(sku);
                 var whRaw = sku.warehouseStocks || sku.warehouse_stocks || {};
                 var whStocks = {};
                 if (whRaw && typeof whRaw === 'object') {
@@ -817,6 +911,7 @@
                 }
                 stock = Math.max(0, parseInt(stock, 10) || 0);
                 var cover = sku.coverUrl || sku.cover_url || null;
+                var mediaId = sku.coverMediaId || sku.cover_media_id || sku.mediaId || sku.media_id || null;
                 var skuPrice = sku.price != null ? Number(sku.price) : null;
                 var spuDefault = getSpuDefaultPrice();
                 var priceOverride = null;
@@ -833,6 +928,7 @@
                     warehouseStocks: whStocks,
                     coverUrl: cover,
                     coverPreview: cover,
+                    mediaId: mediaId,
                     imageFile: null,
                     skuId: sku.skuId || sku.sku_id,
                     priceOverride: priceOverride
