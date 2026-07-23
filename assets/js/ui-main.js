@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 从完整模块 HTML 中截取指定节点的 innerHTML，避免把整页侧栏/壳层再次注入单页壳导致重复导航。
  */
 function TM_extractInnerFromModuleHtml(htmlString, selector) {
@@ -190,7 +190,7 @@ function TM_ensureRapidOrderScripts(done) {
         'tm-industry-ui.js?v=20260630',
         'tm-workbench-profile.js?v=20260706fix1',
         'tm-first-login-wizard.js?v=20260630',
-        'rapid-order.js?v=20260716cat1'
+        'rapid-order.js?v=20260723fix2
     ];
     function finish() {
         window.__TM_RAPID_ORDER_LOADING = false;
@@ -2334,7 +2334,7 @@ function TM_ensureShortageFulfillmentScripts(done) {
         return;
     }
     var s = document.createElement('script');
-    s.src = '/assets/js/shortage-fulfillment.js?v=20260721sf7';
+    s.src = '/assets/js/shortage-fulfillment.js?v=20260723fix2
     s.setAttribute('data-tm-module', 'dashboard');
     s.setAttribute('data-tm-shortage-fulfillment', '1');
     s.onload = function () {

@@ -15,7 +15,10 @@
         PURCHASE_ORDER: '进货单',
         INBOUND_NOTE: '入库单',
         PAYMENT_VOUCHER: '收款凭证',
-        SKU_LABEL: 'SKU 标签'
+        SKU_LABEL: 'SKU 标签',
+        TRANSFER_PICK_LIST: '调货清单',
+        SHIP_PICK_LIST: '发货清单',
+        SHORTAGE_FULFILLMENT_LIST: '欠货履约清单'
     };
 
     var COL_LABEL = {
@@ -24,7 +27,11 @@
         quantity: '数量',
         unit: '单位',
         unitPrice: '单价',
-        subtotal: '金额'
+        subtotal: '金额',
+        warehouseRoute: '源仓→目标',
+        orderCode: '单号',
+        customerName: '客户',
+        remark: '备注'
     };
 
     var ORDER_STATUS_FALLBACK = {
@@ -197,6 +204,13 @@
             { k: '业务日期', v: fmtDate(meta.createdAt) }
         ];
         if (counter.phone) metaRows.push({ k: '联系电话', v: counter.phone });
+        if (counter.contactName) metaRows.push({ k: '收货人', v: counter.contactName });
+        if (counter.contactPhone && counter.contactPhone !== counter.phone) {
+            metaRows.push({ k: '收货电话', v: counter.contactPhone });
+        }
+        if (counter.address) metaRows.push({ k: '收货地址', v: counter.address });
+        if (meta.warehouseFilter) metaRows.push({ k: '仓库', v: meta.warehouseFilter });
+        if (meta.dateRange) metaRows.push({ k: '时间范围', v: meta.dateRange });
         var statusText = fmtStatus(docType, meta);
         if (statusText) metaRows.push({ k: '状态', v: statusText });
 
@@ -228,21 +242,30 @@
                 extra += '<tr class="tm-print-receipt-extra"><td colspan="' + cols.length + '">批次 ' + esc(line.batchNo || '') +
                     ' · 效期 ' + esc(line.expiryDate || '') + '</td></tr>';
             }
+            if (line.recvInfo) {
+                extra += '<tr class="tm-print-receipt-extra"><td colspan="' + cols.length + '">收货 ' + esc(line.recvInfo) + '</td></tr>';
+            }
             return '<tr>' + cells + '</tr>' + extra;
         }).join('');
 
+        var isPickList = docType === 'TRANSFER_PICK_LIST' || docType === 'SHIP_PICK_LIST'
+            || docType === 'SHORTAGE_FULFILLMENT_LIST';
         var summaryRows = [
-            { k: '合计数量', v: String(totalQty), bold: false },
-            { k: '应收合计', v: money(summary.totalAmount), bold: true }
+            { k: '合计数量', v: String(totalQty), bold: false }
         ];
-        if (summary.receivedAmount != null) {
-            summaryRows.push({ k: '实收金额', v: money(summary.receivedAmount), bold: true });
-        }
-        if (summary.remainingAmount != null && summary.remainingAmount !== summary.totalAmount) {
-            summaryRows.push({ k: '待收金额', v: money(summary.remainingAmount), bold: false });
-        }
-        if (summary.paidAmount != null) {
-            summaryRows.push({ k: '已付金额', v: money(summary.paidAmount), bold: true });
+        if (!isPickList) {
+            summaryRows.push({ k: '应收合计', v: money(summary.totalAmount), bold: true });
+            if (summary.receivedAmount != null) {
+                summaryRows.push({ k: '实收金额', v: money(summary.receivedAmount), bold: true });
+            }
+            if (summary.remainingAmount != null && summary.remainingAmount !== summary.totalAmount) {
+                summaryRows.push({ k: '待收金额', v: money(summary.remainingAmount), bold: false });
+            }
+            if (summary.paidAmount != null) {
+                summaryRows.push({ k: '已付金额', v: money(summary.paidAmount), bold: true });
+            }
+        } else if (summary.lineCount != null) {
+            summaryRows.push({ k: '明细行数', v: String(summary.lineCount), bold: false });
         }
 
         var summaryHtml = summaryRows.map(function (row) {
@@ -324,6 +347,22 @@
             opts = opts || {};
             if (!opts.skipPreview && global.TM_PrintPreview && typeof global.TM_PrintPreview.open === 'function') {
                 return global.TM_PrintPreview.open(opts);
+            }
+
+            // 本地单据（欠货履约清单等）：直接渲染，不走后端文档接口
+            if (opts.document) {
+                try {
+                    var localDoc = opts.document;
+                    var localType = normalizeDocType(
+                        (localDoc.meta && localDoc.meta.docType) || opts.docType || 'SHORTAGE_FULFILLMENT_LIST'
+                    );
+                    var htmlLocal = renderHtml(localDoc, { triplicate: false });
+                    browserPrint(htmlLocal);
+                    return { success: true, channel: 'BROWSER', docType: localType };
+                } catch (eLocal) {
+                    notify(eLocal.message || '打印失败', 'error');
+                    return { success: false, message: eLocal.message };
+                }
             }
 
             var docType = normalizeDocType(opts.docType);

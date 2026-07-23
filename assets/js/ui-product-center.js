@@ -608,9 +608,52 @@ window.ProductModule = {
         this.filterProducts();
     },
 
+    /** SPU 子 SKU 缓存 key：与仓库过滤维度一致 */
+    getSpuSkuCacheKey: function (spuId) {
+        var warehouseId = this.filterState && this.filterState.warehouseId != null
+            ? Number(this.filterState.warehouseId) : null;
+        if (warehouseId != null && !isNaN(warehouseId)) {
+            return String(spuId) + ':wh:' + warehouseId;
+        }
+        return String(spuId);
+    },
+
+    /** 换仓/重载后清缓存，并对仍展开的 SPU 按当前仓重拉规格库存 */
+    refreshExpandedSpuSkuCache: async function () {
+        this.spuSkuCache = {};
+        var self = this;
+        var warehouseId = this.filterState && this.filterState.warehouseId != null
+            ? Number(this.filterState.warehouseId) : null;
+        if (warehouseId != null && isNaN(warehouseId)) warehouseId = null;
+        var ids = Object.keys(this.spuExpandedMap || {}).filter(function (k) {
+            return !!self.spuExpandedMap[k];
+        });
+        if (!ids.length) return;
+        await Promise.all(ids.map(async function (id) {
+            var spuId = !isNaN(Number(id)) ? Number(id) : id;
+            var cacheKey = self.getSpuSkuCacheKey(spuId);
+            try {
+                var detail = null;
+                if (window.TM_MasterDataCache && typeof window.TM_MasterDataCache.getSpuDetail === 'function') {
+                    detail = await window.TM_MasterDataCache.getSpuDetail(spuId, warehouseId, true);
+                } else {
+                    var qs = warehouseId != null ? ('?warehouseId=' + encodeURIComponent(warehouseId)) : '';
+                    var resp = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId + qs, { method: 'GET' });
+                    var data = await window.handleApiResponse(resp);
+                    detail = data && data.data ? data.data : data;
+                }
+                self.spuSkuCache[cacheKey] = (detail && detail.skus) ? detail.skus : [];
+            } catch (e) {
+                console.warn('[ProductModule] 换仓后重拉 SPU 规格失败', e);
+                self.spuSkuCache[cacheKey] = [];
+            }
+        }));
+    },
+
     selectWarehouseFilter: async function(warehouseId, displayName) {
         const wid = warehouseId == null || warehouseId === '' ? null : Number(warehouseId);
         this.filterState.warehouseId = wid != null && !Number.isNaN(wid) ? wid : null;
+        this.spuSkuCache = {};
 
         const label = document.getElementById('warehouse-label');
         const btn = document.querySelector('#warehouse-filter > button');
@@ -671,6 +714,7 @@ window.ProductModule = {
             stockStatus: null,
             searchText: ''
         };
+        this.spuSkuCache = {};
         
         const searchInput = document.getElementById('inventorySearch');
         if (searchInput) {
@@ -801,6 +845,8 @@ window.ProductModule = {
                     return name.indexOf(q) >= 0;
                 });
             }
+            this.spuSkuCache = {};
+            await this.refreshExpandedSpuSkuCache();
             this.spuListRecords = records;
             this.renderSpuList(records);
         } catch (e) {
@@ -881,7 +927,7 @@ window.ProductModule = {
                 + '<button type="button" onclick="event.stopPropagation(); window.ProductModule.toggleSpuExpand(' + spuId + ')"'
                 + ' class="action-icon-btn" title="展开/收起规格"><i class="ph ph-tree-structure text-lg"></i></button></td></tr>';
             if (expanded) {
-                var skus = self.spuSkuCache[spuId] || [];
+                var skus = self.spuSkuCache[self.getSpuSkuCacheKey(spuId)] || [];
                 if (!skus.length) {
                     html += '<tr class="product-sku-row bg-slate-50/80"><td colspan="5" class="px-6 py-3 pl-16 text-xs text-slate-400">加载规格中…</td></tr>';
                 } else {
@@ -936,7 +982,7 @@ window.ProductModule = {
             var unitMeta = self.resolveUnitMetaForSpu(spu);
             var stockLabel = self.formatStockQtyDisplay(totalStock, unitMeta);
             var expanded = !!self.spuExpandedMap[spuId];
-            var skus = self.spuSkuCache[spuId] || [];
+            var skus = self.spuSkuCache[self.getSpuSkuCacheKey(spuId)] || [];
             var childHtml = '';
             if (expanded) {
                 if (!skus.length) {
@@ -984,32 +1030,27 @@ window.ProductModule = {
             return;
         }
         this.spuExpandedMap[spuId] = true;
-        // 展开时强制重拉，并带上当前仓库过滤
-        delete this.spuSkuCache[spuId];
-        var cacheKey = spuId;
+        // 展开时强制重拉，并带上当前仓库过滤；读写统一用仓维度 key
         var warehouseId = this.filterState && this.filterState.warehouseId != null
             ? Number(this.filterState.warehouseId) : null;
-        if (warehouseId != null && !isNaN(warehouseId)) {
-            cacheKey = spuId + ':wh:' + warehouseId;
-            delete this.spuSkuCache[cacheKey];
-        }
+        if (warehouseId != null && isNaN(warehouseId)) warehouseId = null;
+        var cacheKey = this.getSpuSkuCacheKey(spuId);
+        delete this.spuSkuCache[cacheKey];
         this.renderSpuList(this.spuListRecords || []);
         try {
             var detail = null;
             if (window.TM_MasterDataCache && typeof window.TM_MasterDataCache.getSpuDetail === 'function') {
                 detail = await window.TM_MasterDataCache.getSpuDetail(spuId, warehouseId, true);
             } else {
-                var qs = warehouseId ? ('?warehouseId=' + encodeURIComponent(warehouseId)) : '';
+                var qs = warehouseId != null ? ('?warehouseId=' + encodeURIComponent(warehouseId)) : '';
                 var resp = await window.wrappedFetch('/api/v1/rd/products/spu/' + spuId + qs, { method: 'GET' });
                 var data = await window.handleApiResponse(resp);
                 detail = data && data.data ? data.data : data;
             }
             var skus = (detail && detail.skus) ? detail.skus : [];
-            this.spuSkuCache[spuId] = skus;
             this.spuSkuCache[cacheKey] = skus;
         } catch (e) {
             console.warn('[ProductModule] 加载 SPU 规格失败', e);
-            this.spuSkuCache[spuId] = [];
             this.spuSkuCache[cacheKey] = [];
         }
         if (this.spuExpandedMap[spuId]) {

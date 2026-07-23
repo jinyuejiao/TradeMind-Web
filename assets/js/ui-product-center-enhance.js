@@ -2274,8 +2274,13 @@
     };
 
     PM.getTransferSkuLabel = function (stockItem) {
-        var sku = stockItem && stockItem.sku != null ? String(stockItem.sku).trim() : '';
-        if (sku) return sku;
+        if (!stockItem) return '默认规格';
+        var direct = stockItem.attributesDisplay || stockItem.attributes_display;
+        if (direct != null && String(direct).trim()) return String(direct).trim();
+        if (window.TM_ProductDomain && typeof window.TM_ProductDomain.formatSkuSpecLabel === 'function') {
+            var formatted = window.TM_ProductDomain.formatSkuSpecLabel(stockItem);
+            if (formatted != null && String(formatted).trim()) return String(formatted).trim();
+        }
         return '默认规格';
     };
 

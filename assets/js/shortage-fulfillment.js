@@ -5,8 +5,12 @@
 (function (global) {
     'use strict';
 
+    var LOGISTICS_BRANDS = ['顺丰', '中通', '圆通', '韵达', '申通', '极兔', '德邦', '自配送'];
+
     var state = {
-        date: '',
+        allTime: true,
+        dateFrom: '',
+        dateTo: '',
         warehouseId: '',
         tab: 'transfer',
         data: null,
@@ -44,6 +48,43 @@
         return document.getElementById(id);
     }
 
+    function syncDateModeUi() {
+        var allBtn = $('sf-date-all');
+        var customBtn = $('sf-date-custom');
+        var range = $('sf-date-range');
+        if (allBtn) {
+            allBtn.className = state.allTime
+                ? 'flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-brand-200 bg-brand-50 text-brand-700 text-[11px] font-bold'
+                : 'flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-bold hover:bg-slate-50';
+        }
+        if (customBtn) {
+            customBtn.className = !state.allTime
+                ? 'flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-brand-200 bg-brand-50 text-brand-700 text-[11px] font-bold'
+                : 'flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-bold hover:bg-slate-50';
+        }
+        if (range) {
+            range.classList.toggle('hidden', !!state.allTime);
+        }
+        var fromEl = $('sf-date-from');
+        var toEl = $('sf-date-to');
+        if (fromEl) fromEl.value = state.dateFrom || '';
+        if (toEl) toEl.value = state.dateTo || '';
+    }
+
+    function readDateFilterFromUi() {
+        var whEl = $('sf-warehouse');
+        state.warehouseId = whEl && whEl.value ? whEl.value : '';
+        if (state.allTime) {
+            state.dateFrom = '';
+            state.dateTo = '';
+            return;
+        }
+        var fromEl = $('sf-date-from');
+        var toEl = $('sf-date-to');
+        state.dateFrom = fromEl && fromEl.value ? fromEl.value : '';
+        state.dateTo = toEl && toEl.value ? toEl.value : '';
+    }
+
     async function loadWarehouses() {
         try {
             var resp = await global.wrappedFetch('/api/v1/rd/products/warehouses', { method: 'GET' });
@@ -68,12 +109,14 @@
     }
 
     async function loadData() {
-        var dateEl = $('sf-date');
-        var whEl = $('sf-warehouse');
-        state.date = dateEl && dateEl.value ? dateEl.value : todayISO();
-        state.warehouseId = whEl && whEl.value ? whEl.value : '';
-        var qs = '?date=' + encodeURIComponent(state.date);
-        if (state.warehouseId) qs += '&warehouseId=' + encodeURIComponent(state.warehouseId);
+        readDateFilterFromUi();
+        var qsParts = [];
+        if (!state.allTime) {
+            if (state.dateFrom) qsParts.push('dateFrom=' + encodeURIComponent(state.dateFrom));
+            if (state.dateTo) qsParts.push('dateTo=' + encodeURIComponent(state.dateTo));
+        }
+        if (state.warehouseId) qsParts.push('warehouseId=' + encodeURIComponent(state.warehouseId));
+        var qs = qsParts.length ? ('?' + qsParts.join('&')) : '';
 
         var body = $('sf-list-body');
         if (body) {
@@ -83,6 +126,18 @@
             var resp = await global.wrappedFetch('/api/v1/rd/orders/shortage-workbench' + qs, { method: 'GET' });
             var wrap = await global.handleApiResponse(resp);
             state.data = (wrap && wrap.data) ? wrap.data : null;
+            if (state.data) {
+                if (state.data.allTime === true) {
+                    state.allTime = true;
+                    state.dateFrom = '';
+                    state.dateTo = '';
+                } else if (state.data.dateFrom || state.data.dateTo) {
+                    state.allTime = false;
+                    state.dateFrom = state.data.dateFrom || '';
+                    state.dateTo = state.data.dateTo || '';
+                }
+                syncDateModeUi();
+            }
             state.selected = { transfer: {}, ship: {}, purchase: {} };
             renderTabs();
             renderList();
@@ -121,11 +176,15 @@
         });
         var actionHint = $('sf-action-hint');
         var actionBtn = $('sf-action-btn');
+        var transferableBtn = $('sf-select-transferable');
+        if (transferableBtn) {
+            transferableBtn.classList.toggle('hidden', state.tab !== 'transfer');
+        }
         if (state.tab === 'transfer') {
             if (actionHint) actionHint.textContent = '可改实际调货数（默认=欠货量，可多调备货）';
             if (actionBtn) actionBtn.textContent = '确认调货';
         } else if (state.tab === 'ship') {
-            if (actionHint) actionHint.textContent = '勾选后批量确认发货，仅更新物流/库存';
+            if (actionHint) actionHint.textContent = '勾选后批量确认发货；物流填品牌/单号，送车填司机/车牌';
             if (actionBtn) actionBtn.textContent = '确认发货';
         } else {
             if (actionHint) actionHint.textContent = '按供应商拆分生成进货草稿';
@@ -148,6 +207,22 @@
         if (line.shipQty != null) return Number(line.shipQty) || 0;
         if (line.suggestQty != null) return Number(line.suggestQty) || 0;
         return Number(line.shortageQty) || 0;
+    }
+
+    /** 部分可调双挂提示：可调 X / 需进 Y */
+    function dualGapBadgeHtml(line) {
+        var transferable = line.transferableQty != null ? Number(line.transferableQty)
+            : (line.maxOtherStock != null ? Number(line.maxOtherStock) : 0);
+        var shortage = Number(line.shortageQty) || 0;
+        var isPartial = !!line.partialGap || (transferable > 0 && transferable < shortage);
+        if (!isPartial) return '';
+        var purchaseNeed = line.purchaseNeed != null ? Number(line.purchaseNeed)
+            : Math.max(0, shortage - transferable);
+        if (line.partialGap) {
+            purchaseNeed = Math.max(0, shortage - transferable);
+        }
+        return '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">' +
+            '可调 ' + esc(transferable) + ' / 需进 ' + esc(purchaseNeed) + '</span>';
     }
 
     function spuKeyOf(line) {
@@ -233,11 +308,12 @@
     }
 
     function emptyHtml(tab) {
-        var tip = tab === 'transfer' ? '暂无待调货欠货行' : (tab === 'ship' ? '暂无待发货明细' : '暂无待进货（全仓无货）明细');
+        var tip = tab === 'transfer' ? '暂无待调货欠货行'
+            : (tab === 'ship' ? '暂无待发货明细' : '暂无待进货明细');
         return '<div class="py-14 text-center px-6">' +
             '<div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300"><i class="ph ph-package text-2xl"></i></div>' +
             '<p class="text-sm font-bold text-slate-600">' + tip + '</p>' +
-            '<p class="text-xs text-slate-400 mt-1">换日期或仓库再试；欠货开单后会出现在此</p></div>';
+            '<p class="text-xs text-slate-400 mt-1">换时间或仓库再试；欠货开单后会出现在此</p></div>';
     }
 
     function spuHeaderHtml(spu, tab) {
@@ -269,10 +345,13 @@
             '<div class="flex items-start gap-2">' +
             '<input type="checkbox" data-sf-check="' + esc(key) + '" data-sf-spu="' + esc(spuKeyOf(line)) + '" class="mt-1 rounded border-slate-300 text-brand-600 shrink-0" ' + checked + '>' +
             '<div class="min-w-0 flex-1 space-y-1.5">' +
+            '<div class="flex flex-wrap items-center gap-1.5">' + dualGapBadgeHtml(line) + '</div>' +
             '<p class="text-[10px] text-slate-400 truncate leading-tight">' + esc(line.orderCode || '') +
             (line.customerName ? ' · ' + esc(line.customerName) : '') +
             ' · 目标 ' + esc(line.targetWarehouseName || '-') +
-            ' · 欠货 <span class="font-mono font-bold text-rose-600">' + esc(suggest) + '</span></p>' +
+            ' · 欠货 <span class="font-mono font-bold text-rose-600">' + esc(line.shortageQty != null ? line.shortageQty : suggest) + '</span>' +
+            (line.partialGap ? ' · 建议调 <span class="font-mono font-bold text-teal-700">' + esc(suggest) + '</span>' : '') +
+            '</p>' +
             '<div class="flex items-center gap-1.5 flex-nowrap">' +
             '<div class="flex-1 min-w-0">' + srcSelect + '</div>' +
             '<div class="flex items-center gap-1 shrink-0">' +
@@ -300,6 +379,52 @@
             spuHeaderHtml(spu, 'transfer') + skuBlocks + '</div>';
     }
 
+    function fulfillmentTypeLabel(ft) {
+        if (ft === 'LOGISTICS') return '物流';
+        if (ft === 'DELIVERY_VEHICLE') return '送车';
+        if (ft === 'DELIVERY_ADDRESS') return '送货上门';
+        if (ft === 'SELF_PICKUP') return '自提';
+        return ft || '';
+    }
+
+    function shipRecvHtml(line) {
+        var ft = line.fulfillmentType || '';
+        var name = line.contactName || '';
+        var phone = line.contactPhone || '';
+        var addr = line.address || '';
+        if (!name && !phone && !addr && !ft) return '';
+        return '<p class="text-[10px] text-slate-500 mt-0.5 leading-snug">' +
+            (ft ? '<span class="text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-600 font-bold mr-1">' + esc(fulfillmentTypeLabel(ft)) + '</span>' : '') +
+            (name ? esc(name) : '') +
+            (phone ? ' · ' + esc(phone) : '') +
+            (addr ? '<br><span class="text-slate-400">' + esc(addr) + '</span>' : '') +
+            '</p>';
+    }
+
+    function shipEditHtml(line) {
+        var key = lineKey(line);
+        var ft = line.fulfillmentType || '';
+        if (ft === 'LOGISTICS') {
+            var brands = LOGISTICS_BRANDS.map(function (b) {
+                var sel = (line.logisticsBrand === b) ? ' selected' : '';
+                return '<option value="' + esc(b) + '"' + sel + '>' + esc(b) + '</option>';
+            }).join('');
+            return '<div class="mt-1.5 flex flex-col sm:flex-row gap-1.5 min-w-0" data-sf-ship-edit="' + esc(key) + '">' +
+                '<select data-sf-log-brand="' + esc(key) + '" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1" title="物流品牌">' +
+                '<option value="">物流品牌</option>' + brands + '</select>' +
+                '<input type="text" data-sf-log-tracking="' + esc(key) + '" value="' + esc(line.trackingNo || '') + '" ' +
+                'placeholder="运单号" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-[1.2]"></div>';
+        }
+        if (ft === 'DELIVERY_VEHICLE') {
+            return '<div class="mt-1.5 flex flex-col sm:flex-row gap-1.5 min-w-0" data-sf-ship-edit="' + esc(key) + '">' +
+                '<input type="text" data-sf-driver="' + esc(key) + '" value="' + esc(line.driverName || '') + '" ' +
+                'placeholder="司机" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1">' +
+                '<input type="text" data-sf-plate="' + esc(key) + '" value="' + esc(line.vehiclePlate || '') + '" ' +
+                'placeholder="车牌" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1"></div>';
+        }
+        return '';
+    }
+
     function shipLineControlsHtml(line) {
         var key = lineKey(line);
         var checked = state.selected.ship[key] ? 'checked' : '';
@@ -317,8 +442,10 @@
             '<div class="flex flex-wrap items-center gap-1.5">' + badge + '</div>' +
             '<p class="text-[10px] text-slate-400 mt-0.5 truncate">' + esc(line.orderCode || '') +
             (line.customerName ? ' · ' + esc(line.customerName) : '') + '</p>' +
+            shipRecvHtml(line) +
             '<p class="text-[10px] text-slate-500 mt-0.5">发出仓 ' + esc(line.targetWarehouseName || line.sourceWarehouseName || '-') +
             ' · 数量 <span class="font-mono font-bold text-slate-800">' + esc(qty) + '</span></p>' +
+            shipEditHtml(line) +
             '</div></div></div>';
     }
 
@@ -358,6 +485,11 @@
                         return '<div class="flex items-start gap-2 py-2 border-t border-slate-50 first:border-0" data-sf-row="' + esc(key) + '">' +
                             '<input type="checkbox" data-sf-check="' + esc(key) + '" data-sf-supplier="' + esc(sid) + '" data-sf-spu="' + esc(spu.key) + '" class="mt-0.5 rounded border-slate-300 text-brand-600" ' + checked + '>' +
                             '<div class="min-w-0 flex-1">' +
+                            '<div class="flex flex-wrap items-center gap-1.5">' + dualGapBadgeHtml(line) +
+                            (line.partialGap
+                                ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 font-bold">部分缺口</span>'
+                                : '') +
+                            '</div>' +
                             '<p class="text-[10px] text-slate-400 truncate">' + esc(line.orderCode || '') +
                             (line.customerName ? ' · ' + esc(line.customerName) : '') + '</p>' +
                             '<div class="flex items-center gap-2 mt-1">' +
@@ -471,14 +603,133 @@
 
     function selectAllVisible(on) {
         var body = $('sf-list-body');
-        if (!body) return;
+        if (!body) return 0;
+        var n = 0;
         body.querySelectorAll('[data-sf-check]').forEach(function (cb) {
             cb.checked = !!on;
             state.selected[state.tab][cb.getAttribute('data-sf-check')] = !!on;
+            if (on) n++;
         });
         body.querySelectorAll('[data-sf-spu-check]').forEach(function (cb) {
             cb.checked = !!on;
         });
+        return n;
+    }
+
+    function selectTransferableVisible() {
+        var body = $('sf-list-body');
+        if (!body) return 0;
+        var lines = currentLines();
+        var transferableKeys = {};
+        lines.forEach(function (line) {
+            var avail = line.availableAtSource != null ? Number(line.availableAtSource) : 0;
+            if (avail > 0) transferableKeys[lineKey(line)] = true;
+        });
+        var n = 0;
+        body.querySelectorAll('[data-sf-check]').forEach(function (cb) {
+            var key = cb.getAttribute('data-sf-check');
+            var on = !!transferableKeys[key];
+            cb.checked = on;
+            state.selected[state.tab][key] = on;
+            if (on) n++;
+        });
+        body.querySelectorAll('[data-sf-spu-check]').forEach(function (cb) {
+            syncSpuCheckbox(body, cb.getAttribute('data-sf-spu-check'));
+        });
+        return n;
+    }
+
+    function linesForPrint() {
+        var picked = selectedLinesForTab();
+        if (picked.length) return picked;
+        return currentLines().slice();
+    }
+
+    function warehouseNameById(id) {
+        if (id == null || id === '') return '全部仓库';
+        var found = state.warehouses.find(function (w) { return String(w.id) === String(id); });
+        return found ? found.name : ('仓' + id);
+    }
+
+    function dateRangeLabel() {
+        if (state.allTime || (!state.dateFrom && !state.dateTo)) return '全部时间';
+        if (state.dateFrom && state.dateTo) return state.dateFrom + ' ~ ' + state.dateTo;
+        if (state.dateFrom) return state.dateFrom + ' 起';
+        return '至 ' + state.dateTo;
+    }
+
+    function buildPickListDoc(lines) {
+        var docType = state.tab === 'ship' ? 'SHIP_PICK_LIST'
+            : (state.tab === 'transfer' ? 'TRANSFER_PICK_LIST' : 'SHORTAGE_FULFILLMENT_LIST');
+        var titleHint = state.tab === 'ship' ? '发货' : (state.tab === 'transfer' ? '调货' : '进货');
+        var printLines = (lines || []).map(function (line) {
+            var qty = lineSuggestQty(line);
+            var src = line.sourceWarehouseName || '';
+            var tgt = line.targetWarehouseName || '';
+            var route = state.tab === 'transfer'
+                ? ((src || '-') + ' → ' + (tgt || '-'))
+                : (tgt || src || '-');
+            var recvParts = [];
+            if (line.contactName) recvParts.push(line.contactName);
+            if (line.contactPhone) recvParts.push(line.contactPhone);
+            if (line.address) recvParts.push(line.address);
+            if (line.driverName || line.vehiclePlate) {
+                recvParts.push([line.driverName, line.vehiclePlate].filter(Boolean).join(' / '));
+            }
+            return {
+                productName: line.spuName || line.productName || '产品',
+                specDisplay: line.skuSpec || line.sku_spec || '',
+                quantity: qty,
+                warehouseRoute: route,
+                orderCode: line.orderCode || '',
+                customerName: line.customerName || '',
+                recvInfo: recvParts.join(' · ')
+            };
+        });
+        var shopName = (global.TM_Tenant && global.TM_Tenant.shopName) ||
+            (global.__TM_TENANT && global.__TM_TENANT.name) ||
+            'TradeMind 商户';
+        return {
+            merchant: { name: shopName, footerText: '欠货履约·' + titleHint + '清单' },
+            counterparty: { name: '欠货履约工作台' },
+            templateColumns: ['productName', 'specDisplay', 'quantity', 'warehouseRoute', 'customerName', 'orderCode'],
+            lines: printLines,
+            summary: { lineCount: printLines.length, totalAmount: null },
+            meta: {
+                docType: docType,
+                docNo: 'SF-' + titleHint + '-' + todayISO().replace(/-/g, ''),
+                createdAt: todayISO(),
+                dateRange: dateRangeLabel(),
+                warehouseFilter: warehouseNameById(state.warehouseId)
+            }
+        };
+    }
+
+    function printPickList() {
+        var lines = linesForPrint();
+        if (!lines.length) {
+            notify('当前无可打印明细', 'warning');
+            return;
+        }
+        var doc = buildPickListDoc(lines);
+        if (global.TM_PrintPreview && typeof global.TM_PrintPreview.open === 'function') {
+            global.TM_PrintPreview.open({
+                docType: doc.meta.docType,
+                docId: doc.meta.docNo,
+                document: doc
+            });
+            return;
+        }
+        if (global.TM_Print && typeof global.TM_Print.print === 'function') {
+            global.TM_Print.print({
+                docType: doc.meta.docType,
+                docId: doc.meta.docNo,
+                document: doc,
+                skipPreview: true
+            });
+            return;
+        }
+        notify('打印模块未加载', 'error');
     }
 
     async function confirmAction() {
@@ -528,7 +779,6 @@
                 quantity: qty
             });
         }
-        // 同仓同 SKU 累计校验，避免多行合计超库存
         var used = {};
         for (var j = 0; j < lines.length; j++) {
             var L = lines[j];
@@ -587,6 +837,7 @@
     }
 
     async function doShip() {
+        var body = $('sf-list-body');
         var picked = selectedLinesForTab();
         if (!picked.length) {
             notify('请先勾选要发货的明细', 'warning');
@@ -604,25 +855,42 @@
         if (!ok) return;
         var warehouseId = state.warehouseId ? parseInt(state.warehouseId, 10) : null;
         var lines = picked.map(function (line) {
+            var key = lineKey(line);
             var qty = line.shipQty != null ? line.shipQty
                 : (line.suggestQty != null ? line.suggestQty : (line.shortageQty || 0));
-            return {
+            var ft = line.fulfillmentType || '';
+            var payload = {
                 orderId: line.orderId,
                 itemId: line.itemId,
                 shippedQty: qty,
-                // 已调拨待发：从目标仓发；否则优先源仓/筛选仓
                 fromWarehouseId: (line.fulfillmentPlan === 'TRANSFERRED' || line.fulfillment_plan === 'TRANSFERRED')
                     ? (line.targetWarehouseId || warehouseId)
                     : (line.targetWarehouseId || line.sourceWarehouseId || warehouseId)
             };
+            if (ft === 'LOGISTICS') {
+                var brandEl = body ? body.querySelector('[data-sf-log-brand="' + key + '"]') : null;
+                var trackEl = body ? body.querySelector('[data-sf-log-tracking="' + key + '"]') : null;
+                payload.shipmentType = 'EXPRESS';
+                payload.logisticsBrand = brandEl ? brandEl.value : (line.logisticsBrand || '');
+                payload.trackingNo = trackEl ? trackEl.value.trim() : (line.trackingNo || '');
+            } else if (ft === 'DELIVERY_VEHICLE') {
+                var driverEl = body ? body.querySelector('[data-sf-driver="' + key + '"]') : null;
+                var plateEl = body ? body.querySelector('[data-sf-plate="' + key + '"]') : null;
+                payload.shipmentType = 'VEHICLE';
+                payload.driverName = driverEl ? driverEl.value.trim() : (line.driverName || '');
+                payload.vehiclePlate = plateEl ? plateEl.value.trim() : (line.vehiclePlate || '');
+            }
+            return payload;
         });
         try {
+            var remarkDate = state.allTime ? todayISO()
+                : (state.dateFrom || state.dateTo || todayISO());
             var resp = await global.wrappedFetch('/api/v1/rd/orders/shortage-workbench/ship', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     warehouseId: warehouseId,
-                    remark: '欠货履约·' + (state.date || todayISO()),
+                    remark: '欠货履约·' + remarkDate,
                     lines: lines
                 })
             });
@@ -643,7 +911,6 @@
             notify('请先勾选要转进货的明细', 'warning');
             return;
         }
-        // 按供应商分组
         var groups = {};
         picked.forEach(function (line) {
             var sid = line.supplierId != null ? String(line.supplierId) : 'none';
@@ -685,7 +952,7 @@
 
         var successN = 0;
         var failMsgs = [];
-        var purchaseDate = state.date || todayISO();
+        var purchaseDate = state.dateFrom || todayISO();
 
         for (var g = 0; g < keys.length; g++) {
             var group = groups[keys[g]];
@@ -779,9 +1046,10 @@
         var modal = $('shortage-fulfillment-modal');
         if (!modal) return;
         bindUi();
-        if (!state.date) state.date = todayISO();
-        var dateEl = $('sf-date');
-        if (dateEl && !dateEl.value) dateEl.value = state.date;
+        state.allTime = true;
+        state.dateFrom = '';
+        state.dateTo = '';
+        syncDateModeUi();
         if (typeof global.TM_openUnifiedModal === 'function') {
             global.TM_openUnifiedModal(modal);
         } else {
@@ -802,7 +1070,6 @@
     }
 
     function bindUi() {
-        // 使用 onclick 赋值，避免 overlay 重同步后监听丢失，且可重复绑定不叠加
         document.querySelectorAll('[data-sf-tab]').forEach(function (btn) {
             btn.onclick = function () {
                 state.tab = btn.getAttribute('data-sf-tab') || 'transfer';
@@ -815,9 +1082,71 @@
         var action = $('sf-action-btn');
         if (action) action.onclick = function () { confirmAction(); };
         var allBtn = $('sf-select-all');
-        if (allBtn) allBtn.onclick = function () { selectAllVisible(true); };
+        if (allBtn) {
+            allBtn.onclick = function () {
+                var n = selectAllVisible(true);
+                notify('已选 ' + n + ' 行', 'success');
+            };
+        }
+        var transferableBtn = $('sf-select-transferable');
+        if (transferableBtn) {
+            transferableBtn.onclick = function () {
+                var n = selectTransferableVisible();
+                notify(n > 0 ? ('已选可调 ' + n + ' 行') : '暂无可调行', n > 0 ? 'success' : 'info');
+            };
+        }
         var noneBtn = $('sf-select-none');
         if (noneBtn) noneBtn.onclick = function () { selectAllVisible(false); };
+        var printBtn = $('sf-print-btn');
+        if (printBtn) printBtn.onclick = function () { printPickList(); };
+
+        var dateAll = $('sf-date-all');
+        if (dateAll) {
+            dateAll.onclick = function () {
+                state.allTime = true;
+                state.dateFrom = '';
+                state.dateTo = '';
+                syncDateModeUi();
+                loadData();
+            };
+        }
+        var dateCustom = $('sf-date-custom');
+        if (dateCustom) {
+            dateCustom.onclick = function () {
+                state.allTime = false;
+                if (!state.dateFrom && !state.dateTo) {
+                    state.dateFrom = todayISO();
+                    state.dateTo = todayISO();
+                }
+                syncDateModeUi();
+                loadData();
+            };
+        }
+        var fromEl = $('sf-date-from');
+        if (fromEl) {
+            fromEl.onchange = function () {
+                state.allTime = false;
+                state.dateFrom = fromEl.value || '';
+                syncDateModeUi();
+                loadData();
+            };
+        }
+        var toEl = $('sf-date-to');
+        if (toEl) {
+            toEl.onchange = function () {
+                state.allTime = false;
+                state.dateTo = toEl.value || '';
+                syncDateModeUi();
+                loadData();
+            };
+        }
+        var whEl = $('sf-warehouse');
+        if (whEl) {
+            whEl.onchange = function () {
+                state.warehouseId = whEl.value || '';
+                loadData();
+            };
+        }
     }
 
     global.TM_ShortageFulfillment = {

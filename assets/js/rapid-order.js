@@ -569,7 +569,8 @@
     }
 
     function syncFulfillmentPanel() {
-        var type = document.getElementById('rop-fulfillment-type').value;
+        var typeEl = document.getElementById('rop-fulfillment-type');
+        var type = typeEl ? typeEl.value : 'SELF_PICKUP';
         var addrPanel = document.getElementById('rop-address-panel');
         var logPanel = document.getElementById('rop-logistics-panel');
         var veh = document.getElementById('rop-addr-vehicle');
@@ -586,6 +587,22 @@
         if (driverName) driverName.classList.toggle('hidden', !isVehicle);
         if (driverPhone) driverPhone.classList.toggle('hidden', !isVehicle);
         if (shipFrom) shipFrom.classList.toggle('hidden', !isVehicle);
+    }
+
+    /** 重置发货方式与物流/地址表单，避免上次开单残留 */
+    function resetRapidOrderFulfillmentForm() {
+        var ft = document.getElementById('rop-fulfillment-type');
+        if (ft) ft.value = 'SELF_PICKUP';
+        ['rop-log-contact', 'rop-log-phone', 'rop-log-address', 'rop-tracking-no',
+            'rop-addr-contact', 'rop-addr-phone', 'rop-addr-detail',
+            'rop-addr-vehicle', 'rop-addr-driver-name', 'rop-addr-driver-phone', 'rop-addr-ship-from'
+        ].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        var provider = document.getElementById('rop-logistics-provider');
+        if (provider) provider.value = '';
+        syncFulfillmentPanel();
     }
 
     function scanTrackingNo() {
@@ -1262,6 +1279,7 @@
         setModalTitle(opts.title || '⚡ 极速开单');
         cart.clear();
         batchCache.clear();
+        resetRapidOrderFulfillmentForm();
         if (window.TM_loadWorkbenchProfile) await window.TM_loadWorkbenchProfile();
         applyIndustryUi(document.getElementById('rapid-order-modal'));
         await populateCustomersAndWarehouses();
@@ -1440,6 +1458,7 @@
             closeRapidOrderModal();
             cart.clear();
             batchCache.clear();
+            resetRapidOrderFulfillmentForm();
             notifyPostOrderCreated(custId, orderId);
             if (orderId && window.TM_PrintTriggers && window.TM_PrintTriggers.offerPrintAfterCreate) {
                 await window.TM_PrintTriggers.offerPrintAfterCreate(orderId);

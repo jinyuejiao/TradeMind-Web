@@ -8,6 +8,7 @@
         docType: null,
         docId: null,
         doc: null,
+        localDoc: false,
         busy: false
     };
 
@@ -149,6 +150,7 @@
         state.docType = null;
         state.docId = null;
         state.doc = null;
+        state.localDoc = false;
     }
 
     async function ensureJsPdf() {
@@ -277,15 +279,26 @@
     }
 
     async function confirmPrint() {
-        if (!state.docType || !state.docId || state.busy) return;
+        if ((!state.docType && !state.doc) || state.busy) return;
+        if (!state.localDoc && (!state.docType || !state.docId)) return;
         setBusy(true);
         try {
-            await global.TM_Print.print({
-                docType: state.docType,
-                docId: state.docId,
-                skipPreview: true,
-                channel: state.channel
-            });
+            if (state.localDoc && state.doc) {
+                await global.TM_Print.print({
+                    docType: state.docType,
+                    docId: state.docId || 'LOCAL',
+                    document: state.doc,
+                    skipPreview: true,
+                    channel: state.channel || 'BROWSER'
+                });
+            } else {
+                await global.TM_Print.print({
+                    docType: state.docType,
+                    docId: state.docId,
+                    skipPreview: true,
+                    channel: state.channel
+                });
+            }
             close();
         } finally {
             setBusy(false);
@@ -295,14 +308,46 @@
     global.TM_PrintPreview = {
         open: async function (opts) {
             opts = opts || {};
-            if (!global.TM_PrintApi || !global.TM_PrintApi.getDocument) {
-                notify('打印模块未加载，请刷新页面后重试', 'error');
-                return { success: false };
-            }
             var docType = global.TM_Print && global.TM_Print.normalizeDocType
                 ? global.TM_Print.normalizeDocType(opts.docType)
                 : opts.docType;
             var docId = String(opts.docId || '');
+
+            // 本地组装单据（欠货履约清单等）：无需后端文档接口
+            if (opts.document) {
+                ensureModal();
+                openModal();
+                setLoading(true);
+                try {
+                    var localDoc = opts.document;
+                    var localType = docType
+                        || (localDoc.meta && localDoc.meta.docType)
+                        || 'SHORTAGE_FULFILLMENT_LIST';
+                    if (global.TM_Print && global.TM_Print.normalizeDocType) {
+                        localType = global.TM_Print.normalizeDocType(localType);
+                    }
+                    state.docType = localType;
+                    state.docId = docId || (localDoc.meta && localDoc.meta.docNo) || ('SF-' + Date.now());
+                    state.doc = localDoc;
+                    if (!state.doc.meta) state.doc.meta = {};
+                    state.doc.meta.docType = localType;
+                    if (!state.doc.meta.docNo) state.doc.meta.docNo = state.docId;
+                    state.localDoc = true;
+                    state.channel = opts.channel || 'BROWSER';
+                    await renderPreview(state.doc);
+                    setLoading(false);
+                    return { success: true, data: state.doc };
+                } catch (eLocal) {
+                    close();
+                    notify(eLocal.message || '加载预览失败', 'error');
+                    return { success: false, message: eLocal.message };
+                }
+            }
+
+            if (!global.TM_PrintApi || !global.TM_PrintApi.getDocument) {
+                notify('打印模块未加载，请刷新页面后重试', 'error');
+                return { success: false };
+            }
             if (!docType || !docId) {
                 notify('缺少打印单据信息', 'error');
                 return { success: false };
@@ -314,6 +359,7 @@
             state.docType = docType;
             state.docId = docId;
             state.channel = opts.channel;
+            state.localDoc = false;
 
             try {
                 var docRes = await global.TM_PrintApi.getDocument(docType, docId);

@@ -1051,6 +1051,12 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 }
 
 /* 工作台 — 进行中订单详情弹窗 */
+#order-detail-modal.tm-order-detail-modal input[type="date"].form-input,
+#manual-order-modal.tm-order-detail-modal input[type="date"].form-input {
+  width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
+}
+
 #order-detail-modal.tm-order-detail-modal .tm-dialog-panel {
     display: flex;
     flex-direction: column;
