@@ -556,7 +556,7 @@ CRM 列表/详情 **仅展示 1 个系统价值标签**（映射 **`customers.cu
 | user\_id         | INT       | -    | 否  | -                  | 用户ID                                                   |
 | account\_id      | INT       | -    | 是  | NULL               | 付款账户ID（外键 `biz_accounts.account_id`）                   |
 | purchase\_code   | VARCHAR   | 50   | 是  | -                  | 进货单号                                                   |
-| supplier\_id     | INT       | -    | 否  | -                  | 供应商ID                                                  |
+| supplier\_id     | INT       | -    | 是  | NULL               | 供应商ID（可空：散采/无固定供应商草稿）                                  |
 | warehouse\_id    | INT       | -    | 是  | NULL               | 入库仓库ID                                                 |
 | total\_amount    | DECIMAL   | 12,2 | 否  | -                  | 总金额                                                    |
 | paid\_amount     | DECIMAL   | 12,2 | 否  | -                  | 已付金额                                                   |

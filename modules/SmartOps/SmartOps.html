@@ -563,30 +563,25 @@
     </main>
 
     <script>
-        // 导航切换
+        // 导航切换：非嵌入态统一回主壳；嵌入态交给 parent
         function switchTab(tabName) {
-            let url = '';
-            switch(tabName) {
-                case 'dashboard':
-                    url = '../dashboard/dashboard.html';
-                    break;
-                case 'biz':
-                    // 显示当前页面的智能经营界面
-                    showView('biz');
-                    break;
-                case 'crm':
-                    url = '../crm/crm.html';
-                    break;
-                case 'supply':
-                    url = '../product-center/product-center.html';
-                    break;
-                case 'supplier':
-                    url = '../supply-chain/supply-chain.html';
-                    break;
+            try {
+                var embedded = (window.self !== window.top)
+                    || (new URLSearchParams(window.location.search).get('embed') === '1');
+                if (embedded && tabName !== 'biz') {
+                    window.parent.postMessage({ type: 'TM_SHELL_SWITCH_TAB', tab: tabName }, '*');
+                    return;
+                }
+            } catch (eEmb) { /* ignore */ }
+            if (tabName === 'biz') {
+                if (typeof showView === 'function') showView('biz');
+                return;
             }
-            if (url) {
-                window.location.href = url;
-            }
+            var tab = tabName || 'biz';
+            var target = (typeof window.TM_resolveStaticPageUrl === 'function')
+                ? window.TM_resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab))
+                : '/index-app.html#tab=' + encodeURIComponent(tab);
+            window.location.href = target;
         }
 
         // API 调用函数

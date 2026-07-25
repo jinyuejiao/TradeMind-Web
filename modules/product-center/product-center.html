@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/assets/css/ui-main.css">
     <link rel="stylesheet" href="/assets/css/ui-mobile.css?v=20260525layout">
     <link rel="stylesheet" href="/modules/CSS/common.css?v=20260707fix1">
-    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260723fix2">
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260725sf3">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -37,18 +37,18 @@
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="/assets/js/main-app.js?v=20260707fix1"></script>
     <script src="/assets/js/ui-components.js"></script>
-    <script src="/assets/js/ui-main.js?v=20260722fix1"></script>
+    <script src="/assets/js/ui-main.js?v=20260725shell1"></script>
     <script src="/assets/js/tenant-ops.js?v=20260526ops"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260723fix2"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260725stock1"></script>
     <script src="/assets/js/ui-ai-service.js?v=20260603jpeg"></script>
     <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
     <script src="/assets/js/tm-product-domain.js?v=20260705fix1"></script>
     <script src="/assets/js/tm-master-data-cache.js?v=20260711cat"></script>
     <script src="/assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
     <script src="/assets/js/tm-product-registry-form.js?v=20260712expiry3"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260723fix2"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260725stock1"></script>
     <script src="/assets/js/tm-attribute-template-modal.js?v=20260722fix1"></script>
-    <script src="/assets/js/tm-product-variant-modal.js?v=20260722fix1"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260725stock1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var boot = function() {
@@ -82,20 +82,20 @@
             <span class="text-white text-lg font-bold tracking-wider">TradeMind</span>
         </div>
         <nav class="flex-1 py-6 px-3 space-y-1">
-            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button type="button" onclick="window.location.href='/index-app.html#tab=dashboard'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-squares-four text-xl mr-3"></i> <span class="text-sm font-medium">工作台</span>
             </button>
-            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button type="button" onclick="window.location.href='/index-app.html#tab=biz'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-chart-line-up text-xl mr-3"></i> <span class="text-sm font-medium">智能经营</span>
             </button>
-            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+            <button type="button" onclick="window.location.href='/index-app.html#tab=crm'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
                 <i class="ph ph-users text-xl mr-3"></i> <span class="text-sm font-medium">客户 CRM</span>
             </button>
-            <button class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
+            <button type="button" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all active-nav bg-slate-800 text-brand-500">
                 <i class="ph ph-flask text-xl mr-3"></i> <span class="text-sm font-medium">产品中心</span>
             </button>
-            <button onclick="window.location.href='/index-app.html'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
-                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供货管理</span>
+            <button type="button" onclick="window.location.href='/index-app.html#tab=supplier'" class="nav-btn w-full flex items-center px-3 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all">
+                <i class="ph ph-warehouse text-xl mr-3"></i> <span class="text-sm font-medium">供应商管理</span>
             </button>
         </nav>
         <div class="border-t border-slate-800 bg-slate-900 mt-auto">

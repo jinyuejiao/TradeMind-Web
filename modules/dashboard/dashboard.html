@@ -23,7 +23,7 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260715audit2">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260723fix2">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260725sf3">
     <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
     <link rel="stylesheet" href="../../assets/css/tm-first-login-wizard.css?v=20260630">
     <link rel="stylesheet" href="../../assets/css/rapid-order.css?v=20260715total2">
@@ -211,10 +211,24 @@
     <script src="https://cdn.jsdelivr.net/npm/ali-oss@6.17.1/dist/aliyun-oss-sdk.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-    <script src="../../assets/js/auth.js?v=20260422r13"></script>
+    <script src="../../assets/js/auth.js?v=20260721bizDiag2"></script>
     <script src="../../assets/js/app.js"></script>
     <script>
-        // 页面加载时注入公共 UI 组件
+        // 旧独立工作台壳已废弃：非 embed 直链统一回主壳 index-app
+        // 若被主壳片段注入执行，已有 #tm-app-tabbar 则绝不能再 replace
+        (function () {
+            try {
+                if (document.getElementById('tm-app-tabbar')) return;
+                if (!/\/modules\/dashboard\/dashboard\.html$/i.test(window.location.pathname || '')) return;
+                var embedded = (window.self !== window.top)
+                    || (new URLSearchParams(window.location.search).get('embed') === '1');
+                if (embedded) return;
+                var target = (typeof window.TM_resolveStaticPageUrl === 'function')
+                    ? window.TM_resolveStaticPageUrl('index-app.html#tab=dashboard')
+                    : '/index-app.html#tab=dashboard';
+                window.location.replace(target);
+            } catch (eRedirect) { /* ignore */ }
+        })();
         document.addEventListener('DOMContentLoaded', function() {
             var embedded = (window.self !== window.top)
                 || (new URLSearchParams(window.location.search).get('embed') === '1');
@@ -4775,7 +4789,7 @@
             }
         };
 
-        // 切换主标签页
+        // 切换主标签页（独立打开时回主壳；嵌入时交给 parent）
         function switchTab(tabName) {
             try {
                 var embedded = (window.self !== window.top)
@@ -4786,29 +4800,15 @@
                 }
             } catch (e) { /* ignore */ }
             try {
-                // 根据 tabName 跳转到对应的物理路径
-                switch (tabName) {
-                    case 'dashboard':
-                        // 保持在当前页面
-                        break;
-                    case 'biz':
-                        window.location.href = '../SmartOps/SmartOps.html';
-                        break;
-                    case 'crm':
-                        window.location.href = '../crm/crm.html';
-                        break;
-                    case 'supply':
-                        window.location.href = '../product-center/product-center.html';
-                        break;
-                    case 'supplier':
-                        window.location.href = '../supply-chain/supply-chain.html';
-                        break;
-                    default:
-                        // 保持在当前页面
-                        break;
+                if (typeof window.TM_shellSwitchTab === 'function' && document.getElementById('tm-app-tabbar')) {
+                    return window.TM_shellSwitchTab(tabName || 'dashboard');
                 }
-
-                } catch (error) {
+                var tab = tabName || 'dashboard';
+                var target = (typeof window.TM_resolveStaticPageUrl === 'function')
+                    ? window.TM_resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab))
+                    : '/index-app.html#tab=' + encodeURIComponent(tab);
+                window.location.href = target;
+            } catch (error) {
                 console.error('切换标签页失败:', error);
             }
         }
@@ -5867,10 +5867,10 @@
     <script src="../../assets/js/tm-product-domain.js?v=20260713order1"></script>
     <script src="../../assets/js/tm-master-data-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-product-registry.js?v=20260705fix1"></script>
-    <script src="../../assets/js/ui-product-center.js?v=20260723fix2"></script>
-    <script src="../../assets/js/ui-product-center-enhance.js?v=20260723fix2"></script>
+    <script src="../../assets/js/ui-product-center.js?v=20260725stock1"></script>
+    <script src="../../assets/js/ui-product-center-enhance.js?v=20260725stock1"></script>
     <script src="../../assets/js/tm-attribute-template-modal.js?v=20260722fix1"></script>
-    <script src="../../assets/js/tm-product-variant-modal.js?v=20260722fix1"></script>
+    <script src="../../assets/js/tm-product-variant-modal.js?v=20260725stock1"></script>
     <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-industry-ui.js?v=20260630"></script>
     <script src="../../assets/js/tm-workbench-profile.js?v=20260706fix1"></script>
@@ -5878,7 +5878,7 @@
     <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
     <script src="../../assets/js/rapid-order.js?v=20260723fix2"></script>
     <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
-    <script src="../../assets/js/shortage-fulfillment.js?v=20260723fix2"></script>
+    <script src="../../assets/js/shortage-fulfillment.js?v=20260725sf6"></script>
     <script src="../../assets/js/dashboard-workbench.js?v=20260721fix1"></script>
 </body>
 </html>

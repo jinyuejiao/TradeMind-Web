@@ -381,11 +381,11 @@
                 var hasKey = row.warehouseStocks && (row.warehouseStocks[wid] != null || row.warehouseStocks[String(wid)] != null);
                 var v = hasKey ? whStockLookup(row.warehouseStocks, wid) : null;
                 var valAttr = (v != null && !isNaN(v)) ? (' value="' + v + '"') : '';
-                return '<td class="tm-variant-col-qty px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-wh-qty form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" data-wh="' + wid + '"' + valAttr + ' placeholder="0" inputmode="numeric" title="留空表示未填，可直接输入覆盖" /></td>';
+                return '<td class="tm-variant-col-qty px-2 py-2"><input type="number" step="1" class="tm-variant-wh-qty form-input tm-variant-qty-input text-xs font-mono text-right" data-combo-key="' + keyAttr + '" data-wh="' + wid + '"' + valAttr + ' placeholder="0" inputmode="numeric" title="留空表示未填；可为负（欠货）" /></td>';
             }).join('');
-            var rowStock = whs.length ? syncComboRowStockFromWarehouses(row) : (Math.max(0, parseInt(row.stock, 10) || 0));
+            var rowStock = whs.length ? syncComboRowStockFromWarehouses(row) : (parseInt(row.stock, 10) || 0);
             var stockReadonly = whs.length > 0;
-            var stockCell = '<td class="tm-variant-col-qty px-2 py-2"><input type="number" min="0" step="1" class="tm-variant-row-stock form-input tm-variant-qty-input text-xs font-mono text-right'
+            var stockCell = '<td class="tm-variant-col-qty px-2 py-2"><input type="number" step="1" class="tm-variant-row-stock form-input tm-variant-qty-input text-xs font-mono text-right'
                 + (stockReadonly ? ' bg-slate-50 text-slate-600 cursor-default' : '')
                 + '" data-combo-key="' + keyAttr + '" value="' + rowStock + '"'
                 + (stockReadonly ? ' readonly tabindex="-1" aria-readonly="true" title="各仓库存自动合计"' : ' inputmode="numeric"')
@@ -590,7 +590,9 @@
             delete row.warehouseStocks[whId];
             delete row.warehouseStocks[String(whId)];
         } else {
-            row.warehouseStocks[whId] = Math.max(0, parseInt(raw, 10) || 0);
+            var parsed = parseInt(raw, 10);
+            // 允许负库存（欠货），勿 Math.max(0) 抹平
+            row.warehouseStocks[whId] = isNaN(parsed) ? 0 : parsed;
         }
         row.stock = sumRowWarehouseStock(row);
         var stockInp = findComboDomInput('tm-variant-row-stock', comboKeyVal);
@@ -902,14 +904,18 @@
                 if (whRaw && typeof whRaw === 'object') {
                     Object.keys(whRaw).forEach(function (k) {
                         var nk = /^\d+$/.test(String(k)) ? parseInt(k, 10) : k;
-                        whStocks[nk] = parseInt(whRaw[k], 10) || 0;
+                        var q = parseInt(whRaw[k], 10);
+                        whStocks[nk] = isNaN(q) ? 0 : q;
                     });
                 }
-                var stock = parseInt(sku.stock, 10) || 0;
-                if (!stock) {
-                    Object.keys(whStocks).forEach(function (k) { stock += whStocks[k] || 0; });
+                // 分仓为真源（允许负库存）；无分仓时再回退 sku.stock
+                var stock = 0;
+                var whKeys = Object.keys(whStocks);
+                if (whKeys.length) {
+                    whKeys.forEach(function (k) { stock += whStocks[k] || 0; });
+                } else {
+                    stock = parseInt(sku.stock, 10) || 0;
                 }
-                stock = Math.max(0, parseInt(stock, 10) || 0);
                 var cover = sku.coverUrl || sku.cover_url || null;
                 var mediaId = sku.coverMediaId || sku.cover_media_id || sku.mediaId || sku.media_id || null;
                 var skuPrice = sku.price != null ? Number(sku.price) : null;

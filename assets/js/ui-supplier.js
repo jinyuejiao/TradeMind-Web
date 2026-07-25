@@ -1461,7 +1461,11 @@ window.SupplierModule = {
                                 if (!supplier) {
                                     supplier = this.allSuppliers.find((s) => String(s.supplierId) === String(purchase.supplierId));
                                 }
-                                var supplierName = purchase.supplierName || (supplier ? (supplier.name || supplier.supplierName) : '未知供应商');
+                                var supplierName = purchase.supplierName
+                                    || (supplier ? (supplier.name || supplier.supplierName) : null)
+                                    || (purchase.supplierId == null || purchase.supplierId === ''
+                                        ? '散采/未指定'
+                                        : '未知供应商');
                                 var dateStr = this.formatDate(purchase.purchaseDate);
                                 var dateEsc = this.escapeAttr(dateStr);
                                 var supEsc = this.escapeAttr(supplierName || '-');

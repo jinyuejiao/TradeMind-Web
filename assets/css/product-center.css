@@ -1,4 +1,4 @@
-﻿/* 产品编辑弹窗 — PC / 手机适配 */
+/* 产品编辑弹窗 — PC / 手机适配 */
 .tm-product-edit-modal .tm-product-edit-section__title {
     font-size: 0.6875rem;
     font-weight: 800;
@@ -1048,6 +1048,35 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
         top: 0;
         z-index: 1;
     }
+}
+
+/* 欠货履约：紧凑数量/单位/单价（覆盖全局 input/select width:100%） */
+#shortage-fulfillment-modal .sf-purchase-fields {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#shortage-fulfillment-modal .sf-compact-input.form-input,
+#shortage-fulfillment-modal input.sf-compact-input[type="number"],
+#shortage-fulfillment-modal select.sf-compact-input {
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.25rem 0.35rem;
+    line-height: 1.25;
+    height: 1.75rem;
+}
+#shortage-fulfillment-modal .sf-compact-input--qty {
+    width: 3.25rem !important;
+    flex: 0 0 3.25rem;
+}
+#shortage-fulfillment-modal .sf-compact-input--unit {
+    width: 3.75rem !important;
+    flex: 0 0 3.75rem;
+}
+#shortage-fulfillment-modal .sf-compact-input--price {
+    width: 4.5rem !important;
+    flex: 0 0 4.5rem;
 }
 
 /* 工作台 — 进行中订单详情弹窗 */

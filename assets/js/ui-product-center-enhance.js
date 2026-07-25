@@ -25,7 +25,8 @@
         var sum = 0;
         PM.getWarehouseStockInputs().forEach(function (inp) {
             var q = parseInt(inp.value, 10);
-            if (!isNaN(q)) sum += Math.max(0, q);
+            // 允许负库存（欠货开单），与规格弹窗仓合计一致
+            if (!isNaN(q)) sum += q;
         });
         return sum;
     };
@@ -282,7 +283,8 @@
         if (!base) errors.push('请填写基本单位');
         if (stockRaw !== '' && stockRaw != null) {
             var stockNum = parseInt(stockRaw, 10);
-            if (isNaN(stockNum) || stockNum < 0) errors.push('当前库存总量须为不小于 0 的整数');
+            // 允负：欠货开单后仓存可为负，需与规格弹窗合计一致
+            if (isNaN(stockNum)) errors.push('当前库存总量须为整数');
         }
         PM.showFormErrors(PM.formErrorBoxId(), errors);
         if (errors.length && nameEl && !name) nameEl.focus();
@@ -1534,7 +1536,7 @@
             return '<div class="warehouse-stock-row flex flex-wrap items-center gap-2 justify-between text-xs border-b border-slate-100/80 pb-2 last:border-0 last:pb-0">' +
                 '<span class="font-bold text-slate-700">' + name + '</span>' +
                 '<div class="flex items-center gap-2">' +
-                '<input type="number" min="0" step="1" class="form-input font-mono text-right w-[6.5rem] py-1.5 text-xs detail-warehouse-stock-input" data-warehouse-id="' + PM.escHtmlAttr(String(wid)) + '" value="' + PM.escHtmlAttr(String(v)) + '" autocomplete="off">' +
+                '<input type="number" step="1" class="form-input font-mono text-right w-[6.5rem] py-1.5 text-xs detail-warehouse-stock-input" data-warehouse-id="' + PM.escHtmlAttr(String(wid)) + '" value="' + PM.escHtmlAttr(String(v)) + '" autocomplete="off" title="可为负（欠货）">' +
                 '<span class="text-[10px] font-mono text-slate-500 whitespace-nowrap warehouse-stock-preview">' + PM.escHtmlText(base) + '</span>' +
                 '</div></div>';
         }).join('');
@@ -1575,10 +1577,11 @@
             var list = data && data.data ? data.data : [];
             PM.warehouseStockDraft = list;
             var whSum = list.reduce(function (sum, w) {
-                return sum + (w && w.quantity != null ? Math.max(0, parseInt(w.quantity, 10) || 0) : 0);
+                var q = w && w.quantity != null ? parseInt(w.quantity, 10) : 0;
+                return sum + (isNaN(q) ? 0 : q);
             }, 0);
             var productStock = PM.currentProduct && PM.currentProduct.stock != null
-                ? Math.max(0, parseInt(PM.currentProduct.stock, 10) || 0) : 0;
+                ? (parseInt(PM.currentProduct.stock, 10) || 0) : 0;
             // 禁止把产品总量静默灌入第一仓；分仓为真源，总量由分仓汇总
             if (whSum === 0 && productStock > 0) {
                 console.warn('[ProductEnhance] 分仓库存均为 0，但产品总量为 ' + productStock
@@ -1586,7 +1589,8 @@
             }
             PM.renderWarehouseStockSummary(list);
             PM.bindStockSyncHandlers();
-            if (whSum > 0) {
+            // 有分仓数据（含负库存）即以分仓汇总为「当前库存总量」
+            if (list.length) {
                 PM.syncTotalFromWarehouses();
             } else {
                 var stockInput = PM.el('detail-product-stock', 'product-stock-input');
@@ -1910,6 +1914,10 @@
                     force: true,
                     session: detailSession
                 });
+            }
+            // 多规格：详情「当前库存总量」与规格弹窗仓合计对齐
+            if (typeof PM.syncVariantStockToMainForm === 'function' && PM._variantMatrixConfirmed) {
+                PM.syncVariantStockToMainForm();
             }
         } else if (typeof PM.loadSpuFlagsForProduct === 'function') {
             await PM.loadSpuFlagsForProduct(productId);

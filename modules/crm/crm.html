@@ -546,15 +546,13 @@
                     return;
                 }
             } catch (e) { /* ignore */ }
-            const urlMap = {
-                dashboard: '../dashboard/dashboard.html',
-                biz: '../SmartOps/SmartOps.html',
-                crm: '',
-                supply: '../product-center/product-center.html',
-                supplier: '../supply-chain/supply-chain.html'
-            };
-            const target = urlMap[tabName];
-            if (target) window.location.href = target;
+            var tab = tabName || 'crm';
+            var target = (typeof window.TM_resolveStaticPageUrl === 'function')
+                ? window.TM_resolveStaticPageUrl('index-app.html#tab=' + encodeURIComponent(tab))
+                : '/index-app.html#tab=' + encodeURIComponent(tab);
+            if (tab !== 'crm') {
+                window.location.href = target;
+            }
         }
 
         function escapeHtml(value) {

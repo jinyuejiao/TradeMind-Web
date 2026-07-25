@@ -54,7 +54,7 @@
     <script src="/assets/js/tm-ui-loader.js"></script>
     <link rel="stylesheet" href="/assets/css/ops-portal.css?v=tm-ops-11">
     <script src="/assets/js/ui-ops.js?v=tm-ops-merchant-fix-20260601"></script>
-    <script src="/assets/js/ui-main.js?v=20260722fix1"></script>
+    <script src="/assets/js/ui-main.js?v=20260725shell1"></script>
     <script src="/assets/js/tm-biz-ai-insight.js?v=20260721bizDiag2"></script>
     <script src="/assets/js/tm-biz-diag-survey.js?v=20260721bizDiag2"></script>
     <style>
@@ -72,7 +72,7 @@
             overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
         }
     </style>
-    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260723fix2">
+    <link rel="stylesheet" href="/assets/css/product-center.css?v=20260725sf3">
     <link rel="stylesheet" href="/assets/css/dashboard-audit.css?v=20260531unit">
     <link rel="stylesheet" href="/assets/css/tm-print.css?v=20260720fix1">
     <!-- 产品规格/行业能力：主壳直开产品中心时也需这些依赖（不能只靠工作台注入） -->
@@ -83,10 +83,10 @@
     <script src="/assets/js/tm-product-domain.js?v=20260713order1"></script>
     <script src="/assets/js/tm-master-data-cache.js?v=20260711cat"></script>
     <script src="/assets/js/tm-product-registry-form.js?v=20260712expiry3"></script>
-    <script src="/assets/js/ui-product-center.js?v=20260723fix2"></script>
-    <script src="/assets/js/ui-product-center-enhance.js?v=20260723fix2"></script>
+    <script src="/assets/js/ui-product-center.js?v=20260725stock1"></script>
+    <script src="/assets/js/ui-product-center-enhance.js?v=20260725stock1"></script>
     <script src="/assets/js/tm-attribute-template-modal.js?v=20260722fix1"></script>
-    <script src="/assets/js/tm-product-variant-modal.js?v=20260722fix1"></script>
+    <script src="/assets/js/tm-product-variant-modal.js?v=20260725stock1"></script>
     <script src="/assets/js/tm-product-thumb.js?v=20260705fix1"></script>
 </head>
 <body class="bg-slate-100 text-slate-600 font-sans w-full flex overflow-hidden">
@@ -274,9 +274,10 @@
         <div id="content-area" class="tm-app-content-area tm-content-area flex-1 min-h-0 overflow-y-auto bg-slate-50 no-scrollbar flex flex-col md:pb-0">
 
             <!-- ================= [1] 工作台 DASHBOARD (核心操作区) ================= -->
+            <!-- 骨架仅作首屏占位；完整内容由 loadDashboard 从 dashboard.html #view-dashboard 注入 -->
             <div id="view-dashboard" class="view-section w-full p-4 md:p-8 space-y-6 fade-in">
                 <div data-tm-fragment-scope="dashboard" data-tm-slot="workspace-banner" class="tm-merchant-slot"></div>
-                <div class="flex flex-col md:flex-row md:items-end justify-between">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-3">
                     <div>
                         <h1 class="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Hi, <span id="dashboard-greeting-name">用户</span>.</h1>
                         <p class="text-xs md:text-sm text-slate-500 mt-1">今日概况：<span class="text-risk-high font-bold"><span id="dashboard-risk-count">0</span>个风险点</span>，<span class="text-brand-600 font-bold"><span id="dashboard-pending-recognition-count">0</span>个待识别单据</span>。</p>
@@ -290,8 +291,16 @@
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">周转率</p><div id="dashboard-turnover-rate" class="mt-2 font-mono font-bold text-slate-800">0.00</div></div>
                 </div>
 
+                <div class="mt-2">
+                    <button type="button" onclick="TM_openRapidOrder()" class="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold text-base shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-transform">
+                        <i class="ph ph-lightning text-2xl"></i>
+                        <span>⚡ 极速开单</span>
+                    </button>
+                    <p class="text-center text-[10px] text-slate-400 mt-2">移动点单式选品 · 支持欠货开单</p>
+                </div>
+
                 <section id="dashboard-ai-extract" class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden fade-in">
-                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-magic-wand text-brand-600 mr-2 text-lg"></i> AI 订单快速提取</div>
+                    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center text-sm font-bold text-slate-800"><i class="ph ph-magic-wand text-brand-600 mr-2 text-lg"></i> AI 订单补录（语音/拍照/文本）</div>
                     <div class="flex flex-col md:flex-row md:divide-x divide-slate-100">
                         <div class="p-8 md:w-1/3 flex items-center justify-around md:justify-center md:gap-16 bg-slate-50/30">
                             <button onclick="openVoiceModal()" class="btn-click-effect flex flex-col items-center group">

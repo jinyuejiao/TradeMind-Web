@@ -15,6 +15,9 @@
         tab: 'transfer',
         data: null,
         warehouses: [],
+        suppliers: [],
+        /** 未指定供应商组：本次转草稿时可选覆盖的供应商 ID（不改产品档案） */
+        purchaseSupplierOverride: '',
         selected: {
             transfer: {},
             ship: {},
@@ -108,6 +111,43 @@
         }).join('');
     }
 
+    async function loadSuppliers() {
+        try {
+            var resp = await global.wrappedFetch('/api/v1/supp/suppliers?all=true', { method: 'GET' });
+            var wrap = await global.handleApiResponse(resp);
+            var list = (wrap && wrap.data) ? wrap.data : (Array.isArray(wrap) ? wrap : []);
+            if (list && !Array.isArray(list) && Array.isArray(list.list)) list = list.list;
+            if (list && !Array.isArray(list) && Array.isArray(list.records)) list = list.records;
+            state.suppliers = (list || []).map(function (s) {
+                var id = s.supplierId != null ? s.supplierId : (s.supplier_id != null ? s.supplier_id : s.id);
+                return {
+                    id: id,
+                    name: s.name || s.supplierName || ('供应商#' + id)
+                };
+            }).filter(function (s) { return s.id != null && s.id !== ''; });
+        } catch (e) {
+            console.warn('[ShortageWorkbench] 供应商加载失败', e);
+            state.suppliers = [];
+        }
+    }
+
+    function supplierOverrideSelectHtml(groupKey) {
+        var cur = state.purchaseSupplierOverride || '';
+        var opts = '<option value="">暂不指定（可稍后在进货单补填）</option>' +
+            state.suppliers.map(function (s) {
+                return '<option value="' + esc(s.id) + '"' +
+                    (String(cur) === String(s.id) ? ' selected' : '') + '>' +
+                    esc(s.name) + '</option>';
+            }).join('');
+        return '<div class="flex flex-wrap items-center gap-1.5 mb-2">' +
+            '<label class="text-[10px] text-slate-500 whitespace-nowrap">本次进货供应商</label>' +
+            '<select data-sf-supplier-override="' + esc(groupKey) + '" ' +
+            'class="sf-compact-input form-input form-input--compact text-[11px] min-w-[8rem] max-w-full">' +
+            opts + '</select>' +
+            '</div>' +
+            '<p class="text-[10px] text-slate-400 mb-1">小商户可无固定供应商：直接生成草稿即可，供应商非必填。</p>';
+    }
+
     async function loadData() {
         readDateFilterFromUi();
         var qsParts = [];
@@ -137,6 +177,7 @@
                     state.dateTo = state.data.dateTo || '';
                 }
                 syncDateModeUi();
+                normalizePurchaseData(state.data);
             }
             state.selected = { transfer: {}, ship: {}, purchase: {} };
             renderTabs();
@@ -187,7 +228,7 @@
             if (actionHint) actionHint.textContent = '勾选后批量确认发货；物流填品牌/单号，送车填司机/车牌';
             if (actionBtn) actionBtn.textContent = '确认发货';
         } else {
-            if (actionHint) actionHint.textContent = '按供应商拆分生成进货草稿';
+            if (actionHint) actionHint.textContent = '按供应商拆分生成进货草稿（无供应商亦可）';
             if (actionBtn) actionBtn.textContent = '转进货草稿';
         }
     }
@@ -200,6 +241,7 @@
     }
 
     function lineKey(line) {
+        if (line && line.aggKey) return String(line.aggKey);
         return String(line.itemId != null ? line.itemId : line.item_id);
     }
 
@@ -209,18 +251,141 @@
         return Number(line.shortageQty) || 0;
     }
 
-    /** 部分可调双挂提示：可调 X / 需进 Y */
+    /** 待进货：基本单位缺口（聚合后） */
+    function purchaseBaseNeed(line) {
+        if (line.suggestBaseUnits != null) return Number(line.suggestBaseUnits) || 0;
+        if (line.purchaseNeed != null) return Number(line.purchaseNeed) || 0;
+        return Number(line.shortageQty) || 0;
+    }
+
+    /** 前端兜底：按进货单位换算比向上取整（后端已算好时直接用 suggestQty） */
+    function purchaseSuggestQty(line) {
+        if (line.suggestQty != null && line.aggKey) return Number(line.suggestQty) || 0;
+        var base = purchaseBaseNeed(line);
+        var ratio = Number(line.purchaseUnitRatio);
+        if (!(ratio > 0)) ratio = 1;
+        return Math.ceil(base / ratio) || 0;
+    }
+
+    /**
+     * 若后端尚未返回 SKU 聚合行，前端按供应商+产品+SKU 聚合（建议量按换算比向上取整）。
+     * 后端已聚合（含 aggKey）时直接使用。
+     */
+    function normalizePurchaseData(data) {
+        if (!data) return;
+        var raw = data.purchaseOrderLines || data.purchase || [];
+        var alreadyAgg = Array.isArray(data.purchase) && data.purchase.length
+            && data.purchase.every(function (l) { return !!l.aggKey; });
+        if (alreadyAgg) {
+            if (!data.purchaseGroups || !data.purchaseGroups.length) {
+                data.purchaseGroups = groupPurchaseAggBySupplier(data.purchase);
+            }
+            if (data.counts) data.counts.purchase = data.purchase.length;
+            return;
+        }
+        var agg = aggregatePurchaseLinesClient(raw);
+        data.purchaseOrderLines = raw;
+        data.purchase = agg;
+        data.purchaseGroups = groupPurchaseAggBySupplier(agg);
+        if (!data.counts) data.counts = {};
+        data.counts.purchase = agg.length;
+    }
+
+    function aggregatePurchaseLinesClient(lines) {
+        var map = {};
+        var order = [];
+        (lines || []).forEach(function (line) {
+            var sid = line.supplierId != null ? line.supplierId : 'none';
+            var pid = line.productId != null ? line.productId : 0;
+            var sku = line.skuId != null ? line.skuId : (line.sku_id != null ? line.sku_id : 0);
+            var key = 'agg:' + sid + ':' + pid + ':' + sku;
+            if (!map[key]) {
+                map[key] = {
+                    aggKey: key,
+                    supplierId: line.supplierId != null ? line.supplierId : null,
+                    supplierName: line.supplierName || (line.supplierId != null ? ('供应商#' + line.supplierId) : '未指定供应商'),
+                    productId: line.productId,
+                    skuId: line.skuId != null ? line.skuId : line.sku_id,
+                    spuId: line.spuId,
+                    spuName: line.spuName || line.productName || '产品',
+                    productName: line.productName,
+                    skuSpec: line.skuSpec || line.sku_spec || '默认规格',
+                    baseUnit: line.baseUnit || line.base_unit || '',
+                    purchaseUnit: line.purchaseUnit || line.baseUnit || line.base_unit || '',
+                    salePrice: line.salePrice,
+                    purchasePrice: line.purchasePrice,
+                    unitPrice: line.unitPrice,
+                    purchaseUnitRatio: Number(line.purchaseUnitRatio) > 0 ? Number(line.purchaseUnitRatio) : 1,
+                    suggestBaseUnits: 0,
+                    purchaseNeed: 0,
+                    shortageQty: 0,
+                    transferableQty: 0,
+                    partialGap: false,
+                    sourceItemIds: [],
+                    orderCount: 0
+                };
+                order.push(key);
+            }
+            var agg = map[key];
+            var need = line.purchaseNeed != null ? Number(line.purchaseNeed)
+                : (line.suggestQty != null ? Number(line.suggestQty) : (Number(line.shortageQty) || 0));
+            if (!(need > 0)) need = 0;
+            agg.suggestBaseUnits += need;
+            agg.purchaseNeed += need;
+            agg.shortageQty += Number(line.shortageQty) || need;
+            agg.transferableQty += Number(line.transferableQty != null ? line.transferableQty
+                : (line.maxOtherStock || 0)) || 0;
+            agg.orderCount += 1;
+            if (line.partialGap) agg.partialGap = true;
+            if (Number(line.purchaseUnitRatio) > 0) agg.purchaseUnitRatio = Number(line.purchaseUnitRatio);
+            var itemId = line.itemId != null ? line.itemId : line.item_id;
+            if (itemId != null && agg.sourceItemIds.indexOf(itemId) < 0) {
+                agg.sourceItemIds.push(itemId);
+            }
+        });
+        return order.map(function (k) {
+            var agg = map[k];
+            var ratio = Number(agg.purchaseUnitRatio) > 0 ? Number(agg.purchaseUnitRatio) : 1;
+            var suggestQty = Math.ceil(agg.suggestBaseUnits / ratio) || 0;
+            if (suggestQty <= 0 && agg.suggestBaseUnits > 0) suggestQty = 1;
+            agg.suggestQty = suggestQty;
+            if (agg.sourceItemIds.length) agg.itemId = agg.sourceItemIds[0];
+            return agg;
+        });
+    }
+
+    function groupPurchaseAggBySupplier(aggLines) {
+        var map = {};
+        var order = [];
+        (aggLines || []).forEach(function (line) {
+            var sid = line.supplierId != null ? String(line.supplierId) : 'none';
+            if (!map[sid]) {
+                map[sid] = {
+                    supplierId: line.supplierId != null ? line.supplierId : null,
+                    supplierName: line.supplierName || '未指定供应商',
+                    lines: []
+                };
+                order.push(sid);
+            }
+            map[sid].lines.push(line);
+        });
+        return order.map(function (sid) {
+            var g = map[sid];
+            g.lineCount = g.lines.length;
+            return g;
+        });
+    }
+
+    /** 部分可调双挂提示：可调 X / 需进 Y（需进为基本单位缺口） */
     function dualGapBadgeHtml(line) {
         var transferable = line.transferableQty != null ? Number(line.transferableQty)
             : (line.maxOtherStock != null ? Number(line.maxOtherStock) : 0);
         var shortage = Number(line.shortageQty) || 0;
         var isPartial = !!line.partialGap || (transferable > 0 && transferable < shortage);
         if (!isPartial) return '';
-        var purchaseNeed = line.purchaseNeed != null ? Number(line.purchaseNeed)
-            : Math.max(0, shortage - transferable);
-        if (line.partialGap) {
-            purchaseNeed = Math.max(0, shortage - transferable);
-        }
+        var purchaseNeed = line.suggestBaseUnits != null ? Number(line.suggestBaseUnits)
+            : (line.purchaseNeed != null ? Number(line.purchaseNeed)
+                : Math.max(0, shortage - transferable));
         return '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">' +
             '可调 ' + esc(transferable) + ' / 需进 ' + esc(purchaseNeed) + '</span>';
     }
@@ -357,7 +522,7 @@
             '<div class="flex items-center gap-1 shrink-0">' +
             '<label class="text-[10px] text-slate-400 whitespace-nowrap">调货</label>' +
             '<input type="number" min="1" max="' + esc(Math.max(1, avail)) + '" value="' + esc(avail > 0 ? Math.min(suggest, avail) : suggest) + '" ' +
-            'data-sf-qty="' + esc(key) + '" data-sf-suggest="' + esc(suggest) + '" class="form-input form-input--compact text-xs font-mono w-[3.75rem] py-1">' +
+            'data-sf-qty="' + esc(key) + '" data-sf-suggest="' + esc(suggest) + '" class="sf-compact-input sf-compact-input--qty form-input form-input--compact text-xs font-mono text-center">' +
             '<span class="text-[10px] text-slate-400 whitespace-nowrap" data-sf-avail-label="' + esc(key) + '">/' + esc(avail) + '</span>' +
             '</div></div></div></div></div>';
     }
@@ -466,6 +631,121 @@
             spuHeaderHtml(spu, 'ship') + skuBlocks + '</div>';
     }
 
+    /** 待进货行：数量 / 单位 / 单价（水平紧凑，对齐进货单据字段） */
+    function purchaseLineFieldsHtml(line, key, qty) {
+        var unit = line.purchaseUnit || line.baseUnit || line.base_unit || '';
+        var baseUnit = line.baseUnit || line.base_unit || '';
+        // 占位价；渲染后由 applyPurchaseUnitPricesStrategy 按进货单据策略回填
+        var price = line.unitPrice != null ? line.unitPrice
+            : (line.purchasePrice != null ? line.purchasePrice : (line.salePrice != null ? line.salePrice : 0));
+        var priceNum = Number(price);
+        if (isNaN(priceNum) || priceNum < 0) priceNum = 0;
+        var priceStr = priceNum.toFixed(2);
+        var unitOpts = '';
+        var seen = {};
+        [unit, baseUnit].forEach(function (u) {
+            var t = String(u || '').trim();
+            if (!t || seen[t]) return;
+            seen[t] = true;
+            var sel = t === String(unit || '').trim() ? ' selected' : '';
+            unitOpts += '<option value="' + esc(t) + '"' + sel + '>' + esc(t) + '</option>';
+        });
+        if (!unitOpts) {
+            unitOpts = '<option value="">—</option>';
+        }
+        var pid = line.productId != null ? line.productId : '';
+        var sid = line.skuId != null ? line.skuId : (line.sku_id != null ? line.sku_id : '');
+        return '<div class="sf-purchase-fields flex items-center gap-1.5 mt-1.5 flex-nowrap min-w-0">' +
+            '<label class="text-[10px] text-slate-400 whitespace-nowrap shrink-0">数量</label>' +
+            '<input type="number" min="1" step="1" value="' + esc(qty) + '" data-sf-qty="' + esc(key) + '" ' +
+            'class="sf-compact-input sf-compact-input--qty form-input form-input--compact text-xs font-mono text-center" inputmode="numeric" title="进货数量">' +
+            '<label class="text-[10px] text-slate-400 whitespace-nowrap shrink-0">单位</label>' +
+            '<select data-sf-unit="' + esc(key) + '" data-sf-product="' + esc(pid) + '" data-sf-sku="' + esc(sid) + '" ' +
+            'class="sf-compact-input sf-compact-input--unit form-input form-input--compact text-[11px]" title="进货单位">' +
+            unitOpts + '</select>' +
+            '<label class="text-[10px] text-slate-400 whitespace-nowrap shrink-0">单价</label>' +
+            '<input type="number" min="0" step="0.01" value="' + esc(priceStr) + '" data-sf-price="' + esc(key) + '" ' +
+            'data-sf-product="' + esc(pid) + '" data-sf-sku="' + esc(sid) + '" data-sf-autofill="1" ' +
+            'class="sf-compact-input sf-compact-input--price form-input form-input--compact text-xs font-mono text-right" inputmode="decimal" title="进货单价（最近进货价，否则售价×单位换算）">' +
+            '</div>';
+    }
+
+    /**
+     * 与进货单据一致：POST /api/v1/supp/purchases/last-unit-prices
+     * 有历史进货 → 最近进货价（按单位换算）；无历史 → 售价 × 进货单位换算比 / 销售单位换算比
+     */
+    async function applyPurchaseUnitPricesStrategy(body, onlyKey) {
+        if (!body || typeof global.wrappedFetch !== 'function') return;
+        var priceInputs = onlyKey
+            ? body.querySelectorAll('[data-sf-price="' + onlyKey + '"]')
+            : body.querySelectorAll('[data-sf-price]');
+        if (!priceInputs.length) return;
+        var lines = [];
+        var meta = [];
+        Array.prototype.forEach.call(priceInputs, function (priceEl) {
+            if (!priceEl || priceEl.dataset.userEdited === '1') return;
+            var key = priceEl.getAttribute('data-sf-price');
+            var unitEl = body.querySelector('[data-sf-unit="' + key + '"]');
+            var productId = Number(priceEl.getAttribute('data-sf-product')
+                || (unitEl && unitEl.getAttribute('data-sf-product')) || 0);
+            if (!(productId > 0)) return;
+            var skuRaw = priceEl.getAttribute('data-sf-sku')
+                || (unitEl && unitEl.getAttribute('data-sf-sku')) || '';
+            var skuId = skuRaw !== '' && !isNaN(Number(skuRaw)) ? Number(skuRaw) : null;
+            var unitName = unitEl ? String(unitEl.value || '').trim() : '';
+            var line = { productId: productId, unitName: unitName };
+            if (skuId != null && skuId > 0) line.skuId = skuId;
+            lines.push(line);
+            meta.push({ key: key, productId: productId, skuId: skuId, unitName: unitName, priceEl: priceEl });
+        });
+        if (!lines.length) return;
+        try {
+            var resp = await global.wrappedFetch('/api/v1/supp/purchases/last-unit-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lines: lines })
+            });
+            var wrap = global.handleApiResponse
+                ? await global.handleApiResponse(resp)
+                : await resp.json();
+            var data = wrap && wrap.data ? wrap.data : (wrap || {});
+            meta.forEach(function (m) {
+                if (!m.priceEl || m.priceEl.dataset.userEdited === '1') return;
+                var keyFull = String(m.productId)
+                    + (m.skuId != null ? ':' + m.skuId : '')
+                    + (m.unitName ? ':' + m.unitName : '');
+                var last = data[keyFull] != null ? data[keyFull]
+                    : (data[String(m.productId)] != null ? data[String(m.productId)] : data[m.productId]);
+                if (last != null && Number(last) > 0) {
+                    m.priceEl.value = Number(last).toFixed(2);
+                    m.priceEl.dataset.autofill = '1';
+                }
+            });
+        } catch (e) {
+            console.warn('[ShortageWorkbench] 进货单价策略查询失败', e);
+        }
+    }
+
+    function bindPurchasePriceEvents(body) {
+        body.querySelectorAll('[data-sf-price]').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                inp.dataset.userEdited = '1';
+            });
+        });
+        body.querySelectorAll('[data-sf-unit]').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                var key = sel.getAttribute('data-sf-unit');
+                var priceEl = body.querySelector('[data-sf-price="' + key + '"]');
+                if (priceEl) {
+                    // 换单位后按策略重算（除非用户已手改价）
+                    if (priceEl.dataset.userEdited !== '1') {
+                        applyPurchaseUnitPricesStrategy(body, key);
+                    }
+                }
+            });
+        });
+    }
+
     function renderPurchaseGroups(body) {
         var groups = (state.data && state.data.purchaseGroups) ? state.data.purchaseGroups : [];
         if (!groups.length) {
@@ -477,31 +757,36 @@
             var lines = g.lines || [];
             var spuGroups = groupBySpuSku(lines);
             var spuHtml = spuGroups.map(function (spu) {
+                // 已按 SKU 聚合：每个规格一行，不再展开客户/订单
                 var skuBlocks = spu.skuList.map(function (sku) {
-                    var rows = sku.lines.map(function (line) {
-                        var key = lineKey(line);
-                        var checked = state.selected.purchase[key] ? 'checked' : '';
-                        var qty = lineSuggestQty(line);
-                        return '<div class="flex items-start gap-2 py-2 border-t border-slate-50 first:border-0" data-sf-row="' + esc(key) + '">' +
-                            '<input type="checkbox" data-sf-check="' + esc(key) + '" data-sf-supplier="' + esc(sid) + '" data-sf-spu="' + esc(spu.key) + '" class="mt-0.5 rounded border-slate-300 text-brand-600" ' + checked + '>' +
-                            '<div class="min-w-0 flex-1">' +
-                            '<div class="flex flex-wrap items-center gap-1.5">' + dualGapBadgeHtml(line) +
-                            (line.partialGap
-                                ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 font-bold">部分缺口</span>'
-                                : '') +
-                            '</div>' +
-                            '<p class="text-[10px] text-slate-400 truncate">' + esc(line.orderCode || '') +
-                            (line.customerName ? ' · ' + esc(line.customerName) : '') + '</p>' +
-                            '<div class="flex items-center gap-2 mt-1">' +
-                            '<label class="text-[10px] text-slate-400">数量</label>' +
-                            '<input type="number" min="1" value="' + esc(qty) + '" data-sf-qty="' + esc(key) + '" ' +
-                            'class="form-input form-input--compact text-xs font-mono w-20 py-1">' +
-                            '</div></div></div>';
-                    }).join('');
-                    return '<div class="mt-1">' +
-                        '<p class="text-[11px] font-bold text-slate-600 mb-0.5"><span class="px-1.5 py-0.5 rounded bg-slate-100">' +
-                        esc(sku.skuSpec) + '</span> · 欠货 <span class="font-mono text-rose-600">' + esc(sku.qtyTotal) + '</span></p>' +
-                        rows + '</div>';
+                    var line = sku.lines[0] || {};
+                    var key = lineKey(line);
+                    var checked = state.selected.purchase[key] ? 'checked' : '';
+                    var qty = purchaseSuggestQty(line);
+                    var baseNeed = purchaseBaseNeed(line);
+                    var baseUnit = line.baseUnit || line.base_unit || '';
+                    var purchaseUnit = line.purchaseUnit || baseUnit || '';
+                    var orderN = line.orderCount != null ? Number(line.orderCount) : sku.lines.length;
+                    return '<div class="mt-1 flex items-start gap-2 py-2 border-t border-slate-50 first:border-0" data-sf-row="' + esc(key) + '">' +
+                        '<input type="checkbox" data-sf-check="' + esc(key) + '" data-sf-supplier="' + esc(sid) + '" data-sf-spu="' + esc(spu.key) + '" class="mt-0.5 rounded border-slate-300 text-brand-600 shrink-0" ' + checked + '>' +
+                        '<div class="min-w-0 flex-1">' +
+                        '<div class="flex flex-wrap items-center gap-1.5 mb-0.5">' +
+                        '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-[11px] font-bold text-slate-600">' + esc(sku.skuSpec) + '</span>' +
+                        '<span class="text-[10px] text-slate-500">欠货 <span class="font-mono text-rose-600 font-bold">' + esc(baseNeed) + '</span>' +
+                        (baseUnit ? ' ' + esc(baseUnit) : '') + '</span>' +
+                        (purchaseUnit && String(purchaseUnit) !== String(baseUnit)
+                            ? '<span class="text-[10px] text-slate-400">→ 建议 <span class="font-mono text-brand-600 font-bold">' + esc(qty) + '</span> ' + esc(purchaseUnit) + '</span>'
+                            : '') +
+                        dualGapBadgeHtml(line) +
+                        (line.partialGap
+                            ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 font-bold">部分缺口</span>'
+                            : '') +
+                        (orderN > 1
+                            ? '<span class="text-[9px] text-slate-400">覆盖 ' + esc(orderN) + ' 笔订单</span>'
+                            : '') +
+                        '</div>' +
+                        purchaseLineFieldsHtml(line, key, qty) +
+                        '</div></div>';
                 }).join('');
                 return '<div class="rounded-lg border border-slate-100 bg-slate-50/50 mt-2 overflow-hidden" data-sf-spu="' + esc(spu.key) + '">' +
                     '<div class="flex items-center gap-2 px-2.5 py-2 bg-white border-b border-slate-100">' +
@@ -511,19 +796,20 @@
                     '<div class="px-2.5 pb-2">' + skuBlocks + '</div></div>';
             }).join('');
             var needSupplier = sid === 'none' || sid === '' || sid == null;
+            var groupTitle = needSupplier ? '散采 / 未指定供应商' : (g.supplierName || '未指定供应商');
             return '<div class="rounded-xl border border-slate-200 bg-white p-3 mb-3" data-sf-group="' + esc(sid) + '">' +
                 '<div class="flex items-center justify-between gap-2 mb-1">' +
                 '<p class="text-xs font-bold text-slate-700"><i class="ph ph-truck text-brand-500"></i> ' +
-                esc(g.supplierName || '未指定供应商') +
+                esc(groupTitle) +
                 ' <span class="text-slate-400 font-normal">(' + lines.length + ')</span></p>' +
                 '<button type="button" class="text-[10px] font-bold text-brand-600" data-sf-select-group="' + esc(sid) + '">全选本组</button>' +
                 '</div>' +
-                (needSupplier
-                    ? '<p class="text-[10px] text-amber-600 mb-1">本组无固定供应商，生成前请先在产品档案绑定，或稍后在进货单中指定</p>'
-                    : '') +
+                (needSupplier ? supplierOverrideSelectHtml(sid) : '') +
                 spuHtml + '</div>';
         }).join('');
         bindRowEvents(body);
+        bindPurchasePriceEvents(body);
+        applyPurchaseUnitPricesStrategy(body);
         body.querySelectorAll('[data-sf-select-group]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var sid = btn.getAttribute('data-sf-select-group');
@@ -531,6 +817,11 @@
                     cb.checked = true;
                     state.selected.purchase[cb.getAttribute('data-sf-check')] = true;
                 });
+            });
+        });
+        body.querySelectorAll('[data-sf-supplier-override]').forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                state.purchaseSupplierOverride = String(sel.value || '');
             });
         });
     }
@@ -662,8 +953,12 @@
         var docType = state.tab === 'ship' ? 'SHIP_PICK_LIST'
             : (state.tab === 'transfer' ? 'TRANSFER_PICK_LIST' : 'SHORTAGE_FULFILLMENT_LIST');
         var titleHint = state.tab === 'ship' ? '发货' : (state.tab === 'transfer' ? '调货' : '进货');
+        var isPurchase = state.tab === 'purchase';
         var printLines = (lines || []).map(function (line) {
-            var qty = lineSuggestQty(line);
+            var qty = isPurchase ? purchaseSuggestQty(line) : lineSuggestQty(line);
+            var unit = isPurchase
+                ? (line.purchaseUnit || line.baseUnit || line.base_unit || '')
+                : '';
             var src = line.sourceWarehouseName || '';
             var tgt = line.targetWarehouseName || '';
             var route = state.tab === 'transfer'
@@ -676,13 +971,19 @@
             if (line.driverName || line.vehiclePlate) {
                 recvParts.push([line.driverName, line.vehiclePlate].filter(Boolean).join(' / '));
             }
+            var baseNeed = isPurchase ? purchaseBaseNeed(line) : null;
             return {
                 productName: line.spuName || line.productName || '产品',
                 specDisplay: line.skuSpec || line.sku_spec || '',
                 quantity: qty,
+                unitName: unit,
                 warehouseRoute: route,
-                orderCode: line.orderCode || '',
-                customerName: line.customerName || '',
+                orderCode: isPurchase
+                    ? (line.orderCount > 1 ? ('覆盖' + line.orderCount + '笔') : '')
+                    : (line.orderCode || ''),
+                customerName: isPurchase
+                    ? (baseNeed != null ? ('欠货' + baseNeed + (line.baseUnit ? line.baseUnit : '')) : '')
+                    : (line.customerName || ''),
                 recvInfo: recvParts.join(' · ')
             };
         });
@@ -692,7 +993,9 @@
         return {
             merchant: { name: shopName, footerText: '欠货履约·' + titleHint + '清单' },
             counterparty: { name: '欠货履约工作台' },
-            templateColumns: ['productName', 'specDisplay', 'quantity', 'warehouseRoute', 'customerName', 'orderCode'],
+            templateColumns: isPurchase
+                ? ['productName', 'specDisplay', 'quantity', 'warehouseRoute']
+                : ['productName', 'specDisplay', 'quantity', 'warehouseRoute', 'customerName', 'orderCode'],
             lines: printLines,
             summary: { lineCount: printLines.length, totalAmount: null },
             meta: {
@@ -923,27 +1226,45 @@
             }
             var key = lineKey(line);
             var qtyInp = body.querySelector('[data-sf-qty="' + key + '"]');
-            var qty = qtyInp ? (parseInt(qtyInp.value, 10) || 0) : (line.suggestQty || line.shortageQty || 0);
+            var qty = qtyInp ? (parseInt(qtyInp.value, 10) || 0)
+                : purchaseSuggestQty(line);
+            var sourceIds = Array.isArray(line.sourceItemIds) && line.sourceItemIds.length
+                ? line.sourceItemIds.slice()
+                : (line.itemId != null ? [line.itemId] : []);
             groups[sid].lines.push({
                 line: line,
                 qty: qty,
-                itemId: line.itemId
+                sourceItemIds: sourceIds
             });
         });
 
         var keys = Object.keys(groups);
-        for (var i = 0; i < keys.length; i++) {
-            if (keys[i] === 'none') {
-                notify('存在未指定供应商的明细，请先在产品档案绑定供应商，或取消勾选后重试', 'warning');
-                return;
+
+        // 未指定组：可用组内下拉临时指定供应商；仍可不选，直接生成无供应商草稿
+        var overrideSel = body.querySelector('[data-sf-supplier-override="none"]');
+        var overrideId = overrideSel ? String(overrideSel.value || '').trim() : (state.purchaseSupplierOverride || '');
+        if (groups.none) {
+            if (overrideId && !isNaN(Number(overrideId)) && Number(overrideId) > 0) {
+                groups.none.supplierId = Number(overrideId);
+                var foundSup = state.suppliers.find(function (s) { return String(s.id) === String(overrideId); });
+                groups.none.supplierName = foundSup ? foundSup.name : ('供应商#' + overrideId);
+            } else {
+                groups.none.supplierId = null;
+                groups.none.supplierName = '散采 / 未指定';
             }
         }
 
+        var unassignedN = groups.none && groups.none.supplierId == null ? 1 : 0;
         var ok = true;
         if (global.TM_UI && global.TM_UI.confirm) {
+            var msg = '将生成 ' + keys.length + ' 张进货草稿';
+            if (unassignedN) {
+                msg += '（含无供应商草稿，可稍后在进货单中补填）';
+            }
+            msg += '，是否继续？';
             ok = await global.TM_UI.confirm({
                 title: '转进货草稿',
-                message: '将按 ' + keys.length + ' 个供应商分别生成进货草稿，是否继续？',
+                message: msg,
                 confirmLabel: '生成草稿',
                 cancelLabel: '取消'
             });
@@ -961,22 +1282,32 @@
             var itemIds = [];
             group.lines.forEach(function (x) {
                 if (x.qty <= 0) return;
-                var price = Number(x.line.unitPrice) || 0;
+                var key = lineKey(x.line);
+                var priceInp = body.querySelector('[data-sf-price="' + key + '"]');
+                var unitSel = body.querySelector('[data-sf-unit="' + key + '"]');
+                var price = priceInp ? (parseFloat(priceInp.value) || 0)
+                    : (Number(x.line.unitPrice) || Number(x.line.purchasePrice) || 0);
+                var unitName = unitSel ? String(unitSel.value || '').trim()
+                    : (x.line.purchaseUnit || x.line.baseUnit || x.line.base_unit || '');
+                // 聚合行：每 SKU 一条进货明细
                 items.push({
                     productId: Number(x.line.productId),
                     skuId: x.line.sku_id != null ? x.line.sku_id : x.line.skuId,
                     quantity: x.qty,
                     unitPrice: price,
-                    unitName: x.line.purchaseUnit || x.line.base_unit || '',
+                    unitName: unitName,
                     batchNo: ''
                 });
                 total += x.qty * price;
-                itemIds.push(x.itemId);
+                (x.sourceItemIds || []).forEach(function (id) {
+                    if (id != null && itemIds.indexOf(id) < 0) itemIds.push(id);
+                });
             });
             if (!items.length) continue;
             try {
+                var sidForSave = group.supplierId != null ? Number(group.supplierId) : null;
                 var purchaseData = {
-                    supplierId: group.supplierId,
+                    supplierId: sidForSave,
                     purchaseStatus: 'DRAFT',
                     purchaseDate: purchaseDate,
                     totalAmount: total,
@@ -987,7 +1318,7 @@
                 var requestData = {
                     purchase: purchaseData,
                     items: items,
-                    supplierId: group.supplierId,
+                    supplierId: sidForSave,
                     purchaseStatus: 'DRAFT',
                     purchaseDate: purchaseDate,
                     totalAmount: total
@@ -1056,7 +1387,8 @@
             if (typeof global.TM_applyDialogShell === 'function') global.TM_applyDialogShell(modal);
             modal.classList.remove('hidden');
         }
-        loadWarehouses().then(loadData);
+        state.purchaseSupplierOverride = '';
+        Promise.all([loadWarehouses(), loadSuppliers()]).then(loadData);
     }
 
     function closeModal() {

@@ -190,7 +190,7 @@ function TM_ensureRapidOrderScripts(done) {
         'tm-industry-ui.js?v=20260630',
         'tm-workbench-profile.js?v=20260706fix1',
         'tm-first-login-wizard.js?v=20260630',
-        'rapid-order.js?v=20260723fix2
+        'rapid-order.js?v=20260723fix2'
     ];
     function finish() {
         window.__TM_RAPID_ORDER_LOADING = false;
@@ -398,6 +398,10 @@ function TM_injectModuleScripts(htmlString, moduleKey) {
                 return;
             }
             if (/injectCommonUI/.test(text) && text.length < 600) {
+                return;
+            }
+            // 丢弃独立页 → 主壳的跳转桩，避免注入后误 replace 当前 index-app
+            if (/location\.replace\s*\(\s*target\s*\)/.test(text) && /index-app\.html/.test(text) && text.length < 1200) {
                 return;
             }
             queue.push({ kind: 'inline', text: srcScript.textContent || '' });
@@ -1868,6 +1872,7 @@ function TM_bootIndexAppShell() {
     if (typeof TM_resetShellOverlay === 'function') {
         TM_resetShellOverlay();
     }
+    TM_lockShellSwitchTab();
     TM_renderIdentityTabbar();
     if (TM_isStandaloneOpsHub()) {
         TM_bootOpsHubShell();
@@ -1878,6 +1883,7 @@ function TM_bootIndexAppShell() {
         return;
     }
     initNavigationFromConfig();
+    TM_bindDesktopSidebarNav();
     TM_bindAppShellTabbar();
     TM_syncAppShellMetrics();
     if (typeof TM_reconcileShellOverlay === 'function') {
@@ -2033,11 +2039,44 @@ function switchTab(tabId) {
 
 window.TM_shellSwitchTab = switchTab;
 
+/** 主壳页锁定 switchTab，避免 dashboard 内联旧实现覆盖后侧栏跳到错误相对路径 */
+function TM_isIndexAppShellPage() {
+    if (document.getElementById('tm-app-tabbar') && document.getElementById('view-dashboard')) {
+        return true;
+    }
+    try {
+        return /index-app\.html$/i.test(window.location.pathname || '');
+    } catch (ePath) {
+        return false;
+    }
+}
+
+function TM_lockShellSwitchTab() {
+    if (!TM_isIndexAppShellPage()) {
+        window.switchTab = window.TM_shellSwitchTab || switchTab;
+        return;
+    }
+    try {
+        Object.defineProperty(window, 'switchTab', {
+            configurable: true,
+            enumerable: true,
+            get: function () { return window.TM_shellSwitchTab || switchTab; },
+            set: function () { /* ignore module overwrite */ }
+        });
+    } catch (eLock) {
+        window.switchTab = window.TM_shellSwitchTab || switchTab;
+    }
+}
+TM_lockShellSwitchTab();
+
 const TM_SHELL_NAV_FN_NAMES = ['switchTab', 'loadDashboard', 'loadSmartOps', 'loadCRM', 'loadProductCenter', 'loadSupplier'];
 const TM_SHELL_NAV_FN_SNAPSHOT = {};
 
 function TM_captureShellNavigationGlobals() {
     TM_SHELL_NAV_FN_NAMES.forEach(function (name) {
+        if (name === 'switchTab') {
+            return;
+        }
         if (typeof window[name] === 'function') {
             TM_SHELL_NAV_FN_SNAPSHOT[name] = window[name];
         }
@@ -2045,9 +2084,7 @@ function TM_captureShellNavigationGlobals() {
 }
 
 function TM_restoreShellNavigationGlobals() {
-    if (typeof window.TM_shellSwitchTab === 'function') {
-        window.switchTab = window.TM_shellSwitchTab;
-    }
+    TM_lockShellSwitchTab();
     TM_SHELL_NAV_FN_NAMES.forEach(function (name) {
         if (name === 'switchTab') {
             return;
@@ -2059,6 +2096,38 @@ function TM_restoreShellNavigationGlobals() {
 }
 
 TM_captureShellNavigationGlobals();
+
+/** 桌面侧栏改为调用 TM_shellSwitchTab，不依赖可被覆盖的 window.switchTab / 内联 onclick */
+function TM_bindDesktopSidebarNav() {
+    var aside = document.querySelector('body > aside');
+    if (!aside || aside.getAttribute('data-tm-shell-aside') === '1') {
+        return;
+    }
+    aside.setAttribute('data-tm-shell-aside', '1');
+    aside.querySelectorAll('.nav-btn[data-tab], .nav-btn[onclick*="switchTab"]').forEach(function (btn) {
+        var tab = btn.getAttribute('data-tab');
+        if (!tab) {
+            var oc = btn.getAttribute('onclick') || '';
+            var m = oc.match(/switchTab\(\s*['"]([^'"]+)['"]\s*\)/);
+            if (m) {
+                tab = m[1];
+            }
+        }
+        if (!tab) {
+            return;
+        }
+        btn.setAttribute('data-tab', tab);
+        btn.setAttribute('data-tm-nav', tab);
+        btn.removeAttribute('onclick');
+        btn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            var fn = window.TM_shellSwitchTab;
+            if (typeof fn === 'function') {
+                fn(tab);
+            }
+        });
+    });
+}
 
 function openAIAnalysis() {
     if (window.TM_BizAI && typeof window.TM_BizAI.openAIAnalysis === 'function') {
@@ -2334,7 +2403,7 @@ function TM_ensureShortageFulfillmentScripts(done) {
         return;
     }
     var s = document.createElement('script');
-    s.src = '/assets/js/shortage-fulfillment.js?v=20260723fix2
+    s.src = '/assets/js/shortage-fulfillment.js?v=20260725sf6';
     s.setAttribute('data-tm-module', 'dashboard');
     s.setAttribute('data-tm-shortage-fulfillment', '1');
     s.onload = function () {
