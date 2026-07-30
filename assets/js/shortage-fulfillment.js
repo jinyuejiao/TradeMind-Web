@@ -470,6 +470,7 @@
             }).join('');
         }
         bindRowEvents(body);
+        if (state.tab === 'ship') bindShipScanEvents(body);
     }
 
     function emptyHtml(tab) {
@@ -570,15 +571,29 @@
         var key = lineKey(line);
         var ft = line.fulfillmentType || '';
         if (ft === 'LOGISTICS') {
+            var preBrand = '';
+            if (global.TM_LogisticsDetect && typeof global.TM_LogisticsDetect.normalizeBrand === 'function') {
+                preBrand = global.TM_LogisticsDetect.normalizeBrand(line.logisticsBrand || line.logisticsProvider || '') || '';
+            } else {
+                preBrand = line.logisticsBrand || '';
+            }
             var brands = LOGISTICS_BRANDS.map(function (b) {
-                var sel = (line.logisticsBrand === b) ? ' selected' : '';
+                var sel = (preBrand === b) ? ' selected' : '';
                 return '<option value="' + esc(b) + '"' + sel + '>' + esc(b) + '</option>';
             }).join('');
-            return '<div class="mt-1.5 flex flex-col sm:flex-row gap-1.5 min-w-0" data-sf-ship-edit="' + esc(key) + '">' +
+            return '<div class="mt-1.5 flex flex-col gap-1.5 min-w-0" data-sf-ship-edit="' + esc(key) + '">' +
+                '<div class="flex flex-col sm:flex-row gap-1.5 min-w-0">' +
                 '<select data-sf-log-brand="' + esc(key) + '" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1" title="物流品牌">' +
                 '<option value="">物流品牌</option>' + brands + '</select>' +
+                '<div class="flex gap-1 min-w-0 flex-[1.4]">' +
                 '<input type="text" data-sf-log-tracking="' + esc(key) + '" value="' + esc(line.trackingNo || '') + '" ' +
-                'placeholder="运单号" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-[1.2]"></div>';
+                'placeholder="运单号（可扫码）" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1" ' +
+                'autocomplete="off" inputmode="text">' +
+                '<button type="button" data-sf-scan-tracking="' + esc(key) + '" ' +
+                'class="shrink-0 px-2 py-1 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-brand-600 hover:bg-brand-50" ' +
+                'title="扫码填入运单号并识别物流">' +
+                '<i class="ph ph-barcode"></i> 扫码</button>' +
+                '</div></div></div>';
         }
         if (ft === 'DELIVERY_VEHICLE') {
             return '<div class="mt-1.5 flex flex-col sm:flex-row gap-1.5 min-w-0" data-sf-ship-edit="' + esc(key) + '">' +
@@ -588,6 +603,70 @@
                 'placeholder="车牌" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1"></div>';
         }
         return '';
+    }
+
+    function applyTrackingAndDetect(key, raw) {
+        var body = $('sf-list-body');
+        if (!body) return;
+        var trackEl = body.querySelector('[data-sf-log-tracking="' + key + '"]');
+        var brandEl = body.querySelector('[data-sf-log-brand="' + key + '"]');
+        var cleaned = raw;
+        var detected = null;
+        if (global.TM_LogisticsDetect) {
+            detected = global.TM_LogisticsDetect.detectBrand(raw);
+            cleaned = detected.trackingNo || global.TM_LogisticsDetect.cleanTrackingNo(raw);
+        } else {
+            cleaned = String(raw || '').trim();
+        }
+        if (trackEl) trackEl.value = cleaned || '';
+        if (brandEl && detected && detected.brand && detected.confidence >= 0.6) {
+            if (global.TM_LogisticsDetect.applyToSelect(brandEl, detected.brand)) {
+                notify('已识别为' + detected.brand, 'success');
+            }
+        } else if (cleaned && brandEl && !(brandEl.value)) {
+            notify('已填入运单号，请选择物流品牌', 'info');
+        }
+    }
+
+    function scanTrackingForShip(key) {
+        if (!global.TmSerialCapture || typeof global.TmSerialCapture.open !== 'function') {
+            notify('扫码组件未加载', 'error');
+            return;
+        }
+        global.TmSerialCapture.open({
+            mode: 'tracking',
+            expectedQty: 1,
+            onComplete: function (serials) {
+                if (serials && serials.length) {
+                    applyTrackingAndDetect(key, serials[0]);
+                }
+            }
+        });
+    }
+
+    function bindShipScanEvents(body) {
+        if (!body) return;
+        body.querySelectorAll('[data-sf-scan-tracking]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                scanTrackingForShip(btn.getAttribute('data-sf-scan-tracking'));
+            });
+        });
+        body.querySelectorAll('[data-sf-log-tracking]').forEach(function (inp) {
+            inp.addEventListener('change', function () {
+                var key = inp.getAttribute('data-sf-log-tracking');
+                if (!inp.value) return;
+                applyTrackingAndDetect(key, inp.value);
+            });
+            inp.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    var key = inp.getAttribute('data-sf-log-tracking');
+                    applyTrackingAndDetect(key, inp.value);
+                }
+            });
+        });
     }
 
     function shipLineControlsHtml(line) {
@@ -1175,7 +1254,13 @@
                 var trackEl = body ? body.querySelector('[data-sf-log-tracking="' + key + '"]') : null;
                 payload.shipmentType = 'EXPRESS';
                 payload.logisticsBrand = brandEl ? brandEl.value : (line.logisticsBrand || '');
-                payload.trackingNo = trackEl ? trackEl.value.trim() : (line.trackingNo || '');
+                var rawTrack = trackEl ? trackEl.value.trim() : (line.trackingNo || '');
+                payload.trackingNo = (global.TM_LogisticsDetect && global.TM_LogisticsDetect.cleanTrackingNo)
+                    ? global.TM_LogisticsDetect.cleanTrackingNo(rawTrack) : rawTrack;
+                if (payload.logisticsBrand && global.TM_LogisticsDetect && global.TM_LogisticsDetect.normalizeBrand) {
+                    payload.logisticsBrand = global.TM_LogisticsDetect.normalizeBrand(payload.logisticsBrand)
+                        || payload.logisticsBrand;
+                }
             } else if (ft === 'DELIVERY_VEHICLE') {
                 var driverEl = body ? body.querySelector('[data-sf-driver="' + key + '"]') : null;
                 var plateEl = body ? body.querySelector('[data-sf-plate="' + key + '"]') : null;

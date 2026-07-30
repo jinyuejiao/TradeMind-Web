@@ -2390,30 +2390,45 @@ function TM_ensureShortageFulfillmentScripts(done) {
         if (typeof done === 'function') done();
         return;
     }
-    var existing = document.querySelector('script[data-tm-shortage-fulfillment="1"], script[src*="shortage-fulfillment.js"]');
-    if (existing) {
-        var polls = 0;
-        var timer = setInterval(function () {
-            polls++;
-            if (TM_isShortageFulfillmentReady() || polls > 40) {
-                clearInterval(timer);
-                if (typeof done === 'function') done();
-            }
-        }, 50);
+    function loadShortageMain() {
+        var existing = document.querySelector('script[data-tm-shortage-fulfillment="1"], script[src*="shortage-fulfillment.js"]');
+        if (existing) {
+            var polls = 0;
+            var timer = setInterval(function () {
+                polls++;
+                if (TM_isShortageFulfillmentReady() || polls > 40) {
+                    clearInterval(timer);
+                    if (typeof done === 'function') done();
+                }
+            }, 50);
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = '/assets/js/shortage-fulfillment.js?v=20260730sf7';
+        s.setAttribute('data-tm-module', 'dashboard');
+        s.setAttribute('data-tm-shortage-fulfillment', '1');
+        s.onload = function () {
+            if (typeof done === 'function') done();
+        };
+        s.onerror = function () {
+            console.warn('[TM] shortage-fulfillment.js 加载失败');
+            if (typeof done === 'function') done();
+        };
+        document.head.appendChild(s);
+    }
+    if (!window.TM_LogisticsDetect && !document.querySelector('script[src*="tm-logistics-detect.js"]')) {
+        var det = document.createElement('script');
+        det.src = '/assets/js/tm-logistics-detect.js?v=20260730log1';
+        det.setAttribute('data-tm-module', 'dashboard');
+        det.onload = loadShortageMain;
+        det.onerror = function () {
+            console.warn('[TM] tm-logistics-detect.js 加载失败');
+            loadShortageMain();
+        };
+        document.head.appendChild(det);
         return;
     }
-    var s = document.createElement('script');
-    s.src = '/assets/js/shortage-fulfillment.js?v=20260725sf6';
-    s.setAttribute('data-tm-module', 'dashboard');
-    s.setAttribute('data-tm-shortage-fulfillment', '1');
-    s.onload = function () {
-        if (typeof done === 'function') done();
-    };
-    s.onerror = function () {
-        console.warn('[TM] shortage-fulfillment.js 加载失败');
-        if (typeof done === 'function') done();
-    };
-    document.head.appendChild(s);
+    loadShortageMain();
 }
 
 function openShortageFulfillment() {
