@@ -2593,7 +2593,16 @@ window.ProductModule = {
                 window.TM_UI.showNotification('进货单已生成（待审核），可在供应商管理中查看', 'success');
             }
             self.removePurchaseGenSupplierGroup(supplierId);
-            window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+            try {
+                if (typeof window.TM_emitPurchasesChanged === 'function') {
+                    window.TM_emitPurchasesChanged({ source: 'purchase-gen' });
+                } else if (window.parent && window.parent !== window
+                    && typeof window.parent.TM_emitPurchasesChanged === 'function') {
+                    window.parent.TM_emitPurchasesChanged({ source: 'purchase-gen' });
+                } else {
+                    window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+                }
+            } catch (evEmit) { /* ignore */ }
             try {
                 var refreshResp = await window.wrappedFetch('/api/v1/supp/purchases/suggestions/generation', { method: 'GET' });
                 var refreshWrap = await window.handleApiResponse(refreshResp);

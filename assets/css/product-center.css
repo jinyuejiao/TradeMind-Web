@@ -446,11 +446,6 @@ html.tm-embedded #purchase-modal.tm-purchase-modal,
     overflow: auto;
 }
 
-.tm-purchase-items-expand-btn.is-expanded i {
-    transform: rotate(180deg);
-    transition: transform 0.15s ease;
-}
-
 .tm-purchase-items-expand-btn i {
     transition: transform 0.15s ease;
 }
@@ -1057,6 +1052,46 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
         top: 0;
         z-index: 1;
     }
+}
+
+/* 欠货履约：日期/筛选项防溢出 + 列表扩展 */
+#shortage-fulfillment-modal input[type="date"].form-input,
+#shortage-fulfillment-modal #sf-date-from,
+#shortage-fulfillment-modal #sf-date-to,
+#purchase-modal.tm-purchase-modal input[type="date"].form-input,
+#purchase-modal.tm-purchase-modal #purchase-date {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    min-height: 2.5rem;
+    line-height: 1.25;
+}
+
+#shortage-fulfillment-modal.tm-sf-modal--list-expanded #sf-filter-block .sf-filter-fields,
+#shortage-fulfillment-modal.tm-sf-modal--list-expanded #sf-filter-block .sf-action-row {
+    display: none !important;
+}
+
+#shortage-fulfillment-modal.tm-sf-modal--list-expanded .tm-dialog-panel {
+    max-height: 100dvh;
+    height: 100dvh;
+}
+
+#shortage-fulfillment-modal.tm-sf-modal--list-expanded #sf-list-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.sf-list-expand-btn.is-expanded i,
+.tm-purchase-items-expand-btn.is-expanded i {
+    transform: rotate(180deg);
+    transition: transform 0.15s ease;
+}
+
+.sf-list-expand-btn i {
+    transition: transform 0.15s ease;
 }
 
 /* 欠货履约：紧凑数量/单位/单价（覆盖全局 input/select width:100%） */

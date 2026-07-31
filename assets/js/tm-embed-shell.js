@@ -44,22 +44,22 @@
         }
     }
 
-    /** 非 TM_openUnifiedModal 的浮层（如 TmConfirm）与 overlayDepth 共用计数，避免重复 notify */
+    /** 非 TM_openUnifiedModal 的浮层（如 TmConfirm）与 overlayDepth 共用计数 */
     function pushEmbedOverlayRef() {
         overlayDepth += 1;
         if (overlayDepth === 1) {
             applyLocalOverlay(true);
+            window.TM_notifyEmbedModal(true);
         }
-        window.TM_notifyEmbedModal(true);
     }
 
     function popEmbedOverlayRef() {
         overlayDepth = Math.max(0, overlayDepth - 1);
-        window.TM_notifyEmbedModal(false);
         if (overlayDepth === 0) {
             applyLocalOverlay(false);
+            window.TM_notifyEmbedModal(false);
             var anyOpen = document.querySelector(
-                '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden)'
+                '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden), #tm-confirm-modal:not(.hidden)'
             );
             if (!anyOpen) {
                 document.body.style.overflow = '';
@@ -138,7 +138,7 @@
         applyDialogShell: applyDialogShell,
         reconcileOverlay: function () {
             var anyOpen = document.querySelector(
-                '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden), #tm-confirm-modal:not(.hidden), #tm-po-variant-sheet:not(.hidden)'
+                '.tm-unified-mobile-modal:not(.hidden), .tm-product-edit-modal:not(.hidden), .tm-mobile-sheet-modal:not(.hidden), #tm-confirm-modal:not(.hidden), #tm-po-variant-sheet:not(.hidden), #tm-transfer-variant-sheet:not(.hidden)'
             );
             if (!anyOpen && overlayDepth > 0) {
                 while (overlayDepth > 0) {

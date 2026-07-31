@@ -459,14 +459,14 @@
             body.innerHTML = emptyHtml(state.tab);
             return;
         }
-        var groups = groupBySpuSku(lines);
         if (state.tab === 'transfer') {
+            var groups = groupBySpuSku(lines);
             body.innerHTML = groups.map(function (spu) {
                 return transferSpuHtml(spu);
             }).join('');
         } else {
-            body.innerHTML = groups.map(function (spu) {
-                return shipSpuHtml(spu);
+            body.innerHTML = groupShipByCustomer(lines).map(function (cust) {
+                return shipCustomerHtml(cust);
             }).join('');
         }
         bindRowEvents(body);
@@ -553,11 +553,105 @@
         return ft || '';
     }
 
-    function shipRecvHtml(line) {
-        var ft = line.fulfillmentType || '';
-        var name = line.contactName || '';
-        var phone = line.contactPhone || '';
-        var addr = line.address || '';
+    function shipCustomerIdOf(line) {
+        if (line.customerId != null && line.customerId !== '') return String(line.customerId);
+        if (line.cust_id != null && line.cust_id !== '') return String(line.cust_id);
+        return 'name:' + String(line.customerName || '未知客户');
+    }
+
+    function shipRecvFingerprint(line) {
+        return [
+            line.fulfillmentType || '',
+            line.contactName || '',
+            line.contactPhone || '',
+            line.address || '',
+            line.targetWarehouseId != null ? line.targetWarehouseId
+                : (line.sourceWarehouseId != null ? line.sourceWarehouseId : '')
+        ].join('|');
+    }
+
+    function shipMergeKey(line) {
+        // DOM data-* / querySelector 安全键（避免引号与特殊字符打断选择器）
+        return (shipCustomerIdOf(line) + '__' + (line.fulfillmentType || '') + '__' + shipRecvFingerprint(line))
+            .replace(/["'\\<>]/g, '_')
+            .replace(/\s+/g, ' ');
+    }
+
+    /** 客户 → 可合并发货组（同履约+同收货）→ 订单 → 产品行 */
+    function groupShipByCustomer(lines) {
+        var custMap = {};
+        var custOrder = [];
+        (lines || []).forEach(function (line) {
+            var cid = shipCustomerIdOf(line);
+            if (!custMap[cid]) {
+                custMap[cid] = {
+                    key: cid,
+                    customerId: line.customerId != null ? line.customerId : line.cust_id,
+                    customerName: line.customerName || '未知客户',
+                    mergeMap: {},
+                    mergeOrder: [],
+                    qtyTotal: 0,
+                    lineCount: 0
+                };
+                custOrder.push(cid);
+            }
+            var cust = custMap[cid];
+            var mk = shipMergeKey(line);
+            if (!cust.mergeMap[mk]) {
+                cust.mergeMap[mk] = {
+                    key: mk,
+                    fulfillmentType: line.fulfillmentType || '',
+                    contactName: line.contactName || '',
+                    contactPhone: line.contactPhone || '',
+                    address: line.address || '',
+                    logisticsBrand: line.logisticsBrand || line.logisticsProvider || '',
+                    trackingNo: line.trackingNo || '',
+                    driverName: line.driverName || '',
+                    vehiclePlate: line.vehiclePlate || '',
+                    warehouseName: line.targetWarehouseName || line.sourceWarehouseName || '',
+                    orderMap: {},
+                    orderOrder: [],
+                    lines: [],
+                    qtyTotal: 0
+                };
+                cust.mergeOrder.push(mk);
+            }
+            var merge = cust.mergeMap[mk];
+            merge.lines.push(line);
+            var q = lineSuggestQty(line);
+            merge.qtyTotal += q;
+            cust.qtyTotal += q;
+            cust.lineCount += 1;
+            var oid = String(line.orderId != null ? line.orderId : (line.orderCode || ''));
+            if (!merge.orderMap[oid]) {
+                merge.orderMap[oid] = {
+                    key: oid,
+                    orderId: line.orderId,
+                    orderCode: line.orderCode || ('订单' + oid),
+                    lines: [],
+                    qtyTotal: 0
+                };
+                merge.orderOrder.push(oid);
+            }
+            merge.orderMap[oid].lines.push(line);
+            merge.orderMap[oid].qtyTotal += q;
+        });
+        return custOrder.map(function (cid) {
+            var cust = custMap[cid];
+            cust.mergeGroups = cust.mergeOrder.map(function (mk) {
+                var mg = cust.mergeMap[mk];
+                mg.orders = mg.orderOrder.map(function (oid) { return mg.orderMap[oid]; });
+                return mg;
+            });
+            return cust;
+        });
+    }
+
+    function shipRecvHtmlFromGroup(group) {
+        var ft = group.fulfillmentType || '';
+        var name = group.contactName || '';
+        var phone = group.contactPhone || '';
+        var addr = group.address || '';
         if (!name && !phone && !addr && !ft) return '';
         return '<p class="text-[10px] text-slate-500 mt-0.5 leading-snug">' +
             (ft ? '<span class="text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-600 font-bold mr-1">' + esc(fulfillmentTypeLabel(ft)) + '</span>' : '') +
@@ -567,15 +661,15 @@
             '</p>';
     }
 
-    function shipEditHtml(line) {
-        var key = lineKey(line);
-        var ft = line.fulfillmentType || '';
+    function shipEditHtmlForMerge(group) {
+        var key = group.key;
+        var ft = group.fulfillmentType || '';
         if (ft === 'LOGISTICS') {
             var preBrand = '';
             if (global.TM_LogisticsDetect && typeof global.TM_LogisticsDetect.normalizeBrand === 'function') {
-                preBrand = global.TM_LogisticsDetect.normalizeBrand(line.logisticsBrand || line.logisticsProvider || '') || '';
+                preBrand = global.TM_LogisticsDetect.normalizeBrand(group.logisticsBrand || '') || '';
             } else {
-                preBrand = line.logisticsBrand || '';
+                preBrand = group.logisticsBrand || '';
             }
             var brands = LOGISTICS_BRANDS.map(function (b) {
                 var sel = (preBrand === b) ? ' selected' : '';
@@ -586,7 +680,7 @@
                 '<select data-sf-log-brand="' + esc(key) + '" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1" title="物流品牌">' +
                 '<option value="">物流品牌</option>' + brands + '</select>' +
                 '<div class="flex gap-1 min-w-0 flex-[1.4]">' +
-                '<input type="text" data-sf-log-tracking="' + esc(key) + '" value="' + esc(line.trackingNo || '') + '" ' +
+                '<input type="text" data-sf-log-tracking="' + esc(key) + '" value="' + esc(group.trackingNo || '') + '" ' +
                 'placeholder="运单号（可扫码）" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1" ' +
                 'autocomplete="off" inputmode="text">' +
                 '<button type="button" data-sf-scan-tracking="' + esc(key) + '" ' +
@@ -597,9 +691,9 @@
         }
         if (ft === 'DELIVERY_VEHICLE') {
             return '<div class="mt-1.5 flex flex-col sm:flex-row gap-1.5 min-w-0" data-sf-ship-edit="' + esc(key) + '">' +
-                '<input type="text" data-sf-driver="' + esc(key) + '" value="' + esc(line.driverName || '') + '" ' +
+                '<input type="text" data-sf-driver="' + esc(key) + '" value="' + esc(group.driverName || '') + '" ' +
                 'placeholder="司机" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1">' +
-                '<input type="text" data-sf-plate="' + esc(key) + '" value="' + esc(line.vehiclePlate || '') + '" ' +
+                '<input type="text" data-sf-plate="' + esc(key) + '" value="' + esc(group.vehiclePlate || '') + '" ' +
                 'placeholder="车牌" class="form-input form-input--compact text-[11px] py-1 min-w-0 flex-1"></div>';
         }
         return '';
@@ -669,7 +763,7 @@
         });
     }
 
-    function shipLineControlsHtml(line) {
+    function shipProductLineHtml(line, custKey, mergeKey) {
         var key = lineKey(line);
         var checked = state.selected.ship[key] ? 'checked' : '';
         var qty = lineSuggestQty(line);
@@ -679,35 +773,62 @@
             : (line.lineKind === 'pending_ship'
                 ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 font-bold">待发</span>'
                 : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">欠货可发</span>');
-        return '<div class="rounded-lg bg-white border border-slate-100 p-2.5" data-sf-row="' + esc(key) + '">' +
+        var prod = line.spuName || line.productName || '产品';
+        var spec = line.skuSpec || line.sku_spec || '';
+        return '<div class="rounded-lg bg-white border border-slate-100 px-2.5 py-2" data-sf-row="' + esc(key) + '">' +
             '<div class="flex items-start gap-2">' +
-            '<input type="checkbox" data-sf-check="' + esc(key) + '" data-sf-spu="' + esc(spuKeyOf(line)) + '" class="mt-0.5 rounded border-slate-300 text-brand-600" ' + checked + '>' +
+            '<input type="checkbox" data-sf-check="' + esc(key) + '" data-sf-cust="' + esc(custKey) + '" data-sf-merge="' + esc(mergeKey) + '" class="mt-0.5 rounded border-slate-300 text-brand-600 shrink-0" ' + checked + '>' +
             '<div class="min-w-0 flex-1">' +
-            '<div class="flex flex-wrap items-center gap-1.5">' + badge + '</div>' +
-            '<p class="text-[10px] text-slate-400 mt-0.5 truncate">' + esc(line.orderCode || '') +
-            (line.customerName ? ' · ' + esc(line.customerName) : '') + '</p>' +
-            shipRecvHtml(line) +
-            '<p class="text-[10px] text-slate-500 mt-0.5">发出仓 ' + esc(line.targetWarehouseName || line.sourceWarehouseName || '-') +
-            ' · 数量 <span class="font-mono font-bold text-slate-800">' + esc(qty) + '</span></p>' +
-            shipEditHtml(line) +
-            '</div></div></div>';
+            '<div class="flex flex-wrap items-center gap-1.5">' + badge +
+            '<span class="text-xs font-bold text-slate-800 truncate">' + esc(prod) + '</span>' +
+            (spec ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">' + esc(spec) + '</span>' : '') +
+            '</div>' +
+            '<p class="text-[10px] text-slate-500 mt-0.5">数量 <span class="font-mono font-bold text-slate-800">' + esc(qty) + '</span>' +
+            (line.targetWarehouseName || line.sourceWarehouseName
+                ? ' · 发出仓 ' + esc(line.targetWarehouseName || line.sourceWarehouseName)
+                : '') +
+            '</p></div></div></div>';
     }
 
-    function shipSpuHtml(spu) {
-        var skuBlocks = spu.skuList.map(function (sku) {
-            var linesHtml = sku.lines.map(function (line) {
-                return shipLineControlsHtml(line);
+    function shipMergeGroupHtml(merge, custKey) {
+        var orderBlocks = merge.orders.map(function (ord) {
+            var linesHtml = ord.lines.map(function (line) {
+                return shipProductLineHtml(line, custKey, merge.key);
             }).join('');
-            return '<div class="px-3 py-2 border-t border-slate-50 first:border-0">' +
-                '<div class="flex items-center justify-between gap-2 mb-1.5">' +
-                '<p class="text-xs font-bold text-slate-700"><span class="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">' +
-                esc(sku.skuSpec) + '</span></p>' +
-                '<p class="text-[10px] text-slate-400 shrink-0">待发 <span class="font-mono font-bold text-slate-700">' +
-                esc(sku.qtyTotal) + '</span></p></div>' +
-                '<div class="space-y-2">' + linesHtml + '</div></div>';
+            return '<div class="mt-2 rounded-lg border border-slate-100 bg-slate-50/50 px-2.5 py-2">' +
+                '<p class="text-[11px] font-bold text-slate-600 mb-1.5 truncate">' +
+                '<i class="ph ph-receipt text-slate-400"></i> ' + esc(ord.orderCode) +
+                ' · 待发 <span class="font-mono text-slate-800">' + esc(ord.qtyTotal) + '</span></p>' +
+                '<div class="space-y-1.5">' + linesHtml + '</div></div>';
         }).join('');
-        return '<div class="rounded-xl border border-slate-200 bg-white overflow-hidden mb-3" data-sf-spu="' + esc(spu.key) + '">' +
-            spuHeaderHtml(spu, 'ship') + skuBlocks + '</div>';
+        var multiOrderHint = merge.orders.length > 1
+            ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 font-bold">可合并发货 · ' + merge.orders.length + ' 单</span>'
+            : '';
+        return '<div class="px-3 py-2.5 border-t border-slate-100" data-sf-merge-block="' + esc(merge.key) + '">' +
+            '<div class="flex items-start gap-2 mb-1">' +
+            '<input type="checkbox" data-sf-merge-check="' + esc(merge.key) + '" class="mt-1 rounded border-slate-300 text-brand-600 shrink-0" title="全选本组合并发货">' +
+            '<div class="min-w-0 flex-1">' +
+            '<div class="flex flex-wrap items-center gap-1.5">' + multiOrderHint +
+            (merge.warehouseName ? '<span class="text-[10px] text-slate-400">仓 ' + esc(merge.warehouseName) + '</span>' : '') +
+            '<span class="text-[10px] text-slate-400 ml-auto">合计 <span class="font-mono font-bold text-slate-700">' + esc(merge.qtyTotal) + '</span></span></div>' +
+            shipRecvHtmlFromGroup(merge) +
+            shipEditHtmlForMerge(merge) +
+            '</div></div>' + orderBlocks + '</div>';
+    }
+
+    function shipCustomerHtml(cust) {
+        var mergeHtml = cust.mergeGroups.map(function (mg) {
+            return shipMergeGroupHtml(mg, cust.key);
+        }).join('');
+        return '<div class="rounded-xl border border-slate-200 bg-white overflow-hidden mb-3" data-sf-cust="' + esc(cust.key) + '">' +
+            '<div class="flex items-center gap-2 px-3 py-2.5 bg-slate-50/80 border-b border-slate-100">' +
+            '<input type="checkbox" data-sf-cust-check="' + esc(cust.key) + '" class="rounded border-slate-300 text-brand-600 shrink-0" title="全选本客户">' +
+            '<div class="min-w-0 flex-1">' +
+            '<p class="text-sm font-bold text-slate-800 truncate">' + esc(cust.customerName) + '</p>' +
+            '<p class="text-[10px] text-slate-400 mt-0.5">' + cust.lineCount + ' 行 · 待发合计 ' +
+            '<span class="font-mono font-bold text-rose-600">' + esc(cust.qtyTotal) + '</span>' +
+            (cust.mergeGroups.length > 1 ? ' · ' + cust.mergeGroups.length + ' 组收货' : '') +
+            '</p></div></div>' + mergeHtml + '</div>';
     }
 
     /** 待进货行：数量 / 单位 / 单价（水平紧凑，对齐进货单据字段） */
@@ -911,6 +1032,8 @@
                 var key = cb.getAttribute('data-sf-check');
                 state.selected[state.tab][key] = !!cb.checked;
                 syncSpuCheckbox(body, cb.getAttribute('data-sf-spu'));
+                syncMergeCheckbox(body, cb.getAttribute('data-sf-merge'));
+                syncCustCheckbox(body, cb.getAttribute('data-sf-cust'));
             });
         });
         body.querySelectorAll('[data-sf-spu-check]').forEach(function (cb) {
@@ -923,6 +1046,35 @@
                 });
             });
             syncSpuCheckbox(body, cb.getAttribute('data-sf-spu-check'));
+        });
+        body.querySelectorAll('[data-sf-cust-check]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var custKey = cb.getAttribute('data-sf-cust-check');
+                var on = !!cb.checked;
+                body.querySelectorAll('[data-sf-check][data-sf-cust="' + custKey + '"]').forEach(function (child) {
+                    child.checked = on;
+                    state.selected[state.tab][child.getAttribute('data-sf-check')] = on;
+                });
+                body.querySelectorAll('[data-sf-merge-check]').forEach(function (mcb) {
+                    var custRoot = mcb.closest('[data-sf-cust]');
+                    if (custRoot && custRoot.getAttribute('data-sf-cust') === custKey) {
+                        mcb.checked = on;
+                    }
+                });
+            });
+            syncCustCheckbox(body, cb.getAttribute('data-sf-cust-check'));
+        });
+        body.querySelectorAll('[data-sf-merge-check]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var mergeKey = cb.getAttribute('data-sf-merge-check');
+                var on = !!cb.checked;
+                body.querySelectorAll('[data-sf-check][data-sf-merge="' + mergeKey + '"]').forEach(function (child) {
+                    child.checked = on;
+                    state.selected[state.tab][child.getAttribute('data-sf-check')] = on;
+                    syncCustCheckbox(body, child.getAttribute('data-sf-cust'));
+                });
+            });
+            syncMergeCheckbox(body, cb.getAttribute('data-sf-merge-check'));
         });
         body.querySelectorAll('[data-sf-source]').forEach(function (sel) {
             sel.addEventListener('change', function () {
@@ -959,6 +1111,32 @@
         spuCb.checked = allOn;
     }
 
+    function syncMergeCheckbox(body, mergeKey) {
+        if (!body || !mergeKey) return;
+        var mergeCb = body.querySelector('[data-sf-merge-check="' + mergeKey + '"]');
+        if (!mergeCb) return;
+        var children = body.querySelectorAll('[data-sf-check][data-sf-merge="' + mergeKey + '"]');
+        if (!children.length) return;
+        var allOn = true;
+        children.forEach(function (c) {
+            if (!c.checked) allOn = false;
+        });
+        mergeCb.checked = allOn;
+    }
+
+    function syncCustCheckbox(body, custKey) {
+        if (!body || !custKey) return;
+        var custCb = body.querySelector('[data-sf-cust-check="' + custKey + '"]');
+        if (!custCb) return;
+        var children = body.querySelectorAll('[data-sf-check][data-sf-cust="' + custKey + '"]');
+        if (!children.length) return;
+        var allOn = true;
+        children.forEach(function (c) {
+            if (!c.checked) allOn = false;
+        });
+        custCb.checked = allOn;
+    }
+
     function selectedLinesForTab() {
         var lines = currentLines();
         var sel = state.selected[state.tab] || {};
@@ -980,7 +1158,7 @@
             state.selected[state.tab][cb.getAttribute('data-sf-check')] = !!on;
             if (on) n++;
         });
-        body.querySelectorAll('[data-sf-spu-check]').forEach(function (cb) {
+        body.querySelectorAll('[data-sf-spu-check], [data-sf-cust-check], [data-sf-merge-check]').forEach(function (cb) {
             cb.checked = !!on;
         });
         return n;
@@ -1028,44 +1206,84 @@
         return '至 ' + state.dateTo;
     }
 
+    function buildShipPrintLines(lines) {
+        var printLines = [];
+        var groups = groupShipByCustomer(lines || []);
+        groups.forEach(function (cust) {
+            (cust.mergeGroups || []).forEach(function (merge) {
+                var recvParts = [];
+                if (merge.fulfillmentType) recvParts.push(fulfillmentTypeLabel(merge.fulfillmentType));
+                if (merge.contactName) recvParts.push(merge.contactName);
+                if (merge.contactPhone) recvParts.push(merge.contactPhone);
+                if (merge.address) recvParts.push(merge.address);
+                var recvOnce = recvParts.join(' · ');
+                var firstInMerge = true;
+                (merge.orders || []).forEach(function (ord) {
+                    (ord.lines || []).forEach(function (line) {
+                        var src = line.sourceWarehouseName || '';
+                        var tgt = line.targetWarehouseName || '';
+                        printLines.push({
+                            productName: line.spuName || line.productName || '产品',
+                            specDisplay: line.skuSpec || line.sku_spec || '',
+                            quantity: lineSuggestQty(line),
+                            unitName: '',
+                            warehouseRoute: tgt || src || '-',
+                            orderCode: ord.orderCode || line.orderCode || '',
+                            customerName: firstInMerge ? (cust.customerName || '') : '',
+                            recvInfo: firstInMerge ? recvOnce : ''
+                        });
+                        firstInMerge = false;
+                    });
+                });
+            });
+        });
+        return printLines;
+    }
+
     function buildPickListDoc(lines) {
         var docType = state.tab === 'ship' ? 'SHIP_PICK_LIST'
             : (state.tab === 'transfer' ? 'TRANSFER_PICK_LIST' : 'SHORTAGE_FULFILLMENT_LIST');
         var titleHint = state.tab === 'ship' ? '发货' : (state.tab === 'transfer' ? '调货' : '进货');
         var isPurchase = state.tab === 'purchase';
-        var printLines = (lines || []).map(function (line) {
-            var qty = isPurchase ? purchaseSuggestQty(line) : lineSuggestQty(line);
-            var unit = isPurchase
-                ? (line.purchaseUnit || line.baseUnit || line.base_unit || '')
-                : '';
-            var src = line.sourceWarehouseName || '';
-            var tgt = line.targetWarehouseName || '';
-            var route = state.tab === 'transfer'
-                ? ((src || '-') + ' → ' + (tgt || '-'))
-                : (tgt || src || '-');
-            var recvParts = [];
-            if (line.contactName) recvParts.push(line.contactName);
-            if (line.contactPhone) recvParts.push(line.contactPhone);
-            if (line.address) recvParts.push(line.address);
-            if (line.driverName || line.vehiclePlate) {
-                recvParts.push([line.driverName, line.vehiclePlate].filter(Boolean).join(' / '));
-            }
-            var baseNeed = isPurchase ? purchaseBaseNeed(line) : null;
-            return {
-                productName: line.spuName || line.productName || '产品',
-                specDisplay: line.skuSpec || line.sku_spec || '',
-                quantity: qty,
-                unitName: unit,
-                warehouseRoute: route,
-                orderCode: isPurchase
-                    ? (line.orderCount > 1 ? ('覆盖' + line.orderCount + '笔') : '')
-                    : (line.orderCode || ''),
-                customerName: isPurchase
-                    ? (baseNeed != null ? ('欠货' + baseNeed + (line.baseUnit ? line.baseUnit : '')) : '')
-                    : (line.customerName || ''),
-                recvInfo: recvParts.join(' · ')
-            };
-        });
+        var isShip = state.tab === 'ship';
+        var printLines;
+        if (isShip) {
+            printLines = buildShipPrintLines(lines);
+        } else {
+            printLines = (lines || []).map(function (line) {
+                var qty = isPurchase ? purchaseSuggestQty(line) : lineSuggestQty(line);
+                var unit = isPurchase
+                    ? (line.purchaseUnit || line.baseUnit || line.base_unit || '')
+                    : '';
+                var src = line.sourceWarehouseName || '';
+                var tgt = line.targetWarehouseName || '';
+                var route = state.tab === 'transfer'
+                    ? ((src || '-') + ' → ' + (tgt || '-'))
+                    : (tgt || src || '-');
+                var recvParts = [];
+                if (line.contactName) recvParts.push(line.contactName);
+                if (line.contactPhone) recvParts.push(line.contactPhone);
+                if (line.address) recvParts.push(line.address);
+                if (line.driverName || line.vehiclePlate) {
+                    recvParts.push([line.driverName, line.vehiclePlate].filter(Boolean).join(' / '));
+                }
+                var baseNeed = isPurchase ? purchaseBaseNeed(line) : null;
+                return {
+                    productName: line.spuName || line.productName || '产品',
+                    specDisplay: line.skuSpec || line.sku_spec || '',
+                    quantity: qty,
+                    unitName: unit,
+                    warehouseRoute: route,
+                    orderCode: isPurchase
+                        ? (line.orderCount > 1 ? ('覆盖' + line.orderCount + '笔') : '')
+                        : (line.orderCode || ''),
+                    customerName: isPurchase
+                        ? (baseNeed != null ? ('欠货' + baseNeed + (line.baseUnit ? line.baseUnit : '')) : '')
+                        : (line.customerName || ''),
+                    recvInfo: recvParts.join(' · ')
+                };
+            });
+        }
         var shopName = (global.TM_Tenant && global.TM_Tenant.shopName) ||
             (global.__TM_TENANT && global.__TM_TENANT.name) ||
             'TradeMind 商户';
@@ -1237,7 +1455,7 @@
         if (!ok) return;
         var warehouseId = state.warehouseId ? parseInt(state.warehouseId, 10) : null;
         var lines = picked.map(function (line) {
-            var key = lineKey(line);
+            var mergeKey = shipMergeKey(line);
             var qty = line.shipQty != null ? line.shipQty
                 : (line.suggestQty != null ? line.suggestQty : (line.shortageQty || 0));
             var ft = line.fulfillmentType || '';
@@ -1250,8 +1468,8 @@
                     : (line.targetWarehouseId || line.sourceWarehouseId || warehouseId)
             };
             if (ft === 'LOGISTICS') {
-                var brandEl = body ? body.querySelector('[data-sf-log-brand="' + key + '"]') : null;
-                var trackEl = body ? body.querySelector('[data-sf-log-tracking="' + key + '"]') : null;
+                var brandEl = body ? body.querySelector('[data-sf-log-brand="' + mergeKey + '"]') : null;
+                var trackEl = body ? body.querySelector('[data-sf-log-tracking="' + mergeKey + '"]') : null;
                 payload.shipmentType = 'EXPRESS';
                 payload.logisticsBrand = brandEl ? brandEl.value : (line.logisticsBrand || '');
                 var rawTrack = trackEl ? trackEl.value.trim() : (line.trackingNo || '');
@@ -1262,8 +1480,8 @@
                         || payload.logisticsBrand;
                 }
             } else if (ft === 'DELIVERY_VEHICLE') {
-                var driverEl = body ? body.querySelector('[data-sf-driver="' + key + '"]') : null;
-                var plateEl = body ? body.querySelector('[data-sf-plate="' + key + '"]') : null;
+                var driverEl = body ? body.querySelector('[data-sf-driver="' + mergeKey + '"]') : null;
+                var plateEl = body ? body.querySelector('[data-sf-plate="' + mergeKey + '"]') : null;
                 payload.shipmentType = 'VEHICLE';
                 payload.driverName = driverEl ? driverEl.value.trim() : (line.driverName || '');
                 payload.vehiclePlate = plateEl ? plateEl.value.trim() : (line.vehiclePlate || '');
@@ -1458,10 +1676,24 @@
         notify(msg, fail ? 'warning' : 'success');
     }
 
+    function setListExpanded(expand) {
+        var modal = $('shortage-fulfillment-modal');
+        var btn = $('sf-list-expand-btn');
+        if (!modal) return;
+        var on = expand != null ? !!expand : !modal.classList.contains('tm-sf-modal--list-expanded');
+        modal.classList.toggle('tm-sf-modal--list-expanded', on);
+        if (btn) {
+            btn.classList.toggle('is-expanded', on);
+            btn.title = on ? '恢复默认布局' : '展开列表';
+            btn.setAttribute('aria-label', on ? '恢复默认布局' : '展开列表区域');
+        }
+    }
+
     function openModal() {
         var modal = $('shortage-fulfillment-modal');
         if (!modal) return;
         bindUi();
+        setListExpanded(false);
         state.allTime = true;
         state.dateFrom = '';
         state.dateTo = '';
@@ -1479,6 +1711,7 @@
     function closeModal() {
         var modal = $('shortage-fulfillment-modal');
         if (!modal) return;
+        setListExpanded(false);
         if (typeof global.TM_closeUnifiedModal === 'function') {
             global.TM_closeUnifiedModal(modal);
         } else {
@@ -1494,6 +1727,8 @@
                 renderList();
             };
         });
+        var expandBtn = $('sf-list-expand-btn');
+        if (expandBtn) expandBtn.onclick = function () { setListExpanded(); };
         var refresh = $('sf-refresh-btn');
         if (refresh) refresh.onclick = function () { loadData(); };
         var action = $('sf-action-btn');

@@ -110,11 +110,17 @@ window.SupplierModule = {
         if (!this._tmPurchasesChangedBound) {
             this._tmPurchasesChangedBound = true;
             var self = this;
-            window.addEventListener('tm-purchases-changed', function () {
+            function refreshPurchasesFromEvent() {
                 self.loadPurchases(self.purchaseCurrentPage || 1).then(function () {
                     self.renderPurchases();
                     self.loadPurchaseSummary();
                 });
+            }
+            window.addEventListener('tm-purchases-changed', refreshPurchasesFromEvent);
+            window.addEventListener('message', function (ev) {
+                var data = ev.data;
+                if (!data || data.type !== 'TM_PURCHASES_CHANGED') return;
+                refreshPurchasesFromEvent();
             });
         }
     },
@@ -2941,7 +2947,14 @@ window.SupplierModule = {
                 }
             }
             try {
-                window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+                if (typeof window.TM_emitPurchasesChanged === 'function') {
+                    window.TM_emitPurchasesChanged({ source: 'purchase-save' });
+                } else if (window.parent && window.parent !== window
+                    && typeof window.parent.TM_emitPurchasesChanged === 'function') {
+                    window.parent.TM_emitPurchasesChanged({ source: 'purchase-save' });
+                } else {
+                    window.dispatchEvent(new CustomEvent('tm-purchases-changed'));
+                }
             } catch (evErr) { /* ignore */ }
             return result;
         } catch (error) {
@@ -2985,8 +2998,22 @@ window.SupplierModule = {
     savePurchase: async function() {
         var result = await this.persistPurchase({ refreshList: true });
         if (result && result.success) {
-            this.closePurchaseModal();
-            this.notify('进货单据已保存', 'success', { useDialog: true, title: '保存成功' });
+            var self = this;
+            // 先成功提示，再关弹窗，避免 overlay 计数抖动导致主壳底栏消失
+            if (window.TmConfirm && typeof window.TmConfirm.openSuccess === 'function') {
+                window.TmConfirm.openSuccess('进货单据已保存', {
+                    title: '保存成功',
+                    onConfirm: function () {
+                        self.closePurchaseModal();
+                        if (window.TM_EmbedShell && typeof window.TM_EmbedShell.reconcileOverlay === 'function') {
+                            window.TM_EmbedShell.reconcileOverlay();
+                        }
+                    }
+                });
+            } else {
+                this.notify('进货单据已保存', 'success');
+                this.closePurchaseModal();
+            }
         }
     },
 

@@ -54,16 +54,16 @@
     </script>
     <link rel="stylesheet" href="../../assets/css/theme.css">
     <link rel="stylesheet" href="../CSS/common.css?v=20260707fix1">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260722fix1">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260731ui1">
     <script src="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@latest"></script>
     <script src="../../assets/js/tm-format.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-ui-feedback.js?v=20260524ui"></script>
     <script src="../../assets/js/tm-confirm.js?v=20260709nav1"></script>
-    <script src="../../assets/js/tm-embed-shell.js?v=20260709nav1"></script>
+    <script src="../../assets/js/tm-embed-shell.js?v=20260731embed1"></script>
     <script src="../../assets/js/tm-shell-insets.js?v=20260722fix1"></script>
     <script src="../../assets/js/auth.js?v=20260508r2"></script>
     <script src="../../assets/js/tenant-ops.js?v=20260526po"></script>
-    <script src="../../assets/js/tm-serial-capture.js?v=20260623"></script>
+    <script src="../../assets/js/tm-serial-capture.js?v=20260731scan1"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260716print1">
@@ -76,7 +76,7 @@
     <script src="../../assets/js/tm-industry-ui.js?v=20260706fix1"></script>
     <script src="../../assets/js/tm-product-domain.js?v=20260709po2"></script>
     <script src="../../assets/js/tm-sku-catalog-cache.js?v=20260709po2"></script>
-    <script src="../../assets/js/ui-supplier.js?v=20260722fix1"></script>
+    <script src="../../assets/js/ui-supplier.js?v=20260731po1"></script>
     <script>console.info('[PO] ui-supplier po-spec2 loaded');</script>
     <style>
         .view-toggle-btn { transition: all 0.2s ease; }
@@ -300,18 +300,18 @@
             <div class="tm-document-modal-scroll tm-mobile-modal-body flex-1 min-h-0 overflow-y-auto no-scrollbar">
             <div class="tm-purchase-modal-body flex flex-col px-4 py-3 md:px-6 md:flex-1 md:min-h-0 md:overflow-hidden">
                 <section class="tm-purchase-modal-upper shrink-0">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div class="min-w-0">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-supplier">供应商</label>
-                            <select id="purchase-supplier" class="form-input form-input--compact"><option value="">选择供应商</option></select>
+                            <select id="purchase-supplier" class="form-input form-input--compact w-full max-w-full min-w-0"><option value="">选择供应商</option></select>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-status">状态<span class="text-red-400">*</span></label>
-                            <select id="purchase-status" class="form-input form-input--compact"><option value="">选择状态</option></select>
+                            <select id="purchase-status" class="form-input form-input--compact w-full max-w-full min-w-0"><option value="">选择状态</option></select>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="purchase-date">日期<span class="text-red-400">*</span></label>
-                            <input type="date" id="purchase-date" class="form-input form-input--compact">
+                            <input type="date" id="purchase-date" class="form-input form-input--compact w-full max-w-full min-w-0">
                         </div>
                     </div>
                 </section>

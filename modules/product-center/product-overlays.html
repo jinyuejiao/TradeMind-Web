@@ -269,3 +269,18 @@
         </footer>
     </div>
 </div>
+
+<!-- 调拨规格选择（对齐进货单据 chip + bottom sheet） -->
+<div id="tm-transfer-variant-sheet" class="tm-po-variant-sheet hidden" aria-hidden="true">
+    <div class="tm-po-variant-sheet__mask" id="tm-transfer-variant-mask"></div>
+    <div class="tm-po-variant-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="tm-transfer-variant-title">
+        <div class="tm-po-variant-sheet__head">
+            <span class="font-bold text-sm" id="tm-transfer-variant-title">选择规格</span>
+            <button type="button" id="tm-transfer-variant-close" class="p-1 text-slate-400" aria-label="关闭">
+                <i class="ph ph-x text-lg"></i>
+            </button>
+        </div>
+        <div class="tm-po-variant-sheet__body" id="tm-transfer-variant-body"></div>
+        <button type="button" id="tm-transfer-variant-confirm" class="tm-po-variant-sheet__confirm">确定</button>
+    </div>
+</div>

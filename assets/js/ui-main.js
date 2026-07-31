@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260715variant2';
+    var url = '/modules/product-center/product-overlays.html?v=20260731xfer2';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -1626,6 +1626,28 @@ function TM_emitCustomersChanged(detail) {
 }
 window.TM_emitCustomersChanged = TM_emitCustomersChanged;
 
+/** 进货单据变更后通知供货管理 iframe 等模块刷新列表（CustomEvent 不跨 iframe） */
+function TM_emitPurchasesChanged(detail) {
+    detail = detail || {};
+    try {
+        window.dispatchEvent(new CustomEvent('tm-purchases-changed', { detail: detail }));
+    } catch (e) { /* ignore */ }
+    try {
+        document.querySelectorAll('iframe.tm-module-frame').forEach(function (frame) {
+            try {
+                if (frame.contentWindow) {
+                    frame.contentWindow.postMessage({
+                        type: 'TM_PURCHASES_CHANGED',
+                        purchaseId: detail.purchaseId,
+                        source: detail.source || ''
+                    }, '*');
+                }
+            } catch (e2) { /* ignore */ }
+        });
+    } catch (e3) { /* ignore */ }
+}
+window.TM_emitPurchasesChanged = TM_emitPurchasesChanged;
+
 /** 仓库档案变更后通知各模块刷新仓库下拉 */
 function TM_emitWarehousesChanged(detail) {
     detail = detail || {};
@@ -1804,6 +1826,15 @@ if (!window.__tmEmbedModalListenerBound) {
                 window.TM_shellSwitchTab(data.tab);
             } else if (typeof window.switchTab === 'function') {
                 window.switchTab(data.tab);
+            }
+            return;
+        }
+        if (data.type === 'TM_EMBED_MODAL_RECONCILE') {
+            var reconFrame = TM_findEmbedFrameByWindow(ev.source);
+            if (reconFrame) TM_setEmbedFrameModalExpanded(reconFrame, false);
+            if (!TM_anyEmbedFrameModalOpen()) {
+                window.__TM_embedModalNotifyDepth = 0;
+                if (typeof TM_reconcileShellOverlay === 'function') TM_reconcileShellOverlay();
             }
             return;
         }
@@ -2404,7 +2435,7 @@ function TM_ensureShortageFulfillmentScripts(done) {
             return;
         }
         var s = document.createElement('script');
-        s.src = '/assets/js/shortage-fulfillment.js?v=20260730sf7';
+        s.src = '/assets/js/shortage-fulfillment.js?v=20260731sf8';
         s.setAttribute('data-tm-module', 'dashboard');
         s.setAttribute('data-tm-shortage-fulfillment', '1');
         s.onload = function () {

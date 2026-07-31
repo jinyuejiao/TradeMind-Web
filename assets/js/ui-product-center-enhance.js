@@ -2476,9 +2476,18 @@
             }).join('');
             if (!unitOpts) unitOpts = '<option value="">—</option>';
             var maxQty = row.maxQty != null ? row.maxQty : 0;
+            var specLabel = row.skuKey
+                ? PM.getTransferSkuLabel(stock || PM.findTransferStockBySkuKey(row.skuKey))
+                : '选择规格';
+            var specBtnClass = 'tm-po-spec-btn tm-transfer-spec-btn' + (row.skuKey ? ' is-selected' : '');
+            var specDisabled = row.spuKey ? '' : ' disabled';
             return '<tr class="hover:bg-slate-50 transition-colors" data-row-id="' + row.id + '">' +
                 '<td class="tm-transfer-td tm-transfer-td--product px-2 py-2"><select class="transfer-spu-select form-input w-full text-xs" onchange="window.ProductModule.handleTransferSpuSelect(' + row.id + ', this.value)">' + spuOpts + '</select></td>' +
-                '<td class="tm-transfer-td tm-transfer-td--spec px-2 py-2"><select class="transfer-sku-select form-input w-full text-xs" onchange="window.ProductModule.handleProductSelect(' + row.id + ', this.value)"' + (row.spuKey ? '' : ' disabled') + '>' + skuOpts + '</select></td>' +
+                '<td class="tm-transfer-td tm-transfer-td--spec px-2 py-2">' +
+                '<button type="button" class="' + specBtnClass + '"' + specDisabled +
+                ' onclick="window.ProductModule.openTransferSpecPicker(' + row.id + ')">' +
+                PM.escHtmlText(specLabel) + '</button>' +
+                '<select class="transfer-sku-select hidden" aria-hidden="true" tabindex="-1">' + skuOpts + '</select></td>' +
                 '<td class="tm-transfer-td tm-transfer-td--qty px-2 py-2"><input type="number" min="0" step="1" max="' + maxQty + '" class="transfer-qty-input tm-transfer-num-input form-input" value="' + (row.quantity || 0) + '" oninput="window.ProductModule.calculateRowTotal(' + row.id + ')" title="最多可调 ' + maxQty + '"></td>' +
                 '<td class="tm-transfer-td tm-transfer-td--unit px-2 py-2"><select class="transfer-unit-select form-input w-full text-xs" onchange="window.ProductModule.handleTransferUnitChange(' + row.id + ', this.value)"' + (row.skuKey ? '' : ' disabled') + '>' + unitOpts + '</select></td>' +
                 '<td class="tm-transfer-td tm-transfer-td--price px-2 py-2"><input type="number" min="0" step="0.01" class="transfer-price-input tm-transfer-num-input form-input" value="' + (row.price || 0).toFixed(2) + '" readonly title="按进货价×单位换算自动计算"></td>' +
@@ -2486,7 +2495,112 @@
                 '<td class="tm-transfer-td tm-transfer-td--action px-2 py-2"><button type="button" class="tm-transfer-row-delete" onclick="window.ProductModule.removeProductRow(' + row.id + ')" aria-label="删除行"><i class="ph ph-trash"></i></button></td>' +
                 '</tr>';
         }).join('');
+        PM.bindTransferVariantSheet();
         PM.calculateGrandTotal();
+    };
+
+    PM.bindTransferVariantSheet = function () {
+        if (PM._transferVariantBound) return;
+        var sheet = document.getElementById('tm-transfer-variant-sheet');
+        if (!sheet) return;
+        PM._transferVariantBound = true;
+        var closeBtn = document.getElementById('tm-transfer-variant-close');
+        var mask = document.getElementById('tm-transfer-variant-mask');
+        var confirmBtn = document.getElementById('tm-transfer-variant-confirm');
+        if (closeBtn) closeBtn.addEventListener('click', function () { PM.closeTransferVariantSheet(); });
+        if (mask) mask.addEventListener('click', function () { PM.closeTransferVariantSheet(); });
+        if (confirmBtn) confirmBtn.addEventListener('click', function () { PM.confirmTransferVariantSheet(); });
+    };
+
+    PM.closeTransferVariantSheet = function () {
+        var sheet = document.getElementById('tm-transfer-variant-sheet');
+        if (sheet) {
+            sheet.classList.add('hidden');
+            sheet.setAttribute('aria-hidden', 'true');
+        }
+        PM._transferVariantState = null;
+    };
+
+    PM.openTransferSpecPicker = function (rowId) {
+        var row = (PM.transferState.productRows || []).find(function (r) { return r.id === rowId; });
+        if (!row || !row.spuKey) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('请先选择产品', 'warning');
+            }
+            return;
+        }
+        var group = PM.getTransferStockGroups().find(function (g) { return g.key === row.spuKey; });
+        var items = group ? group.items : [];
+        if (!items.length) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('该产品暂无可调规格', 'warning');
+            }
+            return;
+        }
+        if (items.length === 1) {
+            PM.handleProductSelect(rowId, PM.transferStockKey(items[0]));
+            return;
+        }
+        PM.bindTransferVariantSheet();
+        var sheet = document.getElementById('tm-transfer-variant-sheet');
+        var body = document.getElementById('tm-transfer-variant-body');
+        if (!sheet || !body) return;
+        PM._transferVariantState = {
+            rowId: rowId,
+            spuKey: row.spuKey,
+            label: group ? group.label : '产品',
+            items: items,
+            selectedKey: row.skuKey || ''
+        };
+        PM.renderTransferVariantSheetBody();
+        sheet.classList.remove('hidden');
+        sheet.setAttribute('aria-hidden', 'false');
+    };
+
+    PM.renderTransferVariantSheetBody = function () {
+        var body = document.getElementById('tm-transfer-variant-body');
+        var st = PM._transferVariantState;
+        if (!body || !st) return;
+        var chips = (st.items || []).map(function (item) {
+            var key = PM.transferStockKey(item);
+            var on = st.selectedKey === key ? ' is-on' : '';
+            var unitHint = item.baseUnit || item.stockUnit || '';
+            var maxBase = item.quantity != null ? item.quantity : 0;
+            var label = PM.getTransferSkuLabel(item) + ' · 库存' + maxBase + (unitHint || '');
+            return '<button type="button" class="tm-po-spec-chip' + on + '" data-sku-key="' +
+                PM.escHtmlAttr(key) + '">' + PM.escHtmlText(label) + '</button>';
+        }).join('');
+        body.innerHTML =
+            '<div class="tm-po-variant-hero"><div class="tm-po-variant-hero__info">' +
+            '<p class="tm-po-variant-hero__name">' + PM.escHtmlText(st.label || '产品') + '</p>' +
+            '<p class="tm-po-variant-hero__price text-slate-500 text-xs mt-1">请选择规格</p></div></div>' +
+            '<div class="tm-po-spec-group"><p class="tm-po-spec-group__label">规格</p>' +
+            '<div class="tm-po-spec-chips">' + chips + '</div></div>';
+        body.querySelectorAll('.tm-po-spec-chip').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                if (!PM._transferVariantState) return;
+                PM._transferVariantState.selectedKey = chip.getAttribute('data-sku-key') || '';
+                PM.renderTransferVariantSheetBody();
+            });
+        });
+    };
+
+    PM.confirmTransferVariantSheet = function () {
+        var st = PM._transferVariantState;
+        if (!st || !st.rowId) {
+            PM.closeTransferVariantSheet();
+            return;
+        }
+        if (!st.selectedKey) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('请选择规格', 'warning');
+            }
+            return;
+        }
+        var rowId = st.rowId;
+        var skuKey = st.selectedKey;
+        PM.closeTransferVariantSheet();
+        PM.handleProductSelect(rowId, skuKey);
     };
 
     PM.handleTransferSpuSelect = function (rowId, spuKey) {
@@ -2504,14 +2618,17 @@
         var items = group ? group.items : [];
         if (items.length === 1) {
             PM.transferState.productRows[rowIndex] = PM.buildTransferRowFromStock(rowId, spuKey, items[0]);
-        } else {
-            PM.transferState.productRows[rowIndex] = {
-                id: rowId, spuKey: spuKey, productId: null, skuId: null, skuKey: '',
-                productName: group ? group.label : '', sku: '', unit: '', price: 0, quantity: 0,
-                total: 0, maxQty: 0, availableBase: 0
-            };
+            PM.renderTransferProductList();
+            return;
         }
+        PM.transferState.productRows[rowIndex] = {
+            id: rowId, spuKey: spuKey, productId: null, skuId: null, skuKey: '',
+            productName: group ? group.label : '', sku: '', unit: '', price: 0, quantity: 0,
+            total: 0, maxQty: 0, availableBase: 0
+        };
         PM.renderTransferProductList();
+        // 多规格：自动打开规格 sheet（对齐进货单据）
+        setTimeout(function () { PM.openTransferSpecPicker(rowId); }, 0);
     };
 
     PM.handleProductSelect = function (rowId, skuKey) {
