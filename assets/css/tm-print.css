@@ -84,6 +84,22 @@ body.tm-print-preview-open {
     line-height: 1.45;
 }
 
+.tm-print-multi-page + .tm-print-multi-page,
+.tm-print-page-break {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px dashed #cbd5e1;
+}
+
+@media print {
+    .tm-print-page-break {
+        page-break-before: always;
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+}
+
 .tm-print-receipt-head {
     display: flex;
     align-items: center;

@@ -1059,7 +1059,9 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 #shortage-fulfillment-modal #sf-date-from,
 #shortage-fulfillment-modal #sf-date-to,
 #purchase-modal.tm-purchase-modal input[type="date"].form-input,
-#purchase-modal.tm-purchase-modal #purchase-date {
+#purchase-modal.tm-purchase-modal #purchase-date,
+#order-detail-modal.tm-order-detail-modal input[type="date"].form-input,
+#manual-order-modal.tm-order-detail-modal input[type="date"].form-input {
     display: block;
     width: 100%;
     max-width: 100%;
@@ -1067,6 +1069,51 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
     box-sizing: border-box;
     min-height: 2.5rem;
     line-height: 1.25;
+    overflow: hidden;
+    -webkit-appearance: none;
+    appearance: none;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* iOS 中文长日期：压缩内部 edit 区域，避免撑破视口 */
+#shortage-fulfillment-modal input[type="date"]::-webkit-datetime-edit,
+#purchase-modal.tm-purchase-modal input[type="date"]::-webkit-datetime-edit,
+#order-detail-modal.tm-order-detail-modal input[type="date"]::-webkit-datetime-edit,
+#manual-order-modal.tm-order-detail-modal input[type="date"]::-webkit-datetime-edit {
+    padding: 0;
+    min-width: 0;
+    font-size: 0.8125rem;
+}
+
+#shortage-fulfillment-modal input[type="date"]::-webkit-date-and-time-value,
+#purchase-modal.tm-purchase-modal input[type="date"]::-webkit-date-and-time-value,
+#order-detail-modal.tm-order-detail-modal input[type="date"]::-webkit-date-and-time-value,
+#manual-order-modal.tm-order-detail-modal input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    min-width: 0;
+}
+
+#shortage-fulfillment-modal input[type="date"]::-webkit-calendar-picker-indicator,
+#purchase-modal.tm-purchase-modal input[type="date"]::-webkit-calendar-picker-indicator,
+#order-detail-modal.tm-order-detail-modal input[type="date"]::-webkit-calendar-picker-indicator,
+#manual-order-modal.tm-order-detail-modal input[type="date"]::-webkit-calendar-picker-indicator {
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+    margin: 0;
+    opacity: 0.65;
+}
+
+/* 欠货起止：手机保持单列，避免并排裁切中文日期 */
+#shortage-fulfillment-modal #sf-date-range {
+    flex-direction: column;
+}
+@media (min-width: 768px) {
+    #shortage-fulfillment-modal #sf-date-range.sm\:flex-row,
+    #shortage-fulfillment-modal #sf-date-range {
+        flex-direction: row;
+    }
 }
 
 #shortage-fulfillment-modal.tm-sf-modal--list-expanded #sf-filter-block .sf-filter-fields,
@@ -1124,17 +1171,6 @@ html.tm-embedded #purchase-modal .tm-modal-footer-safe.tm-purchase-modal-footer 
 }
 
 /* 工作台 — 进行中订单详情弹窗 */
-#order-detail-modal.tm-order-detail-modal input[type="date"].form-input,
-#manual-order-modal.tm-order-detail-modal input[type="date"].form-input {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  min-height: 2.5rem;
-  line-height: 1.25;
-}
-
 #order-detail-modal.tm-order-detail-modal .tm-dialog-panel {
     display: flex;
     flex-direction: column;

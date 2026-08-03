@@ -23,11 +23,11 @@
     <link rel="icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="../../favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="../../assets/css/dashboard-audit.css?v=20260715audit2">
-    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260731ui1">
+    <link rel="stylesheet" href="../../assets/css/product-center.css?v=20260803ui2">
     <link rel="stylesheet" href="../../assets/css/ui-ai-service.css?v=20260601">
     <link rel="stylesheet" href="../../assets/css/tm-first-login-wizard.css?v=20260630">
     <link rel="stylesheet" href="../../assets/css/rapid-order.css?v=20260715total2">
-    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260716print1">
+    <link rel="stylesheet" href="../../assets/css/tm-print.css?v=20260803print2">
 
     <style>
         body {
@@ -802,14 +802,14 @@
                             <button type="button" id="sf-date-custom" class="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-bold hover:bg-slate-50">自定义区间</button>
                         </div>
                     </div>
-                    <div id="sf-date-range" class="hidden flex flex-col sm:flex-row gap-2 min-w-0">
+                    <div id="sf-date-range" class="hidden flex flex-col md:flex-row gap-2 min-w-0">
                         <div class="min-w-0 flex-1">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sf-date-from">起</label>
-                            <input type="date" id="sf-date-from" class="form-input form-input--compact text-xs py-2 w-full max-w-full min-w-0">
+                            <input type="date" id="sf-date-from" lang="en" class="form-input form-input--compact tm-date-input text-xs py-2 w-full max-w-full min-w-0">
                         </div>
                         <div class="min-w-0 flex-1">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="sf-date-to">止</label>
-                            <input type="date" id="sf-date-to" class="form-input form-input--compact text-xs py-2 w-full max-w-full min-w-0">
+                            <input type="date" id="sf-date-to" lang="en" class="form-input form-input--compact tm-date-input text-xs py-2 w-full max-w-full min-w-0">
                         </div>
                     </div>
                     <div class="flex items-end gap-2 min-w-0">
@@ -894,7 +894,7 @@
                         </div>
                         <div class="min-w-0">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="detail-delivery-date">交货日期</label>
-                            <input id="detail-delivery-date" type="date" class="form-input form-input--compact w-full max-w-full min-w-0">
+                            <input id="detail-delivery-date" type="date" lang="en" class="form-input form-input--compact tm-date-input w-full max-w-full min-w-0">
                         </div>
                     </div>
                 </section>
@@ -1029,7 +1029,7 @@
                         </div>
                         <div class="min-w-0">
                             <label class="text-[10px] font-bold text-slate-400 block mb-0.5" for="manual-order-delivery-date">交货日期</label>
-                            <input type="date" id="manual-order-delivery-date" class="form-input form-input--compact w-full max-w-full min-w-0" />
+                            <input type="date" id="manual-order-delivery-date" lang="en" class="form-input form-input--compact tm-date-input w-full max-w-full min-w-0" />
                         </div>
                     </div>
                 </section>
@@ -5859,8 +5859,8 @@
     <script src="../../assets/js/tm-serial-capture.js?v=20260731scan1"></script>
     <script src="../../assets/js/tm-logistics-detect.js?v=20260730log1"></script>
     <script src="../../assets/js/tm-print/tm-print-api.js?v=20260709print1"></script>
-    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260723fix2"></script>
-    <script src="../../assets/js/tm-print/tm-print-preview.js?v=20260723fix2"></script>
+    <script src="../../assets/js/tm-print/tm-print-core.js?v=20260803print2"></script>
+    <script src="../../assets/js/tm-print/tm-print-preview.js?v=20260803print2"></script>
     <script src="../../assets/js/tm-scan-router.js?v=20260706print"></script>
     <script src="../../assets/js/tm-scan-camera.js?v=20260706print"></script>
     <script src="../../assets/js/tm-peripheral-settings.js?v=20260706print"></script>
@@ -5886,7 +5886,7 @@
     <script src="../../assets/js/tm-first-login-wizard.js?v=20260630"></script>
     <script src="../../assets/js/rapid-order.js?v=20260723fix2"></script>
     <script src="../../assets/js/workbench-order-shipment.js?v=20260629"></script>
-    <script src="../../assets/js/shortage-fulfillment.js?v=20260731sf8"></script>
+    <script src="../../assets/js/shortage-fulfillment.js?v=20260803sf9"></script>
     <script src="../../assets/js/dashboard-workbench.js?v=20260721fix1"></script>
 </body>
 </html>

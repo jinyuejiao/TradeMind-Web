@@ -27,7 +27,7 @@
         var link = document.createElement('link');
         link.id = 'tm-print-css';
         link.rel = 'stylesheet';
-        link.href = '/assets/css/tm-print.css?v=20260716print1';
+        link.href = '/assets/css/tm-print.css?v=20260803print2';
         document.head.appendChild(link);
     }
 
@@ -116,6 +116,25 @@
             (doc.counterparty && doc.counterparty.name ? (' · ' + doc.counterparty.name) : '');
     }
 
+    async function renderPreviewMany(docs) {
+        if (!global.TM_Print || typeof global.TM_Print.renderReceiptBody !== 'function') {
+            throw new Error('打印渲染模块未就绪');
+        }
+        var box = document.getElementById('tm-print-preview-box');
+        if (!box) return;
+        var printTime = new Date().toLocaleString('zh-CN', { hour12: false });
+        box.innerHTML = (docs || []).map(function (doc, i) {
+            return '<div class="tm-print-multi-page' + (i > 0 ? ' tm-print-page-break' : '') + '">' +
+                global.TM_Print.renderReceiptBody(doc, { printTime: printTime }) + '</div>';
+        }).join('');
+        var titleEl = document.getElementById('tm-print-preview-title');
+        var subEl = document.getElementById('tm-print-preview-subtitle');
+        var first = docs[0] || {};
+        var typeLabel = global.TM_Print.DOC_TYPE_LABEL[(first.meta || {}).docType] || '发货清单';
+        if (titleEl) titleEl.textContent = typeLabel + '预览';
+        if (subEl) subEl.textContent = '共 ' + docs.length + ' 张清单（按客户+订单分单）';
+    }
+
     function openModal() {
         ensurePrintStyles();
         var modal = document.getElementById('tm-print-preview-modal');
@@ -150,6 +169,7 @@
         state.docType = null;
         state.docId = null;
         state.doc = null;
+        state.docs = null;
         state.localDoc = false;
     }
 
@@ -283,11 +303,12 @@
         if (!state.localDoc && (!state.docType || !state.docId)) return;
         setBusy(true);
         try {
-            if (state.localDoc && state.doc) {
+            if (state.localDoc && (state.docs || state.doc)) {
                 await global.TM_Print.print({
                     docType: state.docType,
                     docId: state.docId || 'LOCAL',
                     document: state.doc,
+                    documents: state.docs || null,
                     skipPreview: true,
                     channel: state.channel || 'BROWSER'
                 });
@@ -314,6 +335,38 @@
             var docId = String(opts.docId || '');
 
             // 本地组装单据（欠货履约清单等）：无需后端文档接口
+            if (opts.documents && opts.documents.length) {
+                ensureModal();
+                openModal();
+                setLoading(true);
+                try {
+                    var docs = opts.documents.slice();
+                    var firstDoc = docs[0];
+                    var localType = docType
+                        || (firstDoc.meta && firstDoc.meta.docType)
+                        || 'SHIP_PICK_LIST';
+                    if (global.TM_Print && global.TM_Print.normalizeDocType) {
+                        localType = global.TM_Print.normalizeDocType(localType);
+                    }
+                    docs.forEach(function (d) {
+                        if (!d.meta) d.meta = {};
+                        d.meta.docType = d.meta.docType || localType;
+                    });
+                    state.docType = localType;
+                    state.docId = docId || (firstDoc.meta && firstDoc.meta.docNo) || ('SF-' + Date.now());
+                    state.doc = firstDoc;
+                    state.docs = docs;
+                    state.localDoc = true;
+                    state.channel = opts.channel || 'BROWSER';
+                    await renderPreviewMany(docs);
+                    setLoading(false);
+                    return { success: true, data: docs };
+                } catch (eMulti) {
+                    close();
+                    notify(eMulti.message || '加载预览失败', 'error');
+                    return { success: false, message: eMulti.message };
+                }
+            }
             if (opts.document) {
                 ensureModal();
                 openModal();
@@ -329,6 +382,7 @@
                     state.docType = localType;
                     state.docId = docId || (localDoc.meta && localDoc.meta.docNo) || ('SF-' + Date.now());
                     state.doc = localDoc;
+                    state.docs = null;
                     if (!state.doc.meta) state.doc.meta = {};
                     state.doc.meta.docType = localType;
                     if (!state.doc.meta.docNo) state.doc.meta.docNo = state.docId;

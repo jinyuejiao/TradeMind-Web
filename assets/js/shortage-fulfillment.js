@@ -770,9 +770,11 @@
         var plan = line.fulfillmentPlan || line.fulfillment_plan || '';
         var badge = plan === 'TRANSFERRED'
             ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-bold">已调待发</span>'
-            : (line.lineKind === 'pending_ship'
-                ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 font-bold">待发</span>'
-                : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">欠货可发</span>');
+            : (plan === 'PARTIAL_TRANSFER' || line.lineKind === 'transferred_ready'
+                ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-bold">部分已调</span>'
+                : (line.lineKind === 'pending_ship'
+                    ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 font-bold">待发</span>'
+                    : '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-bold">欠货可发</span>'));
         var prod = line.spuName || line.productName || '产品';
         var spec = line.skuSpec || line.sku_spec || '';
         return '<div class="rounded-lg bg-white border border-slate-100 px-2.5 py-2" data-sf-row="' + esc(key) + '">' +
@@ -1206,38 +1208,54 @@
         return '至 ' + state.dateTo;
     }
 
-    function buildShipPrintLines(lines) {
-        var printLines = [];
+    function buildShipPrintDocs(lines) {
+        var shopName = (global.TM_Tenant && global.TM_Tenant.shopName) ||
+            (global.__TM_TENANT && global.__TM_TENANT.name) ||
+            'TradeMind 商户';
+        var docs = [];
         var groups = groupShipByCustomer(lines || []);
         groups.forEach(function (cust) {
             (cust.mergeGroups || []).forEach(function (merge) {
-                var recvParts = [];
-                if (merge.fulfillmentType) recvParts.push(fulfillmentTypeLabel(merge.fulfillmentType));
-                if (merge.contactName) recvParts.push(merge.contactName);
-                if (merge.contactPhone) recvParts.push(merge.contactPhone);
-                if (merge.address) recvParts.push(merge.address);
-                var recvOnce = recvParts.join(' · ');
-                var firstInMerge = true;
                 (merge.orders || []).forEach(function (ord) {
-                    (ord.lines || []).forEach(function (line) {
+                    var printLines = (ord.lines || []).map(function (line) {
                         var src = line.sourceWarehouseName || '';
                         var tgt = line.targetWarehouseName || '';
-                        printLines.push({
+                        return {
                             productName: line.spuName || line.productName || '产品',
                             specDisplay: line.skuSpec || line.sku_spec || '',
                             quantity: lineSuggestQty(line),
                             unitName: '',
-                            warehouseRoute: tgt || src || '-',
-                            orderCode: ord.orderCode || line.orderCode || '',
-                            customerName: firstInMerge ? (cust.customerName || '') : '',
-                            recvInfo: firstInMerge ? recvOnce : ''
-                        });
-                        firstInMerge = false;
+                            warehouseRoute: tgt || src || '-'
+                        };
+                    });
+                    if (!printLines.length) return;
+                    var totalQty = printLines.reduce(function (s, L) {
+                        return s + (Number(L.quantity) || 0);
+                    }, 0);
+                    docs.push({
+                        merchant: { name: shopName, footerText: '欠货履约·发货清单' },
+                        counterparty: {
+                            name: cust.customerName || '客户',
+                            contactName: merge.contactName || '',
+                            contactPhone: merge.contactPhone || '',
+                            address: merge.address || ''
+                        },
+                        templateColumns: ['productName', 'specDisplay', 'quantity', 'warehouseRoute'],
+                        lines: printLines,
+                        summary: { lineCount: printLines.length, totalAmount: null, totalQty: totalQty },
+                        meta: {
+                            docType: 'SHIP_PICK_LIST',
+                            docNo: ord.orderCode || ('ORD-' + (ord.orderId || '')),
+                            createdAt: todayISO(),
+                            dateRange: dateRangeLabel(),
+                            warehouseFilter: warehouseNameById(state.warehouseId),
+                            fulfillmentType: fulfillmentTypeLabel(merge.fulfillmentType || '')
+                        }
                     });
                 });
             });
         });
-        return printLines;
+        return docs;
     }
 
     function buildPickListDoc(lines) {
@@ -1245,45 +1263,31 @@
             : (state.tab === 'transfer' ? 'TRANSFER_PICK_LIST' : 'SHORTAGE_FULFILLMENT_LIST');
         var titleHint = state.tab === 'ship' ? '发货' : (state.tab === 'transfer' ? '调货' : '进货');
         var isPurchase = state.tab === 'purchase';
-        var isShip = state.tab === 'ship';
-        var printLines;
-        if (isShip) {
-            printLines = buildShipPrintLines(lines);
-        } else {
-            printLines = (lines || []).map(function (line) {
-                var qty = isPurchase ? purchaseSuggestQty(line) : lineSuggestQty(line);
-                var unit = isPurchase
-                    ? (line.purchaseUnit || line.baseUnit || line.base_unit || '')
-                    : '';
-                var src = line.sourceWarehouseName || '';
-                var tgt = line.targetWarehouseName || '';
-                var route = state.tab === 'transfer'
-                    ? ((src || '-') + ' → ' + (tgt || '-'))
-                    : (tgt || src || '-');
-                var recvParts = [];
-                if (line.contactName) recvParts.push(line.contactName);
-                if (line.contactPhone) recvParts.push(line.contactPhone);
-                if (line.address) recvParts.push(line.address);
-                if (line.driverName || line.vehiclePlate) {
-                    recvParts.push([line.driverName, line.vehiclePlate].filter(Boolean).join(' / '));
-                }
-                var baseNeed = isPurchase ? purchaseBaseNeed(line) : null;
-                return {
-                    productName: line.spuName || line.productName || '产品',
-                    specDisplay: line.skuSpec || line.sku_spec || '',
-                    quantity: qty,
-                    unitName: unit,
-                    warehouseRoute: route,
-                    orderCode: isPurchase
-                        ? (line.orderCount > 1 ? ('覆盖' + line.orderCount + '笔') : '')
-                        : (line.orderCode || ''),
-                    customerName: isPurchase
-                        ? (baseNeed != null ? ('欠货' + baseNeed + (line.baseUnit ? line.baseUnit : '')) : '')
-                        : (line.customerName || ''),
-                    recvInfo: recvParts.join(' · ')
-                };
-            });
-        }
+        var printLines = (lines || []).map(function (line) {
+            var qty = isPurchase ? purchaseSuggestQty(line) : lineSuggestQty(line);
+            var unit = isPurchase
+                ? (line.purchaseUnit || line.baseUnit || line.base_unit || '')
+                : '';
+            var src = line.sourceWarehouseName || '';
+            var tgt = line.targetWarehouseName || '';
+            var route = state.tab === 'transfer'
+                ? ((src || '-') + ' → ' + (tgt || '-'))
+                : (tgt || src || '-');
+            var baseNeed = isPurchase ? purchaseBaseNeed(line) : null;
+            return {
+                productName: line.spuName || line.productName || '产品',
+                specDisplay: line.skuSpec || line.sku_spec || '',
+                quantity: qty,
+                unitName: unit,
+                warehouseRoute: route,
+                orderCode: isPurchase
+                    ? (line.orderCount > 1 ? ('覆盖' + line.orderCount + '笔') : '')
+                    : (line.orderCode || ''),
+                customerName: isPurchase
+                    ? (baseNeed != null ? ('欠货' + baseNeed + (line.baseUnit ? line.baseUnit : '')) : '')
+                    : (line.customerName || '')
+            };
+        });
         var shopName = (global.TM_Tenant && global.TM_Tenant.shopName) ||
             (global.__TM_TENANT && global.__TM_TENANT.name) ||
             'TradeMind 商户';
@@ -1309,6 +1313,34 @@
         var lines = linesForPrint();
         if (!lines.length) {
             notify('当前无可打印明细', 'warning');
+            return;
+        }
+        if (state.tab === 'ship') {
+            var shipDocs = buildShipPrintDocs(lines);
+            if (!shipDocs.length) {
+                notify('当前无可打印明细', 'warning');
+                return;
+            }
+            if (global.TM_PrintPreview && typeof global.TM_PrintPreview.open === 'function') {
+                global.TM_PrintPreview.open({
+                    docType: 'SHIP_PICK_LIST',
+                    docId: shipDocs[0].meta.docNo,
+                    documents: shipDocs,
+                    document: shipDocs[0]
+                });
+                return;
+            }
+            if (global.TM_Print && typeof global.TM_Print.print === 'function') {
+                global.TM_Print.print({
+                    docType: 'SHIP_PICK_LIST',
+                    docId: shipDocs[0].meta.docNo,
+                    documents: shipDocs,
+                    document: shipDocs[0],
+                    skipPreview: true
+                });
+                return;
+            }
+            notify('打印模块未加载', 'error');
             return;
         }
         var doc = buildPickListDoc(lines);

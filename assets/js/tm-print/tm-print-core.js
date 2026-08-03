@@ -350,6 +350,23 @@
             }
 
             // 本地单据（欠货履约清单等）：直接渲染，不走后端文档接口
+            if (opts.documents && opts.documents.length) {
+                try {
+                    var bodies = opts.documents.map(function (d) {
+                        return renderReceiptBody(d, { triplicate: false });
+                    }).join('<div style="page-break-after:always;height:0;"></div>');
+                    var htmlMulti = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>发货清单</title>' +
+                        '<link rel="stylesheet" href="/assets/css/tm-print.css">' +
+                        '<style>body{margin:0;padding:12px;background:#fff;color:#111;font-family:SimSun,serif}' +
+                        '@media print{.no-print{display:none}body{padding:0}.tm-print-page-break{page-break-before:always}}</style></head>' +
+                        '<body class="tm-print-page">' + bodies + '</body></html>';
+                    browserPrint(htmlMulti);
+                    return { success: true, channel: 'BROWSER', docType: 'SHIP_PICK_LIST' };
+                } catch (eMulti) {
+                    notify(eMulti.message || '打印失败', 'error');
+                    return { success: false, message: eMulti.message };
+                }
+            }
             if (opts.document) {
                 try {
                     var localDoc = opts.document;

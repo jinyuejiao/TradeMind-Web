@@ -2435,7 +2435,7 @@ function TM_ensureShortageFulfillmentScripts(done) {
             return;
         }
         var s = document.createElement('script');
-        s.src = '/assets/js/shortage-fulfillment.js?v=20260731sf8';
+        s.src = '/assets/js/shortage-fulfillment.js?v=20260803sf9';
         s.setAttribute('data-tm-module', 'dashboard');
         s.setAttribute('data-tm-shortage-fulfillment', '1');
         s.onload = function () {
