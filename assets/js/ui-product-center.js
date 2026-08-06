@@ -72,8 +72,23 @@ window.ProductModule = {
             stockStatus: apiProduct.stockStatus || (
                 stockNum >= 100 ? '充足' :
                 stockNum >= 10 ? '预警' : '缺货'
-            )
+            ),
+            coverUrl: apiProduct.coverUrl || apiProduct.cover_url || null
         };
+    },
+
+    /** 列表缩略图：对齐极速开单 TM_ProductThumb */
+    productThumbHtml: function (coverUrl, size, alt) {
+        var dim = size || 40;
+        if (window.TM_ProductThumb && typeof window.TM_ProductThumb.html === 'function') {
+            return window.TM_ProductThumb.html({
+                coverUrl: coverUrl || null,
+                size: dim,
+                alt: alt || ''
+            });
+        }
+        return '<div class="rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0" style="width:'
+            + dim + 'px;height:' + dim + 'px"><i class="ph ph-package"></i></div>';
     },
 
     mapCategoryFromApi: function(apiCategory) {
@@ -916,13 +931,15 @@ window.ProductModule = {
             var stockLabel = self.formatStockQtyDisplay(totalStock, unitMeta);
             var expanded = !!self.spuExpandedMap[spuId];
             var caret = expanded ? 'ph-caret-down' : 'ph-caret-right';
+            var coverUrl = spu.coverUrl || spu.cover_url || null;
+            var thumb = self.productThumbHtml(coverUrl, 40, spu.name || '');
             html += '<tr class="product-row product-spu-row hover:bg-slate-50 transition-all group" data-spu-id="' + spuId + '">'
                 + '<td class="px-6 py-4"><div class="flex items-center gap-2">'
                 + '<button type="button" class="tm-spu-expand-btn w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-50 hover:text-brand-600 shrink-0"'
                 + ' onclick="event.stopPropagation(); window.ProductModule.toggleSpuExpand(' + spuId + ')" aria-label="展开规格">'
                 + '<i class="ph ' + caret + '"></i></button>'
-                + '<div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-500 transition-colors">'
-                + '<i class="ph ph-package text-xl"></i></div>'
+                + '<div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 group-hover:ring-2 group-hover:ring-brand-100 transition-colors">'
+                + thumb + '</div>'
                 + '<div class="min-w-0"><p class="font-bold text-slate-800 truncate">' + name + '</p>'
                 + '<p class="text-[10px] text-slate-400 mt-1"><span class="inline-flex items-center px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 font-bold">'
                 + skuCount + ' 个规格</span></p></div></div></td>'
@@ -957,8 +974,11 @@ window.ProductModule = {
                         var openFn = legacyId
                             ? ('window.ProductModule.openProductDetail(' + legacyId + ')')
                             : ('window.ProductModule.openSpuDetail(' + spuId + ')');
+                        var skuCover = sku.coverUrl || sku.cover_url || coverUrl;
+                        var skuThumb = self.productThumbHtml(skuCover, 32, label);
                         html += '<tr onclick="' + openFn + '" class="product-sku-row hover:bg-teal-50/40 transition-all cursor-pointer border-t border-slate-100">'
-                            + '<td class="px-6 py-3 pl-16"><div class="flex items-center gap-2"><span class="text-slate-300">└</span><div>'
+                            + '<td class="px-6 py-3 pl-16"><div class="flex items-center gap-2"><span class="text-slate-300">└</span>'
+                            + '<div class="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">' + skuThumb + '</div><div>'
                             + '<p class="font-bold text-slate-700 text-sm">' + self.escHtml(label) + '</p>'
                             + '<p class="text-[10px] text-slate-400 font-mono uppercase mt-0.5">SKU: '
                             + self.escHtml(code || sid) + '</p></div></div></td>'
@@ -1014,20 +1034,28 @@ window.ProductModule = {
                         var openFn = legacyId
                             ? ('window.ProductModule.openProductDetail(' + legacyId + ')')
                             : ('window.ProductModule.openSpuDetail(' + spuId + ')');
-                        return '<button type="button" onclick="' + openFn + '" class="w-full text-left px-3 py-2 rounded-lg bg-white border border-slate-100 flex justify-between gap-2">'
-                            + '<span class="text-xs font-bold text-slate-700 truncate">' + label + '</span>'
+                        var skuCoverM = sku.coverUrl || sku.cover_url || (spu.coverUrl || spu.cover_url || null);
+                        var skuThumbM = self.productThumbHtml(skuCoverM, 32, label);
+                        return '<button type="button" onclick="' + openFn + '" class="w-full text-left px-3 py-2 rounded-lg bg-white border border-slate-100 flex justify-between gap-2 items-center">'
+                            + '<span class="flex items-center gap-2 min-w-0">'
+                            + '<span class="w-8 h-8 rounded-md overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">' + skuThumbM + '</span>'
+                            + '<span class="text-xs font-bold text-slate-700 truncate">' + label + '</span></span>'
                             + '<span class="text-[11px] font-mono text-slate-500 shrink-0">' + self.escHtml(skuStockLabel) + '</span></button>';
                     }).join('');
                 }
             }
             var avgSaleM = spu.avg_sale_price != null ? spu.avg_sale_price : spu.avgSalePrice;
             var avgPurchaseM = spu.avg_purchase_price != null ? spu.avg_purchase_price : spu.avgPurchasePrice;
+            var coverUrlM = spu.coverUrl || spu.cover_url || null;
+            var thumbM = self.productThumbHtml(coverUrlM, 40, spu.name || '');
             return '<div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">'
                 + '<div class="flex items-start justify-between gap-2">'
+                + '<div class="flex items-start gap-2.5 min-w-0 flex-1">'
+                + '<div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center shrink-0">' + thumbM + '</div>'
                 + '<div class="min-w-0"><p class="font-bold text-slate-800 truncate">' + name + '</p>'
                 + '<p class="text-[10px] text-teal-700 font-bold mt-1">' + skuCount + ' 个规格 · 总库存 ' + self.escHtml(stockLabel) + '</p>'
                 + '<p class="text-[10px] text-slate-500 mt-1">销售均价 ' + formatSalePriceDisplay(avgSaleM)
-                + ' · 进货均价 ' + formatPurchasePriceDisplay(avgPurchaseM) + '</p></div>'
+                + ' · 进货均价 ' + formatPurchasePriceDisplay(avgPurchaseM) + '</p></div></div>'
                 + '<button type="button" class="tm-spu-expand-btn w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-50 hover:text-brand-600 shrink-0 flex items-center justify-center"'
                 + ' onclick="window.ProductModule.toggleSpuExpand(' + spuId + ')" aria-label="' + (expanded ? '收起规格' : '展开规格') + '">'
                 + '<i class="ph ' + (expanded ? 'ph-caret-down' : 'ph-caret-right') + '"></i></button></div>'
@@ -1286,12 +1314,13 @@ window.ProductModule = {
         console.log('[ProductModule] 开始渲染产品行');
         tbody.innerHTML = productList.map(product => {
             console.log('[ProductModule] 渲染产品:', product);
+            var thumb = window.ProductModule.productThumbHtml(product.coverUrl, 40, product.name || '');
             return `
             <tr onclick="window.ProductModule.openProductDetail(${product.id})" class="product-row hover:bg-slate-50 transition-all cursor-pointer group">
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-500 transition-colors">
-                            <i class="ph ph-${product.icon} text-xl"></i>
+                        <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 group-hover:ring-2 group-hover:ring-brand-100 transition-colors">
+                            ${thumb}
                         </div>
                         <div>
                             <p class="font-bold text-slate-800 product-name-cell">${product.name}</p>
@@ -1351,10 +1380,11 @@ window.ProductModule = {
             const pct = window.ProductModule.getStockPercentage(product.stock || 0);
             const barClass = window.ProductModule.getStockBgColor(product.stockStatus);
             const pulse = product.stockStatus === '缺货' ? 'animate-pulse' : '';
+            var thumb = window.ProductModule.productThumbHtml(product.coverUrl, 36, product.name || '');
             return `
         <div class="mobile-product-row flex items-stretch gap-2 px-3 py-1.5 cursor-pointer hover:bg-slate-50/90 active:bg-slate-50" onclick="window.ProductModule.openProductDetail(${product.id})">
-            <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                <i class="ph ph-${product.icon} text-base"></i>
+            <div class="w-9 h-9 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                ${thumb}
             </div>
             <div class="flex-1 min-w-0 py-0">
                 <div class="flex justify-between gap-2 items-start">

@@ -227,7 +227,7 @@
 
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col min-h-[420px]">
                     <div class="flex justify-between items-center mb-10">
-                        <h3 id="report-display-title" class="text-sm font-bold text-slate-800">营收走势 (近30天)</h3>
+                        <h3 id="report-display-title" class="text-sm font-bold text-slate-800">营收走势</h3>
                         <div id="report-legend" class="flex gap-4 text-[10px] font-bold text-slate-400">
                             <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-brand-500 rounded-full"></span> 营收额</span>
                         </div>
@@ -635,12 +635,16 @@
                     // 重新定义容器布局：[Y轴区域] + [主绘图区]
                     container.className = 'flex-1 flex flex-row items-stretch overflow-hidden pt-4';
 
-                    // 获取营收数据
+                    // 获取营收数据：手机端默认近 7 天，桌面近 30 天（API 仍返回最多 30 日桶）
                     const revenueData = await fetchReportData('revenue');
-                    const revenueList = Array.isArray(revenueData) ? revenueData.slice().reverse() : [];
+                    const revenueFull = Array.isArray(revenueData) ? revenueData.slice().reverse() : [];
+                    const isMobileRev = !!(window.matchMedia && window.matchMedia('(max-width: 767px)').matches);
+                    const revDays = isMobileRev ? 7 : 30;
+                    const revenueList = revenueFull.slice(-revDays);
+                    window.__tmRevReportDays = revDays;
                     const totalRevenue = revenueList.reduce((s, item) => s + (Number(item.amount) || 0), 0);
                     if (title) {
-                        title.innerText = '营收趋势分析 (近30天) · 合计 ¥' + totalRevenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        title.innerText = '营收趋势分析 (近' + revDays + '天) · 合计 ¥' + totalRevenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     }
 
                     // 生成柱状图
@@ -1382,6 +1386,21 @@
                 var revTab = document.getElementById('tab-rev');
                 if (!revTab || !revTab.classList.contains('report-active')) return;
                 await switchReport('rev');
+            }
+
+            // 断点变化时重绘营收柱（手机 7 / 桌面 30）
+            if (window.matchMedia) {
+                var revMq = window.matchMedia('(max-width: 767px)');
+                var onRevBreakpoint = function () {
+                    var wantDays = revMq.matches ? 7 : 30;
+                    if (window.__tmRevReportDays === wantDays) return;
+                    refreshRevenueReportIfActive();
+                };
+                if (typeof revMq.addEventListener === 'function') {
+                    revMq.addEventListener('change', onRevBreakpoint);
+                } else if (typeof revMq.addListener === 'function') {
+                    revMq.addListener(onRevBreakpoint);
+                }
             }
 
             window.addEventListener('tm-order-data-changed', function () {

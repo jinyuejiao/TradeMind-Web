@@ -2500,16 +2500,29 @@
     };
 
     PM.bindTransferVariantSheet = function () {
-        if (PM._transferVariantBound) return;
         var sheet = document.getElementById('tm-transfer-variant-sheet');
-        if (!sheet) return;
-        PM._transferVariantBound = true;
+        if (!sheet) return false;
+        // sync 会替换 DOM 节点：仅当仍是同一节点时跳过，避免关闭/确定失效
+        if (PM._transferVariantBoundEl === sheet) return true;
+        PM._transferVariantBoundEl = sheet;
         var closeBtn = document.getElementById('tm-transfer-variant-close');
         var mask = document.getElementById('tm-transfer-variant-mask');
         var confirmBtn = document.getElementById('tm-transfer-variant-confirm');
         if (closeBtn) closeBtn.addEventListener('click', function () { PM.closeTransferVariantSheet(); });
         if (mask) mask.addEventListener('click', function () { PM.closeTransferVariantSheet(); });
         if (confirmBtn) confirmBtn.addEventListener('click', function () { PM.confirmTransferVariantSheet(); });
+        return true;
+    };
+
+    PM.ensureTransferVariantSheet = async function () {
+        var sheet = document.getElementById('tm-transfer-variant-sheet');
+        if (sheet) return sheet;
+        if (typeof window.TM_syncProductCenterOverlays === 'function') {
+            try {
+                await window.TM_syncProductCenterOverlays();
+            } catch (e) { /* ignore */ }
+        }
+        return document.getElementById('tm-transfer-variant-sheet');
     };
 
     PM.closeTransferVariantSheet = function () {
@@ -2521,7 +2534,7 @@
         PM._transferVariantState = null;
     };
 
-    PM.openTransferSpecPicker = function (rowId) {
+    PM.openTransferSpecPicker = async function (rowId) {
         var row = (PM.transferState.productRows || []).find(function (r) { return r.id === rowId; });
         if (!row || !row.spuKey) {
             if (window.TM_UI && window.TM_UI.showNotification) {
@@ -2541,10 +2554,20 @@
             PM.handleProductSelect(rowId, PM.transferStockKey(items[0]));
             return;
         }
-        PM.bindTransferVariantSheet();
-        var sheet = document.getElementById('tm-transfer-variant-sheet');
+        var sheet = await PM.ensureTransferVariantSheet();
         var body = document.getElementById('tm-transfer-variant-body');
-        if (!sheet || !body) return;
+        if (!sheet || !body) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('规格选择器未加载，请刷新页面后重试', 'error');
+            }
+            return;
+        }
+        if (!PM.bindTransferVariantSheet()) {
+            if (window.TM_UI && window.TM_UI.showNotification) {
+                window.TM_UI.showNotification('规格选择器未就绪', 'error');
+            }
+            return;
+        }
         PM._transferVariantState = {
             rowId: rowId,
             spuKey: row.spuKey,

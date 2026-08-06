@@ -24,7 +24,7 @@ function TM_extractInnerFromModuleHtml(htmlString, selector) {
  * 产品中心弹窗挂到 body，避免嵌套滚动容器内 fixed 失效
  */
 function TM_syncProductCenterOverlays() {
-    var url = '/modules/product-center/product-overlays.html?v=20260731xfer2';
+    var url = '/modules/product-center/product-overlays.html?v=20260806xfer4';
     return fetch(url, { cache: 'no-store' })
         .then(function (r) { return r.text(); })
         .then(function (html) {
@@ -34,6 +34,7 @@ function TM_syncProductCenterOverlays() {
                 'product-detail-modal',
                 'product-unit-modal',
                 'warehouse-transfer-modal',
+                'tm-transfer-variant-sheet',
                 'product-variant-modal',
                 'product-expiry-modal',
                 'attribute-template-modal'
@@ -850,7 +851,7 @@ function loadSmartOps() {
     TM_mountEmbeddedFrame(
         document.getElementById('view-biz'),
         'biz',
-        '/modules/SmartOps/SmartOps.html?embed=1&v=20260716promo2',
+        '/modules/SmartOps/SmartOps.html?embed=1&v=20260806rev7',
         '智能经营',
         { embedPathCheck: 'SmartOps' }
     );
@@ -873,7 +874,7 @@ function loadProductCenter() {
         ? TM_syncProductCenterOverlays()
         : Promise.resolve();
     overlayPromise.then(function () {
-        return fetch('/modules/product-center/product-center.html?v=20260716spu1', { cache: 'no-store' });
+        return fetch('/modules/product-center/product-center.html?v=20260806thumb1', { cache: 'no-store' });
     })
         .then(function (response) { return response.text(); })
         .then(function (html) {
